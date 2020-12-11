@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2011-2017, The Linux Foundation
+ * Copyright (c) 2011-2017, 2020 The Linux Foundation. All rights reserved.
  */
 
 #ifndef _DRIVERS_SLIMBUS_H
@@ -325,6 +325,18 @@ enum slim_transport_protocol {
 	SLIM_PROTO_ASYNC_HALF_DUP,
 	SLIM_PROTO_EXT_SMPLX,
 	SLIM_PROTO_EXT_HALF_DUP,
+};
+
+/*
+ * enum slim_ch_control: Channel control.
+ * Activate will schedule channel and/or group of channels in the TDM frame.
+ * Suspend will keep the schedule but data-transfer won't happen.
+ * Remove will remove the channel/group from the TDM frame.
+ */
+enum slim_ch_control {
+	SLIM_CH_ACTIVATE,
+	SLIM_CH_SUSPEND,
+	SLIM_CH_REMOVE,
 };
 
 /**
