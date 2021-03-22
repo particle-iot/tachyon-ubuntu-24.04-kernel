@@ -1346,17 +1346,10 @@ static int qcom_slim_ngd_enable(struct qcom_slim_ngd_ctrl *ctrl, bool enable)
 
 		pm_runtime_mark_last_busy(ctrl->ctrl.dev);
 		pm_runtime_put(ctrl->ctrl.dev);
-
-		ret = slim_register_controller(&ctrl->ctrl);
-		if (ret) {
-			dev_err(ctrl->dev, "error adding slim controller\n");
-			return ret;
-		}
-
-		dev_info(ctrl->dev, "SLIM controller Registered\n");
+		dev_dbg(ctrl->dev, "SLIM NGD Enable\n");
 	} else {
 		qcom_slim_qmi_exit(ctrl);
-		slim_unregister_controller(&ctrl->ctrl);
+		dev_dbg(ctrl->dev, "SLIM NGD Disable\n");
 	}
 
 	return 0;
@@ -1576,6 +1569,11 @@ static int qcom_slim_ngd_probe(struct platform_device *pdev)
 	int ret;
 
 	ctrl->ctrl.dev = dev;
+	ret = slim_register_controller(&ctrl->ctrl);
+	if (ret) {
+		dev_err(dev, "error adding slim controller\n");
+		return ret;
+	}
 
 	platform_set_drvdata(pdev, ctrl);
 	pm_runtime_use_autosuspend(dev);
@@ -1586,7 +1584,7 @@ static int qcom_slim_ngd_probe(struct platform_device *pdev)
 	ret = qcom_slim_ngd_qmi_svc_event_init(ctrl);
 	if (ret) {
 		dev_err(&pdev->dev, "QMI service registration failed:%d", ret);
-		return ret;
+		goto err;
 	}
 
 	INIT_WORK(&ctrl->m_work, qcom_slim_ngd_master_worker);
@@ -1603,6 +1601,8 @@ wq_err:
 	qcom_slim_ngd_qmi_svc_event_deinit(&ctrl->qmi);
 	if (ctrl->mwq)
 		destroy_workqueue(ctrl->mwq);
+err:
+	slim_unregister_controller(&ctrl->ctrl);
 
 	return ret;
 }
@@ -1697,7 +1697,7 @@ static int qcom_slim_ngd_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	pdr_handle_release(ctrl->pdr);
 	qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
-	qcom_slim_ngd_enable(ctrl, false);
+	slim_unregister_controller(&ctrl->ctrl);
 	qcom_slim_ngd_exit_dma(ctrl);
 	qcom_slim_ngd_qmi_svc_event_deinit(&ctrl->qmi);
 	if (ctrl->mwq)
