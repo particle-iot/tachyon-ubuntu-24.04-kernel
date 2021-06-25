@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2011-2017, The Linux Foundation
+ * Copyright (c) 2011-2017, 2021 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -123,14 +123,6 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		 txn->mc <= SLIM_MSG_MC_RECONFIGURE_NOW))
 		clk_pause_msg = true;
 
-	if (!clk_pause_msg) {
-		ret = pm_runtime_get_sync(ctrl->dev);
-		if (ctrl->sched.clk_state != SLIM_CLK_ACTIVE) {
-			dev_err(ctrl->dev, "ctrl wrong state:%d, ret:%d\n",
-				ctrl->sched.clk_state, ret);
-			goto slim_xfer_err;
-		}
-	}
 	/* Initialize tid to invalid value */
 	txn->tid = 0;
 	need_tid = slim_tid_txn(txn->mt, txn->mc);
@@ -144,6 +136,15 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 			txn->comp = &done;
 		else
 			txn->comp = txn->comp;
+	}
+
+	if (!clk_pause_msg) {
+		ret = pm_runtime_get_sync(ctrl->dev);
+		if (ctrl->sched.clk_state != SLIM_CLK_ACTIVE) {
+			dev_err(ctrl->dev, "ctrl wrong state:%d, ret:%d\n",
+				ctrl->sched.clk_state, ret);
+			goto slim_xfer_err;
+		}
 	}
 
 	ret = ctrl->xfer_msg(ctrl, txn);
