@@ -6268,3 +6268,15 @@ static void pci_fixup_d3cold_delay_1sec(struct pci_dev *pdev)
 	pdev->d3cold_delay = 1000;
 }
 DECLARE_PCI_FIXUP_FINAL(0x5555, 0x0004, pci_fixup_d3cold_delay_1sec);
+
+/*
+ * Device [8086:9a09]
+ * BIOS may not be able to access config space of devices under VMD domain, so
+ * it relies on software to enable ASPM for links under VMD.
+ */
+static void pci_fixup_enable_aspm(struct pci_dev *pdev)
+{
+	pdev->dev_flags |= PCI_DEV_FLAGS_ENABLE_ASPM;
+}
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x9a09, pci_fixup_enable_aspm);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0xa0b0, pci_fixup_enable_aspm);
