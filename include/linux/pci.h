@@ -247,6 +247,8 @@ enum pci_dev_flags {
 	PCI_DEV_FLAGS_HAS_MSI_MASKING = (__force pci_dev_flags_t) (1 << 12),
 	/* Do not use Configuration Request Retry Status polling in pci_dev_wait() */
 	PCI_DEV_FLAGS_NO_RRS_SV = (__force pci_dev_flags_t) (1 << 13),
+	/* Enable ASPM regardless of how LnkCtl is programmed */
+	PCI_DEV_FLAGS_ENABLE_ASPM = (__force pci_dev_flags_t) (1 << 14),
 };
 
 enum pci_irq_reroute_variant {
