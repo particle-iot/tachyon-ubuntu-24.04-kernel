@@ -1709,11 +1709,6 @@ static int qcom_slim_ngd_probe(struct platform_device *pdev)
 	pm_runtime_set_suspended(dev);
 	pm_runtime_enable(dev);
 	pm_runtime_get_noresume(dev);
-	ret = qcom_slim_ngd_qmi_svc_event_init(ctrl);
-	if (ret) {
-		dev_err(&pdev->dev, "QMI service registration failed:%d", ret);
-		goto err;
-	}
 
 	INIT_WORK(&ctrl->m_work, qcom_slim_ngd_master_worker);
 	INIT_WORK(&ctrl->ngd_up_work, qcom_slim_ngd_up_worker);
@@ -1722,6 +1717,11 @@ static int qcom_slim_ngd_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to start master worker\n");
 		ret = -ENOMEM;
 		goto wq_err;
+	}
+	ret = qcom_slim_ngd_qmi_svc_event_init(ctrl);
+	if (ret) {
+		dev_err(&pdev->dev, "QMI service registration failed:%d\n", ret);
+		goto err;
 	}
 
 	return 0;
