@@ -376,6 +376,7 @@ struct slim_stream_runtime {
  *	to enable a stream.
  * @disable_stream: This function pointer implements controller-specific procedure
  *	to disable stream.
+ * @stream_lock: Mutex protecting enable/disable stream
  *
  *	'Manager device' is responsible for  device management, bandwidth
  *	allocation, channel setup, and port associations per channel.
@@ -420,6 +421,7 @@ struct slim_controller {
 	int		(*enable_stream)(struct slim_stream_runtime *rt);
 	int		(*disable_stream)(struct slim_stream_runtime *rt);
 	int			(*wakeup)(struct slim_controller *ctrl);
+	struct mutex            stream_lock;
 };
 
 int slim_device_report_present(struct slim_controller *ctrl,
