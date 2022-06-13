@@ -1755,14 +1755,21 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		goto err_pdr_lookup;
 	}
 
-	platform_driver_register(&qcom_slim_ngd_driver);
-	return of_qcom_slim_ngd_register(dev, ctrl);
+	ret = of_qcom_slim_ngd_register(dev, ctrl);
+	if (ret) {
+		dev_err(ctrl->dev, "qcom_slim_ngd_register failed ret:%d\n", ret);
+		goto err_pdr_lookup;
+	}
 
-err_pdr_alloc:
-	qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
+	platform_driver_register(&qcom_slim_ngd_driver);
+	dev_dbg(ctrl->dev, "NGD SB controller is up!\n");
+	return 0;
 
 err_pdr_lookup:
 	pdr_handle_release(ctrl->pdr);
+
+err_pdr_alloc:
+	qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
 
 	return ret;
 }
