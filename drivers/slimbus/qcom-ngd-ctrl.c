@@ -1341,6 +1341,7 @@ static int qcom_slim_ngd_get_laddr(struct slim_controller *ctrl,
 
 static int qcom_slim_ngd_exit_dma(struct qcom_slim_ngd_ctrl *ctrl)
 {
+	mutex_lock(&ctrl->ssr_lock);
 	if (ctrl->dma_rx_channel) {
 		dmaengine_terminate_sync(ctrl->dma_rx_channel);
 		dma_release_channel(ctrl->dma_rx_channel);
@@ -1352,6 +1353,7 @@ static int qcom_slim_ngd_exit_dma(struct qcom_slim_ngd_ctrl *ctrl)
 	}
 
 	ctrl->dma_tx_channel = ctrl->dma_rx_channel = NULL;
+	mutex_unlock(&ctrl->ssr_lock);
 
 	return 0;
 }
@@ -1700,12 +1702,12 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			 */
 			ctrl->capability_timeout = false;
 			pm_runtime_get_noresume(ctrl->ctrl.dev);
-			ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
 			dev_dbg(ctrl->dev, "SLIM PM get_no_resume count:%d\n",
 				atomic_read(&ctrl->ctrl.dev->power.usage_count));
 			device_for_each_child(ctrl->ctrl.dev, NULL,
 					      qcom_slim_ngd_update_device_status);
 			qcom_slim_ngd_exit_dma(ctrl);
+			ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
 			mutex_unlock(&ctrl->tx_lock);
 			mutex_unlock(&ctrl->suspend_resume_lock);
 		}
