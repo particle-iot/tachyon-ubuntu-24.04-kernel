@@ -918,10 +918,10 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 	if (ret) {
 		dev_err(ctrl->dev, "ADSP slimbus not up MC:0x%x,mt:0x%x ret:%d\n",
 			txn->mc, txn->mt, ret);
+		mutex_unlock(&ctrl->tx_lock);
 		return ret;
 	}
 
-	mutex_lock(&ctrl->tx_lock);
 	pbuf = qcom_slim_ngd_tx_msg_get(ctrl, txn->rl, &tx_sent);
 	if (!pbuf) {
 		dev_err(ctrl->dev, "Message buffer unavailable\n");
