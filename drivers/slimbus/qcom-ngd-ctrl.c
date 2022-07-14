@@ -183,6 +183,7 @@ struct qcom_slim_ngd_ctrl {
 	u32 ver;
 	int irq;
 	bool irq_disabled;
+	bool capability_timeout;
 };
 
 enum slimbus_mode_enum_type_v01 {
@@ -575,6 +576,12 @@ static void qcom_slim_ngd_tx_msg_dma_cb(void *args)
 	struct qcom_slim_ngd_ctrl *ctrl = desc->ctrl;
 	unsigned long flags;
 
+	/* Return if capability exchange is not successful due to timeout */
+	if (ctrl->capability_timeout) {
+		ctrl->capability_timeout = false;
+		dev_err(ctrl->dev, "Timeout due to delayed interrupt\n");
+		return;
+	}
 	spin_lock_irqsave(&ctrl->tx_buf_lock, flags);
 
 	if (desc->comp) {
@@ -996,11 +1003,12 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		return ret;
 	}
 
-	timeout = wait_for_completion_timeout(&tx_sent, HZ);
+	timeout = wait_for_completion_timeout(&tx_sent, 2 * HZ);
 	if (!timeout) {
 		dev_err(sctrl->dev, "TX timed out:MC:0x%x,mt:0x%x\n",
 			txn->mc, txn->mt);
 		mutex_unlock(&ctrl->tx_lock);
+		ctrl->capability_timeout = true;
 		return -ETIMEDOUT;
 	}
 
@@ -1009,6 +1017,8 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		if (!timeout) {
 			dev_err(sctrl->dev, "TX usr_msg timed out:MC:0x%x,mt:0x%x\n",
 				txn->mc, txn->mt);
+			ctrl->capability_timeout = true;
+			txn->comp = NULL;
 			mutex_unlock(&ctrl->tx_lock);
 			return -ETIMEDOUT;
 		}
@@ -1586,6 +1596,11 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			mutex_lock(&ctrl->tx_lock);
 			ctrl->state = QCOM_SLIM_NGD_CTRL_SSR_GOING_DOWN;
 			dev_err(ctrl->dev, "SLIM SSR going down\n");
+			/*
+			 * Mark capability_timeout to false here to handle
+			 * BAM IRQ's from clean state.
+			 */
+			ctrl->capability_timeout = false;
 			pm_runtime_get_noresume(ctrl->ctrl.dev);
 			ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
 			dev_dbg(ctrl->dev, "SLIM PM get_no_resume count:%d\n",
