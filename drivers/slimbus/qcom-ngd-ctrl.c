@@ -465,6 +465,11 @@ static int qcom_slim_qmi_init(struct qcom_slim_ngd_ctrl *ctrl,
 	struct qmi_handle *handle;
 	int rc;
 
+	if (ctrl->qmi.handle) {
+		dev_dbg(ctrl->dev, "qmi handle already allocated\n");
+		return 0;
+	}
+
 	handle = devm_kzalloc(ctrl->dev, sizeof(*handle), GFP_KERNEL);
 	if (!handle)
 		return -ENOMEM;
@@ -1528,8 +1533,6 @@ MODULE_DEVICE_TABLE(of, qcom_slim_ngd_dt_match);
 static void qcom_slim_ngd_down(struct qcom_slim_ngd_ctrl *ctrl)
 {
 	mutex_lock(&ctrl->ssr_lock);
-	device_for_each_child(ctrl->ctrl.dev, NULL,
-			      qcom_slim_ngd_update_device_status);
 	qcom_slim_ngd_enable(ctrl, false);
 	mutex_unlock(&ctrl->ssr_lock);
 }
@@ -1558,21 +1561,33 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 	switch (action) {
 	case QCOM_SSR_BEFORE_SHUTDOWN:
 	case SERVREG_SERVICE_STATE_DOWN:
+		dev_dbg(ctrl->dev, "SLIM SSR Before Shutdown\n");
 		if (ctrl->state != QCOM_SLIM_NGD_CTRL_DOWN) {
 			/* Make sure the last dma xfer is finished */
 			mutex_lock(&ctrl->suspend_resume_lock);
 			mutex_lock(&ctrl->tx_lock);
 			pm_runtime_get_noresume(ctrl->ctrl.dev);
 			ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
-			qcom_slim_ngd_down(ctrl);
+			dev_dbg(ctrl->dev, "SLIM PM get_no_resume count:%d\n",
+				atomic_read(&ctrl->ctrl.dev->power.usage_count));
+			device_for_each_child(ctrl->ctrl.dev, NULL,
+					      qcom_slim_ngd_update_device_status);
 			qcom_slim_ngd_exit_dma(ctrl);
 			mutex_unlock(&ctrl->tx_lock);
 			mutex_unlock(&ctrl->suspend_resume_lock);
 		}
+
+		/* PDR must clean up everything as part of state down notification */
+		if (action == SERVREG_SERVICE_STATE_DOWN)
+			qcom_slim_ngd_down(ctrl);
 		break;
 	case QCOM_SSR_AFTER_POWERUP:
 	case SERVREG_SERVICE_STATE_UP:
 		schedule_work(&ctrl->ngd_up_work);
+		break;
+	case QCOM_SSR_AFTER_SHUTDOWN:
+		dev_dbg(ctrl->dev, "SLIM SSR After Shutdown\n");
+		qcom_slim_ngd_down(ctrl);
 		break;
 	default:
 		break;
