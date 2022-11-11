@@ -1056,14 +1056,20 @@ static int qcom_slim_ngd_xfer_msg_sync(struct slim_controller *ctrl,
 	int ret, timeout;
 
 	ret = pm_runtime_get_sync(ctrl->dev);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(ctrl->dev, "%s: PM get_sync failed ret :%d count:%d TID:%d\n",
+			__func__, ret, atomic_read(&ctrl->dev->power.usage_count), txn->tid);
 		goto pm_put;
+	}
 
 	txn->comp = &done;
 
 	ret = qcom_slim_ngd_xfer_msg(ctrl, txn);
-	if (ret)
+	if (ret) {
+		dev_err(ctrl->dev, "%s: xfer_msg failed PM put count:%d TID:%d\n",
+			__func__, atomic_read(&ctrl->dev->power.usage_count), txn->tid);
 		goto pm_put;
+	}
 
 	timeout = wait_for_completion_timeout(&done, HZ);
 	if (!timeout) {
@@ -1075,8 +1081,9 @@ static int qcom_slim_ngd_xfer_msg_sync(struct slim_controller *ctrl,
 	return 0;
 
 pm_put:
-	pm_runtime_put(ctrl->dev);
-
+	pm_runtime_put_noidle(ctrl->dev);
+	/* Set device in suspended since resume failed */
+	pm_runtime_set_suspended(ctrl->dev);
 	return ret;
 }
 
@@ -1530,12 +1537,16 @@ static int qcom_slim_ngd_runtime_resume(struct device *dev)
 			ctrl->state = QCOM_SLIM_NGD_CTRL_ASLEEP;
 		else
 			dev_err(ctrl->dev, "HW wakeup attempt during SSR\n");
+
+		dev_err(ctrl->dev, "%s: Power up request failed, try resume again\n",
+			__func__);
+		ret = -EAGAIN;
 	} else {
 		ctrl->state = QCOM_SLIM_NGD_CTRL_AWAKE;
 	}
 
 	mutex_unlock(&ctrl->suspend_resume_lock);
-	return 0;
+	return ret;
 }
 
 static int qcom_slim_ngd_enable(struct qcom_slim_ngd_ctrl *ctrl, bool enable)
