@@ -95,7 +95,7 @@ unlock:
 	return mapping;
 }
 
-int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *region)
+int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *region, bool lend)
 {
 	struct gh_vm_mem *mapping, *tmp_mapping;
 	struct page *curr_page, *prev_page;
@@ -170,8 +170,13 @@ int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *regio
 		goto unpin_pages;
 	}
 
-	parcel->n_acl_entries = 2;
-	mapping->share_type = VM_MEM_SHARE;
+	if (lend) {
+		parcel->n_acl_entries = 1;
+		mapping->share_type = VM_MEM_LEND;
+	} else {
+		parcel->n_acl_entries = 2;
+		mapping->share_type = VM_MEM_SHARE;
+	}
 	parcel->acl_entries = kcalloc(parcel->n_acl_entries, sizeof(*parcel->acl_entries),
 					GFP_KERNEL);
 	if (!parcel->acl_entries) {
