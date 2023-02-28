@@ -506,11 +506,19 @@ static int gh_vm_start(struct gh_vm *ghvm)
 	mutex_lock(&ghvm->mm_lock);
 	list_for_each_entry(mapping, &ghvm->memory_mappings, list) {
 		mapping->parcel.acl_entries[0].vmid = cpu_to_le16(ghvm->vmid);
-		ret = gh_rm_mem_share(ghvm->rm, &mapping->parcel);
+		switch (mapping->share_type) {
+		case VM_MEM_LEND:
+			ret = gh_rm_mem_lend(ghvm->rm, &mapping->parcel);
+			break;
+		case VM_MEM_SHARE:
+			ret = gh_rm_mem_share(ghvm->rm, &mapping->parcel);
+			break;
+		}
 		if (ret) {
-			dev_warn(ghvm->parent, "Failed to share parcel %d: %d\n",
-				mapping->parcel.label, ret);
-			mutex_unlock(&ghvm->mm_lock);
+			dev_warn(ghvm->parent, "Failed to %s parcel %d: %d\n",
+				mapping->share_type == VM_MEM_LEND ? "lend" : "share",
+				mapping->parcel.label,
+				ret);
 			goto err;
 		}
 	}
@@ -607,8 +615,12 @@ static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct gh_vm *ghvm = filp->private_data;
 	void __user *argp = (void __user *)arg;
 	long r;
+	bool lend = false;
 
 	switch (cmd) {
+	case GH_VM_ANDROID_LEND_USER_MEM:
+		lend = true;
+		fallthrough;
 	case GH_VM_SET_USER_MEM_REGION: {
 		struct gh_userspace_memory_region region;
 
@@ -623,7 +635,7 @@ static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if (region.flags & ~(GH_MEM_ALLOW_READ | GH_MEM_ALLOW_WRITE | GH_MEM_ALLOW_EXEC))
 			return -EINVAL;
 
-		r = gh_vm_mem_alloc(ghvm, &region);
+		r = gh_vm_mem_alloc(ghvm, &region, lend);
 		break;
 	}
 	case GH_VM_SET_DTB_CONFIG: {
