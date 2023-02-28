@@ -61,7 +61,7 @@ struct gh_vm {
 	struct rw_semaphore mmio_handler_lock;
 };
 
-int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *region);
+int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *region, bool lend);
 void gh_vm_mem_reclaim(struct gh_vm *ghvm);
 struct gh_vm_mem *gh_vm_mem_find_by_addr(struct gh_vm *ghvm, u64 guest_phys_addr, u32 size);
 
