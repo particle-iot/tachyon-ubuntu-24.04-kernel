@@ -15,6 +15,8 @@
 
 #include "vm_mgr.h"
 
+static void gh_vm_free(struct work_struct *work);
+
 static __must_check struct gh_vm *gh_vm_alloc(struct gh_rm *rm)
 {
 	struct gh_vm *ghvm;
@@ -26,20 +28,72 @@ static __must_check struct gh_vm *gh_vm_alloc(struct gh_rm *rm)
 	ghvm->parent = gh_rm_get(rm);
 	ghvm->rm = rm;
 
+	mmgrab(current->mm);
+	ghvm->mm = current->mm;
+	mutex_init(&ghvm->mm_lock);
+	INIT_LIST_HEAD(&ghvm->memory_mappings);
+	INIT_WORK(&ghvm->free_work, gh_vm_free);
+
 	return ghvm;
+}
+
+static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct gh_vm *ghvm = filp->private_data;
+	void __user *argp = (void __user *)arg;
+	long r;
+
+	switch (cmd) {
+	case GH_VM_SET_USER_MEM_REGION: {
+		struct gh_userspace_memory_region region;
+
+		/* only allow owner task to add memory */
+		if (ghvm->mm != current->mm)
+			return -EPERM;
+
+		if (copy_from_user(&region, argp, sizeof(region)))
+			return -EFAULT;
+
+		/* All other flag bits are reserved for future use */
+		if (region.flags & ~(GH_MEM_ALLOW_READ | GH_MEM_ALLOW_WRITE | GH_MEM_ALLOW_EXEC))
+			return -EINVAL;
+
+		r = gh_vm_mem_alloc(ghvm, &region);
+		break;
+	}
+	default:
+		r = -ENOTTY;
+		break;
+	}
+
+	return r;
+}
+
+static void gh_vm_free(struct work_struct *work)
+{
+	struct gh_vm *ghvm = container_of(work, struct gh_vm, free_work);
+
+	gh_vm_mem_reclaim(ghvm);
+	gh_rm_put(ghvm->rm);
+	mmdrop(ghvm->mm);
+	kfree(ghvm);
 }
 
 static int gh_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vm *ghvm = filp->private_data;
 
-	gh_rm_put(ghvm->rm);
-	kfree(ghvm);
+	/* VM will be reset and make RM calls which can interruptible sleep.
+	 * Defer to a work so this thread can receive signal.
+	 */
+	schedule_work(&ghvm->free_work);
 	return 0;
 }
 
 static const struct file_operations gh_vm_fops = {
 	.owner = THIS_MODULE,
+	.unlocked_ioctl = gh_vm_ioctl,
+	.compat_ioctl	= compat_ptr_ioctl,
 	.release = gh_vm_release,
 	.llseek = noop_llseek,
 };
@@ -77,8 +131,7 @@ static long gh_dev_ioctl_create_vm(struct gh_rm *rm, unsigned long arg)
 err_put_fd:
 	put_unused_fd(fd);
 err_destroy_vm:
-	gh_rm_put(ghvm->rm);
-	kfree(ghvm);
+	gh_vm_free(&ghvm->free_work);
 	return err;
 }
 
