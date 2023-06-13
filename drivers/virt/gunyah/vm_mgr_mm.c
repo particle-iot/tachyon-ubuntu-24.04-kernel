@@ -75,6 +75,26 @@ void gh_vm_mem_reclaim(struct gh_vm *ghvm)
 	mutex_unlock(&ghvm->mm_lock);
 }
 
+struct gh_vm_mem *gh_vm_mem_find_by_addr(struct gh_vm *ghvm, u64 guest_phys_addr, u32 size)
+{
+	struct gh_vm_mem *mapping;
+
+	if (overflows_type(guest_phys_addr + size, u64))
+		return NULL;
+
+	mutex_lock(&ghvm->mm_lock);
+
+	list_for_each_entry(mapping, &ghvm->memory_mappings, list) {
+		if (gh_vm_mem_overlap(mapping, guest_phys_addr, size))
+			goto unlock;
+	}
+
+	mapping = NULL;
+unlock:
+	mutex_unlock(&ghvm->mm_lock);
+	return mapping;
+}
+
 int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *region)
 {
 	struct gh_vm_mem *mapping, *tmp_mapping;
