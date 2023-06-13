@@ -79,10 +79,13 @@ struct gh_vm_dtb_config {
  *              Return: file descriptor to manipulate the vcpu.
  * @GH_FN_IRQFD: register eventfd to assert a Gunyah doorbell
  *               &struct gh_fn_desc.arg is a pointer to &struct gh_fn_irqfd_arg
+ * @GH_FN_IOEVENTFD: register ioeventfd to trigger when VM faults on parameter
+ *                   &struct gh_fn_desc.arg is a pointer to &struct gh_fn_ioeventfd_arg
  */
 enum gh_fn_type {
 	GH_FN_VCPU = 1,
 	GH_FN_IRQFD,
+	GH_FN_IOEVENTFD,
 };
 
 #define GH_FN_MAX_ARG_SIZE		256
@@ -130,6 +133,40 @@ enum gh_irqfd_flags {
 struct gh_fn_irqfd_arg {
 	__u32 fd;
 	__u32 label;
+	__u32 flags;
+	__u32 padding;
+};
+
+/**
+ * enum gh_ioeventfd_flags - flags for use in gh_fn_ioeventfd_arg
+ * @GH_IOEVENTFD_FLAGS_DATAMATCH: the event will be signaled only if the
+ *                                written value to the registered address is
+ *                                equal to &struct gh_fn_ioeventfd_arg.datamatch
+ */
+enum gh_ioeventfd_flags {
+	GH_IOEVENTFD_FLAGS_DATAMATCH	= 1UL << 0,
+};
+
+/**
+ * struct gh_fn_ioeventfd_arg - Arguments to create an ioeventfd function
+ * @datamatch: data used when GH_IOEVENTFD_DATAMATCH is set
+ * @addr: Address in guest memory
+ * @len: Length of access
+ * @fd: When ioeventfd is matched, this eventfd is written
+ * @flags: See &enum gh_ioeventfd_flags
+ * @padding: padding bytes
+ *
+ * Create this function with &GH_VM_ADD_FUNCTION using type &GH_FN_IOEVENTFD.
+ *
+ * Attaches an ioeventfd to a legal mmio address within the guest. A guest write
+ * in the registered address will signal the provided event instead of triggering
+ * an exit on the GH_VCPU_RUN ioctl.
+ */
+struct gh_fn_ioeventfd_arg {
+	__u64 datamatch;
+	__u64 addr;        /* legal mmio address */
+	__u32 len;         /* 1, 2, 4, or 8 bytes; or 0 to ignore length */
+	__s32 fd;
 	__u32 flags;
 	__u32 padding;
 };
