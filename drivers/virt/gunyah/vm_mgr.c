@@ -17,6 +17,68 @@
 
 static void gh_vm_free(struct work_struct *work);
 
+static int gh_vm_rm_notification_status(struct gh_vm *ghvm, void *data)
+{
+	struct gh_rm_vm_status_payload *payload = data;
+
+	if (le16_to_cpu(payload->vmid) != ghvm->vmid)
+		return NOTIFY_OK;
+
+	/* All other state transitions are synchronous to a corresponding RM call */
+	if (payload->vm_status == GH_RM_VM_STATUS_RESET) {
+		down_write(&ghvm->status_lock);
+		ghvm->vm_status = payload->vm_status;
+		up_write(&ghvm->status_lock);
+		wake_up(&ghvm->vm_status_wait);
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int gh_vm_rm_notification_exited(struct gh_vm *ghvm, void *data)
+{
+	struct gh_rm_vm_exited_payload *payload = data;
+
+	if (le16_to_cpu(payload->vmid) != ghvm->vmid)
+		return NOTIFY_OK;
+
+	down_write(&ghvm->status_lock);
+	ghvm->vm_status = GH_RM_VM_STATUS_EXITED;
+	up_write(&ghvm->status_lock);
+	wake_up(&ghvm->vm_status_wait);
+
+	return NOTIFY_DONE;
+}
+
+static int gh_vm_rm_notification(struct notifier_block *nb, unsigned long action, void *data)
+{
+	struct gh_vm *ghvm = container_of(nb, struct gh_vm, nb);
+
+	switch (action) {
+	case GH_RM_NOTIFICATION_VM_STATUS:
+		return gh_vm_rm_notification_status(ghvm, data);
+	case GH_RM_NOTIFICATION_VM_EXITED:
+		return gh_vm_rm_notification_exited(ghvm, data);
+	default:
+		return NOTIFY_OK;
+	}
+}
+
+static void gh_vm_stop(struct gh_vm *ghvm)
+{
+	int ret;
+
+	down_write(&ghvm->status_lock);
+	if (ghvm->vm_status == GH_RM_VM_STATUS_RUNNING) {
+		ret = gh_rm_vm_stop(ghvm->rm, ghvm->vmid);
+		if (ret)
+			dev_warn(ghvm->parent, "Failed to stop VM: %d\n", ret);
+	}
+	up_write(&ghvm->status_lock);
+
+	wait_event(ghvm->vm_status_wait, ghvm->vm_status == GH_RM_VM_STATUS_EXITED);
+}
+
 static __must_check struct gh_vm *gh_vm_alloc(struct gh_rm *rm)
 {
 	struct gh_vm *ghvm;
@@ -26,15 +88,128 @@ static __must_check struct gh_vm *gh_vm_alloc(struct gh_rm *rm)
 		return ERR_PTR(-ENOMEM);
 
 	ghvm->parent = gh_rm_get(rm);
+	ghvm->vmid = GH_VMID_INVAL;
 	ghvm->rm = rm;
 
 	mmgrab(current->mm);
 	ghvm->mm = current->mm;
 	mutex_init(&ghvm->mm_lock);
 	INIT_LIST_HEAD(&ghvm->memory_mappings);
+	init_rwsem(&ghvm->status_lock);
+	init_waitqueue_head(&ghvm->vm_status_wait);
 	INIT_WORK(&ghvm->free_work, gh_vm_free);
+	ghvm->vm_status = GH_RM_VM_STATUS_NO_STATE;
 
 	return ghvm;
+}
+
+static int gh_vm_start(struct gh_vm *ghvm)
+{
+	struct gh_vm_mem *mapping;
+	u64 dtb_offset;
+	u32 mem_handle;
+	int ret;
+
+	down_write(&ghvm->status_lock);
+	if (ghvm->vm_status != GH_RM_VM_STATUS_NO_STATE) {
+		up_write(&ghvm->status_lock);
+		return 0;
+	}
+
+	ghvm->nb.notifier_call = gh_vm_rm_notification;
+	ret = gh_rm_notifier_register(ghvm->rm, &ghvm->nb);
+	if (ret)
+		goto err;
+
+	ret = gh_rm_alloc_vmid(ghvm->rm, 0);
+	if (ret < 0) {
+		gh_rm_notifier_unregister(ghvm->rm, &ghvm->nb);
+		goto err;
+	}
+	ghvm->vmid = ret;
+	ghvm->vm_status = GH_RM_VM_STATUS_LOAD;
+
+	mutex_lock(&ghvm->mm_lock);
+	list_for_each_entry(mapping, &ghvm->memory_mappings, list) {
+		mapping->parcel.acl_entries[0].vmid = cpu_to_le16(ghvm->vmid);
+		ret = gh_rm_mem_share(ghvm->rm, &mapping->parcel);
+		if (ret) {
+			dev_warn(ghvm->parent, "Failed to share parcel %d: %d\n",
+				mapping->parcel.label, ret);
+			mutex_unlock(&ghvm->mm_lock);
+			goto err;
+		}
+	}
+	mutex_unlock(&ghvm->mm_lock);
+
+	mapping = gh_vm_mem_find_by_addr(ghvm, ghvm->dtb_config.guest_phys_addr,
+					ghvm->dtb_config.size);
+	if (!mapping) {
+		dev_warn(ghvm->parent, "Failed to find the memory_handle for DTB\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	mem_handle = mapping->parcel.mem_handle;
+	dtb_offset = ghvm->dtb_config.guest_phys_addr - mapping->guest_phys_addr;
+
+	ret = gh_rm_vm_configure(ghvm->rm, ghvm->vmid, ghvm->auth, mem_handle,
+				0, 0, dtb_offset, ghvm->dtb_config.size);
+	if (ret) {
+		dev_warn(ghvm->parent, "Failed to configure VM: %d\n", ret);
+		goto err;
+	}
+
+	ret = gh_rm_vm_init(ghvm->rm, ghvm->vmid);
+	if (ret) {
+		ghvm->vm_status = GH_RM_VM_STATUS_INIT_FAILED;
+		dev_warn(ghvm->parent, "Failed to initialize VM: %d\n", ret);
+		goto err;
+	}
+	ghvm->vm_status = GH_RM_VM_STATUS_READY;
+
+	ret = gh_rm_vm_start(ghvm->rm, ghvm->vmid);
+	if (ret) {
+		dev_warn(ghvm->parent, "Failed to start VM: %d\n", ret);
+		goto err;
+	}
+
+	ghvm->vm_status = GH_RM_VM_STATUS_RUNNING;
+	up_write(&ghvm->status_lock);
+	return ret;
+err:
+	/* gh_vm_free will handle releasing resources and reclaiming memory */
+	up_write(&ghvm->status_lock);
+	return ret;
+}
+
+static int gh_vm_ensure_started(struct gh_vm *ghvm)
+{
+	int ret;
+
+	ret = down_read_interruptible(&ghvm->status_lock);
+	if (ret)
+		return ret;
+
+	/* Unlikely because VM is typically started */
+	if (unlikely(ghvm->vm_status == GH_RM_VM_STATUS_NO_STATE)) {
+		up_read(&ghvm->status_lock);
+		ret = gh_vm_start(ghvm);
+		if (ret)
+			return ret;
+		/** gh_vm_start() is guaranteed to bring status out of
+		 * GH_RM_VM_STATUS_LOAD, thus infinitely recursive call is not
+		 * possible
+		 */
+		return gh_vm_ensure_started(ghvm);
+	}
+
+	/* Unlikely because VM is typically running */
+	if (unlikely(ghvm->vm_status != GH_RM_VM_STATUS_RUNNING))
+		ret = -ENODEV;
+
+	up_read(&ghvm->status_lock);
+	return ret;
 }
 
 static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -61,6 +236,24 @@ static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		r = gh_vm_mem_alloc(ghvm, &region);
 		break;
 	}
+	case GH_VM_SET_DTB_CONFIG: {
+		struct gh_vm_dtb_config dtb_config;
+
+		if (copy_from_user(&dtb_config, argp, sizeof(dtb_config)))
+			return -EFAULT;
+
+		if (overflows_type(dtb_config.guest_phys_addr + dtb_config.size, u64))
+			return -EOVERFLOW;
+
+		ghvm->dtb_config = dtb_config;
+
+		r = 0;
+		break;
+	}
+	case GH_VM_START: {
+		r = gh_vm_ensure_started(ghvm);
+		break;
+	}
 	default:
 		r = -ENOTTY;
 		break;
@@ -72,8 +265,30 @@ static long gh_vm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 static void gh_vm_free(struct work_struct *work)
 {
 	struct gh_vm *ghvm = container_of(work, struct gh_vm, free_work);
+	int ret;
+
+	if (ghvm->vm_status == GH_RM_VM_STATUS_RUNNING)
+		gh_vm_stop(ghvm);
+
+	if (ghvm->vm_status != GH_RM_VM_STATUS_NO_STATE &&
+	    ghvm->vm_status != GH_RM_VM_STATUS_LOAD &&
+	    ghvm->vm_status != GH_RM_VM_STATUS_RESET) {
+		ret = gh_rm_vm_reset(ghvm->rm, ghvm->vmid);
+		if (ret)
+			dev_err(ghvm->parent, "Failed to reset the vm: %d\n", ret);
+		wait_event(ghvm->vm_status_wait, ghvm->vm_status == GH_RM_VM_STATUS_RESET);
+	}
 
 	gh_vm_mem_reclaim(ghvm);
+
+	if (ghvm->vm_status > GH_RM_VM_STATUS_NO_STATE) {
+		gh_rm_notifier_unregister(ghvm->rm, &ghvm->nb);
+
+		ret = gh_rm_dealloc_vmid(ghvm->rm, ghvm->vmid);
+		if (ret)
+			dev_warn(ghvm->parent, "Failed to deallocate vmid: %d\n", ret);
+	}
+
 	gh_rm_put(ghvm->rm);
 	mmdrop(ghvm->mm);
 	kfree(ghvm);
