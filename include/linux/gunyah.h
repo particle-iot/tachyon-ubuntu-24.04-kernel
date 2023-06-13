@@ -27,6 +27,9 @@ struct gh_resource {
 	enum gh_resource_type type;
 	u64 capid;
 	unsigned int irq;
+
+	struct list_head list;
+	u32 rm_label;
 };
 
 /**
