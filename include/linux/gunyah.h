@@ -6,8 +6,10 @@
 #ifndef _LINUX_GUNYAH_H
 #define _LINUX_GUNYAH_H
 
+#include <linux/bitfield.h>
 #include <linux/errno.h>
 #include <linux/limits.h>
+#include <linux/types.h>
 
 /******************************************************************************/
 /* Common arch-independent definitions for Gunyah hypercalls                  */
@@ -79,5 +81,34 @@ static inline int gh_error_remap(enum gh_error gh_error)
 		return -EINVAL;
 	}
 }
+
+enum gh_api_feature {
+	GH_FEATURE_DOORBELL 	= 1,
+	GH_FEATURE_MSGQUEUE 	= 2,
+	GH_FEATURE_VCPU 	= 5,
+	GH_FEATURE_MEMEXTENT 	= 6,
+};
+
+bool arch_is_gh_guest(void);
+
+#define GH_API_V1			1
+
+/* Other bits reserved for future use and will be zero */
+#define GH_API_INFO_API_VERSION_MASK	GENMASK_ULL(13, 0)
+#define GH_API_INFO_BIG_ENDIAN		BIT_ULL(14)
+#define GH_API_INFO_IS_64BIT		BIT_ULL(15)
+#define GH_API_INFO_VARIANT_MASK	GENMASK_ULL(63, 56)
+
+struct gh_hypercall_hyp_identify_resp {
+	u64 api_info;
+	u64 flags[3];
+};
+
+static inline u16 gh_api_version(const struct gh_hypercall_hyp_identify_resp *gh_api)
+{
+	return FIELD_GET(GH_API_INFO_API_VERSION_MASK, gh_api->api_info);
+}
+
+void gh_hypercall_hyp_identify(struct gh_hypercall_hyp_identify_resp *hyp_identity);
 
 #endif
