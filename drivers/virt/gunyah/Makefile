@@ -5,3 +5,5 @@ obj-$(CONFIG_GUNYAH_QCOM_PLATFORM) += gunyah_qcom.o
 
 gunyah-y += rsc_mgr.o rsc_mgr_rpc.o vm_mgr.o vm_mgr_mm.o
 obj-$(CONFIG_GUNYAH) += gunyah.o
+
+obj-$(CONFIG_GUNYAH_VCPU) += gunyah_vcpu.o
