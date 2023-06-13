@@ -94,4 +94,35 @@ void gh_vm_function_unregister(struct gh_vm_function *f);
 	module_gh_vm_function(_name);							\
 	MODULE_ALIAS_GH_VM_FUNCTION(_type, _idx)
 
+/**
+ * struct gh_vm_resource_ticket - Represents a ticket to reserve exclusive access to VM resource(s)
+ * @vm_list: for @gh_vm->resource_tickets
+ * @resources: List of resource(s) associated with this ticket(members are from @gh_resource->list)
+ * @resource_type: Type of resource this ticket reserves
+ * @label: Label of the resource from resource manager this ticket reserves.
+ * @owner: owner of the ticket
+ * @populate: callback provided by the ticket owner and called when a resource is found that
+ *            matches @resource_type and @label. Note that this callback could be called
+ *            multiple times if userspace created mutliple resources with the same type/label.
+ *            This callback may also have significant delay after gh_vm_add_resource_ticket()
+ *            since gh_vm_add_resource_ticket() could be called before the VM starts.
+ * @unpopulate: callback provided by the ticket owner and called when the ticket owner should
+ *              no longer use the resource provided in the argument. When unpopulate() returns,
+ *              the ticket owner should not be able to use the resource any more as the resource
+ *              might being freed.
+ */
+struct gh_vm_resource_ticket {
+	struct list_head vm_list;
+	struct list_head resources;
+	enum gh_resource_type resource_type;
+	u32 label;
+
+	struct module *owner;
+	bool (*populate)(struct gh_vm_resource_ticket *ticket, struct gh_resource *ghrsc);
+	void (*unpopulate)(struct gh_vm_resource_ticket *ticket, struct gh_resource *ghrsc);
+};
+
+int gh_vm_add_resource_ticket(struct gh_vm *ghvm, struct gh_vm_resource_ticket *ticket);
+void gh_vm_remove_resource_ticket(struct gh_vm *ghvm, struct gh_vm_resource_ticket *ticket);
+
 #endif
