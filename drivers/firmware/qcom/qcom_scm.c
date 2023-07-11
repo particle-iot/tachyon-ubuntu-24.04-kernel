@@ -1223,6 +1223,76 @@ int qcom_scm_ice_set_key(u32 index, const u8 *key, u32 key_size,
 EXPORT_SYMBOL_GPL(qcom_scm_ice_set_key);
 
 /**
+ * qcom_scm_derive_sw_secret() - Derive SW secret from wrapped key
+ * @wrapped_key: the wrapped key used for inline encryption
+ * @wrapped_key_size: size of the wrapped key
+ * @sw_secret: the secret to be derived which is exactly the secret size
+ * @secret_size: size of the secret
+ *
+ * Derive a SW secret from a HW Wrapped key for non HW key operations.
+ * For wrapped keys, the key needs to be unwrapped, in order to derive a
+ * SW secret, which can be done only by the secure EE.
+ *
+ * For more information on sw secret, please refer to "Hardware-wrapped keys"
+ * section of Documentation/block/inline-encryption.rst.
+ *
+ * Return: 0 on success; -errno on failure.
+ */
+int qcom_scm_derive_sw_secret(const u8 *wrapped_key, u32 wrapped_key_size,
+				u8 *sw_secret, u32 secret_size)
+{
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_ES,
+		.cmd =  QCOM_SCM_ES_DERIVE_SW_SECRET,
+		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW,
+				QCOM_SCM_VAL, QCOM_SCM_RW,
+				QCOM_SCM_VAL),
+		.args[1] = wrapped_key_size,
+		.args[3] = secret_size,
+		.owner = ARM_SMCCC_OWNER_SIP,
+	};
+
+	void *keybuf, *secretbuf;
+	dma_addr_t key_phys, secret_phys;
+	int ret;
+
+	/*
+	 * Like qcom_scm_ice_set_key(), we use dma_alloc_coherent() to properly
+	 * get a physical address, while guaranteeing that we can zeroize the
+	 * key material later using memzero_explicit().
+	 *
+	 */
+	keybuf = dma_alloc_coherent(__scm->dev, wrapped_key_size, &key_phys,
+					GFP_KERNEL);
+	if (!keybuf)
+		return -ENOMEM;
+	secretbuf = dma_alloc_coherent(__scm->dev, secret_size, &secret_phys,
+					GFP_KERNEL);
+	if (!secretbuf) {
+		ret = -ENOMEM;
+		goto bail_keybuf;
+	}
+
+	memcpy(keybuf, wrapped_key, wrapped_key_size);
+	desc.args[0] = key_phys;
+	desc.args[2] = secret_phys;
+
+	ret = qcom_scm_call(__scm->dev, &desc, NULL);
+	if (!ret)
+		memcpy(sw_secret, secretbuf, secret_size);
+
+	memzero_explicit(secretbuf, secret_size);
+	dma_free_coherent(__scm->dev, secret_size, secretbuf, secret_phys);
+
+bail_keybuf:
+	memzero_explicit(keybuf, wrapped_key_size);
+	dma_free_coherent(__scm->dev, wrapped_key_size, keybuf, key_phys);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(qcom_scm_derive_sw_secret);
+
+/**
  * qcom_scm_hdcp_available() - Check if secure environment supports HDCP.
  *
  * Return true if HDCP is supported, false if not.
