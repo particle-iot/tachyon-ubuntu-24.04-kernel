@@ -373,4 +373,14 @@ config QCOM_SECURE_BUFFER
 
 source "drivers/soc/qcom/mem_buf/Kconfig"
 source "drivers/soc/qcom/smcinvoke/Kconfig"
+
+config USB_F_QDSS
+	tristate "QDSS driver"
+	depends on USB_CONFIGFS
+	help
+	  QDSS is a usb function driver aimed for faster debug
+	  functionality by merging interleaving traces and
+	  application SW messaging and transferring it to the host machine
+	  to which the device is connected.
+
 endmenu
