@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
 // Copyright (c) 2018, Linaro Limited
+// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -298,6 +299,17 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
 
 	spin_lock_irqsave(&gpr->svcs_lock, flags);
 	svc = idr_find(&gpr->svcs_idr, hdr->dest_port);
+	/*
+	 * dest_port is not fixed for gpr_packet sent from userspace.
+	 * For packets not associated with dest_port, they needs to be
+	 * routed to audio_pkt gpr client.
+	 */
+	if (!svc) {
+		dev_dbg(gpr->dev, "GPR: Port(%x) is not registered, trying with audio_pkt\n",
+				hdr->dest_port);
+		svc = idr_find(&gpr->svcs_idr, 4);
+	}
+
 	spin_unlock_irqrestore(&gpr->svcs_lock, flags);
 
 	if (!svc) {
