@@ -20,6 +20,13 @@ config QCOM_SCM_DOWNLOAD_MODE_DEFAULT
 
 	  Say Y here to enable "download mode" by default.
 
+config QCOM_SCM_ADDON
+	bool "Qualcomm SCM Addon Support"
+	depends on QCOM_SCM
+	help
+	  QCOM SCM addon provision APIs for client like kgsl, SHMBridge, etc,
+	  once enable it provides extra API via QCOM_SCM.
+
 config QCOM_QSEECOM
 	bool "Qualcomm QSEECOM interface driver"
 	depends on QCOM_SCM=y
