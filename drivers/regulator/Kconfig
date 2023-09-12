@@ -1692,4 +1692,13 @@ config REGULATOR_QCOM_LABIBB
 	  boost regulator and IBB can be used as a negative boost regulator
 	  for LCD display panel.
 
+config REGULATOR_QPNP_LCDB
+        tristate "Qualcomm Technologies, Inc. QPNP LCDB support"
+        depends on SPMI
+        help
+          Supports the LCDB module in the Qualcomm Technologies, Inc.
+          QPNP PMICs. Exposes regulators to control the positive and
+          negative voltage bias for the LCD display panel. It also
+          allows configurability for the various bias-voltage parameters.
+
 endif
