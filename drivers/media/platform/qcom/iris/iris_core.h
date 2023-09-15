@@ -9,6 +9,8 @@
 #include <linux/types.h>
 #include <media/v4l2-device.h>
 
+#include "iris_state.h"
+
 /**
  * struct iris_core - holds core parameters valid for all instances
  *
@@ -27,6 +29,7 @@
  * @clk_count: count of iris clocks
  * @reset_tbl: table of iris reset clocks
  * @reset_count: count of iris reset clocks
+ * @state: current state of core
  */
 
 struct iris_core {
@@ -45,6 +48,7 @@ struct iris_core {
 	u32					clk_count;
 	struct reset_info			*reset_tbl;
 	u32					reset_count;
+	enum iris_core_state			state;
 };
 
 #endif
