@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 
 #include "iris_core.h"
+#include "resources.h"
 
 static void iris_unregister_video_device(struct iris_core *core)
 {
@@ -77,6 +78,13 @@ static int iris_probe(struct platform_device *pdev)
 	core->irq = platform_get_irq(pdev, 0);
 	if (core->irq < 0)
 		return core->irq;
+
+	ret = init_resources(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init resource failed with %d\n", __func__, ret);
+		return ret;
+	}
 
 	ret = v4l2_device_register(dev, &core->v4l2_dev);
 	if (ret)
