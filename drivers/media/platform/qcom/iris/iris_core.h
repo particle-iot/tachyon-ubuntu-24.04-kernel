@@ -19,6 +19,14 @@
  * @vdev_dec: iris video device structure for decoder
  * @v4l2_file_ops: iris v4l2 file ops
  * @v4l2_ioctl_ops: iris v4l2 ioctl ops
+ * @bus_tbl: table of iris buses
+ * @bus_count: count of iris buses
+ * @power_domain_tbl: table of iris power domains
+ * @pd_count: count of iris power domains
+ * @clock_tbl: table of iris clocks
+ * @clk_count: count of iris clocks
+ * @reset_tbl: table of iris reset clocks
+ * @reset_count: count of iris reset clocks
  */
 
 struct iris_core {
@@ -29,6 +37,14 @@ struct iris_core {
 	struct video_device			*vdev_dec;
 	const struct v4l2_file_operations	*v4l2_file_ops;
 	const struct v4l2_ioctl_ops		*v4l2_ioctl_ops;
+	struct bus_info				*bus_tbl;
+	u32					bus_count;
+	struct power_domain_info		*power_domain_tbl;
+	u32					pd_count;
+	struct clock_info			*clock_tbl;
+	u32					clk_count;
+	struct reset_info			*reset_tbl;
+	u32					reset_count;
 };
 
 #endif
