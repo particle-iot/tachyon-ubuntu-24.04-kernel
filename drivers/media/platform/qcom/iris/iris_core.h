@@ -9,6 +9,7 @@
 #include <linux/types.h>
 #include <media/v4l2-device.h>
 
+#include "iris_hfi_queue.h"
 #include "iris_state.h"
 
 /**
@@ -30,6 +31,11 @@
  * @reset_tbl: table of iris reset clocks
  * @reset_count: count of iris reset clocks
  * @state: current state of core
+ * @iface_q_table: Interface queue table memory
+ * @command_queue: shared interface queue to send commands to firmware
+ * @message_queue: shared interface queue to receive responses from firmware
+ * @debug_queue: shared interface queue to receive debug info from firmware
+ * @sfr: SFR register memory
  */
 
 struct iris_core {
@@ -49,6 +55,11 @@ struct iris_core {
 	struct reset_info			*reset_tbl;
 	u32					reset_count;
 	enum iris_core_state			state;
+	struct mem_desc				iface_q_table;
+	struct iface_q_info			command_queue;
+	struct iface_q_info			message_queue;
+	struct iface_q_info			debug_queue;
+	struct mem_desc				sfr;
 };
 
 #endif
