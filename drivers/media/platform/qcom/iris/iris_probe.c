@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 
 #include "iris_core.h"
+#include "iris_hfi_queue.h"
 #include "resources.h"
 
 static void iris_unregister_video_device(struct iris_core *core)
@@ -55,6 +56,8 @@ static void iris_remove(struct platform_device *pdev)
 	if (!core)
 		return;
 
+	iris_hfi_queue_deinit(core);
+
 	iris_unregister_video_device(core);
 
 	v4l2_device_unregister(&core->v4l2_dev);
@@ -64,6 +67,7 @@ static int iris_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct iris_core *core;
+	u64 dma_mask;
 	int ret;
 
 	core = devm_kzalloc(&pdev->dev, sizeof(*core), GFP_KERNEL);
@@ -96,8 +100,31 @@ static int iris_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, core);
 
+	/*
+	 * Specify the max value of address space, which can be used
+	 * for buffer transactions.
+	 */
+	dma_mask = DMA_BIT_MASK(32);
+	dma_mask &= ~BIT(29);
+
+	ret = dma_set_mask_and_coherent(dev, dma_mask);
+	if (ret)
+		goto err_vdev_unreg;
+
+	dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(32));
+	dma_set_seg_boundary(&pdev->dev, (unsigned long)DMA_BIT_MASK(64));
+
+	ret = iris_hfi_queue_init(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: interface queues init failed\n", __func__);
+		goto err_vdev_unreg;
+	}
+
 	return ret;
 
+err_vdev_unreg:
+	iris_unregister_video_device(core);
 err_v4l2_unreg:
 	v4l2_device_unregister(&core->v4l2_dev);
 
