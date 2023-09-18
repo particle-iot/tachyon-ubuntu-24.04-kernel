@@ -164,5 +164,10 @@
 		reg = <PM7250B_SID1 SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		pm7250b_vib: pm7250b-vib@5300 {
+			compatible = "qcom,pm7250b-vib", "qcom,pmi632-vib";
+			reg = <0x5300>;
+		};
 	};
 };
