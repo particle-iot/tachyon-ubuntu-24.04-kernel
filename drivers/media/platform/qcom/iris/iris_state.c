@@ -4,6 +4,7 @@
  */
 
 #include "iris_core.h"
+#include "iris_helpers.h"
 #include "iris_state.h"
 
 #define IRIS_STATE(name)[IRIS_CORE_##name] = "CORE_"#name
@@ -52,6 +53,12 @@ static bool iris_allow_core_state_change(struct iris_core *core,
 int iris_change_core_state(struct iris_core *core,
 			   enum iris_core_state request_state)
 {
+	int ret;
+
+	ret = check_core_lock(core);
+	if (ret)
+		return ret;
+
 	if (core->state == request_state)
 		return 0;
 
@@ -60,5 +67,5 @@ int iris_change_core_state(struct iris_core *core,
 
 	core->state = request_state;
 
-	return 0;
+	return ret;
 }
