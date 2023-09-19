@@ -82,6 +82,11 @@ static int iris_probe(struct platform_device *pdev)
 	core->state = IRIS_CORE_DEINIT;
 	mutex_init(&core->lock);
 
+	core->packet_size = IFACEQ_CORE_PKT_SIZE;
+	core->packet = devm_kzalloc(core->dev, core->packet_size, GFP_KERNEL);
+	if (!core->packet)
+		return -ENOMEM;
+
 	core->reg_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(core->reg_base))
 		return PTR_ERR(core->reg_base);
