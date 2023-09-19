@@ -56,11 +56,15 @@ static void iris_remove(struct platform_device *pdev)
 	if (!core)
 		return;
 
+	iris_core_deinit(core);
 	iris_hfi_queue_deinit(core);
 
 	iris_unregister_video_device(core);
 
 	v4l2_device_unregister(&core->v4l2_dev);
+
+	mutex_destroy(&core->lock);
+	core->state = IRIS_CORE_DEINIT;
 }
 
 static int iris_probe(struct platform_device *pdev)
@@ -74,6 +78,9 @@ static int iris_probe(struct platform_device *pdev)
 	if (!core)
 		return -ENOMEM;
 	core->dev = dev;
+
+	core->state = IRIS_CORE_DEINIT;
+	mutex_init(&core->lock);
 
 	core->reg_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(core->reg_base))
@@ -121,8 +128,16 @@ static int iris_probe(struct platform_device *pdev)
 		goto err_vdev_unreg;
 	}
 
+	ret = iris_core_init(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret, "%s: core init failed\n", __func__);
+		goto err_queue_deinit;
+	}
+
 	return ret;
 
+err_queue_deinit:
+	iris_hfi_queue_deinit(core);
 err_vdev_unreg:
 	iris_unregister_video_device(core);
 err_v4l2_unreg:
