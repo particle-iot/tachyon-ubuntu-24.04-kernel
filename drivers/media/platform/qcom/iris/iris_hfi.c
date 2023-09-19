@@ -6,6 +6,33 @@
 #include "firmware.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
+#include "iris_hfi_packet.h"
+
+static int sys_init(struct iris_core *core)
+{
+	int ret;
+
+	ret = hfi_packet_sys_init(core, core->packet, core->packet_size);
+	if (ret)
+		return ret;
+
+	ret = iris_hfi_queue_cmd_write(core, core->packet);
+
+	return ret;
+}
+
+static int sys_image_version(struct iris_core *core)
+{
+	int ret;
+
+	ret = hfi_packet_image_version(core, core->packet, core->packet_size);
+	if (ret)
+		return ret;
+
+	ret = iris_hfi_queue_cmd_write(core, core->packet);
+
+	return ret;
+}
 
 int iris_hfi_core_init(struct iris_core *core)
 {
@@ -20,6 +47,14 @@ int iris_hfi_core_init(struct iris_core *core)
 		goto error;
 
 	ret = iris_fw_load(core);
+	if (ret)
+		goto error;
+
+	ret = sys_init(core);
+	if (ret)
+		goto error;
+
+	ret = sys_image_version(core);
 	if (ret)
 		goto error;
 

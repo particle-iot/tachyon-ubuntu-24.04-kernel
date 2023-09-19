@@ -38,6 +38,11 @@
  * @debug_queue: shared interface queue to receive debug info from firmware
  * @sfr: SFR register memory
  * @lock: a lock for this strucure
+ * @packet: pointer to packet from driver to fw
+ * @packet_size: size of packet
+ * @sys_init_id: id of sys init packet
+ * @header_id: id of packet header
+ * @packet_id: id of packet
  */
 
 struct iris_core {
@@ -63,6 +68,11 @@ struct iris_core {
 	struct iface_q_info			debug_queue;
 	struct mem_desc				sfr;
 	struct mutex				lock; /* lock for core structure */
+	u8					*packet;
+	u32					packet_size;
+	u32					sys_init_id;
+	u32					header_id;
+	u32					packet_id;
 };
 
 int iris_core_init(struct iris_core *core);
