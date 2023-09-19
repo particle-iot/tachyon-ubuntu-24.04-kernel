@@ -4,6 +4,7 @@
  */
 
 #include "iris_core.h"
+#include "iris_helpers.h"
 #include "iris_hfi_queue.h"
 
 static void __set_queue_hdr_defaults(struct hfi_queue_header *q_hdr)
@@ -146,6 +147,11 @@ static int __read_queue(struct iface_q_info *qinfo, void *packet)
 int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt)
 {
 	struct iface_q_info *q_info;
+	int ret;
+
+	ret = check_core_lock(core);
+	if (ret)
+		return ret;
 
 	if (!core_in_valid_state(core))
 		return -EINVAL;
@@ -161,7 +167,7 @@ int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt)
 		return -ENODATA;
 	}
 
-	return 0;
+	return ret;
 }
 
 int iris_hfi_queue_msg_read(struct iris_core *core, void *pkt)
@@ -232,6 +238,13 @@ static void __queue_init(struct iris_core *core, u32 queue_id, struct iface_q_in
 int iris_hfi_queue_init(struct iris_core *core)
 {
 	struct hfi_queue_table_header *q_tbl_hdr;
+
+	if (core->iface_q_table.kernel_vaddr) {
+		iris_hfi_set_queue_header(core, IFACEQ_CMDQ_ID, &core->command_queue);
+		iris_hfi_set_queue_header(core, IFACEQ_MSGQ_ID, &core->message_queue);
+		iris_hfi_set_queue_header(core, IFACEQ_DBGQ_ID, &core->debug_queue);
+		return 0;
+	}
 
 	core->iface_q_table.kernel_vaddr = dma_alloc_attrs(core->dev, ALIGNED_QUEUE_SIZE,
 							   &core->iface_q_table.device_addr,
