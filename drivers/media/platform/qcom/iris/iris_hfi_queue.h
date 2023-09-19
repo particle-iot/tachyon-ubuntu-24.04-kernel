@@ -64,14 +64,6 @@ struct hfi_queue_header {
 	u32 qhdr_write_idx;
 };
 
-struct hfi_header {
-	u32 size;
-	u32 session_id;
-	u32 header_id;
-	u32 reserved[4];
-	u32 num_packets;
-};
-
 #define IFACEQ_TABLE_SIZE	(sizeof(struct hfi_queue_table_header) + \
 			sizeof(struct hfi_queue_header) * IFACEQ_NUMQ)
 
