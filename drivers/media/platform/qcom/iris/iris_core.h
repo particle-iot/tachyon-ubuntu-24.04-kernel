@@ -11,6 +11,7 @@
 
 #include "iris_hfi_queue.h"
 #include "iris_state.h"
+#include "resources.h"
 
 /**
  * struct iris_core - holds core parameters valid for all instances
@@ -36,6 +37,7 @@
  * @message_queue: shared interface queue to receive responses from firmware
  * @debug_queue: shared interface queue to receive debug info from firmware
  * @sfr: SFR register memory
+ * @lock: a lock for this strucure
  */
 
 struct iris_core {
@@ -60,6 +62,10 @@ struct iris_core {
 	struct iface_q_info			message_queue;
 	struct iface_q_info			debug_queue;
 	struct mem_desc				sfr;
+	struct mutex				lock; /* lock for core structure */
 };
+
+int iris_core_init(struct iris_core *core);
+int iris_core_deinit(struct iris_core *core);
 
 #endif
