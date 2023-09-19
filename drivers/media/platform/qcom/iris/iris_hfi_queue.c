@@ -5,6 +5,7 @@
 
 #include "iris_core.h"
 #include "iris_helpers.h"
+#include "iris_hfi_packet.h"
 #include "iris_hfi_queue.h"
 
 static void __set_queue_hdr_defaults(struct hfi_queue_header *q_hdr)
