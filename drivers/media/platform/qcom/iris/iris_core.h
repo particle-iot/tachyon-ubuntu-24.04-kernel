@@ -33,6 +33,8 @@
  * @clk_count: count of iris clocks
  * @reset_tbl: table of iris reset clocks
  * @reset_count: count of iris reset clocks
+ * @vb2_ops: iris vb2 ops
+ * @vb2_mem_ops: iris vb2 memory ops
  * @state: current state of core
  * @iface_q_table: Interface queue table memory
  * @command_queue: shared interface queue to send commands to firmware
@@ -48,6 +50,7 @@
  * @vpu_ops: a pointer to vpu ops
  * @platform_data: a structure for platform data
  * @cap: an array for supported core capabilities
+ * @instances: a list_head of all instances
  */
 
 struct iris_core {
@@ -66,6 +69,8 @@ struct iris_core {
 	u32					clk_count;
 	struct reset_info			*reset_tbl;
 	u32					reset_count;
+	const struct vb2_ops			*vb2_ops;
+	struct vb2_mem_ops			*vb2_mem_ops;
 	enum iris_core_state			state;
 	struct mem_desc				iface_q_table;
 	struct iface_q_info			command_queue;
@@ -81,9 +86,12 @@ struct iris_core {
 	const struct vpu_ops			*vpu_ops;
 	struct platform_data			*platform_data;
 	struct plat_core_cap			cap[CORE_CAP_MAX + 1];
+	struct list_head			instances;
 };
 
 int iris_core_init(struct iris_core *core);
+int iris_core_init_wait(struct iris_core *core);
 int iris_core_deinit(struct iris_core *core);
+int iris_core_deinit_locked(struct iris_core *core);
 
 #endif
