@@ -11,6 +11,7 @@
 #include "iris_helpers.h"
 #include "iris_hfi_queue.h"
 #include "resources.h"
+#include "iris_vidc.h"
 
 static void iris_unregister_video_device(struct iris_core *core)
 {
@@ -88,6 +89,8 @@ static int iris_probe(struct platform_device *pdev)
 	if (!core->packet)
 		return -ENOMEM;
 
+	INIT_LIST_HEAD(&core->instances);
+
 	core->reg_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(core->reg_base))
 		return PTR_ERR(core->reg_base);
@@ -107,6 +110,13 @@ static int iris_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err_probe(core->dev, ret,
 			      "%s: init vpu failed with %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = init_ops(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init ops failed with %d\n", __func__, ret);
 		return ret;
 	}
 
