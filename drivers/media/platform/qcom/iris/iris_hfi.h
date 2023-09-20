@@ -6,9 +6,12 @@
 #ifndef _IRIS_HFI_H_
 #define _IRIS_HFI_H_
 
+#include "iris_instance.h"
 #include "iris_core.h"
 
 int iris_hfi_core_init(struct iris_core *core);
 int iris_hfi_core_deinit(struct iris_core *core);
+int iris_hfi_session_open(struct iris_inst *inst);
+int iris_hfi_session_close(struct iris_inst *inst);
 
 #endif
