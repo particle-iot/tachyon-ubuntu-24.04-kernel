@@ -6,6 +6,9 @@
 #ifndef _IRIS_HFI_PACKET_H_
 #define _IRIS_HFI_PACKET_H_
 
+#include "iris_core.h"
+#include "iris_instance.h"
+
 struct hfi_header {
 	u32 size;
 	u32 session_id;
@@ -67,5 +70,9 @@ int hfi_packet_sys_init(struct iris_core *core,
 			u8 *pkt, u32 pkt_size);
 int hfi_packet_image_version(struct iris_core *core,
 			     u8 *pkt, u32 pkt_size);
+int hfi_packet_session_command(struct iris_inst *inst, u32 pkt_type,
+			       u32 flags, u32 port, u32 session_id,
+			       u32 payload_type, void *payload,
+			       u32 payload_size);
 
 #endif
