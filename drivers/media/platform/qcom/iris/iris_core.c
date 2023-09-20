@@ -3,12 +3,14 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/delay.h>
+
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_state.h"
 
-static int iris_core_deinit_locked(struct iris_core *core)
+int iris_core_deinit_locked(struct iris_core *core)
 {
 	int ret;
 
@@ -57,6 +59,44 @@ int iris_core_init(struct iris_core *core)
 		iris_change_core_state(core, IRIS_CORE_ERROR);
 		dev_err(core->dev, "%s: core init failed\n", __func__);
 		iris_core_deinit_locked(core);
+		goto unlock;
+	}
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_core_init_wait(struct iris_core *core)
+{
+	const int interval = 10;
+	int max_tries, count = 0, ret = 0;
+
+	mutex_lock(&core->lock);
+	if (!core_in_valid_state(core)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (core->state == IRIS_CORE_INIT)
+		goto unlock;
+
+	max_tries = core->cap[HW_RESPONSE_TIMEOUT].value / interval;
+	while (count < max_tries) {
+		if (core->state != IRIS_CORE_INIT_WAIT)
+			break;
+		msleep(interval);
+		count++;
+	}
+
+	if (core->state == IRIS_CORE_INIT) {
+		ret = 0;
+		goto unlock;
+	} else {
+		iris_change_core_state(core, IRIS_CORE_ERROR);
+		iris_core_deinit_locked(core);
+		ret = -EINVAL;
 		goto unlock;
 	}
 
