@@ -6,7 +6,10 @@
 #ifndef _IRIS_HELPERS_H_
 #define _IRIS_HELPERS_H_
 
+#include "iris_instance.h"
+
 int check_core_lock(struct iris_core *core);
 int iris_init_core_caps(struct iris_core *core);
+int close_session(struct iris_inst *inst);
 
 #endif
