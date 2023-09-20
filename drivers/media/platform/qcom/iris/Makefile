@@ -1,5 +1,7 @@
 iris-objs += iris_probe.o \
              iris_core.o \
+             iris_vidc.o \
+             iris_vdec.o \
              iris_state.o \
              iris_helpers.o \
              iris_hfi.o \
