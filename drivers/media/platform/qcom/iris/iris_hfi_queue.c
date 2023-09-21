@@ -164,6 +164,8 @@ int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt)
 	}
 
 	if (!__write_queue(q_info, pkt)) {
+		call_vpu_op(core, raise_interrupt, core);
+	} else {
 		dev_err(core->dev, "queue full\n");
 		return -ENODATA;
 	}
