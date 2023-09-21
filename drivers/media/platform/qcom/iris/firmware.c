@@ -11,14 +11,6 @@
 #include "firmware.h"
 #include "iris_core.h"
 
-#define CP_START           0
-#define CP_SIZE            0x25800000
-#define CP_NONPIXEL_START  0x01000000
-#define CP_NONPIXEL_SIZE   0x24800000
-
-#define FW_NAME "vpu30_4v"
-#define IRIS_PASS_ID 9
-
 #define MAX_FIRMWARE_NAME_SIZE	128
 
 struct tzbsp_memprot {
@@ -33,10 +25,10 @@ static int __protect_cp_mem(struct iris_core *core)
 	struct tzbsp_memprot memprot;
 	int ret;
 
-	memprot.cp_start = CP_START;
-	memprot.cp_size = CP_SIZE;
-	memprot.cp_nonpixel_start = CP_NONPIXEL_START;
-	memprot.cp_nonpixel_size = CP_NONPIXEL_SIZE;
+	memprot.cp_start = core->cap[CP_START].value;
+	memprot.cp_size = core->cap[CP_SIZE].value;
+	memprot.cp_nonpixel_start = core->cap[CP_NONPIXEL_START].value;
+	memprot.cp_nonpixel_size = core->cap[CP_NONPIXEL_SIZE].value;
 
 	ret = qcom_scm_mem_protect_video_var(memprot.cp_start,
 					     memprot.cp_size,
@@ -60,6 +52,7 @@ static int __load_fw_to_memory(struct iris_core *core,
 	size_t res_size = 0;
 	ssize_t fw_size = 0;
 	struct device *dev;
+	int pas_id = 0;
 	int ret;
 
 	if (!fw_name || !(*fw_name) || !core)
@@ -71,6 +64,8 @@ static int __load_fw_to_memory(struct iris_core *core,
 		return -EINVAL;
 
 	scnprintf(firmware_name, ARRAY_SIZE(firmware_name), "%s.mbn", fw_name);
+
+	pas_id = core->platform_data->pas_id;
 
 	node = of_parse_phandle(dev->of_node, "memory-region", 0);
 	if (!node)
@@ -106,13 +101,13 @@ static int __load_fw_to_memory(struct iris_core *core,
 	}
 
 	ret = qcom_mdt_load(dev, firmware, firmware_name,
-			    IRIS_PASS_ID, mem_virt, mem_phys, res_size, NULL);
+			    pas_id, mem_virt, mem_phys, res_size, NULL);
 	if (ret) {
 		dev_err(core->dev, "%s: error %d loading fw \"%s\"\n",
 			__func__, ret, firmware_name);
 		goto err_mem_unmap;
 	}
-	ret = qcom_scm_pas_auth_and_reset(IRIS_PASS_ID);
+	ret = qcom_scm_pas_auth_and_reset(pas_id);
 	if (ret) {
 		dev_err(core->dev, "%s: error %d authenticating fw \"%s\"\n",
 			__func__, ret, firmware_name);
@@ -134,7 +129,7 @@ int iris_fw_load(struct iris_core *core)
 {
 	int ret;
 
-	ret = __load_fw_to_memory(core, FW_NAME);
+	ret = __load_fw_to_memory(core, core->platform_data->fwname);
 	if (ret) {
 		dev_err(core->dev, "%s: firmware download failed\n", __func__);
 		return -ENOMEM;
@@ -143,7 +138,7 @@ int iris_fw_load(struct iris_core *core)
 	ret = __protect_cp_mem(core);
 	if (ret) {
 		dev_err(core->dev, "%s: protect memory failed\n", __func__);
-		qcom_scm_pas_shutdown(IRIS_PASS_ID);
+		qcom_scm_pas_shutdown(core->platform_data->pas_id);
 		return ret;
 	}
 
@@ -154,7 +149,7 @@ int iris_fw_unload(struct iris_core *core)
 {
 	int ret;
 
-	ret = qcom_scm_pas_shutdown(IRIS_PASS_ID);
+	ret = qcom_scm_pas_shutdown(core->platform_data->pas_id);
 	if (ret)
 		dev_err(core->dev, "%s: Firmware unload failed with ret %d\n", __func__, ret);
 

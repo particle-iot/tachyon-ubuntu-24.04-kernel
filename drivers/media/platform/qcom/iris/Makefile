@@ -8,6 +8,8 @@ iris-objs += iris_probe.o \
              resources.o \
              firmware.o \
              vpu_common.o \
-             vpu_iris3.o
+             vpu_iris3.o \
+             platform_common.o \
+             platform_sm8550.o
 
 obj-$(CONFIG_VIDEO_QCOM_IRIS) += iris.o
