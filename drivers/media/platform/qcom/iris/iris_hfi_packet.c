@@ -89,6 +89,90 @@ int hfi_packet_sys_init(struct iris_core *core,
 	if (ret)
 		goto error;
 
+	payload = core->platform_data->ubwc_config->max_channels;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_MAX_CHANNELS,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->mal_length;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_MAL_LENGTH,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->highest_bank_bit;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_HBB,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->bank_swzl_level;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_BANK_SWZL_LEVEL1,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->bank_swz2_level;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_BANK_SWZL_LEVEL2,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->bank_swz3_level;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_BANK_SWZL_LEVEL3,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
+	payload = core->platform_data->ubwc_config->bank_spreading;
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_UBWC_BANK_SPREADING,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+	if (ret)
+		goto error;
+
 	return ret;
 
 error:

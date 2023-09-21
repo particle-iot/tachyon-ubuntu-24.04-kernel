@@ -3,9 +3,6 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include <dt-bindings/clock/qcom,sm8550-gcc.h>
-#include <dt-bindings/clock/qcom,sm8450-videocc.h>
-
 #include <linux/clk.h>
 #include <linux/interconnect.h>
 #include <linux/pm_domain.h>
@@ -15,27 +12,8 @@
 #include <linux/sort.h>
 
 #include "iris_core.h"
+#include "platform_common.h"
 #include "resources.h"
-
-static const struct bus_info plat_bus_table[] = {
-	{ NULL, "iris-cnoc", 1000, 1000     },
-	{ NULL, "iris-ddr",  1000, 15000000 },
-};
-
-static const char * const plat_pd_table[] = { "iris-ctl", "vcodec", NULL };
-#define PD_COUNT 2
-
-static const char * const plat_opp_pd_table[] = { "mxc", "mmcx", NULL };
-#define OPP_PD_COUNT 2
-
-static const struct clock_info plat_clk_table[] = {
-	{ NULL, "gcc_video_axi0", GCC_VIDEO_AXI0_CLK, 0, 0 },
-	{ NULL, "core_clk",       VIDEO_CC_MVS0C_CLK, 0, 0 },
-	{ NULL, "vcodec_core",    VIDEO_CC_MVS0_CLK,  1, 0 },
-};
-
-static const char * const plat_clk_reset_table[] = { "video_axi_reset", NULL };
-#define RESET_COUNT 1
 
 static void iris_pd_release(void *res)
 {
@@ -83,10 +61,13 @@ static int iris_opp_dl_get(struct device *dev, struct device *supplier)
 
 static int init_bus(struct iris_core *core)
 {
+	const struct bus_info *bus_tbl;
 	struct bus_info *binfo = NULL;
 	u32 i = 0;
 
-	core->bus_count = ARRAY_SIZE(plat_bus_table);
+	bus_tbl = core->platform_data->bus_tbl;
+
+	core->bus_count = core->platform_data->bus_tbl_size;
 	core->bus_tbl = devm_kzalloc(core->dev,
 				     sizeof(struct bus_info) * core->bus_count,
 				     GFP_KERNEL);
@@ -95,9 +76,9 @@ static int init_bus(struct iris_core *core)
 
 	for (i = 0; i < core->bus_count; i++) {
 		binfo = &core->bus_tbl[i];
-		binfo->name = plat_bus_table[i].name;
-		binfo->bw_min_kbps = plat_bus_table[i].bw_min_kbps;
-		binfo->bw_max_kbps = plat_bus_table[i].bw_max_kbps;
+		binfo->name = bus_tbl[i].name;
+		binfo->bw_min_kbps = bus_tbl[i].bw_min_kbps;
+		binfo->bw_max_kbps = bus_tbl[i].bw_max_kbps;
 		binfo->icc = devm_of_icc_get(core->dev, binfo->name);
 		if (IS_ERR(binfo->icc)) {
 			dev_err(core->dev,
@@ -112,20 +93,24 @@ static int init_bus(struct iris_core *core)
 static int init_power_domains(struct iris_core *core)
 {
 	struct power_domain_info *pdinfo = NULL;
+	const char * const *opp_pd_tbl;
+	const char * const *pd_tbl;
 	struct device **opp_vdevs = NULL;
+	u32 opp_pd_cnt, i;
 	int ret;
-	u32 i;
 
-	core->pd_count = PD_COUNT;
+	pd_tbl = core->platform_data->pd_tbl;
+
+	core->pd_count = core->platform_data->pd_tbl_size;
 	core->power_domain_tbl = devm_kzalloc(core->dev,
 					      sizeof(struct power_domain_info) * core->pd_count,
 					      GFP_KERNEL);
 	if (!core->power_domain_tbl)
 		return -ENOMEM;
 
-	for (i = 0; i < core->pd_count; i++) {
+	for (i = 0; i < (core->pd_count - 1); i++) {
 		pdinfo = &core->power_domain_tbl[i];
-		pdinfo->name = plat_pd_table[i];
+		pdinfo->name = pd_tbl[i];
 		ret = iris_pd_get(core, pdinfo);
 		if (ret) {
 			dev_err(core->dev,
@@ -134,11 +119,14 @@ static int init_power_domains(struct iris_core *core)
 		}
 	}
 
-	ret = devm_pm_opp_attach_genpd(core->dev, plat_opp_pd_table, &opp_vdevs);
+	opp_pd_tbl = core->platform_data->opp_pd_tbl;
+	opp_pd_cnt = core->platform_data->opp_pd_tbl_size;
+
+	ret = devm_pm_opp_attach_genpd(core->dev, opp_pd_tbl, &opp_vdevs);
 	if (ret)
 		return ret;
 
-	for (i = 0; i < OPP_PD_COUNT; i++) {
+	for (i = 0; i < (opp_pd_cnt - 1) ; i++) {
 		ret = iris_opp_dl_get(core->dev, opp_vdevs[i]);
 		if (ret) {
 			dev_err(core->dev, "%s: failed to create dl: %s\n",
@@ -158,10 +146,13 @@ static int init_power_domains(struct iris_core *core)
 
 static int init_clocks(struct iris_core *core)
 {
+	const struct clock_info *clk_tbl;
 	struct clock_info *cinfo = NULL;
 	u32 i;
 
-	core->clk_count = ARRAY_SIZE(plat_clk_table);
+	clk_tbl = core->platform_data->clk_tbl;
+
+	core->clk_count = core->platform_data->clk_tbl_size;
 	core->clock_tbl = devm_kzalloc(core->dev,
 				       sizeof(struct clock_info) * core->clk_count,
 				       GFP_KERNEL);
@@ -170,9 +161,9 @@ static int init_clocks(struct iris_core *core)
 
 	for (i = 0; i < core->clk_count; i++) {
 		cinfo = &core->clock_tbl[i];
-		cinfo->name = plat_clk_table[i].name;
-		cinfo->clk_id = plat_clk_table[i].clk_id;
-		cinfo->has_scaling = plat_clk_table[i].has_scaling;
+		cinfo->name = clk_tbl[i].name;
+		cinfo->clk_id = clk_tbl[i].clk_id;
+		cinfo->has_scaling = clk_tbl[i].has_scaling;
 		cinfo->clk = devm_clk_get(core->dev, cinfo->name);
 		if (IS_ERR(cinfo->clk)) {
 			dev_err(core->dev,
@@ -187,18 +178,21 @@ static int init_clocks(struct iris_core *core)
 static int init_reset_clocks(struct iris_core *core)
 {
 	struct reset_info *rinfo = NULL;
+	const char * const *rst_tbl;
 	u32 i = 0;
 
-	core->reset_count = RESET_COUNT;
+	rst_tbl = core->platform_data->clk_rst_tbl;
+
+	core->reset_count = core->platform_data->clk_rst_tbl_size;
 	core->reset_tbl = devm_kzalloc(core->dev,
 				       sizeof(struct reset_info) * core->reset_count,
 				       GFP_KERNEL);
 	if (!core->reset_tbl)
 		return -ENOMEM;
 
-	for (i = 0; i < core->reset_count; i++) {
+	for (i = 0; i < (core->reset_count - 1); i++) {
 		rinfo = &core->reset_tbl[i];
-		rinfo->name = plat_clk_reset_table[i];
+		rinfo->name = rst_tbl[i];
 		rinfo->rst = devm_reset_control_get(core->dev, rinfo->name);
 		if (IS_ERR(rinfo->rst)) {
 			dev_err(core->dev,
