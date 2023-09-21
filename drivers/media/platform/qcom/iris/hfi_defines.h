@@ -6,6 +6,8 @@
 #ifndef _HFI_DEFINES_H_
 #define _HFI_DEFINES_H_
 
+#include <linux/types.h>
+
 #define HFI_VIDEO_ARCH_LX			0x1
 
 #define HFI_CMD_INIT				0x01000001
@@ -47,5 +49,13 @@
 #define HFI_PROP_DEC_DEFAULT_HEADER		0x03000168
 
 #define HFI_PROP_DEC_START_FROM_RAP_FRAME	0x03000169
+
+#define HFI_SYS_ERROR_WD_TIMEOUT		0x05000001
+
+struct hfi_debug_header {
+	u32   size;
+	u32   debug_level;
+	u32   reserved[2];
+};
 
 #endif
