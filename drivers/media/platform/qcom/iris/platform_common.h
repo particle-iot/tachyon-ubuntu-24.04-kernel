@@ -1,0 +1,193 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+#ifndef _PLATFORM_COMMON_H_
+#define _PLATFORM_COMMON_H_
+
+#include <linux/bits.h>
+
+struct iris_core;
+
+#define HW_RESPONSE_TIMEOUT_VALUE     (1000)
+
+#define BIT_DEPTH_8 (8 << 16 | 8)
+#define BIT_DEPTH_10 (10 << 16 | 10)
+
+#define CODED_FRAMES_PROGRESSIVE 0x0
+#define CODED_FRAMES_INTERLACE 0x1
+
+#define UBWC_CONFIG(mc, ml, hbb, bs1, bs2, bs3, bsp) \
+{	                                                 \
+	.max_channels = mc,                              \
+	.mal_length = ml,                                \
+	.highest_bank_bit = hbb,                         \
+	.bank_swzl_level = bs1,                          \
+	.bank_swz2_level = bs2,                          \
+	.bank_swz3_level = bs3,                          \
+	.bank_spreading = bsp,                           \
+}
+
+enum codec_type {
+	H264	= BIT(0),
+	HEVC	= BIT(1),
+	VP9	= BIT(2),
+};
+
+enum colorformat_type {
+	FMT_NONE	= 0,
+	FMT_NV12C	= BIT(0),
+	FMT_NV12	= BIT(1),
+	FMT_NV21	= BIT(2),
+	FMT_TP10C	= BIT(3),
+};
+
+enum stage_type {
+	STAGE_NONE = 0,
+	STAGE_1 = 1,
+	STAGE_2 = 2,
+};
+
+enum pipe_type {
+	PIPE_NONE = 0,
+	PIPE_1 = 1,
+	PIPE_2 = 2,
+	PIPE_4 = 4,
+};
+
+extern struct platform_data sm8550_data;
+
+struct bw_info {
+	u32 mbs_per_sec;
+	u32 bw_ddr;
+	u32 bw_ddr_10bit;
+};
+
+struct reg_preset_info {
+	u32              reg;
+	u32              value;
+	u32              mask;
+};
+
+struct ubwc_config_data {
+	u32	max_channels;
+	u32	mal_length;
+	u32	highest_bank_bit;
+	u32	bank_swzl_level;
+	u32	bank_swz2_level;
+	u32	bank_swz3_level;
+	u32	bank_spreading;
+};
+
+enum plat_core_cap_type {
+	CORE_CAP_NONE = 0,
+	DEC_CODECS,
+	MAX_SESSION_COUNT,
+	MAX_MBPF,
+	MAX_MBPS,
+	MAX_MBPF_HQ,
+	MAX_MBPS_HQ,
+	MAX_MBPF_B_FRAME,
+	MAX_MBPS_B_FRAME,
+	MAX_ENH_LAYER_COUNT,
+	NUM_VPP_PIPE,
+	FW_UNLOAD,
+	FW_UNLOAD_DELAY,
+	HW_RESPONSE_TIMEOUT,
+	NON_FATAL_FAULTS,
+	DMA_MASK,
+	CP_START,
+	CP_SIZE,
+	CP_NONPIXEL_START,
+	CP_NONPIXEL_SIZE,
+	CORE_CAP_MAX,
+};
+
+struct plat_core_cap {
+	enum plat_core_cap_type type;
+	u32 value;
+};
+
+enum plat_inst_cap_type {
+	INST_CAP_NONE = 0,
+	FRAME_WIDTH,
+	FRAME_HEIGHT,
+	PIX_FMTS,
+	MBPF,
+	FRAME_RATE,
+	OPERATING_RATE,
+	QUEUED_RATE,
+	MB_CYCLES_VSP,
+	MB_CYCLES_VPP,
+	MB_CYCLES_LP,
+	MB_CYCLES_FW,
+	MB_CYCLES_FW_VPP,
+	NUM_COMV,
+	ENTROPY_MODE,
+	PROFILE,
+	LEVEL,
+	HEVC_TIER,
+	DISPLAY_DELAY_ENABLE,
+	DISPLAY_DELAY,
+	OUTPUT_ORDER,
+	STAGE,
+	PIPE,
+	POC,
+	CODED_FRAMES,
+	BIT_DEPTH,
+	DEFAULT_HEADER,
+	RAP_FRAME,
+	INST_CAP_MAX,
+};
+
+enum plat_inst_cap_flags {
+	CAP_FLAG_NONE			= 0,
+	CAP_FLAG_DYNAMIC_ALLOWED	= BIT(0),
+	CAP_FLAG_MENU			= BIT(1),
+	CAP_FLAG_INPUT_PORT		= BIT(2),
+	CAP_FLAG_OUTPUT_PORT		= BIT(3),
+	CAP_FLAG_CLIENT_SET		= BIT(4),
+	CAP_FLAG_BITMASK		= BIT(5),
+	CAP_FLAG_VOLATILE		= BIT(6),
+};
+
+struct plat_inst_cap {
+	enum plat_inst_cap_type cap_id;
+	enum codec_type codec;
+	s32 min;
+	s32 max;
+	u32 step_or_mask;
+	s32 value;
+	u32 v4l2_id;
+	u32 hfi_id;
+	enum plat_inst_cap_flags flags;
+};
+
+struct platform_data {
+	const struct bus_info *bus_tbl;
+	unsigned int bus_tbl_size;
+	const struct bw_info *bw_tbl_dec;
+	unsigned int bw_tbl_dec_size;
+	const char * const *pd_tbl;
+	unsigned int pd_tbl_size;
+	const char * const *opp_pd_tbl;
+	unsigned int opp_pd_tbl_size;
+	const struct clock_info *clk_tbl;
+	unsigned int clk_tbl_size;
+	const char * const *clk_rst_tbl;
+	unsigned int clk_rst_tbl_size;
+	const struct reg_preset_info *reg_prst_tbl;
+	unsigned int reg_prst_tbl_size;
+	struct ubwc_config_data *ubwc_config;
+	const char *fwname;
+	u32 pas_id;
+	struct plat_core_cap *core_data;
+	u32 core_data_size;
+	struct plat_inst_cap *inst_cap_data;
+	u32 inst_cap_data_size;
+};
+
+int init_platform(struct iris_core *core);
+
+#endif
