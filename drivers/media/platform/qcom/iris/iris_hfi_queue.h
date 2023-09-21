@@ -99,5 +99,7 @@ void iris_hfi_queue_deinit(struct iris_core *core);
 int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt);
 int iris_hfi_queue_msg_read(struct iris_core *core, void *pkt);
 int iris_hfi_queue_dbg_read(struct iris_core *core, void *pkt);
+void iris_flush_debug_queue(struct iris_core *core,
+			    u8 *packet, u32 packet_size);
 
 #endif

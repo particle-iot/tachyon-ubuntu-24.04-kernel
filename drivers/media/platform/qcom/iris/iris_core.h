@@ -44,6 +44,7 @@
  * @lock: a lock for this strucure
  * @packet: pointer to packet from driver to fw
  * @packet_size: size of packet
+ * @response_packet: a pointer to response packet from fw to driver
  * @sys_init_id: id of sys init packet
  * @header_id: id of packet header
  * @packet_id: id of packet
@@ -51,6 +52,9 @@
  * @platform_data: a structure for platform data
  * @cap: an array for supported core capabilities
  * @instances: a list_head of all instances
+ * @intr_status: interrupt status
+ * @spur_count: counter for spurious interrupt
+ * @reg_count: counter for interrupts
  */
 
 struct iris_core {
@@ -80,6 +84,7 @@ struct iris_core {
 	struct mutex				lock; /* lock for core structure */
 	u8					*packet;
 	u32					packet_size;
+	u8					*response_packet;
 	u32					sys_init_id;
 	u32					header_id;
 	u32					packet_id;
@@ -87,6 +92,9 @@ struct iris_core {
 	struct platform_data			*platform_data;
 	struct plat_core_cap			cap[CORE_CAP_MAX + 1];
 	struct list_head			instances;
+	u32					intr_status;
+	u32					spur_count;
+	u32					reg_count;
 };
 
 int iris_core_init(struct iris_core *core);
