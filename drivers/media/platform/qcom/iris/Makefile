@@ -6,6 +6,8 @@ iris-objs += iris_probe.o \
              iris_hfi_queue.o \
              iris_hfi_packet.o \
              resources.o \
-             firmware.o
+             firmware.o \
+             vpu_common.o \
+             vpu_iris3.o
 
 obj-$(CONFIG_VIDEO_QCOM_IRIS) += iris.o
