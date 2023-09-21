@@ -14,4 +14,7 @@ int iris_hfi_core_deinit(struct iris_core *core);
 int iris_hfi_session_open(struct iris_inst *inst);
 int iris_hfi_session_close(struct iris_inst *inst);
 
+irqreturn_t iris_hfi_isr(int irq, void *data);
+irqreturn_t iris_hfi_isr_handler(int irq, void *data);
+
 #endif
