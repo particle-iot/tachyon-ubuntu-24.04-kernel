@@ -11,6 +11,7 @@
 
 #include "iris_hfi_queue.h"
 #include "iris_state.h"
+#include "platform_common.h"
 #include "resources.h"
 #include "vpu_common.h"
 
@@ -45,6 +46,8 @@
  * @header_id: id of packet header
  * @packet_id: id of packet
  * @vpu_ops: a pointer to vpu ops
+ * @platform_data: a structure for platform data
+ * @cap: an array for supported core capabilities
  */
 
 struct iris_core {
@@ -76,6 +79,8 @@ struct iris_core {
 	u32					header_id;
 	u32					packet_id;
 	const struct vpu_ops			*vpu_ops;
+	struct platform_data			*platform_data;
+	struct plat_core_cap			cap[CORE_CAP_MAX + 1];
 };
 
 int iris_core_init(struct iris_core *core);
