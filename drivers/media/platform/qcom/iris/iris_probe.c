@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 
 #include "iris_core.h"
+#include "iris_helpers.h"
 #include "iris_hfi_queue.h"
 #include "resources.h"
 
@@ -95,6 +96,13 @@ static int iris_probe(struct platform_device *pdev)
 	if (core->irq < 0)
 		return core->irq;
 
+	ret = init_platform(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init platform failed with %d\n", __func__, ret);
+		return ret;
+	}
+
 	ret = init_vpu(core);
 	if (ret) {
 		dev_err_probe(core->dev, ret,
@@ -109,6 +117,13 @@ static int iris_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	ret = iris_init_core_caps(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init core caps failed with %d\n", __func__, ret);
+		return ret;
+	}
+
 	ret = v4l2_device_register(dev, &core->v4l2_dev);
 	if (ret)
 		return ret;
@@ -119,12 +134,7 @@ static int iris_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, core);
 
-	/*
-	 * Specify the max value of address space, which can be used
-	 * for buffer transactions.
-	 */
-	dma_mask = DMA_BIT_MASK(32);
-	dma_mask &= ~BIT(29);
+	dma_mask = core->cap[DMA_MASK].value;
 
 	ret = dma_set_mask_and_coherent(dev, dma_mask);
 	if (ret)
@@ -159,7 +169,10 @@ err_v4l2_unreg:
 }
 
 static const struct of_device_id iris_dt_match[] = {
-	{ .compatible = "qcom,sm8550-iris", },
+	{
+		.compatible = "qcom,sm8550-iris",
+		.data = &sm8550_data,
+	},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, iris_dt_match);
