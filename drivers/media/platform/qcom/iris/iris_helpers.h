@@ -7,5 +7,6 @@
 #define _IRIS_HELPERS_H_
 
 int check_core_lock(struct iris_core *core);
+int iris_init_core_caps(struct iris_core *core);
 
 #endif
