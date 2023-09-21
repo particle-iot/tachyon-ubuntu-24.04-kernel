@@ -22,6 +22,8 @@ struct compat_handle {
 struct vpu_ops {
 	int (*boot_firmware)(struct iris_core *core);
 	int (*raise_interrupt)(struct iris_core *core);
+	int (*clear_interrupt)(struct iris_core *core);
+	int (*watchdog)(struct iris_core *core, u32 intr_status);
 };
 
 int init_vpu(struct iris_core *core);

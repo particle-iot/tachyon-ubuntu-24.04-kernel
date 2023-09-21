@@ -4,10 +4,11 @@
  */
 
 #include "firmware.h"
+#include "hfi_defines.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
-#include "hfi_defines.h"
+#include "iris_hfi_response.h"
 #include "vpu_common.h"
 
 static bool __valdiate_session(struct iris_core *core,
@@ -190,4 +191,30 @@ unlock:
 	mutex_unlock(&core->lock);
 
 	return ret;
+}
+
+irqreturn_t iris_hfi_isr(int irq, void *data)
+{
+	disable_irq_nosync(irq);
+
+	return IRQ_WAKE_THREAD;
+}
+
+irqreturn_t iris_hfi_isr_handler(int irq, void *data)
+{
+	struct iris_core *core = data;
+
+	if (!core)
+		return IRQ_NONE;
+
+	mutex_lock(&core->lock);
+	call_vpu_op(core, clear_interrupt, core);
+	mutex_unlock(&core->lock);
+
+	__response_handler(core);
+
+	if (!call_vpu_op(core, watchdog, core, core->intr_status))
+		enable_irq(irq);
+
+	return IRQ_HANDLED;
 }

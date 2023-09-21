@@ -17,6 +17,8 @@
 #define CPU_CS_VCICMDARG0_IRIS3     (CPU_CS_BASE_OFFS_IRIS3 + 0x24)
 #define CPU_CS_VCICMDARG1_IRIS3     (CPU_CS_BASE_OFFS_IRIS3 + 0x28)
 
+#define CPU_CS_A2HSOFTINTCLR_IRIS3  (CPU_CS_BASE_OFFS_IRIS3 + 0x1C)
+
 /* HFI_CTRL_INIT */
 #define CPU_CS_SCIACMD_IRIS3        (CPU_CS_BASE_OFFS_IRIS3 + 0x48)
 
@@ -57,9 +59,18 @@
 #define CPU_CS_SCIACMDARG0_HFI_CTRL_ERROR_STATUS_BMSK_IRIS3	0xfe
 #define CTRL_ERROR_STATUS__M_IRIS3 \
 		CPU_CS_SCIACMDARG0_HFI_CTRL_ERROR_STATUS_BMSK_IRIS3
+#define CTRL_INIT_IDLE_MSG_BMSK_IRIS3 \
+		CPU_CS_SCIACMDARG0_HFI_CTRL_INIT_IDLE_MSG_BMSK_IRIS3
+
+#define WRAPPER_BASE_OFFS_IRIS3		         0x000B0000
+#define WRAPPER_INTR_STATUS_IRIS3	         (WRAPPER_BASE_OFFS_IRIS3 + 0x0C)
+#define WRAPPER_INTR_STATUS_A2HWD_BMSK_IRIS3  0x8
+#define WRAPPER_INTR_STATUS_A2H_BMSK_IRIS3	  0x4
 
 #define CPU_IC_SOFTINT_IRIS3        (CPU_IC_BASE_OFFS_IRIS3 + 0x150)
 #define CPU_IC_SOFTINT_H2A_SHFT_IRIS3	0x0
+
+#define WRAPPER_INTR_STATUS_A2HWD_BMSK_IRIS3  0x8
 
 static int setup_ucregion_memory_map_iris3(struct iris_core *core)
 {
@@ -153,9 +164,46 @@ static int raise_interrupt_iris3(struct iris_core *core)
 	return write_register(core, CPU_IC_SOFTINT_IRIS3, 1 << CPU_IC_SOFTINT_H2A_SHFT_IRIS3);
 }
 
+static int clear_interrupt_iris3(struct iris_core *core)
+{
+	u32 intr_status = 0, mask = 0;
+	int ret;
+
+	ret = read_register(core, WRAPPER_INTR_STATUS_IRIS3, &intr_status);
+	if (ret)
+		return ret;
+
+	mask = (WRAPPER_INTR_STATUS_A2H_BMSK_IRIS3 |
+		WRAPPER_INTR_STATUS_A2HWD_BMSK_IRIS3 |
+		CTRL_INIT_IDLE_MSG_BMSK_IRIS3);
+
+	if (intr_status & mask) {
+		core->intr_status |= intr_status;
+		core->reg_count++;
+	} else {
+		core->spur_count++;
+	}
+
+	ret = write_register(core, CPU_CS_A2HSOFTINTCLR_IRIS3, 1);
+
+	return ret;
+}
+
+static int watchdog_iris3(struct iris_core *core, u32 intr_status)
+{
+	if (intr_status & WRAPPER_INTR_STATUS_A2HWD_BMSK_IRIS3) {
+		dev_err(core->dev, "%s: received watchdog interrupt\n", __func__);
+		return -ETIME;
+	}
+
+	return 0;
+}
+
 static const struct vpu_ops iris3_ops = {
 	.boot_firmware = boot_firmware_iris3,
 	.raise_interrupt = raise_interrupt_iris3,
+	.clear_interrupt = clear_interrupt_iris3,
+	.watchdog = watchdog_iris3,
 };
 
 int init_iris3(struct iris_core *core)
