@@ -3,6 +3,7 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include "hfi_defines.h"
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_hfi_packet.h"
@@ -313,4 +314,39 @@ void iris_hfi_queue_deinit(struct iris_core *core)
 
 	core->sfr.kernel_vaddr = NULL;
 	core->sfr.device_addr = 0;
+}
+
+void iris_flush_debug_queue(struct iris_core *core,
+			    u8 *packet, u32 packet_size)
+{
+	struct hfi_debug_header *pkt;
+	bool local_packet = false;
+	u8 *log;
+
+	if (!packet || !packet_size) {
+		packet = kzalloc(IFACEQ_CORE_PKT_SIZE, GFP_KERNEL);
+		if (!packet)
+			return;
+
+		packet_size = IFACEQ_CORE_PKT_SIZE;
+
+		local_packet = true;
+	}
+
+	while (!iris_hfi_queue_dbg_read(core, packet)) {
+		pkt = (struct hfi_debug_header *)packet;
+
+		if (pkt->size < sizeof(*pkt))
+			continue;
+
+		if (pkt->size >= packet_size)
+			continue;
+
+		packet[pkt->size] = '\0';
+		log = (u8 *)packet + sizeof(*pkt) + 1;
+		dev_dbg(core->dev, "%s", log);
+	}
+
+	if (local_packet)
+		kfree(packet);
 }
