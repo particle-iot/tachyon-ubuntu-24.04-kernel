@@ -12,6 +12,7 @@
 #include "iris_hfi_queue.h"
 #include "iris_state.h"
 #include "resources.h"
+#include "vpu_common.h"
 
 /**
  * struct iris_core - holds core parameters valid for all instances
@@ -43,6 +44,7 @@
  * @sys_init_id: id of sys init packet
  * @header_id: id of packet header
  * @packet_id: id of packet
+ * @vpu_ops: a pointer to vpu ops
  */
 
 struct iris_core {
@@ -73,6 +75,7 @@ struct iris_core {
 	u32					sys_init_id;
 	u32					header_id;
 	u32					packet_id;
+	const struct vpu_ops			*vpu_ops;
 };
 
 int iris_core_init(struct iris_core *core);
