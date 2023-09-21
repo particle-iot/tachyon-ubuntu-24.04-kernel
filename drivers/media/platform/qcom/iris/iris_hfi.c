@@ -7,6 +7,7 @@
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
+#include "vpu_common.h"
 
 static int sys_init(struct iris_core *core)
 {
@@ -47,6 +48,10 @@ int iris_hfi_core_init(struct iris_core *core)
 		goto error;
 
 	ret = iris_fw_load(core);
+	if (ret)
+		goto error;
+
+	ret = call_vpu_op(core, boot_firmware, core);
 	if (ret)
 		goto error;
 

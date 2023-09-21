@@ -95,6 +95,13 @@ static int iris_probe(struct platform_device *pdev)
 	if (core->irq < 0)
 		return core->irq;
 
+	ret = init_vpu(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init vpu failed with %d\n", __func__, ret);
+		return ret;
+	}
+
 	ret = init_resources(core);
 	if (ret) {
 		dev_err_probe(core->dev, ret,
