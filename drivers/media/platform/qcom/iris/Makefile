@@ -3,6 +3,7 @@ iris-objs += iris_probe.o \
              iris_vidc.o \
              iris_vdec.o \
              iris_state.o \
+             iris_ctrls.o \
              iris_helpers.o \
              iris_hfi.o \
              iris_hfi_response.o \
