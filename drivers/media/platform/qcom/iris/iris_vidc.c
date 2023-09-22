@@ -10,6 +10,7 @@
 #include "iris_vdec.h"
 #include "iris_vidc.h"
 #include "iris_ctrls.h"
+#include "memory.h"
 
 static int vidc_v4l2_fh_init(struct iris_inst *inst)
 {
@@ -175,13 +176,17 @@ int vidc_open(struct file *filp)
 	if (ret)
 		goto fail_free_inst;
 
+	ret = iris_mem_pool_init(inst);
+	if (ret)
+		goto fail_remove_session;
+
 	INIT_LIST_HEAD(&inst->caps_list);
 	for (i = 0; i < MAX_SIGNAL; i++)
 		init_completion(&inst->completions[i]);
 
 	ret = vidc_v4l2_fh_init(inst);
 	if (ret)
-		goto fail_remove_session;
+		goto fail_mem_pool_deinit;
 
 	ret = vdec_inst_init(inst);
 	if (ret)
@@ -217,6 +222,8 @@ fail_inst_deinit:
 	vdec_inst_deinit(inst);
 fail_fh_deinit:
 	vidc_v4l2_fh_deinit(inst);
+fail_mem_pool_deinit:
+	iris_mem_pool_deinit(inst);
 fail_remove_session:
 	vidc_remove_session(inst);
 fail_free_inst:
