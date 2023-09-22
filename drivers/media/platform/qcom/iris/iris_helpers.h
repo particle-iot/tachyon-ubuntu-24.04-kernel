@@ -6,10 +6,21 @@
 #ifndef _IRIS_HELPERS_H_
 #define _IRIS_HELPERS_H_
 
+#include <linux/align.h>
+#include <linux/types.h>
+
 #include "iris_instance.h"
+#include "platform_common.h"
+
+#define NUM_MBS_PER_FRAME(__height, __width) \
+	((ALIGN(__height, 16) / 16) * (ALIGN(__width, 16) / 16))
 
 int check_core_lock(struct iris_core *core);
-int iris_init_core_caps(struct iris_core *core);
+bool res_is_less_than(u32 width, u32 height,
+		      u32 ref_width, u32 ref_height);
+u32 get_port_info(struct iris_inst *inst,
+		  enum plat_inst_cap_type cap_id);
+
 int close_session(struct iris_inst *inst);
 
 #endif
