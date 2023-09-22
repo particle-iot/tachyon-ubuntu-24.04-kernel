@@ -13,6 +13,7 @@
 #include "iris_hfi_queue.h"
 #include "resources.h"
 #include "iris_vidc.h"
+#include "iris_ctrls.h"
 
 static int init_iris_isr(struct iris_core *core)
 {
@@ -158,6 +159,13 @@ static int iris_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err_probe(core->dev, ret,
 			      "%s: init core caps failed with %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = iris_init_instance_caps(core);
+	if (ret) {
+		dev_err_probe(core->dev, ret,
+			      "%s: init inst caps failed with %d\n", __func__, ret);
 		return ret;
 	}
 
