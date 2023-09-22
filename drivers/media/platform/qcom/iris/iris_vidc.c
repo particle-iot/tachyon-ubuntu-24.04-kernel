@@ -9,6 +9,7 @@
 #include "iris_instance.h"
 #include "iris_vdec.h"
 #include "iris_vidc.h"
+#include "iris_ctrls.h"
 
 static int vidc_v4l2_fh_init(struct iris_inst *inst)
 {
@@ -174,6 +175,10 @@ int vidc_open(struct file *filp)
 	if (ret)
 		goto fail_free_inst;
 
+	INIT_LIST_HEAD(&inst->caps_list);
+	for (i = 0; i < MAX_SIGNAL; i++)
+		init_completion(&inst->completions[i]);
+
 	ret = vidc_v4l2_fh_init(inst);
 	if (ret)
 		goto fail_remove_session;
@@ -186,6 +191,14 @@ int vidc_open(struct file *filp)
 	if (ret)
 		goto fail_inst_deinit;
 
+	ret = get_inst_capability(inst);
+	if (ret)
+		goto fail_queue_deinit;
+
+	ret = ctrls_init(inst);
+	if (ret)
+		goto fail_queue_deinit;
+
 	ret = iris_hfi_session_open(inst);
 	if (ret) {
 		dev_err(core->dev, "%s: session open failed\n", __func__);
@@ -196,7 +209,9 @@ int vidc_open(struct file *filp)
 	return 0;
 
 fail_core_deinit:
+	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	iris_core_deinit(core);
+fail_queue_deinit:
 	vidc_vb2_queue_deinit(inst);
 fail_inst_deinit:
 	vdec_inst_deinit(inst);
@@ -219,6 +234,7 @@ int vidc_close(struct file *filp)
 	if (!inst)
 		return -EINVAL;
 
+	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	vdec_inst_deinit(inst);
 	close_session(inst);
 	vidc_vb2_queue_deinit(inst);
