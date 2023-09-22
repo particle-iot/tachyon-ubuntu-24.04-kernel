@@ -9,6 +9,7 @@
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
 #include "iris_hfi_response.h"
+#include "iris_helpers.h"
 #include "vpu_common.h"
 
 static bool __valdiate_session(struct iris_core *core,
@@ -217,4 +218,32 @@ irqreturn_t iris_hfi_isr_handler(int irq, void *data)
 		enable_irq(irq);
 
 	return IRQ_HANDLED;
+}
+
+int iris_hfi_set_property(struct iris_inst *inst,
+			  u32 packet_type, u32 flag, u32 plane, u32 payload_type,
+			  void *payload, u32 payload_size)
+{
+	struct iris_core *core;
+	int ret;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	ret = hfi_packet_session_property(inst,
+					  packet_type,
+					  flag,
+					  plane,
+					  payload_type,
+					  payload,
+					  payload_size);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
 }

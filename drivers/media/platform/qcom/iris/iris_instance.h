@@ -10,6 +10,7 @@
 
 #include "iris_core.h"
 #include "iris_common.h"
+#include "platform_common.h"
 
 /**
  * struct iris_inst - holds per video instance parameters
@@ -27,6 +28,10 @@
  * @packet: HFI packet
  * @packet_size: HFI packet size
  * @completions: structure of signal completions
+ * @cap: array of supported instance capabilities
+ * @num_ctrls: supported number of controls
+ * @caps_list: list head of capability
+ * @codec: codec type
  */
 
 struct iris_inst {
@@ -43,6 +48,10 @@ struct iris_inst {
 	void				*packet;
 	u32				packet_size;
 	struct completion		completions[MAX_SIGNAL];
+	struct plat_inst_cap		cap[INST_CAP_MAX + 1];
+	u32				num_ctrls;
+	struct list_head		caps_list;
+	enum codec_type			codec;
 };
 
 #endif
