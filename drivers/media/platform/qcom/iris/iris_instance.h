@@ -32,6 +32,7 @@
  * @num_ctrls: supported number of controls
  * @caps_list: list head of capability
  * @codec: codec type
+ * @mem_pool: pointer to memory pool of buffers
  */
 
 struct iris_inst {
@@ -52,6 +53,7 @@ struct iris_inst {
 	u32				num_ctrls;
 	struct list_head		caps_list;
 	enum codec_type			codec;
+	struct iris_mem_pool		*mem_pool;
 };
 
 #endif
