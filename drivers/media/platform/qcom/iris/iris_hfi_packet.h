@@ -74,5 +74,8 @@ int hfi_packet_session_command(struct iris_inst *inst, u32 pkt_type,
 			       u32 flags, u32 port, u32 session_id,
 			       u32 payload_type, void *payload,
 			       u32 payload_size);
+int hfi_packet_session_property(struct iris_inst *inst,
+				u32 pkt_type, u32 flags, u32 port,
+				u32 payload_type, void *payload, u32 payload_size);
 
 #endif
