@@ -239,3 +239,29 @@ int hfi_packet_session_command(struct iris_inst *inst, u32 pkt_type,
 
 	return ret;
 }
+
+int hfi_packet_session_property(struct iris_inst *inst,
+				u32 pkt_type, u32 flags, u32 port,
+				u32 payload_type, void *payload, u32 payload_size)
+{
+	struct iris_core *core;
+	int ret;
+
+	core = inst->core;
+
+	ret = hfi_create_header(inst->packet, inst->packet_size,
+				inst->session_id, core->header_id++);
+	if (ret)
+		return ret;
+
+	ret = hfi_create_packet(inst->packet, inst->packet_size,
+				pkt_type,
+				flags,
+				payload_type,
+				port,
+				core->packet_id++,
+				payload,
+				payload_size);
+
+	return ret;
+}

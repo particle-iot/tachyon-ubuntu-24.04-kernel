@@ -6,6 +6,7 @@
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
+#include "iris_hfi_packet.h"
 #include "iris_instance.h"
 
 int check_core_lock(struct iris_core *core)
@@ -17,23 +18,29 @@ int check_core_lock(struct iris_core *core)
 	return fatal ? -EINVAL : 0;
 }
 
-int iris_init_core_caps(struct iris_core *core)
+bool res_is_less_than(u32 width, u32 height,
+		      u32 ref_width, u32 ref_height)
 {
-	struct plat_core_cap *core_platform_data;
-	int i, num_core_caps;
+	u32 num_mbs = NUM_MBS_PER_FRAME(height, width);
+	u32 max_side = max(ref_width, ref_height);
 
-	core_platform_data = core->platform_data->core_data;
-	if (!core_platform_data)
-		return -EINVAL;
+	if (num_mbs < NUM_MBS_PER_FRAME(ref_height, ref_width) &&
+	    width < max_side &&
+	    height < max_side)
+		return true;
 
-	num_core_caps = core->platform_data->core_data_size;
+	return false;
+}
 
-	for (i = 0; i < num_core_caps && i < CORE_CAP_MAX; i++) {
-		core->cap[core_platform_data[i].type].type = core_platform_data[i].type;
-		core->cap[core_platform_data[i].type].value = core_platform_data[i].value;
-	}
+u32 get_port_info(struct iris_inst *inst,
+		  enum plat_inst_cap_type cap_id)
+{
+	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT)
+		return HFI_PORT_BITSTREAM;
+	else if (inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT)
+		return HFI_PORT_RAW;
 
-	return 0;
+	return HFI_PORT_NONE;
 }
 
 static int process_inst_timeout(struct iris_inst *inst)

@@ -7,8 +7,10 @@
 #define _PLATFORM_COMMON_H_
 
 #include <linux/bits.h>
+#include <media/v4l2-ctrls.h>
 
 struct iris_core;
+struct iris_inst;
 
 #define HW_RESPONSE_TIMEOUT_VALUE     (1000)
 
@@ -17,6 +19,7 @@ struct iris_core;
 
 #define CODED_FRAMES_PROGRESSIVE 0x0
 #define CODED_FRAMES_INTERLACE 0x1
+#define MAX_NUM_CHILD         10
 
 #define UBWC_CONFIG(mc, ml, hbb, bs1, bs2, bs3, bsp) \
 {	                                                 \
@@ -162,6 +165,16 @@ struct plat_inst_cap {
 	u32 v4l2_id;
 	u32 hfi_id;
 	enum plat_inst_cap_flags flags;
+	enum plat_inst_cap_type children[MAX_NUM_CHILD];
+	int (*adjust)(struct iris_inst *inst,
+		      struct v4l2_ctrl *ctrl);
+	int (*set)(struct iris_inst *inst,
+		   enum plat_inst_cap_type cap_id);
+};
+
+struct plat_inst_caps {
+	enum codec_type codec;
+	struct plat_inst_cap cap[INST_CAP_MAX + 1];
 };
 
 struct platform_data {
