@@ -11,6 +11,7 @@ iris-objs += iris_probe.o \
              iris_hfi_packet.o \
              resources.o \
              firmware.o \
+             memory.o \
              vpu_common.o \
              vpu_iris3.o \
              platform_common.o \
