@@ -43,6 +43,30 @@ u32 get_port_info(struct iris_inst *inst,
 	return HFI_PORT_NONE;
 }
 
+enum iris_buffer_type v4l2_type_to_driver(u32 type)
+{
+	switch (type) {
+	case INPUT_MPLANE:
+		return BUF_INPUT;
+	case OUTPUT_MPLANE:
+		return BUF_OUTPUT;
+	default:
+		return 0;
+	}
+}
+
+int get_mbpf(struct iris_inst *inst)
+{
+	int height = 0, width = 0;
+	struct v4l2_format *inp_f;
+
+	inp_f = inst->fmt_src;
+	width = max(inp_f->fmt.pix_mp.width, inst->crop.width);
+	height = max(inp_f->fmt.pix_mp.height, inst->crop.height);
+
+	return NUM_MBS_PER_FRAME(height, width);
+}
+
 static int process_inst_timeout(struct iris_inst *inst)
 {
 	struct iris_inst *instance;
