@@ -69,3 +69,150 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 
 	return ret;
 }
+
+void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
+			     struct dma_buf *dbuf, unsigned long size)
+{
+	enum iris_buffer_type buf_type;
+	struct iris_buffers *buffers;
+	struct iris_buffer *iter;
+	struct iris_buffer *buf;
+	struct iris_inst *inst;
+	bool found = false;
+
+	if (!vb || !dev || !dbuf || !vb->vb2_queue)
+		return ERR_PTR(-EINVAL);
+
+	inst = vb->vb2_queue->drv_priv;
+
+	buf_type = v4l2_type_to_driver(vb->type);
+
+	buffers = iris_get_buffer_list(inst, buf_type);
+	if (!buffers)
+		return NULL;
+
+	list_for_each_entry(iter, &buffers->list, list) {
+		if (iter->index == vb->index) {
+			found = true;
+			buf = iter;
+			break;
+		}
+	}
+
+	if (!found)
+		return NULL;
+
+	buf->inst = inst;
+	buf->dmabuf = dbuf;
+
+	buf->attach = dma_buf_attach(dbuf, dev);
+	if (IS_ERR(buf->attach)) {
+		buf->attach = NULL;
+		return NULL;
+	}
+
+	return buf;
+}
+
+int iris_vb2_map_dmabuf(void *buf_priv)
+{
+	struct iris_buffer *buf = buf_priv;
+	struct iris_core *core;
+	struct iris_inst *inst;
+
+	if (!buf || !buf->inst)
+		return -EINVAL;
+
+	inst = buf->inst;
+	core = inst->core;
+
+	if (!buf->attach) {
+		dev_err(core->dev, "trying to map a non attached buffer\n");
+		return -EINVAL;
+	}
+
+	buf->sg_table = dma_buf_map_attachment(buf->attach, DMA_BIDIRECTIONAL);
+	if (IS_ERR(buf->sg_table))
+		return -EINVAL;
+
+	if (!buf->sg_table->sgl) {
+		dma_buf_unmap_attachment(buf->attach, buf->sg_table, DMA_BIDIRECTIONAL);
+		buf->sg_table = NULL;
+		return -EINVAL;
+	}
+
+	buf->device_addr = sg_dma_address(buf->sg_table->sgl);
+
+	return 0;
+}
+
+void iris_vb2_unmap_dmabuf(void *buf_priv)
+{
+	struct iris_buffer *buf = buf_priv;
+	struct iris_core *core;
+	struct iris_inst *inst;
+
+	if (!buf || !buf->inst)
+		return;
+
+	inst = buf->inst;
+	core = inst->core;
+
+	if (!buf->attach) {
+		dev_err(core->dev, "trying to unmap a non attached buffer\n");
+		return;
+	}
+
+	if (!buf->sg_table) {
+		dev_err(core->dev, "dmabuf buffer is already unmapped\n");
+		return;
+	}
+
+	if (buf->attach && buf->sg_table) {
+		dma_buf_unmap_attachment(buf->attach, buf->sg_table, DMA_BIDIRECTIONAL);
+		buf->sg_table = NULL;
+		buf->device_addr = 0x0;
+	}
+}
+
+void iris_vb2_detach_dmabuf(void *buf_priv)
+{
+	struct iris_buffer *buf = buf_priv;
+	struct iris_core *core;
+	struct iris_inst *inst;
+
+	if (!buf || !buf->inst)
+		return;
+
+	inst = buf->inst;
+	core = inst->core;
+
+	if (buf->sg_table) {
+		dev_err(core->dev, "trying to detach an unmapped buffer\n");
+		dma_buf_unmap_attachment(buf->attach, buf->sg_table, DMA_BIDIRECTIONAL);
+		buf->sg_table = NULL;
+	}
+
+	if (buf->attach && buf->dmabuf) {
+		dma_buf_detach(buf->dmabuf, buf->attach);
+		buf->attach = NULL;
+	}
+
+	buf->dmabuf = NULL;
+	buf->inst = NULL;
+}
+
+void *iris_vb2_alloc(struct vb2_buffer *vb, struct device *dev,
+		     unsigned long size)
+{
+	return (void *)0xdeadbeef;
+}
+
+void iris_vb2_put(void *buf_priv)
+{
+}
+
+int iris_vb2_mmap(void *buf_priv, struct vm_area_struct *vma)
+{
+	return 0;
+}
