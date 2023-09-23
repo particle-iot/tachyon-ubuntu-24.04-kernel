@@ -330,10 +330,21 @@ static const struct vb2_ops iris_vb2_ops = {
 	.queue_setup                    = iris_vb2_queue_setup,
 };
 
+static struct vb2_mem_ops iris_vb2_mem_ops = {
+	.alloc                          = iris_vb2_alloc,
+	.put                            = iris_vb2_put,
+	.mmap                           = iris_vb2_mmap,
+	.attach_dmabuf                  = iris_vb2_attach_dmabuf,
+	.detach_dmabuf                  = iris_vb2_detach_dmabuf,
+	.map_dmabuf                     = iris_vb2_map_dmabuf,
+	.unmap_dmabuf                   = iris_vb2_unmap_dmabuf,
+};
+
 int init_ops(struct iris_core *core)
 {
 	core->v4l2_file_ops = &v4l2_file_ops;
 	core->vb2_ops = &iris_vb2_ops;
+	core->vb2_mem_ops = &iris_vb2_mem_ops;
 
 	return 0;
 }
