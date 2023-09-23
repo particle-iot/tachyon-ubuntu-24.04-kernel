@@ -232,5 +232,6 @@ static struct platform_driver qcom_iris_driver = {
 };
 
 module_platform_driver(qcom_iris_driver);
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_DESCRIPTION("Qualcomm Iris video driver");
 MODULE_LICENSE("GPL");
