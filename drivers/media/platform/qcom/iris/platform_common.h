@@ -9,6 +9,8 @@
 #include <linux/bits.h>
 #include <media/v4l2-ctrls.h>
 
+#include "iris_common.h"
+
 struct iris_core;
 struct iris_inst;
 
@@ -31,20 +33,6 @@ struct iris_inst;
 	.bank_swz3_level = bs3,                          \
 	.bank_spreading = bsp,                           \
 }
-
-enum codec_type {
-	H264	= BIT(0),
-	HEVC	= BIT(1),
-	VP9	= BIT(2),
-};
-
-enum colorformat_type {
-	FMT_NONE	= 0,
-	FMT_NV12C	= BIT(0),
-	FMT_NV12	= BIT(1),
-	FMT_NV21	= BIT(2),
-	FMT_TP10C	= BIT(3),
-};
 
 enum stage_type {
 	STAGE_NONE = 0,
