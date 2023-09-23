@@ -1,6 +1,7 @@
 iris-objs += iris_probe.o \
              iris_core.o \
              iris_vidc.o \
+             iris_vb2.o \
              iris_vdec.o \
              iris_state.o \
              iris_ctrls.o \
@@ -9,6 +10,7 @@ iris-objs += iris_probe.o \
              iris_hfi_response.o \
              iris_hfi_queue.o \
              iris_hfi_packet.o \
+             iris_buffer.o \
              resources.o \
              firmware.o \
              memory.o \

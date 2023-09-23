@@ -10,6 +10,7 @@
 #include <linux/types.h>
 
 #include "iris_instance.h"
+#include "iris_buffer.h"
 #include "platform_common.h"
 
 #define NUM_MBS_PER_FRAME(__height, __width) \
@@ -20,7 +21,8 @@ bool res_is_less_than(u32 width, u32 height,
 		      u32 ref_width, u32 ref_height);
 u32 get_port_info(struct iris_inst *inst,
 		  enum plat_inst_cap_type cap_id);
-
+enum iris_buffer_type v4l2_type_to_driver(u32 type);
+int get_mbpf(struct iris_inst *inst);
 int close_session(struct iris_inst *inst);
 
 #endif
