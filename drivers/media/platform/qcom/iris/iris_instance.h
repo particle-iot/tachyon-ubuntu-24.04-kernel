@@ -8,6 +8,8 @@
 
 #include <media/v4l2-ctrls.h>
 
+#include "iris_buffer.h"
+#include "iris_common.h"
 #include "iris_core.h"
 #include "iris_common.h"
 #include "platform_common.h"
@@ -25,6 +27,7 @@
  * @fmt_src: structure of v4l2_format for source
  * @fmt_dst: structure of v4l2_format for destination
  * @ctrl_handler: reference of v4l2 ctrl handler
+ * @crop: structure of crop info
  * @packet: HFI packet
  * @packet_size: HFI packet size
  * @completions: structure of signal completions
@@ -33,6 +36,7 @@
  * @caps_list: list head of capability
  * @codec: codec type
  * @mem_pool: pointer to memory pool of buffers
+ * @buffers: structure of buffer info
  */
 
 struct iris_inst {
@@ -46,6 +50,7 @@ struct iris_inst {
 	struct v4l2_format		*fmt_src;
 	struct v4l2_format		*fmt_dst;
 	struct v4l2_ctrl_handler	ctrl_handler;
+	struct rect_desc		crop;
 	void				*packet;
 	u32				packet_size;
 	struct completion		completions[MAX_SIGNAL];
@@ -54,6 +59,7 @@ struct iris_inst {
 	struct list_head		caps_list;
 	enum codec_type			codec;
 	struct iris_mem_pool		*mem_pool;
+	struct iris_buffers_info	buffers;
 };
 
 #endif
