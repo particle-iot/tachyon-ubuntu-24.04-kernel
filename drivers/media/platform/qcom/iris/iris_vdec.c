@@ -3,6 +3,7 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include "iris_buffer.h"
 #include "iris_common.h"
 #include "iris_vdec.h"
 
@@ -22,7 +23,7 @@ int vdec_inst_init(struct iris_inst *inst)
 	f->fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
 	f->fmt.pix_mp.num_planes = 1;
 	f->fmt.pix_mp.plane_fmt[0].bytesperline = 0;
-	f->fmt.pix_mp.plane_fmt[0].sizeimage = DEFAULT_BUF_SIZE;
+	f->fmt.pix_mp.plane_fmt[0].sizeimage = iris_get_buffer_size(inst, BUF_INPUT);
 	f->fmt.pix_mp.field = V4L2_FIELD_NONE;
 
 	f = inst->fmt_dst;
@@ -32,7 +33,7 @@ int vdec_inst_init(struct iris_inst *inst)
 	f->fmt.pix_mp.height = ALIGN(DEFAULT_HEIGHT, 32);
 	f->fmt.pix_mp.num_planes = 1;
 	f->fmt.pix_mp.plane_fmt[0].bytesperline = ALIGN(DEFAULT_WIDTH, 128);
-	f->fmt.pix_mp.plane_fmt[0].sizeimage = DEFAULT_BUF_SIZE;
+	f->fmt.pix_mp.plane_fmt[0].sizeimage = iris_get_buffer_size(inst, BUF_OUTPUT);
 	f->fmt.pix_mp.field = V4L2_FIELD_NONE;
 	f->fmt.pix_mp.colorspace = V4L2_COLORSPACE_DEFAULT;
 	f->fmt.pix_mp.xfer_func = V4L2_XFER_FUNC_DEFAULT;
