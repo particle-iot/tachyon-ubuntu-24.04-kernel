@@ -10,6 +10,7 @@
 #include "iris_vdec.h"
 #include "iris_vidc.h"
 #include "iris_ctrls.h"
+#include "iris_vb2.h"
 #include "memory.h"
 
 static int vidc_v4l2_fh_init(struct iris_inst *inst)
@@ -169,8 +170,6 @@ int vidc_open(struct file *filp)
 	inst->core = core;
 	inst->session_id = hash32_ptr(inst);
 	mutex_init(&inst->ctx_q_lock);
-	for (i = 0; i < MAX_SIGNAL; i++)
-		init_completion(&inst->completions[i]);
 
 	ret = vidc_add_session(inst);
 	if (ret)
@@ -180,6 +179,17 @@ int vidc_open(struct file *filp)
 	if (ret)
 		goto fail_remove_session;
 
+	INIT_LIST_HEAD(&inst->buffers.input.list);
+	INIT_LIST_HEAD(&inst->buffers.output.list);
+	INIT_LIST_HEAD(&inst->buffers.read_only.list);
+	INIT_LIST_HEAD(&inst->buffers.bin.list);
+	INIT_LIST_HEAD(&inst->buffers.arp.list);
+	INIT_LIST_HEAD(&inst->buffers.comv.list);
+	INIT_LIST_HEAD(&inst->buffers.non_comv.list);
+	INIT_LIST_HEAD(&inst->buffers.line.list);
+	INIT_LIST_HEAD(&inst->buffers.dpb.list);
+	INIT_LIST_HEAD(&inst->buffers.persist.list);
+	INIT_LIST_HEAD(&inst->buffers.vpss.list);
 	INIT_LIST_HEAD(&inst->caps_list);
 	for (i = 0; i < MAX_SIGNAL; i++)
 		init_completion(&inst->completions[i]);
@@ -316,9 +326,14 @@ static const struct v4l2_file_operations v4l2_file_ops = {
 	.poll                           = vidc_poll,
 };
 
+static const struct vb2_ops iris_vb2_ops = {
+	.queue_setup                    = iris_vb2_queue_setup,
+};
+
 int init_ops(struct iris_core *core)
 {
 	core->v4l2_file_ops = &v4l2_file_ops;
+	core->vb2_ops = &iris_vb2_ops;
 
 	return 0;
 }
