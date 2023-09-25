@@ -49,6 +49,7 @@
  * @header_id: id of packet header
  * @packet_id: id of packet
  * @vpu_ops: a pointer to vpu ops
+ * @session_ops: a pointer to session level ops
  * @dec_codecs_count: supported codec count for decoder
  * @platform_data: a structure for platform data
  * @cap: an array for supported core capabilities
@@ -91,6 +92,7 @@ struct iris_core {
 	u32					header_id;
 	u32					packet_id;
 	const struct vpu_ops			*vpu_ops;
+	const struct vpu_session_ops		*session_ops;
 	u32					dec_codecs_count;
 	struct platform_data			*platform_data;
 	struct plat_core_cap			cap[CORE_CAP_MAX + 1];
