@@ -26,6 +26,14 @@ struct vpu_ops {
 	int (*watchdog)(struct iris_core *core, u32 intr_status);
 };
 
+#define call_session_op(c, op, ...)			\
+	(((c) && (c)->session_ops && (c)->session_ops->op) ? \
+	((c)->session_ops->op(__VA_ARGS__)) : 0)
+
+struct vpu_session_ops {
+	int (*int_buf_size)(struct iris_inst *inst, enum iris_buffer_type type);
+};
+
 int init_vpu(struct iris_core *core);
 
 int write_register(struct iris_core *core, u32 reg, u32 value);
