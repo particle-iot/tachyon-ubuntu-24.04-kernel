@@ -11,6 +11,7 @@
 
 #include "iris_instance.h"
 #include "iris_buffer.h"
+#include "iris_instance.h"
 #include "platform_common.h"
 
 #define NUM_MBS_PER_FRAME(__height, __width) \
@@ -24,5 +25,8 @@ u32 get_port_info(struct iris_inst *inst,
 enum iris_buffer_type v4l2_type_to_driver(u32 type);
 int get_mbpf(struct iris_inst *inst);
 int close_session(struct iris_inst *inst);
+
+bool is_linear_colorformat(u32 colorformat);
+bool is_split_mode_enabled(struct iris_inst *inst);
 
 #endif
