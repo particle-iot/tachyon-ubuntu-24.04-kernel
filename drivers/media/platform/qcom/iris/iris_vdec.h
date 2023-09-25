@@ -14,5 +14,7 @@ int vdec_enum_fmt(struct iris_inst *inst, struct v4l2_fmtdesc *f);
 int vdec_try_fmt(struct iris_inst *inst, struct v4l2_format *f);
 int vdec_s_fmt(struct iris_inst *inst, struct v4l2_format *f);
 int vdec_subscribe_event(struct iris_inst *inst, const struct v4l2_event_subscription *sub);
+int vdec_subscribe_property(struct iris_inst *inst, u32 plane);
+int vdec_set_output_property(struct iris_inst *inst);
 
 #endif
