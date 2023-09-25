@@ -13,6 +13,9 @@ int iris_hfi_core_init(struct iris_core *core);
 int iris_hfi_core_deinit(struct iris_core *core);
 int iris_hfi_session_open(struct iris_inst *inst);
 int iris_hfi_session_close(struct iris_inst *inst);
+int iris_hfi_session_subscribe_mode(struct iris_inst *inst,
+				    u32 cmd, u32 plane, u32 payload_type,
+				    void *payload, u32 payload_size);
 int iris_hfi_set_property(struct iris_inst *inst,
 			  u32 packet_type, u32 flag, u32 plane, u32 payload_type,
 			  void *payload, u32 payload_size);
