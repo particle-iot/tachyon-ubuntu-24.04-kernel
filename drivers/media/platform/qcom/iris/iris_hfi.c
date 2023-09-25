@@ -247,3 +247,88 @@ unlock:
 
 	return ret;
 }
+
+int iris_hfi_queue_buffer(struct iris_inst *inst,
+			  struct iris_buffer *buffer)
+{
+	struct hfi_buffer hfi_buffer;
+	struct iris_core *core;
+	int ret;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	ret = get_hfi_buffer(buffer, &hfi_buffer);
+	if (ret)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_BUFFER,
+					 HFI_HOST_FLAGS_INTR_REQUIRED,
+					 get_hfi_port_from_buffer_type(buffer->type),
+					 inst->session_id,
+					 HFI_PAYLOAD_STRUCTURE,
+					 &hfi_buffer,
+					 sizeof(hfi_buffer));
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_release_buffer(struct iris_inst *inst,
+			    struct iris_buffer *buffer)
+{
+	struct hfi_buffer hfi_buffer;
+	struct iris_core *core;
+	int ret;
+
+	if (!inst->packet || !buffer)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	ret = get_hfi_buffer(buffer, &hfi_buffer);
+	if (ret)
+		goto unlock;
+
+	hfi_buffer.flags |= HFI_BUF_HOST_FLAG_RELEASE;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_BUFFER,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED),
+					 get_hfi_port_from_buffer_type(buffer->type),
+					 inst->session_id,
+					 HFI_PAYLOAD_STRUCTURE,
+					 &hfi_buffer,
+					 sizeof(hfi_buffer));
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
