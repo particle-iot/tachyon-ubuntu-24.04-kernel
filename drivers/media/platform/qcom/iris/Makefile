@@ -16,6 +16,7 @@ iris-objs += iris_probe.o \
              memory.o \
              vpu_common.o \
              vpu_iris3.o \
+             vpu_iris3_buffer.o \
              platform_common.o \
              platform_sm8550.o
 
