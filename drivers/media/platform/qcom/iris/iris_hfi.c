@@ -157,6 +157,44 @@ fail_free_packet:
 	return ret;
 }
 
+int iris_hfi_session_subscribe_mode(struct iris_inst *inst,
+				    u32 cmd, u32 plane, u32 payload_type,
+				    void *payload, u32 payload_size)
+{
+	struct iris_core *core;
+	int ret;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	ret = hfi_packet_session_command(inst,
+					 cmd,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 payload_type,
+					 payload,
+					 payload_size);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
 int iris_hfi_session_close(struct iris_inst *inst)
 {
 	struct iris_core *core;
