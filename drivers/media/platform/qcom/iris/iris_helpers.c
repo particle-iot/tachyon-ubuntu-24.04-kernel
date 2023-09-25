@@ -67,6 +67,19 @@ int get_mbpf(struct iris_inst *inst)
 	return NUM_MBS_PER_FRAME(height, width);
 }
 
+bool is_linear_colorformat(u32 colorformat)
+{
+	return colorformat == V4L2_PIX_FMT_NV12 || colorformat == V4L2_PIX_FMT_NV21;
+}
+
+bool is_split_mode_enabled(struct iris_inst *inst)
+{
+	if (is_linear_colorformat(inst->fmt_dst->fmt.pix_mp.pixelformat))
+		return true;
+
+	return false;
+}
+
 static int process_inst_timeout(struct iris_inst *inst)
 {
 	struct iris_inst *instance;
