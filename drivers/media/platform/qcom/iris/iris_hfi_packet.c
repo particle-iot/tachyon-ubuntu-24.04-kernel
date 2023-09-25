@@ -34,6 +34,24 @@ u32 get_hfi_port_from_buffer_type(enum iris_buffer_type buffer_type)
 	return hfi_port;
 }
 
+u32 get_hfi_port(u32 plane)
+{
+	u32 hfi_port = HFI_PORT_NONE;
+
+	switch (plane) {
+	case INPUT_MPLANE:
+		hfi_port = HFI_PORT_BITSTREAM;
+		break;
+	case OUTPUT_MPLANE:
+		hfi_port = HFI_PORT_RAW;
+		break;
+	default:
+		break;
+	}
+
+	return hfi_port;
+}
+
 static u32 hfi_buf_type_from_driver(enum iris_buffer_type buffer_type)
 {
 	switch (buffer_type) {
@@ -56,6 +74,30 @@ static u32 hfi_buf_type_from_driver(enum iris_buffer_type buffer_type)
 	default:
 		return 0;
 	}
+}
+
+u32 get_hfi_colorformat(u32 colorformat)
+{
+	u32 hfi_colorformat = HFI_COLOR_FMT_NV12_UBWC;
+
+	switch (colorformat) {
+	case V4L2_PIX_FMT_NV12:
+		hfi_colorformat = HFI_COLOR_FMT_NV12;
+		break;
+	case V4L2_PIX_FMT_QC08C:
+		hfi_colorformat = HFI_COLOR_FMT_NV12_UBWC;
+		break;
+	case V4L2_PIX_FMT_QC10C:
+		hfi_colorformat = HFI_COLOR_FMT_TP10_UBWC;
+		break;
+	case V4L2_PIX_FMT_NV21:
+		hfi_colorformat = HFI_COLOR_FMT_NV21;
+		break;
+	default:
+		break;
+	}
+
+	return hfi_colorformat;
 }
 
 int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf)

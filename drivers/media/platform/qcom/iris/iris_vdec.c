@@ -5,10 +5,13 @@
 
 #include <media/v4l2-event.h>
 
+#include "hfi_defines.h"
 #include "iris_buffer.h"
 #include "iris_common.h"
 #include "iris_ctrls.h"
 #include "iris_helpers.h"
+#include "iris_hfi.h"
+#include "iris_hfi_packet.h"
 #include "iris_vdec.h"
 
 static int vdec_codec_change(struct iris_inst *inst, u32 v4l2_codec)
@@ -328,4 +331,155 @@ int vdec_subscribe_event(struct iris_inst *inst, const struct v4l2_event_subscri
 	}
 
 	return ret;
+}
+
+int vdec_subscribe_property(struct iris_inst *inst, u32 plane)
+{
+	const u32 *subcribe_prop = NULL;
+	u32 subscribe_prop_size = 0;
+	struct iris_core *core;
+	u32 payload[32] = {0};
+	u32 i;
+
+	core = inst->core;
+
+	payload[0] = HFI_MODE_PROPERTY;
+
+	if (plane == INPUT_MPLANE) {
+		subscribe_prop_size = core->platform_data->dec_input_prop_size;
+		subcribe_prop = core->platform_data->dec_input_prop;
+	} else if (plane == OUTPUT_MPLANE) {
+		if (inst->codec == H264) {
+			subscribe_prop_size = core->platform_data->dec_output_prop_size_avc;
+			subcribe_prop = core->platform_data->dec_output_prop_avc;
+		} else if (inst->codec == HEVC) {
+			subscribe_prop_size = core->platform_data->dec_output_prop_size_hevc;
+			subcribe_prop = core->platform_data->dec_output_prop_hevc;
+		} else if (inst->codec == VP9) {
+			subscribe_prop_size = core->platform_data->dec_output_prop_size_vp9;
+			subcribe_prop = core->platform_data->dec_output_prop_vp9;
+		} else {
+			return -EINVAL;
+		}
+	} else {
+		return -EINVAL;
+	}
+
+	for (i = 0; i < subscribe_prop_size; i++)
+		payload[i + 1] = subcribe_prop[i];
+
+	return iris_hfi_session_subscribe_mode(inst,
+					HFI_CMD_SUBSCRIBE_MODE,
+					plane,
+					HFI_PAYLOAD_U32_ARRAY,
+					&payload[0],
+					(subscribe_prop_size + 1) * sizeof(u32));
+}
+
+static int vdec_set_colorformat(struct iris_inst *inst)
+{
+	u32 hfi_colorformat;
+	u32 pixelformat;
+
+	pixelformat = inst->fmt_dst->fmt.pix_mp.pixelformat;
+	hfi_colorformat = get_hfi_colorformat(pixelformat);
+
+	return iris_hfi_set_property(inst,
+					 HFI_PROP_COLOR_FORMAT,
+					 HFI_HOST_FLAGS_NONE,
+					 get_hfi_port(OUTPUT_MPLANE),
+					 HFI_PAYLOAD_U32,
+					 &hfi_colorformat,
+					 sizeof(u32));
+}
+
+static int vdec_set_linear_stride_scanline(struct iris_inst *inst)
+{
+	u32 stride_y, scanline_y, stride_uv, scanline_uv;
+	u32 pixelformat;
+	u32 payload[2];
+
+	pixelformat = inst->fmt_dst->fmt.pix_mp.pixelformat;
+
+	if (!is_linear_colorformat(pixelformat))
+		return 0;
+
+	stride_y = inst->fmt_dst->fmt.pix_mp.width;
+	scanline_y = inst->fmt_dst->fmt.pix_mp.height;
+	stride_uv = stride_y;
+	scanline_uv = scanline_y / 2;
+
+	payload[0] = stride_y << 16 | scanline_y;
+	payload[1] = stride_uv << 16 | scanline_uv;
+
+	return iris_hfi_set_property(inst,
+					 HFI_PROP_LINEAR_STRIDE_SCANLINE,
+					 HFI_HOST_FLAGS_NONE,
+					 get_hfi_port(OUTPUT_MPLANE),
+					 HFI_PAYLOAD_U64,
+					 &payload,
+					 sizeof(u64));
+}
+
+static int vdec_set_ubwc_stride_scanline(struct iris_inst *inst)
+{
+	u32 meta_stride_y, meta_scanline_y, meta_stride_uv, meta_scanline_uv;
+	u32 stride_y, scanline_y, stride_uv, scanline_uv;
+	u32 pix_fmt, width, height;
+	u32 payload[4];
+
+	pix_fmt = inst->fmt_dst->fmt.pix_mp.pixelformat;
+	width = inst->fmt_dst->fmt.pix_mp.width;
+	height = inst->fmt_dst->fmt.pix_mp.height;
+
+	if (is_linear_colorformat(pix_fmt))
+		return 0;
+
+	if (pix_fmt == V4L2_PIX_FMT_QC08C) {
+		stride_y = ALIGN(width, 128);
+		scanline_y = ALIGN(height, 32);
+		stride_uv = ALIGN(width, 128);
+		scanline_uv = ALIGN((height + 1) >> 1, 32);
+		meta_stride_y = ALIGN(DIV_ROUND_UP(width, 32), 64);
+		meta_scanline_y = ALIGN(DIV_ROUND_UP(height, 8), 16);
+		meta_stride_uv = ALIGN(DIV_ROUND_UP((width + 1) >> 1, 16), 64);
+		meta_scanline_uv = ALIGN(DIV_ROUND_UP((height + 1) >> 1, 8), 16);
+	} else {
+		stride_y = ALIGN(ALIGN(width, 192) * 4 / 3, 256);
+		scanline_y = ALIGN(height, 16);
+		stride_uv = ALIGN(ALIGN(width, 192) * 4 / 3, 256);
+		scanline_uv = ALIGN((height + 1) >> 1, 16);
+		meta_stride_y = ALIGN(DIV_ROUND_UP(width, 48), 64);
+		meta_scanline_y = ALIGN(DIV_ROUND_UP(height, 4), 16);
+		meta_stride_uv = ALIGN(DIV_ROUND_UP((width + 1) >> 1, 24), 64);
+		meta_scanline_uv = ALIGN(DIV_ROUND_UP((height + 1) >> 1, 4), 16);
+	}
+
+	payload[0] = stride_y << 16 | scanline_y;
+	payload[1] = stride_uv << 16 | scanline_uv;
+	payload[2] = meta_stride_y << 16 | meta_scanline_y;
+	payload[3] = meta_stride_uv << 16 | meta_scanline_uv;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_UBWC_STRIDE_SCANLINE,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(OUTPUT_MPLANE),
+				     HFI_PAYLOAD_U32_ARRAY,
+				     &payload[0],
+				     sizeof(u32) * 4);
+}
+
+int vdec_set_output_property(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = vdec_set_colorformat(inst);
+	if (ret)
+		return ret;
+
+	ret = vdec_set_linear_stride_scanline(inst);
+	if (ret)
+		return ret;
+
+	return vdec_set_ubwc_stride_scanline(inst);
 }
