@@ -39,6 +39,7 @@ int vdec_inst_init(struct iris_inst *inst)
 	f->fmt.pix_mp.xfer_func = V4L2_XFER_FUNC_DEFAULT;
 	f->fmt.pix_mp.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 	f->fmt.pix_mp.quantization = V4L2_QUANTIZATION_DEFAULT;
+	inst->fw_min_count = 0;
 
 	return 0;
 }
