@@ -203,6 +203,14 @@ struct platform_data {
 	u32 core_data_size;
 	struct plat_inst_cap *inst_cap_data;
 	u32 inst_cap_data_size;
+	const u32 *dec_input_prop;
+	unsigned int dec_input_prop_size;
+	const u32 *dec_output_prop_avc;
+	unsigned int dec_output_prop_size_avc;
+	const u32 *dec_output_prop_hevc;
+	unsigned int dec_output_prop_size_hevc;
+	const u32 *dec_output_prop_vp9;
+	unsigned int dec_output_prop_size_vp9;
 };
 
 int init_platform(struct iris_core *core);
