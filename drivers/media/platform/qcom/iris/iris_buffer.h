@@ -46,4 +46,16 @@ int iris_allocate_buffers(struct iris_inst *inst,
 int iris_free_buffers(struct iris_inst *inst,
 		      enum iris_buffer_type buf_type);
 
+int iris_get_internal_buffers(struct iris_inst *inst,
+			      u32 plane);
+int iris_create_input_internal_buffers(struct iris_inst *inst);
+int iris_create_output_internal_buffers(struct iris_inst *inst);
+int iris_queue_input_internal_buffers(struct iris_inst *inst);
+int iris_queue_output_internal_buffers(struct iris_inst *inst);
+int iris_destroy_internal_buffer(struct iris_inst *inst,
+				 struct iris_buffer *buffer);
+int iris_destroy_internal_buffers(struct iris_inst *inst,
+				  u32 plane);
+int iris_release_input_internal_buffers(struct iris_inst *inst);
+
 #endif
