@@ -19,5 +19,9 @@ int iris_hfi_set_property(struct iris_inst *inst,
 
 irqreturn_t iris_hfi_isr(int irq, void *data);
 irqreturn_t iris_hfi_isr_handler(int irq, void *data);
+int iris_hfi_queue_buffer(struct iris_inst *inst,
+			  struct iris_buffer *buffer);
+int iris_hfi_release_buffer(struct iris_inst *inst,
+			    struct iris_buffer *buffer);
 
 #endif
