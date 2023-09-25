@@ -6,6 +6,7 @@
 #include <linux/delay.h>
 
 #include "vpu_iris3.h"
+#include "vpu_iris3_buffer.h"
 
 #define VIDEO_ARCH_LX 1
 
@@ -206,9 +207,14 @@ static const struct vpu_ops iris3_ops = {
 	.watchdog = watchdog_iris3,
 };
 
+static const struct vpu_session_ops iris3_session_ops = {
+	.int_buf_size = iris_int_buf_size_iris3,
+};
+
 int init_iris3(struct iris_core *core)
 {
 	core->vpu_ops = &iris3_ops;
+	core->session_ops = &iris3_session_ops;
 
 	return 0;
 }
