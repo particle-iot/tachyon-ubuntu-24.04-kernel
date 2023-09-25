@@ -8,17 +8,17 @@
 #include "iris_instance.h"
 #include "memory.h"
 
-static unsigned int video_buffer_size(unsigned int colorformat,
-				      unsigned int pix_width,
-				      unsigned int pix_height)
+static u32 video_buffer_size(u32 colorformat,
+			     u32 pix_width,
+			     u32 pix_height)
 {
-	unsigned int size = 0;
-	unsigned int y_plane, uv_plane, y_stride,
+	u32 size = 0;
+	u32 y_plane, uv_plane, y_stride,
 		uv_stride, y_sclines, uv_sclines;
-	unsigned int y_ubwc_plane = 0, uv_ubwc_plane = 0;
-	unsigned int y_meta_stride = 0, y_meta_scanlines = 0;
-	unsigned int uv_meta_stride = 0, uv_meta_scanlines = 0;
-	unsigned int y_meta_plane = 0, uv_meta_plane = 0;
+	u32 y_ubwc_plane = 0, uv_ubwc_plane = 0;
+	u32 y_meta_stride = 0, y_meta_scanlines = 0;
+	u32 uv_meta_stride = 0, uv_meta_scanlines = 0;
+	u32 y_meta_plane = 0, uv_meta_plane = 0;
 
 	if (!pix_width || !pix_height)
 		goto invalid_input;
@@ -90,9 +90,8 @@ static unsigned int video_buffer_size(unsigned int colorformat,
 	}
 
 invalid_input:
-	size = ALIGN(size, 4096);
 
-	return size;
+	return ALIGN(size, 4096);
 }
 
 static int input_min_count(struct iris_inst *inst)
@@ -103,6 +102,14 @@ static int input_min_count(struct iris_inst *inst)
 static int output_min_count(struct iris_inst *inst)
 {
 	int output_min_count;
+
+	/* fw_min_count > 0 indicates reconfig event has already arrived */
+	if (inst->fw_min_count) {
+		if (is_split_mode_enabled(inst) && inst->codec == VP9)
+			return min_t(u32, 4, inst->fw_min_count);
+		else
+			return inst->fw_min_count;
+	}
 
 	switch (inst->codec) {
 	case H264:
@@ -120,6 +127,38 @@ static int output_min_count(struct iris_inst *inst)
 	return output_min_count;
 }
 
+static u32 internal_buffer_count(struct iris_inst *inst,
+				 enum iris_buffer_type buffer_type)
+{
+	u32 count = 0;
+
+	if (buffer_type == BUF_BIN || buffer_type == BUF_LINE ||
+	    buffer_type == BUF_PERSIST) {
+		count = 1;
+	} else if (buffer_type == BUF_COMV || buffer_type == BUF_NON_COMV) {
+		if (inst->codec == H264 || inst->codec == HEVC)
+			count = 1;
+		else
+			count = 0;
+	} else {
+		count = 0;
+	}
+
+	return count;
+}
+
+static int dpb_count(struct iris_inst *inst)
+{
+	int count = 0;
+
+	if (is_split_mode_enabled(inst)) {
+		count = inst->fw_min_count ?
+			inst->fw_min_count : inst->buffers.output.min_count;
+	}
+
+	return count;
+}
+
 int iris_get_buf_min_count(struct iris_inst *inst,
 			   enum iris_buffer_type buffer_type)
 {
@@ -128,6 +167,14 @@ int iris_get_buf_min_count(struct iris_inst *inst,
 		return input_min_count(inst);
 	case BUF_OUTPUT:
 		return output_min_count(inst);
+	case BUF_BIN:
+	case BUF_COMV:
+	case BUF_NON_COMV:
+	case BUF_LINE:
+	case BUF_PERSIST:
+		return internal_buffer_count(inst, buffer_type);
+	case BUF_DPB:
+		return dpb_count(inst);
 	default:
 		return 0;
 	}
