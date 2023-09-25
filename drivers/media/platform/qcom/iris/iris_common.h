@@ -17,6 +17,7 @@ struct iris_inst;
 #define OUTPUT_MPLANE V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
 #define DEFAULT_WIDTH 320
 #define DEFAULT_HEIGHT 240
+#define DEFAULT_BSE_VPP_DELAY    2
 
 #define MB_IN_PIXEL (16 * 16)
 
