@@ -39,6 +39,9 @@ int vdec_inst_init(struct iris_inst *inst)
 	f->fmt.pix_mp.xfer_func = V4L2_XFER_FUNC_DEFAULT;
 	f->fmt.pix_mp.ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 	f->fmt.pix_mp.quantization = V4L2_QUANTIZATION_DEFAULT;
+	inst->buffers.output.min_count = iris_get_buf_min_count(inst, BUF_OUTPUT);
+	inst->buffers.output.actual_count = inst->buffers.output.min_count;
+	inst->buffers.output.size = f->fmt.pix_mp.plane_fmt[0].sizeimage;
 	inst->fw_min_count = 0;
 
 	return 0;
