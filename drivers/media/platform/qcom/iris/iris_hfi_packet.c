@@ -4,8 +4,86 @@
  */
 
 #include "iris_core.h"
+#include "iris_helpers.h"
 #include "iris_hfi_packet.h"
 #include "hfi_defines.h"
+
+u32 get_hfi_port_from_buffer_type(enum iris_buffer_type buffer_type)
+{
+	u32 hfi_port = HFI_PORT_NONE;
+
+	switch (buffer_type) {
+	case BUF_INPUT:
+	case BUF_BIN:
+	case BUF_COMV:
+	case BUF_NON_COMV:
+	case BUF_LINE:
+		hfi_port = HFI_PORT_BITSTREAM;
+		break;
+	case BUF_OUTPUT:
+	case BUF_DPB:
+		hfi_port = HFI_PORT_RAW;
+		break;
+	case BUF_PERSIST:
+		hfi_port = HFI_PORT_NONE;
+		break;
+	default:
+		break;
+	}
+
+	return hfi_port;
+}
+
+static u32 hfi_buf_type_from_driver(enum iris_buffer_type buffer_type)
+{
+	switch (buffer_type) {
+	case BUF_INPUT:
+		return HFI_BUFFER_BITSTREAM;
+	case BUF_OUTPUT:
+		return HFI_BUFFER_RAW;
+	case BUF_BIN:
+		return HFI_BUFFER_BIN;
+	case BUF_COMV:
+		return HFI_BUFFER_COMV;
+	case BUF_NON_COMV:
+		return HFI_BUFFER_NON_COMV;
+	case BUF_LINE:
+		return HFI_BUFFER_LINE;
+	case BUF_DPB:
+		return HFI_BUFFER_DPB;
+	case BUF_PERSIST:
+		return HFI_BUFFER_PERSIST;
+	default:
+		return 0;
+	}
+}
+
+int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf)
+{
+	memset(buf, 0, sizeof(*buf));
+	buf->type = hfi_buf_type_from_driver(buffer->type);
+	buf->index = buffer->index;
+	buf->base_address = buffer->device_addr;
+	buf->addr_offset = 0;
+	buf->buffer_size = buffer->buffer_size;
+	/*
+	 * for decoder input buffers, firmware (BSE HW) needs 256 aligned
+	 * buffer size otherwise it will truncate or ignore the data after 256
+	 * aligned size which may lead to error concealment
+	 */
+	if (buffer->type == BUF_INPUT)
+		buf->buffer_size = ALIGN(buffer->buffer_size, 256);
+	buf->data_offset = buffer->data_offset;
+	buf->data_size = buffer->data_size;
+	if (buffer->attr & BUF_ATTR_READ_ONLY)
+		buf->flags |= HFI_BUF_HOST_FLAG_READONLY;
+	if (buffer->attr & BUF_ATTR_PENDING_RELEASE)
+		buf->flags |= HFI_BUF_HOST_FLAG_RELEASE;
+	buf->flags |= HFI_BUF_HOST_FLAGS_CB_NON_SECURE;
+	buf->timestamp = buffer->timestamp;
+
+	return 0;
+}
 
 static int hfi_create_header(u8 *packet, u32 packet_size, u32 session_id,
 			     u32 header_id)
