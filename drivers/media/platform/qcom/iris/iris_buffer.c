@@ -5,8 +5,22 @@
 
 #include "iris_buffer.h"
 #include "iris_helpers.h"
+#include "iris_hfi.h"
+#include "hfi_defines.h"
+#include "iris_hfi_packet.h"
 #include "iris_instance.h"
 #include "memory.h"
+
+static const u32 dec_ip_int_buf_type[] = {
+	BUF_BIN,
+	BUF_COMV,
+	BUF_NON_COMV,
+	BUF_LINE,
+};
+
+static const u32 dec_op_int_buf_type[] = {
+	BUF_DPB,
+};
 
 static u32 video_buffer_size(u32 colorformat,
 			     u32 pix_width,
@@ -310,4 +324,302 @@ int iris_free_buffers(struct iris_inst *inst,
 	}
 
 	return 0;
+}
+
+static int iris_get_internal_buf_info(struct iris_inst *inst,
+				      enum iris_buffer_type buffer_type)
+{
+	struct iris_buffers *buffers;
+	struct iris_core *core;
+	u32 buf_count;
+	u32 buf_size;
+
+	core = inst->core;
+
+	buf_size = call_session_op(core, int_buf_size,
+				   inst, buffer_type);
+
+	buf_count = iris_get_buf_min_count(inst, buffer_type);
+
+	buffers = iris_get_buffer_list(inst, buffer_type);
+	if (!buffers)
+		return -EINVAL;
+
+	if (buf_size && buf_size <= buffers->size &&
+	    buf_count && buf_count <= buffers->min_count) {
+		buffers->reuse = true;
+	} else {
+		buffers->reuse = false;
+		buffers->size = buf_size;
+		buffers->min_count = buf_count;
+	}
+
+	return 0;
+}
+
+int iris_get_internal_buffers(struct iris_inst *inst,
+			      u32 plane)
+{
+	int ret = 0;
+	u32 i = 0;
+
+	if (plane == INPUT_MPLANE) {
+		for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+			ret = iris_get_internal_buf_info(inst, dec_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
+	} else {
+		return iris_get_internal_buf_info(inst, BUF_DPB);
+	}
+
+	return ret;
+}
+
+static int iris_create_internal_buffer(struct iris_inst *inst,
+				       enum iris_buffer_type buffer_type, u32 index)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buffer;
+	struct iris_core *core;
+
+	core = inst->core;
+
+	buffers = iris_get_buffer_list(inst, buffer_type);
+	if (!buffers)
+		return -EINVAL;
+
+	if (!buffers->size)
+		return 0;
+
+	buffer = iris_get_buffer_from_pool(inst);
+	if (!buffer)
+		return -ENOMEM;
+
+	INIT_LIST_HEAD(&buffer->list);
+	buffer->type = buffer_type;
+	buffer->index = index;
+	buffer->buffer_size = buffers->size;
+	buffer->dma_attrs = DMA_ATTR_WRITE_COMBINE | DMA_ATTR_NO_KERNEL_MAPPING;
+	list_add_tail(&buffer->list, &buffers->list);
+
+	buffer->kvaddr = dma_alloc_attrs(core->dev, buffer->buffer_size,
+					 &buffer->device_addr, GFP_KERNEL, buffer->dma_attrs);
+
+	if (!buffer->kvaddr)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static int iris_create_internal_buffers(struct iris_inst *inst,
+					enum iris_buffer_type buffer_type)
+{
+	struct iris_buffers *buffers;
+	int ret = 0;
+	int i;
+
+	buffers = iris_get_buffer_list(inst, buffer_type);
+	if (!buffers)
+		return -EINVAL;
+
+	if (buffers->reuse)
+		return 0;
+
+	for (i = 0; i < buffers->min_count; i++) {
+		ret = iris_create_internal_buffer(inst, buffer_type, i);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int iris_create_input_internal_buffers(struct iris_inst *inst)
+{
+	int ret = 0;
+	u32 i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+		ret = iris_create_internal_buffers(inst, dec_ip_int_buf_type[i]);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int iris_create_output_internal_buffers(struct iris_inst *inst)
+{
+	return iris_create_internal_buffers(inst, BUF_DPB);
+}
+
+static int set_num_comv(struct iris_inst *inst)
+{
+	u32 num_comv;
+
+	num_comv = inst->cap[NUM_COMV].value;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_COMV_BUFFER_COUNT,
+					HFI_HOST_FLAGS_NONE,
+					HFI_PORT_BITSTREAM,
+					HFI_PAYLOAD_U32,
+					&num_comv,
+					sizeof(u32));
+}
+
+static int iris_queue_internal_buffers(struct iris_inst *inst,
+				       enum iris_buffer_type buffer_type)
+{
+	struct iris_buffer *buffer, *dummy;
+	struct iris_buffers *buffers;
+	int ret = 0;
+
+	if (buffer_type == BUF_COMV) {
+		ret = set_num_comv(inst);
+		if (ret)
+			return ret;
+	}
+
+	buffers = iris_get_buffer_list(inst, buffer_type);
+	if (!buffers)
+		return -EINVAL;
+
+	list_for_each_entry_safe(buffer, dummy, &buffers->list, list) {
+		if (buffer->attr & BUF_ATTR_PENDING_RELEASE)
+			continue;
+		if (buffer->attr & BUF_ATTR_QUEUED)
+			continue;
+		ret = iris_hfi_queue_buffer(inst, buffer);
+		if (ret)
+			return ret;
+		buffer->attr |= BUF_ATTR_QUEUED;
+	}
+
+	return ret;
+}
+
+int iris_queue_input_internal_buffers(struct iris_inst *inst)
+{
+	int ret = 0;
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+		ret = iris_queue_internal_buffers(inst, dec_ip_int_buf_type[i]);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int iris_queue_output_internal_buffers(struct iris_inst *inst)
+{
+	return iris_queue_internal_buffers(inst, BUF_DPB);
+}
+
+int iris_destroy_internal_buffer(struct iris_inst *inst,
+				 struct iris_buffer *buffer)
+{
+	struct iris_buffer *buf, *dummy;
+	struct iris_buffers *buffers;
+	struct iris_core *core;
+
+	core = inst->core;
+
+	buffers = iris_get_buffer_list(inst, buffer->type);
+	if (!buffers)
+		return -EINVAL;
+
+	list_for_each_entry_safe(buf, dummy, &buffers->list, list) {
+		if (buf->device_addr == buffer->device_addr) {
+			list_del(&buf->list);
+			dma_free_attrs(core->dev, buf->buffer_size, buf->kvaddr,
+				       buf->device_addr, buf->dma_attrs);
+			buf->kvaddr = NULL;
+			buf->device_addr = 0;
+			iris_return_buffer_to_pool(inst, buf);
+			break;
+		}
+	}
+
+	return 0;
+}
+
+int iris_destroy_internal_buffers(struct iris_inst *inst,
+				  u32 plane)
+{
+	struct iris_buffer *buf, *dummy;
+	struct iris_buffers *buffers;
+	const u32 *internal_buf_type;
+	int ret = 0;
+	u32 i, len;
+
+	if (plane == INPUT_MPLANE) {
+		internal_buf_type = dec_ip_int_buf_type;
+		len = ARRAY_SIZE(dec_ip_int_buf_type);
+	} else {
+		internal_buf_type = dec_op_int_buf_type;
+		len = ARRAY_SIZE(dec_op_int_buf_type);
+	}
+
+	for (i = 0; i < len; i++) {
+		buffers = iris_get_buffer_list(inst, internal_buf_type[i]);
+		if (!buffers)
+			return -EINVAL;
+
+		if (buffers->reuse)
+			continue;
+
+		list_for_each_entry_safe(buf, dummy, &buffers->list, list) {
+			ret = iris_destroy_internal_buffer(inst, buf);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int iris_release_internal_buffers(struct iris_inst *inst,
+					 enum iris_buffer_type buffer_type)
+{
+	struct iris_buffer *buffer, *dummy;
+	struct iris_buffers *buffers;
+	int ret = 0;
+
+	buffers = iris_get_buffer_list(inst, buffer_type);
+	if (!buffers)
+		return -EINVAL;
+
+	if (buffers->reuse)
+		return 0;
+
+	list_for_each_entry_safe(buffer, dummy, &buffers->list, list) {
+		if (buffer->attr & BUF_ATTR_PENDING_RELEASE)
+			continue;
+		if (!(buffer->attr & BUF_ATTR_QUEUED))
+			continue;
+		ret = iris_hfi_release_buffer(inst, buffer);
+		if (ret)
+			return ret;
+		buffer->attr |= BUF_ATTR_PENDING_RELEASE;
+	}
+
+	return ret;
+}
+
+int iris_release_input_internal_buffers(struct iris_inst *inst)
+{
+	int ret = 0;
+	u32 i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+		ret = iris_release_internal_buffers(inst, dec_ip_int_buf_type[i]);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
 }
