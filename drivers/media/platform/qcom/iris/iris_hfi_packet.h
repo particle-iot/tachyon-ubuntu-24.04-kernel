@@ -80,9 +80,16 @@ enum hfi_packet_port_type {
 };
 
 u32 get_hfi_port_from_buffer_type(enum iris_buffer_type buffer_type);
-int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf);
-u32 get_hfi_colorformat(u32 colorformat);
 u32 get_hfi_port(u32 plane);
+
+u32 get_hfi_colorformat(u32 colorformat);
+u32 get_hfi_color_primaries(u32 primaries);
+u32 get_hfi_transer_char(u32 characterstics);
+u32 get_hfi_matrix_coefficients(u32 coefficients);
+u32 get_v4l2_color_primaries(u32 hfi_primaries);
+u32 get_v4l2_transer_char(u32 hfi_characterstics);
+u32 get_v4l2_matrix_coefficients(u32 hfi_coefficients);
+int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf);
 
 int hfi_packet_sys_init(struct iris_core *core,
 			u8 *pkt, u32 pkt_size);
