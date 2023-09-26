@@ -340,7 +340,7 @@ int vdec_subscribe_event(struct iris_inst *inst, const struct v4l2_event_subscri
 	return ret;
 }
 
-int vdec_subscribe_property(struct iris_inst *inst, u32 plane)
+static int vdec_subscribe_property(struct iris_inst *inst, u32 plane)
 {
 	const u32 *subcribe_prop = NULL;
 	u32 subscribe_prop_size = 0;
@@ -597,7 +597,7 @@ static int vdec_set_tier(struct iris_inst *inst)
 				     sizeof(u32));
 }
 
-int vdec_subscribe_src_change_param(struct iris_inst *inst)
+static int vdec_subscribe_src_change_param(struct iris_inst *inst)
 {
 	const u32 *src_change_param;
 	u32 src_change_param_size;
@@ -925,7 +925,7 @@ static int vdec_set_ubwc_stride_scanline(struct iris_inst *inst)
 				     sizeof(u32) * 4);
 }
 
-int vdec_set_output_property(struct iris_inst *inst)
+static int vdec_set_output_property(struct iris_inst *inst)
 {
 	int ret;
 
@@ -940,7 +940,7 @@ int vdec_set_output_property(struct iris_inst *inst)
 	return vdec_set_ubwc_stride_scanline(inst);
 }
 
-int vdec_subscribe_dst_change_param(struct iris_inst *inst)
+static int vdec_subscribe_dst_change_param(struct iris_inst *inst)
 {
 	u32 prop_type, payload_size, payload_type;
 	struct subscription_params subsc_params;
@@ -1060,6 +1060,136 @@ int vdec_subscribe_dst_change_param(struct iris_inst *inst)
 				return ret;
 		}
 	}
+
+	return ret;
+}
+
+static int process_streamon_input(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = iris_hfi_start(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_inst_state_change_streamon(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+int vdec_streamon_input(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = check_session_supported(inst);
+	if (ret)
+		return ret;
+
+	ret = set_v4l2_properties(inst);
+	if (ret)
+		return ret;
+
+	ret = iris_get_internal_buffers(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_destroy_internal_buffers(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_create_input_internal_buffers(inst);
+	if (ret)
+		return ret;
+
+	ret = iris_queue_input_internal_buffers(inst);
+	if (ret)
+		return ret;
+
+	if (!inst->ipsc_properties_set) {
+		ret = vdec_subscribe_src_change_param(inst);
+		if (ret)
+			return ret;
+		inst->ipsc_properties_set = true;
+	}
+
+	ret = vdec_subscribe_property(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = process_streamon_input(inst);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+static int process_streamon_output(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = iris_hfi_start(inst, OUTPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_inst_state_change_streamon(inst, OUTPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+int vdec_streamon_output(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = check_session_supported(inst);
+	if (ret)
+		return ret;
+
+	ret = vdec_set_output_property(inst);
+	if (ret)
+		goto error;
+
+	if (!inst->opsc_properties_set) {
+		memcpy(&inst->dst_subcr_params,
+		       &inst->src_subcr_params,
+		       sizeof(inst->src_subcr_params));
+		ret = vdec_subscribe_dst_change_param(inst);
+		if (ret)
+			goto error;
+		inst->opsc_properties_set = true;
+	}
+
+	ret = vdec_subscribe_property(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_get_internal_buffers(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_destroy_internal_buffers(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_create_output_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	ret = process_streamon_output(inst);
+	if (ret)
+		goto error;
+
+	ret = iris_queue_output_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	return ret;
+
+error:
+	session_streamoff(inst, OUTPUT_MPLANE);
 
 	return ret;
 }
