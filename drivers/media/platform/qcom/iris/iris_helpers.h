@@ -33,6 +33,7 @@ bool is_split_mode_enabled(struct iris_inst *inst);
 int signal_session_msg_receipt(struct iris_inst *inst,
 			       enum signal_session_response cmd);
 struct iris_inst *to_instance(struct iris_core *core, u32 session_id);
+int session_streamoff(struct iris_inst *inst, u32 plane);
 
 u32 v4l2_codec_from_driver(struct iris_inst *inst, enum codec_type codec);
 enum codec_type v4l2_codec_to_driver(struct iris_inst *inst, u32 v4l2_codec);

@@ -81,8 +81,8 @@ enum hfi_packet_port_type {
 
 u32 get_hfi_port_from_buffer_type(enum iris_buffer_type buffer_type);
 u32 get_hfi_port(u32 plane);
-
 u32 get_hfi_colorformat(u32 colorformat);
+u32 get_hfi_codec(struct iris_inst *inst);
 u32 get_hfi_color_primaries(u32 primaries);
 u32 get_hfi_transer_char(u32 characterstics);
 u32 get_hfi_matrix_coefficients(u32 coefficients);
