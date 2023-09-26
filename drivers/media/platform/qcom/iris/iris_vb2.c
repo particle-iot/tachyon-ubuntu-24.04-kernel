@@ -6,9 +6,12 @@
 #include "iris_buffer.h"
 #include "iris_ctrls.h"
 #include "iris_core.h"
+#include "iris_ctrls.h"
 #include "iris_helpers.h"
+#include "iris_hfi.h"
 #include "iris_instance.h"
 #include "iris_vb2.h"
+#include "iris_vdec.h"
 
 int iris_vb2_queue_setup(struct vb2_queue *q,
 			 unsigned int *num_buffers, unsigned int *num_planes,
@@ -88,6 +91,81 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 	q->dev = core->dev;
 
 	return ret;
+}
+
+int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
+{
+	struct iris_inst *inst;
+	int ret = 0;
+
+	if (!q)
+		return -EINVAL;
+
+	inst = vb2_get_drv_priv(q);
+	if (!inst || !inst->core)
+		return -EINVAL;
+
+	if (q->type != INPUT_MPLANE && q->type != OUTPUT_MPLANE) {
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (!inst->once_per_session_set) {
+		inst->once_per_session_set = true;
+		ret = iris_hfi_session_set_codec(inst);
+		if (ret)
+			goto error;
+
+		ret = iris_hfi_session_set_default_header(inst);
+		if (ret)
+			goto error;
+
+		ret = iris_alloc_and_queue_session_int_bufs(inst, BUF_PERSIST);
+		if (ret)
+			goto error;
+	}
+
+	if (q->type == INPUT_MPLANE)
+		ret = vdec_streamon_input(inst);
+	else if (q->type == OUTPUT_MPLANE)
+		ret = vdec_streamon_output(inst);
+	if (ret)
+		goto error;
+
+	return ret;
+error:
+	iris_inst_change_state(inst, IRIS_INST_ERROR);
+
+	return ret;
+}
+
+void iris_vb2_stop_streaming(struct vb2_queue *q)
+{
+	struct iris_inst *inst;
+	int ret = 0;
+
+	if (!q)
+		return;
+
+	inst = vb2_get_drv_priv(q);
+	if (!inst)
+		return;
+
+	if (q->type != INPUT_MPLANE && q->type != OUTPUT_MPLANE)
+		goto error;
+
+	if (q->type == INPUT_MPLANE)
+		ret = session_streamoff(inst, INPUT_MPLANE);
+	else if (q->type == OUTPUT_MPLANE)
+		ret = session_streamoff(inst, OUTPUT_MPLANE);
+
+	if (ret)
+		goto error;
+
+	return;
+
+error:
+	iris_inst_change_state(inst, IRIS_INST_ERROR);
 }
 
 void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
