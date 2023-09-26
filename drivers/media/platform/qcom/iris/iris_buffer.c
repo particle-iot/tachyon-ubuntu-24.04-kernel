@@ -646,3 +646,24 @@ int iris_release_input_internal_buffers(struct iris_inst *inst)
 
 	return ret;
 }
+
+int iris_alloc_and_queue_session_int_bufs(struct iris_inst *inst,
+					  enum iris_buffer_type buffer_type)
+{
+	int ret;
+
+	if (buffer_type != BUF_PERSIST)
+		return -EINVAL;
+
+	ret = iris_get_internal_buf_info(inst, buffer_type);
+	if (ret)
+		return ret;
+
+	ret = iris_create_internal_buffers(inst, buffer_type);
+	if (ret)
+		return ret;
+
+	ret = iris_queue_internal_buffers(inst, buffer_type);
+
+	return ret;
+}
