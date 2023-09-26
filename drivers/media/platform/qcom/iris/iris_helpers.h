@@ -30,6 +30,10 @@ bool is_linear_colorformat(u32 colorformat);
 bool is_10bit_colorformat(enum colorformat_type colorformat);
 bool is_8bit_colorformat(enum colorformat_type colorformat);
 bool is_split_mode_enabled(struct iris_inst *inst);
+int signal_session_msg_receipt(struct iris_inst *inst,
+			       enum signal_session_response cmd);
+struct iris_inst *to_instance(struct iris_core *core, u32 session_id);
+
 u32 v4l2_codec_from_driver(struct iris_inst *inst, enum codec_type codec);
 enum codec_type v4l2_codec_to_driver(struct iris_inst *inst, u32 v4l2_codec);
 u32 v4l2_colorformat_from_driver(struct iris_inst *inst, enum colorformat_type colorformat);
