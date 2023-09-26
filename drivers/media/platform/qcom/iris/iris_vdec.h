@@ -16,5 +16,9 @@ int vdec_s_fmt(struct iris_inst *inst, struct v4l2_format *f);
 int vdec_subscribe_event(struct iris_inst *inst, const struct v4l2_event_subscription *sub);
 int vdec_subscribe_property(struct iris_inst *inst, u32 plane);
 int vdec_set_output_property(struct iris_inst *inst);
+int vdec_init_src_change_param(struct iris_inst *inst);
+int vdec_src_change(struct iris_inst *inst);
+int vdec_subscribe_src_change_param(struct iris_inst *inst);
+int vdec_subscribe_dst_change_param(struct iris_inst *inst);
 
 #endif
