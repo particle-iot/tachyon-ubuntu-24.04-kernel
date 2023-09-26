@@ -7,6 +7,7 @@
 #define _IRIS_STATE_H_
 
 struct iris_core;
+struct iris_inst;
 
 enum iris_core_state {
 	IRIS_CORE_DEINIT,
@@ -15,8 +16,29 @@ enum iris_core_state {
 	IRIS_CORE_ERROR,
 };
 
+enum iris_inst_state {
+	IRIS_INST_OPEN,
+	IRIS_INST_INPUT_STREAMING,
+	IRIS_INST_OUTPUT_STREAMING,
+	IRIS_INST_STREAMING,
+	IRIS_INST_CLOSE,
+	IRIS_INST_ERROR,
+};
+
+enum state_change {
+	STATE_CHANGE_ALLOW,
+	STATE_CHANGE_DISALLOW,
+	STATE_CHANGE_IGNORE,
+};
+
+#define IS_SESSION_ERROR(inst) \
+((inst)->state == IRIS_INST_ERROR)
+
 bool core_in_valid_state(struct iris_core *core);
 int iris_change_core_state(struct iris_core *core,
 			   enum iris_core_state request_state);
+
+int iris_inst_change_state(struct iris_inst *inst,
+			   enum iris_inst_state request_state);
 
 #endif

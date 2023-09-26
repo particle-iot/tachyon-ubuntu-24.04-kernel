@@ -34,6 +34,9 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 	else
 		f = inst->fmt_dst;
 
+	if (inst->state == IRIS_INST_STREAMING)
+		return -EINVAL;
+
 	if (*num_planes) {
 		if (*num_planes != f->fmt.pix_mp.num_planes ||
 		    sizes[0] < f->fmt.pix_mp.plane_fmt[0].sizeimage)
