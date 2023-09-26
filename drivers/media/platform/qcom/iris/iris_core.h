@@ -58,6 +58,7 @@
  * @intr_status: interrupt status
  * @spur_count: counter for spurious interrupt
  * @reg_count: counter for interrupts
+ * @fw_version: firmware version
  */
 
 struct iris_core {
@@ -101,6 +102,7 @@ struct iris_core {
 	u32					intr_status;
 	u32					spur_count;
 	u32					reg_count;
+	char					fw_version[IRIS_VERSION_LENGTH];
 };
 
 int iris_core_init(struct iris_core *core);
