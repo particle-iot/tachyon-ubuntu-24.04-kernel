@@ -169,6 +169,7 @@ int vidc_open(struct file *filp)
 
 	inst->core = core;
 	inst->session_id = hash32_ptr(inst);
+	iris_inst_change_state(inst, IRIS_INST_OPEN);
 	mutex_init(&inst->ctx_q_lock);
 
 	ret = vidc_add_session(inst);
@@ -254,6 +255,7 @@ int vidc_close(struct file *filp)
 	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	vdec_inst_deinit(inst);
 	close_session(inst);
+	iris_inst_change_state(inst, IRIS_INST_CLOSE);
 	vidc_vb2_queue_deinit(inst);
 	vidc_v4l2_fh_deinit(inst);
 	vidc_remove_session(inst);
@@ -303,6 +305,9 @@ static __poll_t vidc_poll(struct file *filp, struct poll_table_struct *pt)
 
 	inst = get_vidc_inst(filp, NULL);
 	if (!inst)
+		return EPOLLERR;
+
+	if (IS_SESSION_ERROR(inst))
 		return EPOLLERR;
 
 	poll_wait(filp, &inst->fh.wait, pt);
