@@ -193,3 +193,41 @@ bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id)
 		(inst->state == IRIS_INST_INPUT_STREAMING ||
 		inst->state == IRIS_INST_STREAMING)));
 }
+
+int iris_inst_state_change_streamon(struct iris_inst *inst, u32 plane)
+{
+	enum iris_inst_state new_state = IRIS_INST_ERROR;
+
+	if (plane == INPUT_MPLANE) {
+		if (inst->state == IRIS_INST_OPEN)
+			new_state = IRIS_INST_INPUT_STREAMING;
+		else if (inst->state == IRIS_INST_OUTPUT_STREAMING)
+			new_state = IRIS_INST_STREAMING;
+	} else if (plane == OUTPUT_MPLANE) {
+		if (inst->state == IRIS_INST_OPEN)
+			new_state = IRIS_INST_OUTPUT_STREAMING;
+		else if (inst->state == IRIS_INST_INPUT_STREAMING)
+			new_state = IRIS_INST_STREAMING;
+	}
+
+	return iris_inst_change_state(inst, new_state);
+}
+
+int iris_inst_state_change_streamoff(struct iris_inst *inst, u32 plane)
+{
+	enum iris_inst_state new_state = IRIS_INST_ERROR;
+
+	if (plane == INPUT_MPLANE) {
+		if (inst->state == IRIS_INST_INPUT_STREAMING)
+			new_state = IRIS_INST_OPEN;
+		else if (inst->state == IRIS_INST_STREAMING)
+			new_state = IRIS_INST_OUTPUT_STREAMING;
+	} else if (plane == OUTPUT_MPLANE) {
+		if (inst->state == IRIS_INST_OUTPUT_STREAMING)
+			new_state = IRIS_INST_OPEN;
+		else if (inst->state == IRIS_INST_STREAMING)
+			new_state = IRIS_INST_INPUT_STREAMING;
+	}
+
+	return iris_inst_change_state(inst, new_state);
+}
