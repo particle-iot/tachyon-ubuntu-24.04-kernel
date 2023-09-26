@@ -8,7 +8,6 @@
 #include <media/v4l2-dev.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-event.h>
-#include <media/v4l2-ioctl.h>
 #include <media/videobuf2-v4l2.h>
 
 struct iris_inst;
@@ -18,12 +17,16 @@ struct iris_inst;
 #define DEFAULT_WIDTH 320
 #define DEFAULT_HEIGHT 240
 #define DEFAULT_BSE_VPP_DELAY    2
+#define IRIS_VERSION_LENGTH   128
 
 #define MAX_EVENTS   30
 
 #define MB_IN_PIXEL (16 * 16)
 
 #define NUM_MBS_4k (((4096 + 15) >> 4) * ((2304 + 15) >> 4))
+
+#define MAX_DPB_LIST_ARRAY_SIZE (16 * 4)
+#define MAX_DPB_LIST_PAYLOAD_SIZE (16 * 4 * 4)
 
 enum codec_type {
 	H264	= BIT(0),
@@ -95,6 +98,26 @@ struct iris_buffer {
 	void				*dmabuf;
 	struct sg_table			*sg_table;
 	struct dma_buf_attachment	*attach;
+};
+
+struct subscription_params {
+	u32	bitstream_resolution;
+	u32	crop_offsets[2];
+	u32	bit_depth;
+	u32	coded_frames;
+	u32	fw_min_count;
+	u32	pic_order_cnt;
+	u32	color_info;
+	u32	profile;
+	u32	level;
+	u32	tier;
+};
+
+struct iris_hfi_frame_info {
+	u32	picture_type;
+	u32	no_output;
+	u32	data_corrupt;
+	u32	overflow;
 };
 
 #endif
