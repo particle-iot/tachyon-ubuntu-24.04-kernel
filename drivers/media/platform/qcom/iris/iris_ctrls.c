@@ -113,6 +113,20 @@ static int adjust_cap(struct iris_inst *inst,
 	return cap->adjust(inst, ctrl);
 }
 
+static int set_cap(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
+{
+	struct plat_inst_cap *cap;
+
+	cap = &inst->cap[cap_id];
+	if (!inst->cap[cap_id].cap_id)
+		return 0;
+
+	if (!cap->set)
+		return 0;
+
+	return cap->set(inst, cap_id);
+}
+
 static int adjust_dynamic_property(struct iris_inst *inst,
 				   enum plat_inst_cap_type cap_id,
 				   struct v4l2_ctrl *ctrl,
@@ -655,6 +669,20 @@ int set_pipe(struct iris_inst *inst,
 				     get_port_info(inst, cap_id),
 				     HFI_PAYLOAD_U32,
 				     &work_route, sizeof(u32));
+}
+
+int set_v4l2_properties(struct iris_inst *inst)
+{
+	struct cap_entry *entry = NULL, *temp = NULL;
+	int ret = 0;
+
+	list_for_each_entry_safe(entry, temp, &inst->caps_list, list) {
+		ret = set_cap(inst, entry->cap_id);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
 }
 
 int adjust_v4l2_properties(struct iris_inst *inst)

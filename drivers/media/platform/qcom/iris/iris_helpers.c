@@ -9,6 +9,7 @@
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
 #include "iris_instance.h"
+#include "iris_vidc.h"
 
 int check_core_lock(struct iris_core *core)
 {
@@ -376,4 +377,54 @@ struct iris_inst *to_instance(struct iris_core *core, u32 session_id)
 	mutex_unlock(&core->lock);
 
 	return NULL;
+}
+
+static int kill_session(struct iris_inst *inst)
+{
+	if (!inst->session_id)
+		return 0;
+
+	close_session(inst);
+	iris_inst_change_state(inst, IRIS_INST_ERROR);
+
+	return 0;
+}
+
+int session_streamoff(struct iris_inst *inst, u32 plane)
+{
+	enum signal_session_response signal_type;
+	u32 hw_response_timeout_val;
+	struct iris_core *core;
+	int ret;
+
+	ret = iris_hfi_stop(inst, plane);
+	if (ret)
+		goto error;
+
+	core = inst->core;
+	hw_response_timeout_val = core->cap[HW_RESPONSE_TIMEOUT].value;
+	mutex_unlock(&inst->lock);
+	ret = wait_for_completion_timeout(&inst->completions[signal_type],
+					  msecs_to_jiffies(hw_response_timeout_val));
+	if (!ret) {
+		ret = -ETIMEDOUT;
+		process_inst_timeout(inst);
+	} else {
+		ret = 0;
+	}
+	mutex_lock(&inst->lock);
+
+	if (ret)
+		goto error;
+
+	ret = iris_inst_state_change_streamoff(inst, plane);
+	if (ret)
+		goto error;
+
+	return 0;
+
+error:
+	kill_session(inst);
+
+	return ret;
 }

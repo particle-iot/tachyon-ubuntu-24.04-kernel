@@ -76,6 +76,20 @@ static u32 hfi_buf_type_from_driver(enum iris_buffer_type buffer_type)
 	}
 }
 
+u32 get_hfi_codec(struct iris_inst *inst)
+{
+	switch (inst->codec) {
+	case H264:
+		return HFI_CODEC_DECODE_AVC;
+	case HEVC:
+		return HFI_CODEC_DECODE_HEVC;
+	case VP9:
+		return HFI_CODEC_DECODE_VP9;
+	default:
+		return 0;
+	}
+}
+
 u32 get_hfi_colorformat(u32 colorformat)
 {
 	u32 hfi_colorformat = HFI_COLOR_FMT_NV12_UBWC;
