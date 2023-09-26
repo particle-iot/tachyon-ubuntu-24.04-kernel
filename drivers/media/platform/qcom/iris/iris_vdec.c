@@ -14,6 +14,13 @@
 #include "iris_hfi_packet.h"
 #include "iris_vdec.h"
 
+#define UNSPECIFIED_COLOR_FORMAT 5
+
+struct vdec_prop_type_handle {
+	u32 type;
+	int (*handle)(struct iris_inst *inst);
+};
+
 static int vdec_codec_change(struct iris_inst *inst, u32 v4l2_codec)
 {
 	bool session_init = false;
@@ -376,6 +383,455 @@ int vdec_subscribe_property(struct iris_inst *inst, u32 plane)
 					(subscribe_prop_size + 1) * sizeof(u32));
 }
 
+static int vdec_set_bitstream_resolution(struct iris_inst *inst)
+{
+	u32 resolution;
+
+	resolution = inst->fmt_src->fmt.pix_mp.width << 16 |
+		inst->fmt_src->fmt.pix_mp.height;
+	inst->src_subcr_params.bitstream_resolution = resolution;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_BITSTREAM_RESOLUTION,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_U32,
+					&resolution,
+					sizeof(u32));
+}
+
+static int vdec_set_crop_offsets(struct iris_inst *inst)
+{
+	u32 left_offset, top_offset, right_offset, bottom_offset;
+	u32 payload[2] = {0};
+
+	left_offset = inst->crop.left;
+	top_offset = inst->crop.top;
+	right_offset = (inst->fmt_src->fmt.pix_mp.width -
+		inst->crop.width);
+	bottom_offset = (inst->fmt_src->fmt.pix_mp.height -
+		inst->crop.height);
+
+	payload[0] = left_offset << 16 | top_offset;
+	payload[1] = right_offset << 16 | bottom_offset;
+	inst->src_subcr_params.crop_offsets[0] = payload[0];
+	inst->src_subcr_params.crop_offsets[1] = payload[1];
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_CROP_OFFSETS,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_64_PACKED,
+					&payload,
+					sizeof(u64));
+}
+
+static int vdec_set_bit_depth(struct iris_inst *inst)
+{
+	u32 bitdepth = 8 << 16 | 8;
+	u32 pix_fmt;
+
+	pix_fmt = inst->fmt_dst->fmt.pix_mp.pixelformat;
+	if (is_10bit_colorformat(pix_fmt))
+		bitdepth = 10 << 16 | 10;
+
+	inst->src_subcr_params.bit_depth = bitdepth;
+	inst->cap[BIT_DEPTH].value = bitdepth;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_LUMA_CHROMA_BIT_DEPTH,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_U32,
+					&bitdepth,
+					sizeof(u32));
+}
+
+static int vdec_set_coded_frames(struct iris_inst *inst)
+{
+	u32 coded_frames = 0;
+
+	if (inst->cap[CODED_FRAMES].value == CODED_FRAMES_PROGRESSIVE)
+		coded_frames = HFI_BITMASK_FRAME_MBS_ONLY_FLAG;
+	inst->src_subcr_params.coded_frames = coded_frames;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_CODED_FRAMES,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_U32,
+					&coded_frames,
+					sizeof(u32));
+}
+
+static int vdec_set_min_output_count(struct iris_inst *inst)
+{
+	u32 min_output;
+
+	min_output = inst->buffers.output.min_count;
+	inst->src_subcr_params.fw_min_count = min_output;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_U32,
+					&min_output,
+					sizeof(u32));
+}
+
+static int vdec_set_picture_order_count(struct iris_inst *inst)
+{
+	u32 poc = 0;
+
+	inst->src_subcr_params.pic_order_cnt = poc;
+
+	return iris_hfi_set_property(inst,
+					HFI_PROP_PIC_ORDER_CNT_TYPE,
+					HFI_HOST_FLAGS_NONE,
+					get_hfi_port(INPUT_MPLANE),
+					HFI_PAYLOAD_U32,
+					&poc,
+					sizeof(u32));
+}
+
+static int vdec_set_colorspace(struct iris_inst *inst)
+{
+	u32 video_signal_type_present_flag = 0, color_info = 0;
+	u32 matrix_coeff = HFI_MATRIX_COEFF_RESERVED;
+	u32 video_format = UNSPECIFIED_COLOR_FORMAT;
+	struct v4l2_pix_format_mplane *pixmp = NULL;
+	u32 full_range = V4L2_QUANTIZATION_DEFAULT;
+	u32 transfer_char = HFI_TRANSFER_RESERVED;
+	u32 colour_description_present_flag = 0;
+	u32 primaries = HFI_PRIMARIES_RESERVED;
+
+	int ret;
+
+	if (inst->codec == VP9)
+		return 0;
+
+	pixmp = &inst->fmt_src->fmt.pix_mp;
+	if (pixmp->colorspace != V4L2_COLORSPACE_DEFAULT ||
+	    pixmp->ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT ||
+	    pixmp->xfer_func != V4L2_XFER_FUNC_DEFAULT) {
+		colour_description_present_flag = 1;
+		video_signal_type_present_flag = 1;
+		primaries = get_hfi_color_primaries(pixmp->colorspace);
+		matrix_coeff = get_hfi_matrix_coefficients(pixmp->ycbcr_enc);
+		transfer_char = get_hfi_transer_char(pixmp->xfer_func);
+	}
+
+	if (pixmp->quantization != V4L2_QUANTIZATION_DEFAULT) {
+		video_signal_type_present_flag = 1;
+		full_range = pixmp->quantization ==
+			V4L2_QUANTIZATION_FULL_RANGE ? 1 : 0;
+	}
+
+	color_info = (matrix_coeff & 0xFF) |
+		((transfer_char << 8) & 0xFF00) |
+		((primaries << 16) & 0xFF0000) |
+		((colour_description_present_flag << 24) & 0x1000000) |
+		((full_range << 25) & 0x2000000) |
+		((video_format << 26) & 0x1C000000) |
+		((video_signal_type_present_flag << 29) & 0x20000000);
+
+	inst->src_subcr_params.color_info = color_info;
+
+	ret = iris_hfi_set_property(inst,
+				    HFI_PROP_SIGNAL_COLOR_INFO,
+				    HFI_HOST_FLAGS_NONE,
+				    get_hfi_port(INPUT_MPLANE),
+				    HFI_PAYLOAD_32_PACKED,
+				    &color_info,
+				    sizeof(u32));
+
+	return ret;
+}
+
+static int vdec_set_profile(struct iris_inst *inst)
+{
+	u32 profile;
+
+	profile = inst->cap[PROFILE].value;
+	inst->src_subcr_params.profile = profile;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_PROFILE,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(INPUT_MPLANE),
+				     HFI_PAYLOAD_U32_ENUM,
+				     &profile,
+				     sizeof(u32));
+}
+
+static int vdec_set_level(struct iris_inst *inst)
+{
+	u32 level;
+
+	level = inst->cap[LEVEL].value;
+	inst->src_subcr_params.level = level;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_LEVEL,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(INPUT_MPLANE),
+				     HFI_PAYLOAD_U32_ENUM,
+				     &level,
+				     sizeof(u32));
+}
+
+static int vdec_set_tier(struct iris_inst *inst)
+{
+	u32 tier;
+
+	tier = inst->cap[HEVC_TIER].value;
+	inst->src_subcr_params.tier = tier;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_TIER,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(INPUT_MPLANE),
+				     HFI_PAYLOAD_U32_ENUM,
+				     &tier,
+				     sizeof(u32));
+}
+
+int vdec_subscribe_src_change_param(struct iris_inst *inst)
+{
+	const u32 *src_change_param;
+	u32 src_change_param_size;
+	struct iris_core *core;
+	u32 payload[32] = {0};
+	int ret;
+	u32 i, j;
+
+	static const struct vdec_prop_type_handle prop_type_handle_arr[] = {
+		{HFI_PROP_BITSTREAM_RESOLUTION,          vdec_set_bitstream_resolution   },
+		{HFI_PROP_CROP_OFFSETS,                  vdec_set_crop_offsets           },
+		{HFI_PROP_LUMA_CHROMA_BIT_DEPTH,         vdec_set_bit_depth              },
+		{HFI_PROP_CODED_FRAMES,                  vdec_set_coded_frames           },
+		{HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,    vdec_set_min_output_count       },
+		{HFI_PROP_PIC_ORDER_CNT_TYPE,            vdec_set_picture_order_count    },
+		{HFI_PROP_SIGNAL_COLOR_INFO,             vdec_set_colorspace             },
+		{HFI_PROP_PROFILE,                       vdec_set_profile                },
+		{HFI_PROP_LEVEL,                         vdec_set_level                  },
+		{HFI_PROP_TIER,                          vdec_set_tier                   },
+	};
+
+	core = inst->core;
+
+	payload[0] = HFI_MODE_PORT_SETTINGS_CHANGE;
+	if (inst->codec == H264) {
+		src_change_param_size = core->platform_data->avc_subscribe_param_size;
+		src_change_param = core->platform_data->avc_subscribe_param;
+	} else if (inst->codec == HEVC) {
+		src_change_param_size = core->platform_data->hevc_subscribe_param_size;
+		src_change_param = core->platform_data->hevc_subscribe_param;
+	} else if (inst->codec == VP9) {
+		src_change_param_size = core->platform_data->vp9_subscribe_param_size;
+		src_change_param = core->platform_data->vp9_subscribe_param;
+	} else {
+		src_change_param = NULL;
+		return -EINVAL;
+	}
+
+	if (!src_change_param || !src_change_param_size)
+		return -EINVAL;
+
+	for (i = 0; i < src_change_param_size; i++)
+		payload[i + 1] = src_change_param[i];
+
+	ret = iris_hfi_session_subscribe_mode(inst,
+					      HFI_CMD_SUBSCRIBE_MODE,
+					      INPUT_MPLANE,
+					      HFI_PAYLOAD_U32_ARRAY,
+					      &payload[0],
+					      ((src_change_param_size + 1) * sizeof(u32)));
+	if (ret)
+		return ret;
+
+	for (i = 0; i < src_change_param_size; i++) {
+		for (j = 0; j < ARRAY_SIZE(prop_type_handle_arr); j++) {
+			if (prop_type_handle_arr[j].type == src_change_param[i]) {
+				ret = prop_type_handle_arr[j].handle(inst);
+				if (ret)
+					return ret;
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
+int vdec_init_src_change_param(struct iris_inst *inst)
+{
+	u32 left_offset, top_offset, right_offset, bottom_offset;
+	struct v4l2_pix_format_mplane *pixmp_ip, *pixmp_op;
+	u32 primaries, matrix_coeff, transfer_char;
+	struct subscription_params *subsc_params;
+	u32 colour_description_present_flag = 0;
+	u32 video_signal_type_present_flag = 0;
+	u32 full_range = 0, video_format = 0;
+
+	subsc_params = &inst->src_subcr_params;
+	pixmp_ip = &inst->fmt_src->fmt.pix_mp;
+	pixmp_op = &inst->fmt_dst->fmt.pix_mp;
+
+	subsc_params->bitstream_resolution =
+		pixmp_ip->width << 16 | pixmp_ip->height;
+
+	left_offset = inst->crop.left;
+	top_offset = inst->crop.top;
+	right_offset = (pixmp_ip->width - inst->crop.width);
+	bottom_offset = (pixmp_ip->height - inst->crop.height);
+	subsc_params->crop_offsets[0] =
+			left_offset << 16 | top_offset;
+	subsc_params->crop_offsets[1] =
+			right_offset << 16 | bottom_offset;
+
+	subsc_params->fw_min_count = inst->buffers.output.min_count;
+
+	primaries = get_hfi_color_primaries(pixmp_op->colorspace);
+	matrix_coeff = get_hfi_matrix_coefficients(pixmp_op->ycbcr_enc);
+	transfer_char = get_hfi_transer_char(pixmp_op->xfer_func);
+	full_range = pixmp_op->quantization == V4L2_QUANTIZATION_FULL_RANGE ? 1 : 0;
+	subsc_params->color_info =
+		(matrix_coeff & 0xFF) |
+		((transfer_char << 8) & 0xFF00) |
+		((primaries << 16) & 0xFF0000) |
+		((colour_description_present_flag << 24) & 0x1000000) |
+		((full_range << 25) & 0x2000000) |
+		((video_format << 26) & 0x1C000000) |
+		((video_signal_type_present_flag << 29) & 0x20000000);
+
+	subsc_params->profile = inst->cap[PROFILE].value;
+	subsc_params->level = inst->cap[LEVEL].value;
+	subsc_params->tier = inst->cap[HEVC_TIER].value;
+	subsc_params->pic_order_cnt = inst->cap[POC].value;
+	subsc_params->bit_depth = inst->cap[BIT_DEPTH].value;
+	if (inst->cap[CODED_FRAMES].value ==
+			CODED_FRAMES_PROGRESSIVE)
+		subsc_params->coded_frames = HFI_BITMASK_FRAME_MBS_ONLY_FLAG;
+	else
+		subsc_params->coded_frames = 0;
+
+	return 0;
+}
+
+static int vdec_read_input_subcr_params(struct iris_inst *inst)
+{
+	struct v4l2_pix_format_mplane *pixmp_ip, *pixmp_op;
+	u32 primaries, matrix_coeff, transfer_char;
+	struct subscription_params subsc_params;
+	u32 colour_description_present_flag = 0;
+	u32 video_signal_type_present_flag = 0;
+	u32 full_range = 0;
+	u32 width, height;
+
+	subsc_params = inst->src_subcr_params;
+	pixmp_ip = &inst->fmt_src->fmt.pix_mp;
+	pixmp_op = &inst->fmt_dst->fmt.pix_mp;
+	width = (subsc_params.bitstream_resolution &
+		HFI_BITMASK_BITSTREAM_WIDTH) >> 16;
+	height = subsc_params.bitstream_resolution &
+		HFI_BITMASK_BITSTREAM_HEIGHT;
+
+	pixmp_ip->width = width;
+	pixmp_ip->height = height;
+
+	pixmp_op->width = pixmp_op->pixelformat == V4L2_PIX_FMT_QC10C ?
+		ALIGN(width, 192) : ALIGN(width, 128);
+	pixmp_op->height = pixmp_op->pixelformat == V4L2_PIX_FMT_QC10C ?
+		ALIGN(height, 16) : ALIGN(height, 32);
+	pixmp_op->plane_fmt[0].bytesperline =
+		pixmp_op->pixelformat == V4L2_PIX_FMT_QC10C ?
+		ALIGN(ALIGN(width, 192) * 4 / 3, 256) :
+		ALIGN(width, 128);
+	pixmp_op->plane_fmt[0].sizeimage = iris_get_buffer_size(inst, BUF_OUTPUT);
+
+	matrix_coeff = subsc_params.color_info & 0xFF;
+	transfer_char = (subsc_params.color_info & 0xFF00) >> 8;
+	primaries = (subsc_params.color_info & 0xFF0000) >> 16;
+	colour_description_present_flag =
+		(subsc_params.color_info & 0x1000000) >> 24;
+	full_range = (subsc_params.color_info & 0x2000000) >> 25;
+	video_signal_type_present_flag =
+		(subsc_params.color_info & 0x20000000) >> 29;
+
+	pixmp_op->colorspace = V4L2_COLORSPACE_DEFAULT;
+	pixmp_op->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+	pixmp_op->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	pixmp_op->quantization = V4L2_QUANTIZATION_DEFAULT;
+
+	if (video_signal_type_present_flag) {
+		pixmp_op->quantization =
+			full_range ?
+			V4L2_QUANTIZATION_FULL_RANGE :
+			V4L2_QUANTIZATION_LIM_RANGE;
+		if (colour_description_present_flag) {
+			pixmp_op->colorspace =
+				get_v4l2_color_primaries(primaries);
+			pixmp_op->xfer_func =
+				get_v4l2_transer_char(transfer_char);
+			pixmp_op->ycbcr_enc =
+				get_v4l2_matrix_coefficients(matrix_coeff);
+		}
+	}
+
+	pixmp_ip->colorspace = pixmp_op->colorspace;
+	pixmp_ip->xfer_func = pixmp_op->xfer_func;
+	pixmp_ip->ycbcr_enc = pixmp_op->ycbcr_enc;
+	pixmp_ip->quantization = pixmp_op->quantization;
+
+	inst->crop.top = subsc_params.crop_offsets[0] & 0xFFFF;
+	inst->crop.left = (subsc_params.crop_offsets[0] >> 16) & 0xFFFF;
+	inst->crop.height = pixmp_ip->height -
+		(subsc_params.crop_offsets[1] & 0xFFFF) - inst->crop.top;
+	inst->crop.width = pixmp_ip->width -
+		((subsc_params.crop_offsets[1] >> 16) & 0xFFFF) - inst->crop.left;
+
+	inst->cap[PROFILE].value = subsc_params.profile;
+	inst->cap[LEVEL].value = subsc_params.level;
+	inst->cap[HEVC_TIER].value = subsc_params.tier;
+	inst->cap[POC].value = subsc_params.pic_order_cnt;
+
+	if (subsc_params.bit_depth == BIT_DEPTH_8)
+		inst->cap[BIT_DEPTH].value = BIT_DEPTH_8;
+	else
+		inst->cap[BIT_DEPTH].value = BIT_DEPTH_10;
+
+	if (subsc_params.coded_frames & HFI_BITMASK_FRAME_MBS_ONLY_FLAG)
+		inst->cap[CODED_FRAMES].value = CODED_FRAMES_PROGRESSIVE;
+	else
+		inst->cap[CODED_FRAMES].value = CODED_FRAMES_INTERLACE;
+
+	inst->fw_min_count = subsc_params.fw_min_count;
+	inst->buffers.output.min_count = iris_get_buf_min_count(inst, BUF_OUTPUT);
+
+	return 0;
+}
+
+int vdec_src_change(struct iris_inst *inst)
+{
+	struct v4l2_event event = {0};
+	u32 ret;
+
+	if (!inst->vb2q_src->streaming)
+		return 0;
+
+	ret = vdec_read_input_subcr_params(inst);
+	if (ret)
+		return ret;
+
+	event.type = V4L2_EVENT_SOURCE_CHANGE;
+	event.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION;
+	v4l2_event_queue_fh(&inst->fh, &event);
+
+	return ret;
+}
+
 static int vdec_set_colorformat(struct iris_inst *inst)
 {
 	u32 hfi_colorformat;
@@ -482,4 +938,128 @@ int vdec_set_output_property(struct iris_inst *inst)
 		return ret;
 
 	return vdec_set_ubwc_stride_scanline(inst);
+}
+
+int vdec_subscribe_dst_change_param(struct iris_inst *inst)
+{
+	u32 prop_type, payload_size, payload_type;
+	struct subscription_params subsc_params;
+	const u32 *dst_change_param = NULL;
+	u32 dst_change_param_size = 0;
+	struct iris_core *core;
+	u32 payload[32] = {0};
+	int ret;
+	u32 i;
+
+	core = inst->core;
+
+	payload[0] = HFI_MODE_PORT_SETTINGS_CHANGE;
+	if (inst->codec == H264) {
+		dst_change_param_size = core->platform_data->avc_subscribe_param_size;
+		dst_change_param = core->platform_data->avc_subscribe_param;
+	} else if (inst->codec == HEVC) {
+		dst_change_param_size = core->platform_data->hevc_subscribe_param_size;
+		dst_change_param = core->platform_data->hevc_subscribe_param;
+	} else if (inst->codec == VP9) {
+		dst_change_param_size = core->platform_data->vp9_subscribe_param_size;
+		dst_change_param = core->platform_data->vp9_subscribe_param;
+	} else {
+		dst_change_param = NULL;
+		return -EINVAL;
+	}
+
+	if (!dst_change_param || !dst_change_param_size)
+		return -EINVAL;
+
+	payload[0] = HFI_MODE_PORT_SETTINGS_CHANGE;
+	for (i = 0; i < dst_change_param_size; i++)
+		payload[i + 1] = dst_change_param[i];
+
+	ret = iris_hfi_session_subscribe_mode(inst,
+					      HFI_CMD_SUBSCRIBE_MODE,
+					      OUTPUT_MPLANE,
+					      HFI_PAYLOAD_U32_ARRAY,
+					      &payload[0],
+					      ((dst_change_param_size + 1) * sizeof(u32)));
+	if (ret)
+		return ret;
+
+	subsc_params = inst->dst_subcr_params;
+	for (i = 0; i < dst_change_param_size; i++) {
+		payload[0] = 0;
+		payload[1] = 0;
+		payload_size = 0;
+		payload_type = 0;
+		prop_type = dst_change_param[i];
+		switch (prop_type) {
+		case HFI_PROP_BITSTREAM_RESOLUTION:
+			payload[0] = subsc_params.bitstream_resolution;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_CROP_OFFSETS:
+			payload[0] = subsc_params.crop_offsets[0];
+			payload[1] = subsc_params.crop_offsets[1];
+			payload_size = sizeof(u64);
+			payload_type = HFI_PAYLOAD_64_PACKED;
+			break;
+		case HFI_PROP_LUMA_CHROMA_BIT_DEPTH:
+			payload[0] = subsc_params.bit_depth;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_CODED_FRAMES:
+			payload[0] = subsc_params.coded_frames;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT:
+			payload[0] = subsc_params.fw_min_count;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_PIC_ORDER_CNT_TYPE:
+			payload[0] = subsc_params.pic_order_cnt;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_SIGNAL_COLOR_INFO:
+			payload[0] = subsc_params.color_info;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_PROFILE:
+			payload[0] = subsc_params.profile;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_LEVEL:
+			payload[0] = subsc_params.level;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		case HFI_PROP_TIER:
+			payload[0] = subsc_params.tier;
+			payload_size = sizeof(u32);
+			payload_type = HFI_PAYLOAD_U32;
+			break;
+		default:
+			prop_type = 0;
+			ret = -EINVAL;
+			break;
+		}
+		if (prop_type) {
+			ret = iris_hfi_set_property(inst,
+						    prop_type,
+						    HFI_HOST_FLAGS_NONE,
+						    get_hfi_port(OUTPUT_MPLANE),
+						    payload_type,
+						    &payload,
+						    payload_size);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return ret;
 }
