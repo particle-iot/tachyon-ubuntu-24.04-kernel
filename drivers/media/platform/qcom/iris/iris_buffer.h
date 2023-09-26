@@ -59,4 +59,7 @@ int iris_destroy_internal_buffers(struct iris_inst *inst,
 				  u32 plane);
 int iris_release_input_internal_buffers(struct iris_inst *inst);
 
+int iris_alloc_and_queue_session_int_bufs(struct iris_inst *inst,
+					  enum iris_buffer_type buffer_type);
+
 #endif
