@@ -14,6 +14,8 @@
 #define HFI_CMD_INIT				0x01000001
 #define HFI_CMD_OPEN				0x01000003
 #define HFI_CMD_CLOSE				0x01000004
+#define HFI_CMD_START				0x01000005
+#define HFI_CMD_STOP				0x01000006
 #define HFI_CMD_BUFFER				0x01000009
 
 #define HFI_PROP_IMAGE_VERSION			0x03000001
@@ -44,6 +46,16 @@ enum hfi_property_mode_type {
 #define HFI_PROP_BEGIN				0x03000000
 
 #define HFI_PROP_IMAGE_VERSION			0x03000001
+
+enum hfi_codec_type {
+	HFI_CODEC_DECODE_AVC	= 1,
+	HFI_CODEC_ENCODE_AVC	= 2,
+	HFI_CODEC_DECODE_HEVC	= 3,
+	HFI_CODEC_ENCODE_HEVC	= 4,
+	HFI_CODEC_DECODE_VP9	= 5,
+};
+
+#define HFI_PROP_CODEC				0x03000100
 
 enum hfi_color_format {
 	HFI_COLOR_FMT_OPAQUE        = 0,
