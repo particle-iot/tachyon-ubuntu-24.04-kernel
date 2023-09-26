@@ -203,6 +203,12 @@ struct platform_data {
 	u32 core_data_size;
 	struct plat_inst_cap *inst_cap_data;
 	u32 inst_cap_data_size;
+	const u32 *avc_subscribe_param;
+	unsigned int avc_subscribe_param_size;
+	const u32 *hevc_subscribe_param;
+	unsigned int hevc_subscribe_param_size;
+	const u32 *vp9_subscribe_param;
+	unsigned int vp9_subscribe_param_size;
 	const u32 *dec_input_prop;
 	unsigned int dec_input_prop_size;
 	const u32 *dec_output_prop_avc;
