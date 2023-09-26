@@ -41,6 +41,10 @@
  * @fw_min_count: minimnum count of buffers needed by fw
  * @state: instance state
  * @ipsc_properties_set: boolean to set ipsc properties to fw
+ * @hfi_frame_info: structure of frame info
+ * @src_subcr_params: subscription params to fw on input port
+ * @dst_subcr_params: subscription params to fw on output port
+ * @dpb_list_payload: array of dpb buffers
  */
 
 struct iris_inst {
@@ -68,6 +72,10 @@ struct iris_inst {
 	u32				fw_min_count;
 	enum iris_inst_state		state;
 	bool				ipsc_properties_set;
+	struct iris_hfi_frame_info	hfi_frame_info;
+	struct subscription_params	src_subcr_params;
+	struct subscription_params	dst_subcr_params;
+	u32				dpb_list_payload[MAX_DPB_LIST_ARRAY_SIZE];
 };
 
 #endif
