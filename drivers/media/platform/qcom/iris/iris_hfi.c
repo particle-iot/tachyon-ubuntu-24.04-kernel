@@ -157,6 +157,194 @@ fail_free_packet:
 	return ret;
 }
 
+int iris_hfi_session_close(struct iris_inst *inst)
+{
+	struct iris_core *core;
+	int ret;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_CLOSE,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED |
+					 HFI_HOST_FLAGS_NON_DISCARDABLE),
+					 HFI_PORT_NONE,
+					 inst->session_id,
+					 HFI_PAYLOAD_NONE,
+					 NULL,
+					 0);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_session_set_codec(struct iris_inst *inst)
+{
+	struct iris_core *core;
+	int ret;
+	u32 codec;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	codec = get_hfi_codec(inst);
+	ret = hfi_packet_session_property(inst,
+					  HFI_PROP_CODEC,
+					  HFI_HOST_FLAGS_NONE,
+					  HFI_PORT_NONE,
+					  HFI_PAYLOAD_U32_ENUM,
+					  &codec,
+					  sizeof(u32));
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_session_set_default_header(struct iris_inst *inst)
+{
+	struct iris_core *core;
+	u32 default_header = false;
+	int ret;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	default_header = inst->cap[DEFAULT_HEADER].value;
+	ret = hfi_packet_session_property(inst,
+					  HFI_PROP_DEC_DEFAULT_HEADER,
+					  HFI_HOST_FLAGS_NONE,
+					  get_hfi_port(INPUT_MPLANE),
+					  HFI_PAYLOAD_U32,
+					  &default_header,
+					  sizeof(u32));
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_start(struct iris_inst *inst, u32 plane)
+{
+	struct iris_core *core;
+	int ret = 0;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (plane != INPUT_MPLANE && plane != OUTPUT_MPLANE)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_START,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 HFI_PAYLOAD_NONE,
+					 NULL,
+					 0);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_stop(struct iris_inst *inst, u32 plane)
+{
+	struct iris_core *core;
+	int ret = 0;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (plane != INPUT_MPLANE && plane != OUTPUT_MPLANE)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_STOP,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED |
+					 HFI_HOST_FLAGS_NON_DISCARDABLE),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 HFI_PAYLOAD_NONE,
+					 NULL,
+					 0);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
 int iris_hfi_session_subscribe_mode(struct iris_inst *inst,
 				    u32 cmd, u32 plane, u32 payload_type,
 				    void *payload, u32 payload_size)
@@ -184,43 +372,6 @@ int iris_hfi_session_subscribe_mode(struct iris_inst *inst,
 					 payload_type,
 					 payload,
 					 payload_size);
-	if (ret)
-		goto unlock;
-
-	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
-
-unlock:
-	mutex_unlock(&core->lock);
-
-	return ret;
-}
-
-int iris_hfi_session_close(struct iris_inst *inst)
-{
-	struct iris_core *core;
-	int ret;
-
-	if (!inst->packet)
-		return -EINVAL;
-
-	core = inst->core;
-	mutex_lock(&core->lock);
-
-	if (!__valdiate_session(core, inst)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	ret = hfi_packet_session_command(inst,
-					 HFI_CMD_CLOSE,
-					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
-					 HFI_HOST_FLAGS_INTR_REQUIRED |
-					 HFI_HOST_FLAGS_NON_DISCARDABLE),
-					 HFI_PORT_NONE,
-					 inst->session_id,
-					 HFI_PAYLOAD_NONE,
-					 NULL,
-					 0);
 	if (ret)
 		goto unlock;
 
