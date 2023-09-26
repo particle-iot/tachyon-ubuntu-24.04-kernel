@@ -177,6 +177,8 @@ int vidc_open(struct file *filp)
 
 	inst->core = core;
 	inst->session_id = hash32_ptr(inst);
+	inst->ipsc_properties_set = false;
+	inst->opsc_properties_set = false;
 	iris_inst_change_state(inst, IRIS_INST_OPEN);
 	mutex_init(&inst->lock);
 	mutex_init(&inst->ctx_q_lock);
@@ -918,6 +920,8 @@ static const struct v4l2_file_operations v4l2_file_ops = {
 
 static const struct vb2_ops iris_vb2_ops = {
 	.queue_setup                    = iris_vb2_queue_setup,
+	.start_streaming                = iris_vb2_start_streaming,
+	.stop_streaming                 = iris_vb2_stop_streaming,
 };
 
 static struct vb2_mem_ops iris_vb2_mem_ops = {

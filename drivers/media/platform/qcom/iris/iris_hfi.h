@@ -19,6 +19,13 @@ int iris_hfi_session_subscribe_mode(struct iris_inst *inst,
 int iris_hfi_set_property(struct iris_inst *inst,
 			  u32 packet_type, u32 flag, u32 plane, u32 payload_type,
 			  void *payload, u32 payload_size);
+
+int iris_hfi_session_set_codec(struct iris_inst *inst);
+int iris_hfi_session_set_default_header(struct iris_inst *inst);
+
+int iris_hfi_start(struct iris_inst *inst, u32 plane);
+int iris_hfi_stop(struct iris_inst *inst, u32 plane);
+
 int iris_hfi_queue_buffer(struct iris_inst *inst,
 			  struct iris_buffer *buffer);
 int iris_hfi_release_buffer(struct iris_inst *inst,

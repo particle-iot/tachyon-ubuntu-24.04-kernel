@@ -47,4 +47,7 @@ bool allow_streamon(struct iris_inst *inst, u32 type);
 bool allow_streamoff(struct iris_inst *inst, u32 type);
 bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id);
 
+int iris_inst_state_change_streamon(struct iris_inst *inst, u32 plane);
+int iris_inst_state_change_streamoff(struct iris_inst *inst, u32 plane);
+
 #endif
