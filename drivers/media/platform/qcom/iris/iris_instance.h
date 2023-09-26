@@ -38,6 +38,7 @@
  * @mem_pool: pointer to memory pool of buffers
  * @buffers: structure of buffer info
  * @fw_min_count: minimnum count of buffers needed by fw
+ * @state: instance state
  */
 
 struct iris_inst {
@@ -62,6 +63,7 @@ struct iris_inst {
 	struct iris_mem_pool		*mem_pool;
 	struct iris_buffers_info	buffers;
 	u32				fw_min_count;
+	enum iris_inst_state		state;
 };
 
 #endif
