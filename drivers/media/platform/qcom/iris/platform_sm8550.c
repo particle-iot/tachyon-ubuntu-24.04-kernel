@@ -372,6 +372,37 @@ static struct format_capability format_data_sm8550 = {
 	.color_format_info_size = ARRAY_SIZE(color_format_data_sm8550),
 };
 
+static const u32 sm8550_vdec_src_change_param_avc[] = {
+	HFI_PROP_BITSTREAM_RESOLUTION,
+	HFI_PROP_CROP_OFFSETS,
+	HFI_PROP_CODED_FRAMES,
+	HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,
+	HFI_PROP_PIC_ORDER_CNT_TYPE,
+	HFI_PROP_PROFILE,
+	HFI_PROP_LEVEL,
+	HFI_PROP_SIGNAL_COLOR_INFO,
+};
+
+static const u32 sm8550_vdec_src_change_param_hevc[] = {
+	HFI_PROP_BITSTREAM_RESOLUTION,
+	HFI_PROP_CROP_OFFSETS,
+	HFI_PROP_LUMA_CHROMA_BIT_DEPTH,
+	HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,
+	HFI_PROP_PROFILE,
+	HFI_PROP_LEVEL,
+	HFI_PROP_TIER,
+	HFI_PROP_SIGNAL_COLOR_INFO,
+};
+
+static const u32 sm8550_vdec_src_change_param_vp9[] = {
+	HFI_PROP_BITSTREAM_RESOLUTION,
+	HFI_PROP_CROP_OFFSETS,
+	HFI_PROP_LUMA_CHROMA_BIT_DEPTH,
+	HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,
+	HFI_PROP_PROFILE,
+	HFI_PROP_LEVEL,
+};
+
 static const u32 sm8550_vdec_input_properties[] = {
 	HFI_PROP_NO_OUTPUT,
 };
@@ -420,6 +451,18 @@ struct platform_data sm8550_data = {
 	.ubwc_config = ubwc_config_sm8550,
 	.format_data = &format_data_sm8550,
 
+	.avc_subscribe_param =
+		sm8550_vdec_src_change_param_avc,
+	.avc_subscribe_param_size =
+		ARRAY_SIZE(sm8550_vdec_src_change_param_avc),
+	.hevc_subscribe_param =
+		sm8550_vdec_src_change_param_hevc,
+	.hevc_subscribe_param_size =
+		ARRAY_SIZE(sm8550_vdec_src_change_param_hevc),
+	.vp9_subscribe_param =
+		sm8550_vdec_src_change_param_vp9,
+	.vp9_subscribe_param_size =
+		ARRAY_SIZE(sm8550_vdec_src_change_param_vp9),
 	.dec_input_prop = sm8550_vdec_input_properties,
 	.dec_input_prop_size = ARRAY_SIZE(sm8550_vdec_input_properties),
 	.dec_output_prop_avc = sm8550_vdec_output_properties_avc,
