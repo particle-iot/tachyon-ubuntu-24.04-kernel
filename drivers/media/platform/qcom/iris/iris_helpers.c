@@ -3,6 +3,7 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include "hfi_defines.h"
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
@@ -67,7 +68,7 @@ int get_mbpf(struct iris_inst *inst)
 	return NUM_MBS_PER_FRAME(height, width);
 }
 
-bool is_linear_colorformat(u32 colorformat)
+inline bool is_linear_colorformat(u32 colorformat)
 {
 	return colorformat == V4L2_PIX_FMT_NV12 || colorformat == V4L2_PIX_FMT_NV21;
 }
@@ -350,4 +351,29 @@ exit:
 	dev_err(inst->core->dev, "current session not supported(%d)\n", ret);
 
 	return ret;
+}
+
+int signal_session_msg_receipt(struct iris_inst *inst,
+			       enum signal_session_response cmd)
+{
+	if (cmd < MAX_SIGNAL)
+		complete(&inst->completions[cmd]);
+
+	return 0;
+}
+
+struct iris_inst *to_instance(struct iris_core *core, u32 session_id)
+{
+	struct iris_inst *inst = NULL;
+
+	mutex_lock(&core->lock);
+	list_for_each_entry(inst, &core->instances, list) {
+		if (inst->session_id == session_id) {
+			mutex_unlock(&core->lock);
+			return inst;
+		}
+	}
+	mutex_unlock(&core->lock);
+
+	return NULL;
 }
