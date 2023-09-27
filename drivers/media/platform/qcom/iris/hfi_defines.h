@@ -236,4 +236,10 @@ enum hfi_buffer_host_flags {
 	HFI_BUF_HOST_FLAGS_CB_NON_SECURE	= 0x00000200,
 };
 
+enum hfi_buffer_firmware_flags {
+	HFI_BUF_FW_FLAG_NONE		= 0x00000000,
+	HFI_BUF_FW_FLAG_RELEASE_DONE	= 0x00000001,
+	HFI_BUF_FW_FLAG_READONLY	= 0x00000010,
+};
+
 #endif

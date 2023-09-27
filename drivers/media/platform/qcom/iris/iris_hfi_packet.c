@@ -76,6 +76,34 @@ static u32 hfi_buf_type_from_driver(enum iris_buffer_type buffer_type)
 	}
 }
 
+u32 hfi_buf_type_to_driver(enum hfi_buffer_type buf_type)
+{
+	switch (buf_type) {
+	case HFI_BUFFER_BITSTREAM:
+		return BUF_INPUT;
+	case HFI_BUFFER_RAW:
+		return BUF_OUTPUT;
+	case HFI_BUFFER_BIN:
+		return BUF_BIN;
+	case HFI_BUFFER_ARP:
+		return BUF_ARP;
+	case HFI_BUFFER_COMV:
+		return BUF_COMV;
+	case HFI_BUFFER_NON_COMV:
+		return BUF_NON_COMV;
+	case HFI_BUFFER_LINE:
+		return BUF_LINE;
+	case HFI_BUFFER_DPB:
+		return BUF_DPB;
+	case HFI_BUFFER_PERSIST:
+		return BUF_PERSIST;
+	case HFI_BUFFER_VPSS:
+		return BUF_VPSS;
+	default:
+		return 0;
+	}
+}
+
 u32 get_hfi_codec(struct iris_inst *inst)
 {
 	switch (inst->codec) {

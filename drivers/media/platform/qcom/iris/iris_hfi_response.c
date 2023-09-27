@@ -4,11 +4,13 @@
  */
 
 #include "hfi_defines.h"
+#include "iris_buffer.h"
 #include "iris_helpers.h"
 #include "iris_hfi_packet.h"
 #include "iris_hfi_queue.h"
 #include "iris_hfi_response.h"
 #include "iris_vdec.h"
+#include "memory.h"
 
 struct iris_core_hfi_range {
 	u32 begin;
@@ -20,6 +22,11 @@ struct iris_inst_hfi_range {
 	u32 begin;
 	u32 end;
 	int (*handle)(struct iris_inst *inst, struct hfi_packet *pkt);
+};
+
+struct iris_hfi_buffer_handle {
+	enum hfi_buffer_type type;
+	int (*handle)(struct iris_inst *inst, struct hfi_buffer *buffer);
 };
 
 struct iris_hfi_packet_handle {
@@ -43,6 +50,94 @@ static void print_sfr_message(struct iris_core *core)
 		if (!p)
 			vsfr->rg_data[vsfr_size - 1] = '\0';
 	}
+}
+
+static bool is_valid_hfi_buffer_type(u32 buffer_type)
+{
+	if (buffer_type != HFI_BUFFER_BITSTREAM &&
+	    buffer_type != HFI_BUFFER_RAW &&
+	    buffer_type != HFI_BUFFER_BIN &&
+	    buffer_type != HFI_BUFFER_ARP &&
+	    buffer_type != HFI_BUFFER_COMV &&
+	    buffer_type != HFI_BUFFER_NON_COMV &&
+	    buffer_type != HFI_BUFFER_LINE &&
+	    buffer_type != HFI_BUFFER_DPB &&
+	    buffer_type != HFI_BUFFER_PERSIST &&
+	    buffer_type != HFI_BUFFER_VPSS) {
+		return false;
+	}
+
+	return true;
+}
+
+static bool is_valid_hfi_port(u32 port, u32 buffer_type)
+{
+	if (port == HFI_PORT_NONE &&
+	    buffer_type != HFI_BUFFER_PERSIST)
+		return false;
+
+	if (port != HFI_PORT_BITSTREAM && port != HFI_PORT_RAW)
+		return false;
+
+	return true;
+}
+
+static int get_driver_buffer_flags(struct iris_inst *inst, u32 hfi_flags)
+{
+	u32 driver_flags = 0;
+
+	if (inst->hfi_frame_info.picture_type & HFI_PICTURE_IDR)
+		driver_flags |= BUF_FLAG_KEYFRAME;
+	else if (inst->hfi_frame_info.picture_type & HFI_PICTURE_P)
+		driver_flags |= BUF_FLAG_PFRAME;
+	else if (inst->hfi_frame_info.picture_type & HFI_PICTURE_B)
+		driver_flags |= BUF_FLAG_BFRAME;
+	else if (inst->hfi_frame_info.picture_type & HFI_PICTURE_I)
+		driver_flags |= BUF_FLAG_KEYFRAME;
+	else if (inst->hfi_frame_info.picture_type & HFI_PICTURE_CRA)
+		driver_flags |= BUF_FLAG_KEYFRAME;
+	else if (inst->hfi_frame_info.picture_type & HFI_PICTURE_BLA)
+		driver_flags |= BUF_FLAG_KEYFRAME;
+
+	if (inst->hfi_frame_info.data_corrupt)
+		driver_flags |= BUF_FLAG_ERROR;
+
+	if (inst->hfi_frame_info.overflow)
+		driver_flags |= BUF_FLAG_ERROR;
+
+	return driver_flags;
+}
+
+static bool validate_packet_payload(struct hfi_packet *pkt)
+{
+	u32 payload_size = 0;
+
+	switch (pkt->payload_info) {
+	case HFI_PAYLOAD_U32:
+	case HFI_PAYLOAD_S32:
+	case HFI_PAYLOAD_Q16:
+	case HFI_PAYLOAD_U32_ENUM:
+	case HFI_PAYLOAD_32_PACKED:
+		payload_size = 4;
+		break;
+	case HFI_PAYLOAD_U64:
+	case HFI_PAYLOAD_S64:
+	case HFI_PAYLOAD_64_PACKED:
+		payload_size = 8;
+		break;
+	case HFI_PAYLOAD_STRUCTURE:
+		if (pkt->type == HFI_CMD_BUFFER)
+			payload_size = sizeof(struct hfi_buffer);
+		break;
+	default:
+		payload_size = 0;
+		break;
+	}
+
+	if (pkt->size < sizeof(struct hfi_packet) + payload_size)
+		return false;
+
+	return true;
 }
 
 static int validate_packet(u8 *response_pkt, u8 *core_resp_pkt, u32 core_resp_pkt_size)
@@ -169,6 +264,293 @@ static int handle_session_close(struct iris_inst *inst,
 	return 0;
 }
 
+static int handle_read_only_buffer(struct iris_inst *inst,
+				   struct iris_buffer *buf)
+{
+	struct iris_buffer *ro_buf, *iter;
+	bool found = false;
+
+	list_for_each_entry(iter, &inst->buffers.read_only.list, list) {
+		if (iter->device_addr == buf->device_addr) {
+			found = true;
+			ro_buf = iter;
+			break;
+		}
+	}
+
+	if (!found) {
+		ro_buf = iris_get_buffer_from_pool(inst);
+		if (!ro_buf)
+			return -ENOMEM;
+		ro_buf->index = -1;
+		ro_buf->inst = inst;
+		ro_buf->type = buf->type;
+		ro_buf->fd = buf->fd;
+		ro_buf->dmabuf = buf->dmabuf;
+		ro_buf->device_addr = buf->device_addr;
+		ro_buf->data_offset = buf->data_offset;
+		INIT_LIST_HEAD(&ro_buf->list);
+		list_add_tail(&ro_buf->list, &inst->buffers.read_only.list);
+	}
+	ro_buf->attr |= BUF_ATTR_READ_ONLY;
+
+	return 0;
+}
+
+static int handle_non_read_only_buffer(struct iris_inst *inst,
+				       struct hfi_buffer *buffer)
+{
+	struct iris_buffer *ro_buf;
+
+	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {
+		if (ro_buf->device_addr == buffer->base_address) {
+			ro_buf->attr &= ~BUF_ATTR_READ_ONLY;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int handle_release_output_buffer(struct iris_inst *inst,
+					struct hfi_buffer *buffer)
+{
+	struct iris_buffer *buf, *iter;
+	bool found = false;
+
+	list_for_each_entry(iter, &inst->buffers.read_only.list, list) {
+		if (iter->device_addr == buffer->base_address &&
+		    iter->attr & BUF_ATTR_PENDING_RELEASE) {
+			found = true;
+			buf = iter;
+			break;
+		}
+	}
+	if (!found)
+		return -EINVAL;
+
+	buf->attr &= ~BUF_ATTR_READ_ONLY;
+	buf->attr &= ~BUF_ATTR_PENDING_RELEASE;
+
+	return 0;
+}
+
+static int handle_input_buffer(struct iris_inst *inst,
+			       struct hfi_buffer *buffer)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buf, *iter;
+	bool found;
+
+	buffers = iris_get_buffer_list(inst, BUF_INPUT);
+	if (!buffers)
+		return -EINVAL;
+
+	found = false;
+	list_for_each_entry(iter, &buffers->list, list) {
+		if (iter->index == buffer->index) {
+			found = true;
+			buf = iter;
+			break;
+		}
+	}
+	if (!found)
+		return -EINVAL;
+
+	if (!(buf->attr & BUF_ATTR_QUEUED))
+		return 0;
+
+	buf->data_size = buffer->data_size;
+	buf->attr &= ~BUF_ATTR_QUEUED;
+	buf->attr |= BUF_ATTR_DEQUEUED;
+
+	buf->flags = get_driver_buffer_flags(inst, buffer->flags);
+
+	return 0;
+}
+
+static int handle_output_buffer(struct iris_inst *inst,
+				struct hfi_buffer *hfi_buffer)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buf, *iter;
+	bool found;
+	int ret = 0;
+
+	if (hfi_buffer->flags & HFI_BUF_FW_FLAG_RELEASE_DONE)
+		return handle_release_output_buffer(inst, hfi_buffer);
+
+	if (!(hfi_buffer->flags & HFI_BUF_FW_FLAG_READONLY))
+		ret = handle_non_read_only_buffer(inst, hfi_buffer);
+
+	buffers = iris_get_buffer_list(inst, BUF_OUTPUT);
+	if (!buffers)
+		return -EINVAL;
+
+	found = false;
+	list_for_each_entry(iter, &buffers->list, list) {
+		if (!(iter->attr & BUF_ATTR_QUEUED))
+			continue;
+
+		found = (iter->index == hfi_buffer->index &&
+				iter->device_addr == hfi_buffer->base_address &&
+				iter->data_offset == hfi_buffer->data_offset);
+
+		if (found) {
+			buf = iter;
+			break;
+		}
+	}
+	if (!found)
+		return 0;
+
+	buf->data_offset = hfi_buffer->data_offset;
+	buf->data_size = hfi_buffer->data_size;
+	buf->timestamp = hfi_buffer->timestamp;
+
+	buf->attr &= ~BUF_ATTR_QUEUED;
+	buf->attr |= BUF_ATTR_DEQUEUED;
+
+	if (inst->buffers.dpb.size && hfi_buffer->flags & HFI_BUF_FW_FLAG_READONLY)
+		iris_inst_change_state(inst, IRIS_INST_ERROR);
+
+	if (hfi_buffer->flags & HFI_BUF_FW_FLAG_READONLY) {
+		buf->attr |= BUF_ATTR_READ_ONLY;
+		ret = handle_read_only_buffer(inst, buf);
+	} else {
+		buf->attr &= ~BUF_ATTR_READ_ONLY;
+	}
+
+	buf->flags = get_driver_buffer_flags(inst, hfi_buffer->flags);
+
+	return ret;
+}
+
+static int handle_dequeue_buffers(struct iris_inst *inst)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *dummy;
+	struct iris_buffer *buf;
+	int ret = 0;
+	int i;
+	static const enum iris_buffer_type buffer_type[] = {
+		BUF_INPUT,
+		BUF_OUTPUT,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(buffer_type); i++) {
+		buffers = iris_get_buffer_list(inst, buffer_type[i]);
+		if (!buffers)
+			return -EINVAL;
+
+		list_for_each_entry_safe(buf, dummy, &buffers->list, list) {
+			if (buf->attr & BUF_ATTR_DEQUEUED) {
+				buf->attr &= ~BUF_ATTR_DEQUEUED;
+				if (!(buf->attr & BUF_ATTR_BUFFER_DONE)) {
+					buf->attr |= BUF_ATTR_BUFFER_DONE;
+					ret = iris_vb2_buffer_done(inst, buf);
+					if (ret)
+						ret = 0;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+static int handle_release_internal_buffer(struct iris_inst *inst,
+					  struct hfi_buffer *buffer)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buf, *iter;
+	int ret = 0;
+	bool found;
+
+	buffers = iris_get_buffer_list(inst, hfi_buf_type_to_driver(buffer->type));
+	if (!buffers)
+		return -EINVAL;
+
+	found = false;
+	list_for_each_entry(iter, &buffers->list, list) {
+		if (iter->device_addr == buffer->base_address) {
+			found = true;
+			buf = iter;
+			break;
+		}
+	}
+	if (!found)
+		return -EINVAL;
+
+	buf->attr &= ~BUF_ATTR_QUEUED;
+
+	if (buf->attr & BUF_ATTR_PENDING_RELEASE)
+		ret = iris_destroy_internal_buffer(inst, buf);
+
+	return ret;
+}
+
+static int handle_session_buffer(struct iris_inst *inst,
+				 struct hfi_packet *pkt)
+{
+	struct hfi_buffer *buffer;
+	u32 hfi_handle_size = 0;
+	int i, ret = 0;
+	const struct iris_hfi_buffer_handle *hfi_handle_arr = NULL;
+	static const struct iris_hfi_buffer_handle input_hfi_handle[] = {
+		{HFI_BUFFER_BITSTREAM,      handle_input_buffer               },
+		{HFI_BUFFER_BIN,            handle_release_internal_buffer    },
+		{HFI_BUFFER_COMV,           handle_release_internal_buffer    },
+		{HFI_BUFFER_NON_COMV,       handle_release_internal_buffer    },
+		{HFI_BUFFER_LINE,           handle_release_internal_buffer    },
+		{HFI_BUFFER_PERSIST,        handle_release_internal_buffer    },
+	};
+	static const struct iris_hfi_buffer_handle output_hfi_handle[] = {
+		{HFI_BUFFER_RAW,            handle_output_buffer              },
+		{HFI_BUFFER_DPB,            handle_release_internal_buffer    },
+	};
+
+	if (pkt->payload_info == HFI_PAYLOAD_NONE)
+		return 0;
+
+	if (!validate_packet_payload(pkt)) {
+		iris_inst_change_state(inst, IRIS_INST_ERROR);
+		return 0;
+	}
+
+	buffer = (struct hfi_buffer *)((u8 *)pkt + sizeof(*pkt));
+	if (!is_valid_hfi_buffer_type(buffer->type))
+		return 0;
+
+	if (!is_valid_hfi_port(pkt->port, buffer->type))
+		return 0;
+
+	if (pkt->port == HFI_PORT_BITSTREAM) {
+		hfi_handle_size = ARRAY_SIZE(input_hfi_handle);
+		hfi_handle_arr = input_hfi_handle;
+	} else if (pkt->port == HFI_PORT_RAW) {
+		hfi_handle_size = ARRAY_SIZE(output_hfi_handle);
+		hfi_handle_arr = output_hfi_handle;
+	}
+
+	if (!hfi_handle_arr || !hfi_handle_size)
+		return -EINVAL;
+
+	for (i = 0; i < hfi_handle_size; i++) {
+		if (hfi_handle_arr[i].type == buffer->type) {
+			ret = hfi_handle_arr[i].handle(inst, buffer);
+			if (ret)
+				return ret;
+			break;
+		}
+	}
+
+	if (i == hfi_handle_size)
+		return -EINVAL;
+
+	return ret;
+}
+
 static int handle_src_change(struct iris_inst *inst,
 			     struct hfi_packet *pkt)
 {
@@ -192,6 +574,7 @@ static int handle_session_command(struct iris_inst *inst,
 	static const struct iris_hfi_packet_handle hfi_pkt_handle[] = {
 		{HFI_CMD_OPEN,              NULL                    },
 		{HFI_CMD_CLOSE,             handle_session_close    },
+		{HFI_CMD_BUFFER,            handle_session_buffer   },
 		{HFI_CMD_SETTINGS_CHANGE,   handle_src_change       },
 		{HFI_CMD_SUBSCRIBE_MODE,    NULL                    },
 	};
@@ -393,6 +776,7 @@ static int handle_session_response(struct iris_core *core,
 {
 	struct hfi_packet *packet;
 	struct iris_inst *inst;
+	bool dequeue = false;
 	u8 *pkt, *start_pkt;
 	int ret = 0;
 	int i, j;
@@ -430,6 +814,7 @@ static int handle_session_response(struct iris_core *core,
 				handle_session_error(inst, packet);
 
 			if (packet->type > be[i].begin && packet->type < be[i].end) {
+				dequeue |= (packet->type == HFI_CMD_BUFFER);
 				ret = be[i].handle(inst, packet);
 				if (ret)
 					iris_inst_change_state(inst, IRIS_INST_ERROR);
@@ -438,7 +823,15 @@ static int handle_session_response(struct iris_core *core,
 		}
 	}
 
+	if (dequeue) {
+		ret = handle_dequeue_buffers(inst);
+		if (ret)
+			goto unlock;
+	}
+
 	memset(&inst->hfi_frame_info, 0, sizeof(struct iris_hfi_frame_info));
+
+unlock:
 	mutex_unlock(&inst->lock);
 
 	return ret;
