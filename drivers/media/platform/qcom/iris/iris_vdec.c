@@ -1193,3 +1193,52 @@ error:
 
 	return ret;
 }
+
+static int vb2_buffer_to_driver(struct vb2_buffer *vb2,
+				struct iris_buffer *buf)
+{
+	struct vb2_v4l2_buffer *vbuf;
+
+	if (!vb2 || !buf)
+		return -EINVAL;
+
+	vbuf = to_vb2_v4l2_buffer(vb2);
+
+	buf->fd = vb2->planes[0].m.fd;
+	buf->data_offset = vb2->planes[0].data_offset;
+	buf->data_size = vb2->planes[0].bytesused - vb2->planes[0].data_offset;
+	buf->buffer_size = vb2->planes[0].length;
+	buf->timestamp = vb2->timestamp;
+	buf->flags = vbuf->flags;
+	buf->attr = 0;
+
+	return 0;
+}
+
+int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
+{
+	struct iris_buffer *buf = NULL;
+	int ret = 0;
+
+	buf = get_driver_buf(inst, vb2->type, vb2->index);
+	if (!buf)
+		return -EINVAL;
+
+	if (!allow_qbuf(inst, vb2->type)) {
+		buf->attr |= BUF_ATTR_DEFERRED;
+		return ret;
+	}
+
+	ret = vb2_buffer_to_driver(vb2, buf);
+	if (ret)
+		return ret;
+
+	ret = queue_buffer(inst, buf);
+	if (ret)
+		return ret;
+
+	if (vb2->type == OUTPUT_MPLANE)
+		ret = iris_release_nonref_buffers(inst);
+
+	return ret;
+}
