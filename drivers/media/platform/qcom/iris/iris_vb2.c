@@ -95,6 +95,7 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 
 int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
 {
+	enum iris_buffer_type buf_type;
 	struct iris_inst *inst;
 	int ret = 0;
 
@@ -129,6 +130,16 @@ int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
 		ret = vdec_streamon_input(inst);
 	else if (q->type == OUTPUT_MPLANE)
 		ret = vdec_streamon_output(inst);
+	if (ret)
+		goto error;
+
+	buf_type = v4l2_type_to_driver(q->type);
+	if (!buf_type) {
+		ret = -EINVAL;
+		goto error;
+	}
+
+	ret = queue_deferred_buffers(inst, buf_type);
 	if (ret)
 		goto error;
 
@@ -168,9 +179,33 @@ error:
 	iris_inst_change_state(inst, IRIS_INST_ERROR);
 }
 
+void iris_vb2_buf_queue(struct vb2_buffer *vb2)
+{
+	struct iris_inst *inst;
+	int ret;
+
+	inst = vb2_get_drv_priv(vb2->vb2_queue);
+	if (!inst || !inst->core)
+		return;
+
+	if (!vb2->planes[0].bytesused && vb2->type == INPUT_MPLANE) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	ret = vdec_qbuf(inst, vb2);
+
+exit:
+	if (ret) {
+		iris_inst_change_state(inst, IRIS_INST_ERROR);
+		vb2_buffer_done(vb2, VB2_BUF_STATE_ERROR);
+	}
+}
+
 void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
 			     struct dma_buf *dbuf, unsigned long size)
 {
+	struct iris_buffer *ro_buf, *dummy;
 	enum iris_buffer_type buf_type;
 	struct iris_buffers *buffers;
 	struct iris_buffer *iter;
@@ -203,6 +238,16 @@ void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
 	buf->inst = inst;
 	buf->dmabuf = dbuf;
 
+	if (buf->type == BUF_OUTPUT) {
+		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+			if (ro_buf->dmabuf != buf->dmabuf)
+				continue;
+			buf->attach = ro_buf->attach;
+			ro_buf->attach = NULL;
+			return buf;
+		}
+	}
+
 	buf->attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR(buf->attach)) {
 		buf->attach = NULL;
@@ -214,6 +259,7 @@ void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
 
 int iris_vb2_map_dmabuf(void *buf_priv)
 {
+	struct iris_buffer *ro_buf, *dummy;
 	struct iris_buffer *buf = buf_priv;
 	struct iris_core *core;
 	struct iris_inst *inst;
@@ -227,6 +273,17 @@ int iris_vb2_map_dmabuf(void *buf_priv)
 	if (!buf->attach) {
 		dev_err(core->dev, "trying to map a non attached buffer\n");
 		return -EINVAL;
+	}
+
+	if (buf->type == BUF_OUTPUT) {
+		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+			if (ro_buf->dmabuf != buf->dmabuf)
+				continue;
+			buf->sg_table = ro_buf->sg_table;
+			buf->device_addr = ro_buf->device_addr;
+			ro_buf->sg_table = NULL;
+			return 0;
+		}
 	}
 
 	buf->sg_table = dma_buf_map_attachment(buf->attach, DMA_BIDIRECTIONAL);
@@ -246,6 +303,7 @@ int iris_vb2_map_dmabuf(void *buf_priv)
 
 void iris_vb2_unmap_dmabuf(void *buf_priv)
 {
+	struct iris_buffer *ro_buf, *dummy;
 	struct iris_buffer *buf = buf_priv;
 	struct iris_core *core;
 	struct iris_inst *inst;
@@ -266,6 +324,17 @@ void iris_vb2_unmap_dmabuf(void *buf_priv)
 		return;
 	}
 
+	if (buf->type == BUF_OUTPUT) {
+		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+			if (ro_buf->dmabuf != buf->dmabuf)
+				continue;
+			ro_buf->sg_table = buf->sg_table;
+			buf->sg_table = NULL;
+			buf->device_addr = 0x0;
+			return;
+		}
+	}
+
 	if (buf->attach && buf->sg_table) {
 		dma_buf_unmap_attachment(buf->attach, buf->sg_table, DMA_BIDIRECTIONAL);
 		buf->sg_table = NULL;
@@ -275,6 +344,7 @@ void iris_vb2_unmap_dmabuf(void *buf_priv)
 
 void iris_vb2_detach_dmabuf(void *buf_priv)
 {
+	struct iris_buffer *ro_buf, *dummy;
 	struct iris_buffer *buf = buf_priv;
 	struct iris_core *core;
 	struct iris_inst *inst;
@@ -291,11 +361,22 @@ void iris_vb2_detach_dmabuf(void *buf_priv)
 		buf->sg_table = NULL;
 	}
 
+	if (buf->type == BUF_OUTPUT) {
+		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+			if (ro_buf->dmabuf != buf->dmabuf)
+				continue;
+			ro_buf->attach = buf->attach;
+			buf->attach = NULL;
+			goto exit;
+		}
+	}
+
 	if (buf->attach && buf->dmabuf) {
 		dma_buf_detach(buf->dmabuf, buf->attach);
 		buf->attach = NULL;
 	}
 
+exit:
 	buf->dmabuf = NULL;
 	buf->inst = NULL;
 }
