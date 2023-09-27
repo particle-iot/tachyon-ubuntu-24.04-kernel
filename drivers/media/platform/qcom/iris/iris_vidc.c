@@ -262,6 +262,7 @@ int vidc_close(struct file *filp)
 	iris_inst_change_state(inst, IRIS_INST_CLOSE);
 	vidc_vb2_queue_deinit(inst);
 	vidc_v4l2_fh_deinit(inst);
+	iris_destroy_buffers(inst);
 	vidc_remove_session(inst);
 	mutex_unlock(&inst->lock);
 	mutex_destroy(&inst->ctx_q_lock);
@@ -922,6 +923,7 @@ static const struct vb2_ops iris_vb2_ops = {
 	.queue_setup                    = iris_vb2_queue_setup,
 	.start_streaming                = iris_vb2_start_streaming,
 	.stop_streaming                 = iris_vb2_stop_streaming,
+	.buf_queue                      = iris_vb2_buf_queue,
 };
 
 static struct vb2_mem_ops iris_vb2_mem_ops = {
