@@ -25,6 +25,8 @@ struct iris_inst;
 
 #define NUM_MBS_4k (((4096 + 15) >> 4) * ((2304 + 15) >> 4))
 
+#define MAX_DPB_COUNT 32
+
 #define MAX_DPB_LIST_ARRAY_SIZE (16 * 4)
 #define MAX_DPB_LIST_PAYLOAD_SIZE (16 * 4 * 4)
 
@@ -69,6 +71,13 @@ enum iris_buffer_type {
 	BUF_DPB,
 	BUF_PERSIST,
 	BUF_VPSS,
+};
+
+enum iris_buffer_flags {
+	BUF_FLAG_KEYFRAME	= 0x00000008,
+	BUF_FLAG_PFRAME		= 0x00000010,
+	BUF_FLAG_BFRAME		= 0x00000020,
+	BUF_FLAG_ERROR		= 0x00000040,
 };
 
 enum iris_buffer_attributes {
