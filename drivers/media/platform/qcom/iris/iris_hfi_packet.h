@@ -6,6 +6,7 @@
 #ifndef _IRIS_HFI_PACKET_H_
 #define _IRIS_HFI_PACKET_H_
 
+#include "hfi_defines.h"
 #include "iris_core.h"
 #include "iris_instance.h"
 
@@ -89,6 +90,7 @@ u32 get_hfi_matrix_coefficients(u32 coefficients);
 u32 get_v4l2_color_primaries(u32 hfi_primaries);
 u32 get_v4l2_transer_char(u32 hfi_characterstics);
 u32 get_v4l2_matrix_coefficients(u32 hfi_coefficients);
+u32 hfi_buf_type_to_driver(enum hfi_buffer_type buf_type);
 int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf);
 
 int hfi_packet_sys_init(struct iris_core *core,
