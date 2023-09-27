@@ -43,6 +43,7 @@ int iris_inst_change_state(struct iris_inst *inst,
 
 bool allow_s_fmt(struct iris_inst *inst, u32 type);
 bool allow_reqbufs(struct iris_inst *inst, u32 type);
+bool allow_qbuf(struct iris_inst *inst, u32 type);
 bool allow_streamon(struct iris_inst *inst, u32 type);
 bool allow_streamoff(struct iris_inst *inst, u32 type);
 bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id);

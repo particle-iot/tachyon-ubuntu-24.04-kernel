@@ -170,6 +170,14 @@ bool allow_reqbufs(struct iris_inst *inst, u32 type)
 		(type == INPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING);
 }
 
+bool allow_qbuf(struct iris_inst *inst, u32 type)
+{
+	return (type == INPUT_MPLANE && inst->state == IRIS_INST_INPUT_STREAMING) ||
+		(type == INPUT_MPLANE && inst->state == IRIS_INST_STREAMING) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_STREAMING);
+}
+
 bool allow_streamon(struct iris_inst *inst, u32 type)
 {
 	return (type == INPUT_MPLANE && inst->state == IRIS_INST_OPEN) ||
