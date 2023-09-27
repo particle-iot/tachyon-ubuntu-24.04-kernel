@@ -23,6 +23,7 @@ bool res_is_less_than(u32 width, u32 height,
 u32 get_port_info(struct iris_inst *inst,
 		  enum plat_inst_cap_type cap_id);
 enum iris_buffer_type v4l2_type_to_driver(u32 type);
+u32 v4l2_type_from_driver(enum iris_buffer_type buffer_type);
 int get_mbpf(struct iris_inst *inst);
 int close_session(struct iris_inst *inst);
 
@@ -33,7 +34,6 @@ bool is_split_mode_enabled(struct iris_inst *inst);
 int signal_session_msg_receipt(struct iris_inst *inst,
 			       enum signal_session_response cmd);
 struct iris_inst *to_instance(struct iris_core *core, u32 session_id);
-int session_streamoff(struct iris_inst *inst, u32 plane);
 
 u32 v4l2_codec_from_driver(struct iris_inst *inst, enum codec_type codec);
 enum codec_type v4l2_codec_to_driver(struct iris_inst *inst, u32 v4l2_codec);
@@ -41,5 +41,14 @@ u32 v4l2_colorformat_from_driver(struct iris_inst *inst, enum colorformat_type c
 enum colorformat_type v4l2_colorformat_to_driver(struct iris_inst *inst, u32 v4l2_colorformat);
 struct vb2_queue *get_vb2q(struct iris_inst *inst, u32 type);
 int check_session_supported(struct iris_inst *inst);
+
+struct iris_buffer *get_driver_buf(struct iris_inst *inst, u32 plane, u32 index);
+int queue_buffer(struct iris_inst *inst, struct iris_buffer *buf);
+int queue_deferred_buffers(struct iris_inst *inst, enum iris_buffer_type buf_type);
+int iris_vb2_buffer_done(struct iris_inst *inst,
+			 struct iris_buffer *buf);
+int iris_release_nonref_buffers(struct iris_inst *inst);
+void iris_destroy_buffers(struct iris_inst *inst);
+int session_streamoff(struct iris_inst *inst, u32 plane);
 
 #endif

@@ -13,6 +13,7 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 			 unsigned int sizes[], struct device *alloc_devs[]);
 int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count);
 void iris_vb2_stop_streaming(struct vb2_queue *q);
+void iris_vb2_buf_queue(struct vb2_buffer *vb2);
 
 /* vb2_mem_ops */
 void *iris_vb2_alloc(struct vb2_buffer *vb, struct device *dev, unsigned long size);
