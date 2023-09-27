@@ -10,6 +10,7 @@
 #include "iris_hfi_packet.h"
 #include "iris_instance.h"
 #include "iris_vidc.h"
+#include "memory.h"
 
 int check_core_lock(struct iris_core *core)
 {
@@ -52,6 +53,18 @@ enum iris_buffer_type v4l2_type_to_driver(u32 type)
 		return BUF_INPUT;
 	case OUTPUT_MPLANE:
 		return BUF_OUTPUT;
+	default:
+		return 0;
+	}
+}
+
+u32 v4l2_type_from_driver(enum iris_buffer_type buffer_type)
+{
+	switch (buffer_type) {
+	case BUF_INPUT:
+		return INPUT_MPLANE;
+	case BUF_OUTPUT:
+		return OUTPUT_MPLANE;
 	default:
 		return 0;
 	}
@@ -390,12 +403,360 @@ static int kill_session(struct iris_inst *inst)
 	return 0;
 }
 
+struct iris_buffer *get_driver_buf(struct iris_inst *inst, u32 plane, u32 index)
+{
+	struct iris_buffer *iter = NULL;
+	struct iris_buffer *buf = NULL;
+	enum iris_buffer_type buf_type;
+	struct iris_buffers *buffers;
+
+	bool found = false;
+
+	buf_type = v4l2_type_to_driver(plane);
+	if (!buf_type)
+		return NULL;
+
+	buffers = iris_get_buffer_list(inst, buf_type);
+	if (!buffers)
+		return NULL;
+
+	list_for_each_entry(iter, &buffers->list, list) {
+		if (iter->index == index) {
+			found = true;
+			buf = iter;
+			break;
+		}
+	}
+
+	if (!found)
+		return NULL;
+
+	return buf;
+}
+
+static void process_requeued_readonly_buffers(struct iris_inst *inst,
+					      struct iris_buffer *buf)
+{
+	struct iris_buffer *ro_buf, *dummy;
+
+	list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+		if (ro_buf->device_addr != buf->device_addr)
+			continue;
+		if (ro_buf->attr & BUF_ATTR_READ_ONLY &&
+		    !(ro_buf->attr & BUF_ATTR_PENDING_RELEASE)) {
+			buf->attr |= BUF_ATTR_READ_ONLY;
+
+			list_del_init(&ro_buf->list);
+			iris_return_buffer_to_pool(inst, ro_buf);
+			break;
+		}
+	}
+}
+
+int queue_buffer(struct iris_inst *inst, struct iris_buffer *buf)
+{
+	int ret;
+
+	if (buf->type == BUF_OUTPUT)
+		process_requeued_readonly_buffers(inst, buf);
+
+	ret = iris_hfi_queue_buffer(inst, buf);
+	if (ret)
+		return ret;
+
+	buf->attr &= ~BUF_ATTR_DEFERRED;
+	buf->attr |= BUF_ATTR_QUEUED;
+
+	return ret;
+}
+
+int queue_deferred_buffers(struct iris_inst *inst, enum iris_buffer_type buf_type)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buf;
+	int ret = 0;
+
+	buffers = iris_get_buffer_list(inst, buf_type);
+	if (!buffers)
+		return -EINVAL;
+
+	list_for_each_entry(buf, &buffers->list, list) {
+		if (!(buf->attr & BUF_ATTR_DEFERRED))
+			continue;
+		ret = queue_buffer(inst, buf);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int iris_release_nonref_buffers(struct iris_inst *inst)
+{
+	u32 fw_ro_count = 0, nonref_ro_count = 0;
+	struct iris_buffer *ro_buf;
+	bool found = false;
+	int ret = 0;
+	int i = 0;
+
+	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {
+		if (!(ro_buf->attr & BUF_ATTR_READ_ONLY))
+			continue;
+		if (ro_buf->attr & BUF_ATTR_PENDING_RELEASE)
+			continue;
+		fw_ro_count++;
+	}
+
+	if (fw_ro_count <= MAX_DPB_COUNT)
+		return 0;
+
+	/*
+	 * Mark the read only buffers present in read_only list as
+	 * non-reference if it's not part of dpb_list_payload.
+	 * dpb_list_payload details:
+	 * payload[0-1]           : 64 bits base_address of DPB-1
+	 * payload[2]             : 32 bits addr_offset  of DPB-1
+	 * payload[3]             : 32 bits data_offset  of DPB-1
+	 */
+	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {
+		found = false;
+		if (!(ro_buf->attr & BUF_ATTR_READ_ONLY))
+			continue;
+		if (ro_buf->attr & BUF_ATTR_PENDING_RELEASE)
+			continue;
+		for (i = 0; (i + 3) < MAX_DPB_LIST_ARRAY_SIZE; i = i + 4) {
+			if (ro_buf->device_addr == inst->dpb_list_payload[i] &&
+			    ro_buf->data_offset == inst->dpb_list_payload[i + 3]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			nonref_ro_count++;
+	}
+
+	if (nonref_ro_count <= inst->buffers.output.min_count)
+		return 0;
+
+	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {
+		found = false;
+		if (!(ro_buf->attr & BUF_ATTR_READ_ONLY))
+			continue;
+		if (ro_buf->attr & BUF_ATTR_PENDING_RELEASE)
+			continue;
+		for (i = 0; (i + 3) < MAX_DPB_LIST_ARRAY_SIZE; i = i + 4) {
+			if (ro_buf->device_addr == inst->dpb_list_payload[i] &&
+			    ro_buf->data_offset == inst->dpb_list_payload[i + 3]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			ro_buf->attr |= BUF_ATTR_PENDING_RELEASE;
+			ret = iris_hfi_release_buffer(inst, ro_buf);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return ret;
+}
+
+int iris_vb2_buffer_done(struct iris_inst *inst,
+			 struct iris_buffer *buf)
+{
+	struct vb2_v4l2_buffer *vbuf;
+	struct vb2_queue *q = NULL;
+	struct vb2_buffer *iter;
+	struct vb2_buffer *vb2;
+	int type, state;
+	bool found;
+
+	type = v4l2_type_from_driver(buf->type);
+	if (!type)
+		return -EINVAL;
+
+	if (type == INPUT_MPLANE)
+		q = inst->vb2q_src;
+	else if (type == OUTPUT_MPLANE)
+		q = inst->vb2q_dst;
+	if (!q || !q->streaming)
+		return -EINVAL;
+
+	found = false;
+	list_for_each_entry(iter, &q->queued_list, queued_entry) {
+		if (iter->state != VB2_BUF_STATE_ACTIVE)
+			continue;
+		if (iter->index == buf->index) {
+			found = true;
+			vb2 = iter;
+			break;
+		}
+	}
+	if (!found)
+		return -EINVAL;
+
+	if (buf->flags & BUF_FLAG_ERROR)
+		state = VB2_BUF_STATE_ERROR;
+	else
+		state = VB2_BUF_STATE_DONE;
+
+	vbuf = to_vb2_v4l2_buffer(vb2);
+	vbuf->flags = buf->flags;
+	vb2->timestamp = buf->timestamp;
+	vb2->planes[0].bytesused = buf->data_size + vb2->planes[0].data_offset;
+	vb2_buffer_done(vb2, state);
+
+	return 0;
+}
+
+static int iris_flush_deferred_buffers(struct iris_inst *inst,
+				       enum iris_buffer_type type)
+{
+	struct iris_buffer *buf, *dummy;
+	struct iris_buffers *buffers;
+
+	buffers = iris_get_buffer_list(inst, type);
+	if (!buffers)
+		return -EINVAL;
+
+	list_for_each_entry_safe(buf, dummy, &buffers->list, list) {
+		if (buf->attr & BUF_ATTR_DEFERRED) {
+			if (!(buf->attr & BUF_ATTR_BUFFER_DONE)) {
+				buf->attr |= BUF_ATTR_BUFFER_DONE;
+				buf->data_size = 0;
+				iris_vb2_buffer_done(inst, buf);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int iris_flush_read_only_buffers(struct iris_inst *inst,
+					enum iris_buffer_type type)
+{
+	struct iris_buffer *ro_buf, *dummy;
+
+	if (type != BUF_OUTPUT)
+		return 0;
+
+	list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
+		if (ro_buf->attr & BUF_ATTR_READ_ONLY)
+			continue;
+		if (ro_buf->attach && ro_buf->sg_table)
+			dma_buf_unmap_attachment(ro_buf->attach, ro_buf->sg_table,
+						 DMA_BIDIRECTIONAL);
+		if (ro_buf->attach && ro_buf->dmabuf)
+			dma_buf_detach(ro_buf->dmabuf, ro_buf->attach);
+		ro_buf->attach = NULL;
+		ro_buf->sg_table = NULL;
+		ro_buf->dmabuf = NULL;
+		ro_buf->device_addr = 0x0;
+		list_del_init(&ro_buf->list);
+		iris_return_buffer_to_pool(inst, ro_buf);
+	}
+
+	return 0;
+}
+
+void iris_destroy_buffers(struct iris_inst *inst)
+{
+	struct iris_buffer *buf, *dummy;
+	struct iris_buffers *buffers;
+
+	static const enum iris_buffer_type ext_buf_types[] = {
+		BUF_INPUT,
+		BUF_OUTPUT,
+	};
+	static const enum iris_buffer_type internal_buf_types[] = {
+		BUF_BIN,
+		BUF_COMV,
+		BUF_NON_COMV,
+		BUF_LINE,
+		BUF_DPB,
+		BUF_PERSIST,
+	};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(internal_buf_types); i++) {
+		buffers = iris_get_buffer_list(inst, internal_buf_types[i]);
+		if (!buffers)
+			continue;
+		list_for_each_entry_safe(buf, dummy, &buffers->list, list)
+			iris_destroy_internal_buffer(inst, buf);
+	}
+
+	list_for_each_entry_safe(buf, dummy, &inst->buffers.read_only.list, list) {
+		if (buf->attach && buf->sg_table)
+			dma_buf_unmap_attachment(buf->attach, buf->sg_table, DMA_BIDIRECTIONAL);
+		if (buf->attach && buf->dmabuf)
+			dma_buf_detach(buf->dmabuf, buf->attach);
+		list_del_init(&buf->list);
+		iris_return_buffer_to_pool(inst, buf);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ext_buf_types); i++) {
+		buffers = iris_get_buffer_list(inst, ext_buf_types[i]);
+		if (!buffers)
+			continue;
+		list_for_each_entry_safe(buf, dummy, &buffers->list, list) {
+			if (buf->attach && buf->sg_table)
+				dma_buf_unmap_attachment(buf->attach, buf->sg_table,
+							 DMA_BIDIRECTIONAL);
+			if (buf->attach && buf->dmabuf)
+				dma_buf_detach(buf->dmabuf, buf->attach);
+			list_del_init(&buf->list);
+			iris_return_buffer_to_pool(inst, buf);
+		}
+	}
+
+	iris_mem_pool_deinit(inst);
+}
+
+static int get_num_queued_buffers(struct iris_inst *inst,
+				  enum iris_buffer_type type)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *vbuf;
+	int count = 0;
+
+	if (type == BUF_INPUT)
+		buffers = &inst->buffers.input;
+	else if (type == BUF_OUTPUT)
+		buffers = &inst->buffers.output;
+	else
+		return count;
+
+	list_for_each_entry(vbuf, &buffers->list, list) {
+		if (vbuf->type != type)
+			continue;
+		if (!(vbuf->attr & BUF_ATTR_QUEUED))
+			continue;
+		count++;
+	}
+
+	return count;
+}
+
 int session_streamoff(struct iris_inst *inst, u32 plane)
 {
 	enum signal_session_response signal_type;
+	enum iris_buffer_type buffer_type;
 	u32 hw_response_timeout_val;
 	struct iris_core *core;
+	int count = 0;
 	int ret;
+
+	if (plane == INPUT_MPLANE) {
+		signal_type = SIGNAL_CMD_STOP_INPUT;
+		buffer_type = BUF_INPUT;
+	} else if (plane == OUTPUT_MPLANE) {
+		signal_type = SIGNAL_CMD_STOP_OUTPUT;
+		buffer_type = BUF_OUTPUT;
+	} else {
+		return -EINVAL;
+	}
 
 	ret = iris_hfi_stop(inst, plane);
 	if (ret)
@@ -417,14 +778,25 @@ int session_streamoff(struct iris_inst *inst, u32 plane)
 	if (ret)
 		goto error;
 
+	/* no more queued buffers after streamoff */
+	count = get_num_queued_buffers(inst, buffer_type);
+	if (count) {
+		ret = -EINVAL;
+		goto error;
+	}
+
 	ret = iris_inst_state_change_streamoff(inst, plane);
 	if (ret)
 		goto error;
 
+	iris_flush_deferred_buffers(inst, buffer_type);
+	iris_flush_read_only_buffers(inst, buffer_type);
 	return 0;
 
 error:
 	kill_session(inst);
+	iris_flush_deferred_buffers(inst, buffer_type);
+	iris_flush_read_only_buffers(inst, buffer_type);
 
 	return ret;
 }
