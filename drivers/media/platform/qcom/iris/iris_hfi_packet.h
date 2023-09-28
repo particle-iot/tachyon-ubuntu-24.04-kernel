@@ -104,5 +104,9 @@ int hfi_packet_session_command(struct iris_inst *inst, u32 pkt_type,
 int hfi_packet_session_property(struct iris_inst *inst,
 				u32 pkt_type, u32 flags, u32 port,
 				u32 payload_type, void *payload, u32 payload_size);
+int hfi_packet_sys_interframe_powercollapse(struct iris_core *core,
+					    u8 *pkt, u32 pkt_size);
+int hfi_packet_sys_pc_prep(struct iris_core *core,
+			   u8 *pkt, u32 pkt_size);
 
 #endif

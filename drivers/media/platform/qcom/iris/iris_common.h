@@ -30,6 +30,8 @@ struct iris_inst;
 #define MAX_DPB_LIST_ARRAY_SIZE (16 * 4)
 #define MAX_DPB_LIST_PAYLOAD_SIZE (16 * 4 * 4)
 
+#define INPUT_TIMER_LIST_SIZE 30
+
 enum codec_type {
 	H264	= BIT(0),
 	HEVC	= BIT(1),
@@ -128,6 +130,11 @@ struct iris_hfi_frame_info {
 	u32	no_output;
 	u32	data_corrupt;
 	u32	overflow;
+};
+
+struct iris_input_timer {
+	struct list_head	list;
+	u64			time_us;
 };
 
 #endif

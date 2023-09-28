@@ -50,5 +50,9 @@ int iris_vb2_buffer_done(struct iris_inst *inst,
 int iris_release_nonref_buffers(struct iris_inst *inst);
 void iris_destroy_buffers(struct iris_inst *inst);
 int session_streamoff(struct iris_inst *inst, u32 plane);
+int iris_pm_get(struct iris_core *core);
+int iris_pm_put(struct iris_core *core, bool autosuspend);
+int iris_pm_get_put(struct iris_core *core);
+void iris_pm_touch(struct iris_core *core);
 
 #endif

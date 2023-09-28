@@ -3,12 +3,15 @@
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/pm_runtime.h>
+
 #include "hfi_defines.h"
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
 #include "iris_instance.h"
+#include "iris_power.h"
 #include "iris_vidc.h"
 #include "memory.h"
 
@@ -480,6 +483,8 @@ int queue_deferred_buffers(struct iris_inst *inst, enum iris_buffer_type buf_typ
 	if (!buffers)
 		return -EINVAL;
 
+	iris_scale_power(inst);
+
 	list_for_each_entry(buf, &buffers->list, list) {
 		if (!(buf->attr & BUF_ATTR_DEFERRED))
 			continue;
@@ -778,6 +783,9 @@ int session_streamoff(struct iris_inst *inst, u32 plane)
 	if (ret)
 		goto error;
 
+	if (plane == INPUT_MPLANE)
+		iris_flush_input_timer(inst);
+
 	/* no more queued buffers after streamoff */
 	count = get_num_queued_buffers(inst, buffer_type);
 	if (count) {
@@ -799,4 +807,62 @@ error:
 	iris_flush_read_only_buffers(inst, buffer_type);
 
 	return ret;
+}
+
+int iris_pm_get(struct iris_core *core)
+{
+	int ret;
+
+	mutex_lock(&core->pm_lock);
+	ret = pm_runtime_resume_and_get(core->dev);
+	mutex_unlock(&core->pm_lock);
+
+	return ret;
+}
+
+int iris_pm_put(struct iris_core *core, bool autosuspend)
+{
+	int ret;
+
+	mutex_lock(&core->pm_lock);
+
+	if (autosuspend)
+		ret = pm_runtime_put_autosuspend(core->dev);
+	else
+		ret = pm_runtime_put_sync(core->dev);
+	if (ret > 0)
+		ret = 0;
+
+	mutex_unlock(&core->pm_lock);
+
+	return ret;
+}
+
+int iris_pm_get_put(struct iris_core *core)
+{
+	int ret = 0;
+
+	mutex_lock(&core->pm_lock);
+
+	if (pm_runtime_suspended(core->dev)) {
+		ret = pm_runtime_resume_and_get(core->dev);
+		if (ret < 0)
+			goto error;
+
+		ret = pm_runtime_put_autosuspend(core->dev);
+	}
+	if (ret > 0)
+		ret = 0;
+
+error:
+	mutex_unlock(&core->pm_lock);
+
+	return ret;
+}
+
+void iris_pm_touch(struct iris_core *core)
+{
+	mutex_lock(&core->pm_lock);
+	pm_runtime_mark_last_busy(core->dev);
+	mutex_unlock(&core->pm_lock);
 }

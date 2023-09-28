@@ -936,6 +936,8 @@ static int handle_response(struct iris_core *core, void *response)
 	struct hfi_header *hdr;
 	int ret;
 
+	iris_pm_touch(core);
+
 	hdr = (struct hfi_header *)response;
 	ret = validate_hdr_packet(core, hdr);
 	if (ret)
