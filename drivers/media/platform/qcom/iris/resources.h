@@ -31,6 +31,14 @@ struct reset_info {
 	const char		*name;
 };
 
+int enable_power_domains(struct iris_core *core, const char *name);
+int disable_power_domains(struct iris_core *core, const char *name);
+int unvote_buses(struct iris_core *core);
+int vote_buses(struct iris_core *core, unsigned long bus_bw);
+int reset_ahb2axi_bridge(struct iris_core *core);
+int opp_set_rate(struct iris_core *core, u64 freq);
+int disable_unprepare_clock(struct iris_core *core, const char *clk_name);
+int prepare_enable_clock(struct iris_core *core, const char *clk_name);
 int init_resources(struct iris_core *core);
 
 #endif
