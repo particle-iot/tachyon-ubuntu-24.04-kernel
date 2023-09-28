@@ -103,6 +103,10 @@ struct iris_core {
 	u32					spur_count;
 	u32					reg_count;
 	char					fw_version[IRIS_VERSION_LENGTH];
+	struct mutex				pm_lock; /* lock for pm operations */
+	u32					skip_pc_count;
+	bool					power_enabled;
+	struct iris_core_power			power;
 };
 
 int iris_core_init(struct iris_core *core);
