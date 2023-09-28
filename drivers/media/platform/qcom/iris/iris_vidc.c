@@ -9,12 +9,13 @@
 
 #include "iris_buffer.h"
 #include "iris_common.h"
+#include "iris_ctrls.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_instance.h"
+#include "iris_power.h"
 #include "iris_vdec.h"
 #include "iris_vidc.h"
-#include "iris_ctrls.h"
 #include "iris_vb2.h"
 #include "memory.h"
 
@@ -163,17 +164,23 @@ int vidc_open(struct file *filp)
 	int i = 0;
 	int ret;
 
-	ret = iris_core_init(core);
+	ret = iris_pm_get(core);
 	if (ret)
 		return ret;
+
+	ret = iris_core_init(core);
+	if (ret)
+		goto fail_pm_put;
 
 	ret = iris_core_init_wait(core);
 	if (ret)
-		return ret;
+		goto fail_pm_put;
 
 	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
-	if (!inst)
-		return -ENOMEM;
+	if (!inst) {
+		ret = -ENOMEM;
+		goto fail_pm_put;
+	}
 
 	inst->core = core;
 	inst->session_id = hash32_ptr(inst);
@@ -203,6 +210,7 @@ int vidc_open(struct file *filp)
 	INIT_LIST_HEAD(&inst->buffers.persist.list);
 	INIT_LIST_HEAD(&inst->buffers.vpss.list);
 	INIT_LIST_HEAD(&inst->caps_list);
+	INIT_LIST_HEAD(&inst->input_timer_list);
 	for (i = 0; i < MAX_SIGNAL; i++)
 		init_completion(&inst->completions[i]);
 
@@ -218,11 +226,16 @@ int vidc_open(struct file *filp)
 	if (ret)
 		goto fail_inst_deinit;
 
+	iris_scale_power(inst);
+
 	ret = iris_hfi_session_open(inst);
 	if (ret) {
 		dev_err(core->dev, "%s: session open failed\n", __func__);
 		goto fail_core_deinit;
 	}
+
+	iris_pm_put(core, true);
+
 	filp->private_data = &inst->fh;
 
 	return 0;
@@ -243,6 +256,8 @@ fail_free_inst:
 	mutex_destroy(&inst->ctx_q_lock);
 	mutex_destroy(&inst->lock);
 	kfree(inst);
+fail_pm_put:
+	iris_pm_put(core, false);
 
 	return ret;
 }
@@ -250,20 +265,25 @@ fail_free_inst:
 int vidc_close(struct file *filp)
 {
 	struct iris_inst *inst;
+	struct iris_core *core;
 
 	inst = get_vidc_inst(filp, NULL);
 	if (!inst)
 		return -EINVAL;
 
+	core = inst->core;
+
 	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	vdec_inst_deinit(inst);
 	mutex_lock(&inst->lock);
+	iris_pm_get(core);
 	close_session(inst);
 	iris_inst_change_state(inst, IRIS_INST_CLOSE);
 	vidc_vb2_queue_deinit(inst);
 	vidc_v4l2_fh_deinit(inst);
 	iris_destroy_buffers(inst);
 	vidc_remove_session(inst);
+	iris_pm_put(core, false);
 	mutex_unlock(&inst->lock);
 	mutex_destroy(&inst->ctx_q_lock);
 	mutex_destroy(&inst->lock);
@@ -975,10 +995,16 @@ static int vidc_dec_cmd(struct file *filp, void *fh,
 		goto unlock;
 	}
 
+	ret = iris_pm_get(inst->core);
+	if (ret)
+		goto unlock;
+
 	if (dec->cmd == V4L2_DEC_CMD_START)
 		ret = vdec_start_cmd(inst);
 	else if (dec->cmd == V4L2_DEC_CMD_STOP)
 		ret = vdec_stop_cmd(inst);
+
+	iris_pm_put(inst->core, true);
 
 unlock:
 	mutex_unlock(&inst->lock);
