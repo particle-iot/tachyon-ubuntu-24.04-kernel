@@ -15,6 +15,7 @@ struct iris_core;
 struct iris_inst;
 
 #define HW_RESPONSE_TIMEOUT_VALUE     (1000)
+#define AUTOSUSPEND_DELAY_VALUE       (HW_RESPONSE_TIMEOUT_VALUE + 500)
 
 #define BIT_DEPTH_8 (8 << 16 | 8)
 #define BIT_DEPTH_10 (10 << 16 | 10)
@@ -61,6 +62,11 @@ struct reg_preset_info {
 	u32              mask;
 };
 
+struct iris_core_power {
+	u64 clk_freq;
+	u64 bus_bw;
+};
+
 struct ubwc_config_data {
 	u32	max_channels;
 	u32	mal_length;
@@ -69,6 +75,18 @@ struct ubwc_config_data {
 	u32	bank_swz2_level;
 	u32	bank_swz3_level;
 	u32	bank_spreading;
+};
+
+struct bus_vote_data {
+	u32 color_formats[2];
+	int height, width;
+	u32 fps;
+	u64 bus_bw;
+};
+
+struct iris_inst_power {
+	u64 min_freq;
+	u32 bus_bw;
 };
 
 enum plat_core_cap_type {

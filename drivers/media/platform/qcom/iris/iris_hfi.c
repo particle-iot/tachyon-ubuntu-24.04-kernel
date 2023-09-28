@@ -33,6 +33,41 @@ static bool __valdiate_session(struct iris_core *core,
 	return valid;
 }
 
+static int iris_power_off(struct iris_core *core)
+{
+	int ret;
+
+	if (!core->power_enabled)
+		return 0;
+
+	ret = call_vpu_op(core, power_off, core);
+	if (ret) {
+		dev_err(core->dev, "Failed to power off, err: %d\n", ret);
+		return ret;
+	}
+	core->power_enabled = false;
+
+	return ret;
+}
+
+static int iris_power_on(struct iris_core *core)
+{
+	int ret;
+
+	if (core->power_enabled)
+		return 0;
+
+	ret = call_vpu_op(core, power_on, core);
+	if (ret) {
+		dev_err(core->dev, "Failed to power on, err: %d\n", ret);
+		return ret;
+	}
+
+	core->power_enabled = true;
+
+	return ret;
+}
+
 static int sys_init(struct iris_core *core)
 {
 	int ret;
@@ -71,24 +106,30 @@ int iris_hfi_core_init(struct iris_core *core)
 	if (ret)
 		goto error;
 
-	ret = iris_fw_load(core);
+	ret = iris_power_on(core);
 	if (ret)
 		goto error;
+
+	ret = iris_fw_load(core);
+	if (ret)
+		goto error_power_off;
 
 	ret = call_vpu_op(core, boot_firmware, core);
 	if (ret)
-		goto error;
+		goto error_power_off;
 
 	ret = sys_init(core);
 	if (ret)
-		goto error;
+		goto error_power_off;
 
 	ret = sys_image_version(core);
 	if (ret)
-		goto error;
+		goto error_power_off;
 
 	return ret;
 
+error_power_off:
+	iris_power_off(core);
 error:
 	dev_err(core->dev, "%s(): failed\n", __func__);
 
@@ -107,6 +148,7 @@ int iris_hfi_core_deinit(struct iris_core *core)
 		return 0;
 
 	iris_fw_unload(core);
+	iris_power_off(core);
 
 	return ret;
 }
@@ -511,9 +553,14 @@ irqreturn_t iris_hfi_isr(int irq, void *data)
 irqreturn_t iris_hfi_isr_handler(int irq, void *data)
 {
 	struct iris_core *core = data;
+	int ret;
 
 	if (!core)
 		return IRQ_NONE;
+
+	ret = iris_pm_get(core);
+	if (ret)
+		goto exit;
 
 	mutex_lock(&core->lock);
 	call_vpu_op(core, clear_interrupt, core);
@@ -521,6 +568,9 @@ irqreturn_t iris_hfi_isr_handler(int irq, void *data)
 
 	__response_handler(core);
 
+	iris_pm_put(core, true);
+
+exit:
 	if (!call_vpu_op(core, watchdog, core, core->intr_status))
 		enable_irq(irq);
 
@@ -638,4 +688,114 @@ unlock:
 	mutex_unlock(&core->lock);
 
 	return ret;
+}
+
+int prepare_pc(struct iris_core *core)
+{
+	int ret;
+
+	ret = hfi_packet_sys_pc_prep(core, core->packet, core->packet_size);
+	if (ret)
+		goto err_pc_prep;
+
+	ret = iris_hfi_queue_cmd_write(core, core->packet);
+	if (ret)
+		goto err_pc_prep;
+
+	return ret;
+
+err_pc_prep:
+	dev_err(core->dev, "Failed to prepare venus for power off\n");
+
+	return ret;
+}
+
+int iris_hfi_pm_suspend(struct iris_core *core)
+{
+	int ret;
+
+	ret = check_core_lock(core);
+	if (ret)
+		return ret;
+
+	if (!core_in_valid_state(core))
+		return -EINVAL;
+
+	if (!core->power_enabled)
+		return 0;
+
+	if (core->skip_pc_count >= MAX_PC_SKIP_COUNT) {
+		dev_err(core->dev, "Failed to PC for %d times\n", core->skip_pc_count);
+		core->skip_pc_count = 0;
+		iris_change_core_state(core, IRIS_CORE_ERROR);
+		iris_core_deinit_locked(core);
+		return -EINVAL;
+	}
+
+	iris_flush_debug_queue(core, core->packet, core->packet_size);
+
+	ret = call_vpu_op(core, prepare_pc, core);
+	if (ret) {
+		core->skip_pc_count++;
+		iris_pm_touch(core);
+		return -EAGAIN;
+	}
+
+	ret = iris_set_hw_state(core, false);
+	if (ret)
+		return ret;
+
+	ret = iris_power_off(core);
+	if (ret)
+		return ret;
+
+	core->skip_pc_count = 0;
+
+	return ret;
+}
+
+int iris_hfi_pm_resume(struct iris_core *core)
+{
+	int ret;
+
+	ret = check_core_lock(core);
+	if (ret)
+		return ret;
+
+	if (!core_in_valid_state(core))
+		return -EINVAL;
+
+	if (core->power_enabled)
+		return 0;
+
+	ret = iris_power_on(core);
+	if (ret)
+		goto error;
+
+	ret = iris_set_hw_state(core, true);
+	if (ret)
+		goto err_power_off;
+
+	ret = call_vpu_op(core, boot_firmware, core);
+	if (ret)
+		goto err_suspend_hw;
+
+	ret = hfi_packet_sys_interframe_powercollapse(core, core->packet, core->packet_size);
+	if (ret)
+		goto err_suspend_hw;
+
+	ret = iris_hfi_queue_cmd_write(core, core->packet);
+	if (ret)
+		goto err_suspend_hw;
+
+	return ret;
+
+err_suspend_hw:
+	iris_set_hw_state(core, false);
+err_power_off:
+	iris_power_off(core);
+error:
+	dev_err(core->dev, "Failed to Resume\n");
+
+	return -EBUSY;
 }
