@@ -622,3 +622,51 @@ int hfi_packet_session_property(struct iris_inst *inst,
 
 	return ret;
 }
+
+int hfi_packet_sys_interframe_powercollapse(struct iris_core *core,
+					    u8 *pkt, u32 pkt_size)
+{
+	u32 payload = 0;
+	int ret;
+
+	ret = hfi_create_header(pkt, pkt_size,
+				0 /*session_id*/,
+				core->header_id++);
+	if (ret)
+		return ret;
+
+	payload = HFI_TRUE;
+
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_PROP_INTRA_FRAME_POWER_COLLAPSE,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_U32,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				&payload,
+				sizeof(u32));
+
+	return ret;
+}
+
+int hfi_packet_sys_pc_prep(struct iris_core *core,
+			   u8 *pkt, u32 pkt_size)
+{
+	int ret;
+
+	ret = hfi_create_header(pkt, pkt_size,
+				0 /*session_id*/,
+				core->header_id++);
+	if (ret)
+		return ret;
+
+	ret = hfi_create_packet(pkt, pkt_size,
+				HFI_CMD_POWER_COLLAPSE,
+				HFI_HOST_FLAGS_NONE,
+				HFI_PAYLOAD_NONE,
+				HFI_PORT_NONE,
+				core->packet_id++,
+				NULL, 0);
+
+	return ret;
+}
