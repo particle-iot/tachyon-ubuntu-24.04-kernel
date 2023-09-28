@@ -11,12 +11,14 @@ iris-objs += iris_probe.o \
              iris_hfi_queue.o \
              iris_hfi_packet.o \
              iris_buffer.o \
+             iris_power.o \
              resources.o \
              firmware.o \
              memory.o \
              vpu_common.o \
              vpu_iris3.o \
              vpu_iris3_buffer.o \
+             vpu_iris3_power.o \
              platform_common.o \
              platform_sm8550.o
 
