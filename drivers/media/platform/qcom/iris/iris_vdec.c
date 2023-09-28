@@ -12,6 +12,7 @@
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
+#include "iris_power.h"
 #include "iris_vdec.h"
 
 #define UNSPECIFIED_COLOR_FORMAT 5
@@ -1069,6 +1070,8 @@ static int process_streamon_input(struct iris_inst *inst)
 	enum iris_inst_sub_state set_sub_state = IRIS_INST_SUB_NONE;
 	int ret;
 
+	iris_scale_power(inst);
+
 	ret = iris_hfi_start(inst, INPUT_MPLANE);
 	if (ret)
 		return ret;
@@ -1149,6 +1152,8 @@ static int process_streamon_output(struct iris_inst *inst)
 	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
 	bool drain_pending = false;
 	int ret;
+
+	iris_scale_power(inst);
 
 	if (inst->sub_state & IRIS_INST_SUB_DRC &&
 	    inst->sub_state & IRIS_INST_SUB_DRC_LAST)
@@ -1282,6 +1287,8 @@ int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 		buf->attr |= BUF_ATTR_DEFERRED;
 		return ret;
 	}
+
+	iris_scale_power(inst);
 
 	ret = vb2_buffer_to_driver(vb2, buf);
 	if (ret)
