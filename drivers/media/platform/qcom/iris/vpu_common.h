@@ -24,6 +24,9 @@ struct vpu_ops {
 	int (*raise_interrupt)(struct iris_core *core);
 	int (*clear_interrupt)(struct iris_core *core);
 	int (*watchdog)(struct iris_core *core, u32 intr_status);
+	int (*power_on)(struct iris_core *core);
+	int (*power_off)(struct iris_core *core);
+	int (*prepare_pc)(struct iris_core *core);
 };
 
 #define call_session_op(c, op, ...)			\
@@ -32,11 +35,18 @@ struct vpu_ops {
 
 struct vpu_session_ops {
 	int (*int_buf_size)(struct iris_inst *inst, enum iris_buffer_type type);
+	u64 (*calc_freq)(struct iris_inst *inst, u32 data_size);
+	int (*calc_bw)(struct iris_inst *inst, struct bus_vote_data *data);
 };
 
 int init_vpu(struct iris_core *core);
 
 int write_register(struct iris_core *core, u32 reg, u32 value);
+int write_register_masked(struct iris_core *core, u32 reg, u32 value, u32 mask);
 int read_register(struct iris_core *core, u32 reg, u32 *value);
+int read_register_with_poll_timeout(struct iris_core *core, u32 reg,
+				    u32 mask, u32 exp_val, u32 sleep_us,
+				    u32 timeout_us);
+int set_preset_registers(struct iris_core *core);
 
 #endif
