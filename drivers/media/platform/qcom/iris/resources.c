@@ -4,6 +4,8 @@
  */
 
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
+#include <linux/delay.h>
 #include <linux/interconnect.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_opp.h>
@@ -14,6 +16,8 @@
 #include "iris_core.h"
 #include "platform_common.h"
 #include "resources.h"
+
+#define BW_THRESHOLD 50000
 
 static void iris_pd_release(void *res)
 {
@@ -55,6 +59,34 @@ static int iris_opp_dl_get(struct device *dev, struct device *supplier)
 		return -EINVAL;
 
 	ret = devm_add_action_or_reset(dev, iris_opp_dl_release, (void *)link);
+
+	return ret;
+}
+
+int opp_set_rate(struct iris_core *core, u64 freq)
+{
+	unsigned long opp_freq = 0;
+	struct dev_pm_opp *opp;
+	int ret;
+
+	opp_freq = freq;
+
+	opp = dev_pm_opp_find_freq_ceil(core->dev, &opp_freq);
+	if (IS_ERR(opp)) {
+		opp = dev_pm_opp_find_freq_floor(core->dev, &opp_freq);
+		if (IS_ERR(opp)) {
+			dev_err(core->dev,
+				"unable to find freq %lld in opp table\n", freq);
+			return -EINVAL;
+		}
+	}
+	dev_pm_opp_put(opp);
+
+	ret = dev_pm_opp_set_rate(core->dev, opp_freq);
+	if (ret) {
+		dev_err(core->dev, "failed to set rate\n");
+		return ret;
+	}
 
 	return ret;
 }
@@ -135,10 +167,64 @@ static int init_power_domains(struct iris_core *core)
 		}
 	}
 
+	ret = devm_pm_opp_set_clkname(core->dev, "vcodec_core");
+	if (ret)
+		return ret;
+
 	ret = devm_pm_opp_of_add_table(core->dev);
 	if (ret) {
 		dev_err(core->dev, "%s: failed to add opp table\n", __func__);
 		return ret;
+	}
+
+	return ret;
+}
+
+int enable_power_domains(struct iris_core *core, const char *name)
+{
+	struct power_domain_info *pdinfo = NULL;
+	int ret;
+	u32 i;
+
+	ret = opp_set_rate(core, ULONG_MAX);
+	if (ret)
+		return ret;
+
+	core->pd_count = core->platform_data->pd_tbl_size;
+	for (i = 0; i < (core->pd_count - 1); i++) {
+		pdinfo = &core->power_domain_tbl[i];
+		if (strcmp(pdinfo->name, name))
+			continue;
+		ret = pm_runtime_get_sync(pdinfo->genpd_dev);
+		if (ret < 0)
+			return ret;
+	}
+
+	ret = opp_set_rate(core, ULONG_MAX);
+	if (ret)
+		return ret;
+
+	return ret;
+}
+
+int disable_power_domains(struct iris_core *core, const char *name)
+{
+	struct power_domain_info *pdinfo = NULL;
+	int ret;
+	u32 i;
+
+	ret = opp_set_rate(core, 0);
+	if (ret)
+		return ret;
+
+	core->pd_count = core->platform_data->pd_tbl_size;
+	for (i = 0; i < (core->pd_count - 1); i++) {
+		pdinfo = &core->power_domain_tbl[i];
+		if (strcmp(pdinfo->name, name))
+			continue;
+		ret = pm_runtime_put_sync(pdinfo->genpd_dev);
+		if (ret)
+			return ret;
 	}
 
 	return ret;
@@ -202,6 +288,200 @@ static int init_reset_clocks(struct iris_core *core)
 	}
 
 	return 0;
+}
+
+int unvote_buses(struct iris_core *core)
+{
+	struct bus_info *bus = NULL;
+	int ret = 0;
+	u32 i;
+
+	core->power.bus_bw = 0;
+	core->bus_count = core->platform_data->bus_tbl_size;
+
+	for (i = 0; i < core->bus_count; i++) {
+		bus = &core->bus_tbl[i];
+		if (!bus->icc)
+			return -EINVAL;
+
+		ret = icc_set_bw(bus->icc, 0, 0);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int vote_buses(struct iris_core *core, unsigned long bus_bw)
+{
+	unsigned long bw_kbps = 0, bw_prev = 0;
+	struct bus_info *bus = NULL;
+	int ret = 0;
+	u32 i;
+
+	core->bus_count = core->platform_data->bus_tbl_size;
+
+	for (i = 0; i < core->bus_count; i++) {
+		bus = &core->bus_tbl[i];
+		if (bus && bus->icc) {
+			if (!strcmp(bus->name, "venus-ddr")) {
+				bw_kbps = bus_bw;
+				bw_prev = core->power.bus_bw;
+			} else {
+				bw_kbps = bus->bw_max_kbps;
+				bw_prev = core->power.bus_bw ?
+						bw_kbps : 0;
+			}
+
+			bw_kbps = clamp_t(typeof(bw_kbps), bw_kbps,
+					  bus->bw_min_kbps, bus->bw_max_kbps);
+
+			if (abs(bw_kbps - bw_prev) < BW_THRESHOLD && bw_prev)
+				continue;
+
+			ret = icc_set_bw(bus->icc, bw_kbps, 0);
+			if (ret)
+				return ret;
+
+			if (!strcmp(bus->name, "venus-ddr"))
+				core->power.bus_bw = bw_kbps;
+		}
+	}
+
+	return ret;
+}
+
+static int deassert_reset_control(struct iris_core *core)
+{
+	struct reset_info *rcinfo = NULL;
+	int ret = 0;
+	u32 i;
+
+	core->reset_count = core->platform_data->clk_rst_tbl_size;
+
+	for (i = 0; i < (core->reset_count - 1); i++) {
+		rcinfo = &core->reset_tbl[i];
+		ret = reset_control_deassert(rcinfo->rst);
+		if (ret) {
+			dev_err(core->dev, "deassert reset control failed. ret = %d\n", ret);
+			continue;
+		}
+	}
+
+	return ret;
+}
+
+static int assert_reset_control(struct iris_core *core)
+{
+	struct reset_info *rcinfo = NULL;
+	int ret = 0, cnt = 0;
+	u32 i;
+
+	core->reset_count = core->platform_data->clk_rst_tbl_size;
+
+	for (i = 0; i < (core->reset_count - 1); i++) {
+		rcinfo = &core->reset_tbl[i];
+		if (!rcinfo->rst)
+			return -EINVAL;
+
+		ret = reset_control_assert(rcinfo->rst);
+		if (ret) {
+			dev_err(core->dev, "failed to assert reset control %s, ret = %d\n",
+				rcinfo->name, ret);
+			goto deassert_reset_control;
+		}
+		cnt++;
+
+		usleep_range(1000, 1100);
+	}
+
+	return ret;
+deassert_reset_control:
+	for (i = 0; i < cnt; i++) {
+		rcinfo = &core->reset_tbl[i];
+		reset_control_deassert(rcinfo->rst);
+	}
+
+	return ret;
+}
+
+int reset_ahb2axi_bridge(struct iris_core *core)
+{
+	int ret;
+
+	ret = assert_reset_control(core);
+	if (ret)
+		return ret;
+
+	ret = deassert_reset_control(core);
+
+	return ret;
+}
+
+int disable_unprepare_clock(struct iris_core *core, const char *clk_name)
+{
+	struct clock_info *cl;
+	bool found = false;
+	u32 i;
+
+	core->clk_count = core->platform_data->clk_tbl_size;
+
+	for (i = 0; i < core->clk_count; i++) {
+		cl = &core->clock_tbl[i];
+		if (!cl->clk)
+			return -EINVAL;
+
+		if (strcmp(cl->name, clk_name))
+			continue;
+
+		found = true;
+		clk_disable_unprepare(cl->clk);
+		cl->prev = 0;
+		break;
+	}
+
+	if (!found)
+		return -EINVAL;
+
+	return 0;
+}
+
+int prepare_enable_clock(struct iris_core *core, const char *clk_name)
+{
+	struct clock_info *cl;
+	bool found = false;
+	int ret = 0;
+	u32 i;
+
+	core->clk_count = core->platform_data->clk_tbl_size;
+
+	for (i = 0; i < core->clk_count; i++) {
+		cl = &core->clock_tbl[i];
+		if (!cl->clk)
+			return -EINVAL;
+
+		if (strcmp(cl->name, clk_name))
+			continue;
+
+		found = true;
+
+		ret = clk_prepare_enable(cl->clk);
+		if (ret) {
+			dev_err(core->dev, "failed to enable clock %s\n", cl->name);
+			return ret;
+		}
+
+		if (!__clk_is_enabled(cl->clk)) {
+			clk_disable_unprepare(cl->clk);
+			return -EINVAL;
+		}
+		break;
+	}
+
+	if (!found)
+		return -EINVAL;
+
+	return ret;
 }
 
 int init_resources(struct iris_core *core)
