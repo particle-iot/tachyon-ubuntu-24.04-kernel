@@ -911,7 +911,82 @@ unlock:
 	return ret;
 }
 
-static const struct v4l2_file_operations v4l2_file_ops = {
+static int vidc_try_dec_cmd(struct file *filp, void *fh,
+			    struct v4l2_decoder_cmd *dec)
+{
+	struct iris_inst *inst;
+	int ret = 0;
+
+	inst = get_vidc_inst(filp, fh);
+	if (!inst || !dec)
+		return -EINVAL;
+
+	mutex_lock(&inst->lock);
+	if (IS_SESSION_ERROR(inst)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	if (dec->cmd != V4L2_DEC_CMD_STOP && dec->cmd != V4L2_DEC_CMD_START) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+	dec->flags = 0;
+	if (dec->cmd == V4L2_DEC_CMD_STOP) {
+		dec->stop.pts = 0;
+	} else if (dec->cmd == V4L2_DEC_CMD_START) {
+		dec->start.speed = 0;
+		dec->start.format = V4L2_DEC_START_FMT_NONE;
+	}
+
+unlock:
+	mutex_unlock(&inst->lock);
+
+	return ret;
+}
+
+static int vidc_dec_cmd(struct file *filp, void *fh,
+			struct v4l2_decoder_cmd *dec)
+{
+	struct iris_inst *inst;
+	int ret = 0;
+
+	inst = get_vidc_inst(filp, fh);
+	if (!inst || !dec)
+		return -EINVAL;
+
+	mutex_lock(&inst->lock);
+	if (IS_SESSION_ERROR(inst)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	if (dec->cmd != V4L2_DEC_CMD_START &&
+	    dec->cmd != V4L2_DEC_CMD_STOP) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (inst->state == IRIS_INST_OPEN)
+		goto unlock;
+
+	if (!allow_cmd(inst, dec->cmd)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	if (dec->cmd == V4L2_DEC_CMD_START)
+		ret = vdec_start_cmd(inst);
+	else if (dec->cmd == V4L2_DEC_CMD_STOP)
+		ret = vdec_stop_cmd(inst);
+
+unlock:
+	mutex_unlock(&inst->lock);
+
+	return ret;
+}
+
+static struct v4l2_file_operations v4l2_file_ops = {
 	.owner                          = THIS_MODULE,
 	.open                           = vidc_open,
 	.release                        = vidc_close,
@@ -960,6 +1035,8 @@ static const struct v4l2_ioctl_ops v4l2_ioctl_ops = {
 	.vidioc_subscribe_event         = vidc_subscribe_event,
 	.vidioc_unsubscribe_event       = vidc_unsubscribe_event,
 	.vidioc_g_selection             = vidc_g_selection,
+	.vidioc_try_decoder_cmd         = vidc_try_dec_cmd,
+	.vidioc_decoder_cmd             = vidc_dec_cmd,
 };
 
 int init_ops(struct iris_core *core)
