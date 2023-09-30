@@ -78,6 +78,7 @@ enum iris_buffer_flags {
 	BUF_FLAG_PFRAME		= 0x00000010,
 	BUF_FLAG_BFRAME		= 0x00000020,
 	BUF_FLAG_ERROR		= 0x00000040,
+	BUF_FLAG_LAST		= 0x00100000,
 };
 
 enum iris_buffer_attributes {
