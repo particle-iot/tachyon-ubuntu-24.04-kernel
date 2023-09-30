@@ -383,6 +383,124 @@ unlock:
 	return ret;
 }
 
+int iris_hfi_pause(struct iris_inst *inst, u32 plane)
+{
+	struct iris_core *core;
+	int ret = 0;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (plane != INPUT_MPLANE && plane != OUTPUT_MPLANE)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_PAUSE,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 HFI_PAYLOAD_NONE,
+					 NULL,
+					 0);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_resume(struct iris_inst *inst, u32 plane, u32 payload)
+{
+	struct iris_core *core;
+	int ret = 0;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (plane != INPUT_MPLANE && plane != OUTPUT_MPLANE)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_RESUME,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 HFI_PAYLOAD_U32,
+					 &payload,
+					 sizeof(u32));
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
+int iris_hfi_drain(struct iris_inst *inst, u32 plane)
+{
+	struct iris_core *core;
+	int ret = 0;
+
+	if (!inst->packet)
+		return -EINVAL;
+
+	core = inst->core;
+	mutex_lock(&core->lock);
+
+	if (!__valdiate_session(core, inst)) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	if (plane != INPUT_MPLANE)
+		goto unlock;
+
+	ret = hfi_packet_session_command(inst,
+					 HFI_CMD_DRAIN,
+					 (HFI_HOST_FLAGS_RESPONSE_REQUIRED |
+					 HFI_HOST_FLAGS_INTR_REQUIRED |
+					 HFI_HOST_FLAGS_NON_DISCARDABLE),
+					 get_hfi_port(plane),
+					 inst->session_id,
+					 HFI_PAYLOAD_NONE,
+					 NULL,
+					 0);
+	if (ret)
+		goto unlock;
+
+	ret = iris_hfi_queue_cmd_write(inst->core, inst->packet);
+
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
+}
+
 irqreturn_t iris_hfi_isr(int irq, void *data)
 {
 	disable_irq_nosync(irq);

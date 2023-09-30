@@ -1066,15 +1066,34 @@ static int vdec_subscribe_dst_change_param(struct iris_inst *inst)
 
 static int process_streamon_input(struct iris_inst *inst)
 {
+	enum iris_inst_sub_state set_sub_state = IRIS_INST_SUB_NONE;
 	int ret;
 
 	ret = iris_hfi_start(inst, INPUT_MPLANE);
 	if (ret)
 		return ret;
 
+	if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+		ret = iris_inst_change_sub_state(inst, IRIS_INST_SUB_INPUT_PAUSE, 0);
+		if (ret)
+			return ret;
+	}
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC ||
+	    inst->sub_state & IRIS_INST_SUB_DRAIN) {
+		if (!(inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE)) {
+			ret = iris_hfi_pause(inst, INPUT_MPLANE);
+			if (ret)
+				return ret;
+			set_sub_state = IRIS_INST_SUB_INPUT_PAUSE;
+		}
+	}
+
 	ret = iris_inst_state_change_streamon(inst, INPUT_MPLANE);
 	if (ret)
 		return ret;
+
+	ret = iris_inst_change_sub_state(inst, 0, set_sub_state);
 
 	return ret;
 }
@@ -1127,15 +1146,50 @@ int vdec_streamon_input(struct iris_inst *inst)
 
 static int process_streamon_output(struct iris_inst *inst)
 {
+	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
+	bool drain_pending = false;
 	int ret;
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST)
+		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
+
+	if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+		ret = iris_alloc_and_queue_input_int_bufs(inst);
+		if (ret)
+			return ret;
+		ret = set_stage(inst, STAGE);
+		if (ret)
+			return ret;
+		ret = set_pipe(inst, PIPE);
+		if (ret)
+			return ret;
+	}
+
+	drain_pending = inst->sub_state & IRIS_INST_SUB_DRAIN &&
+		inst->sub_state & IRIS_INST_SUB_DRAIN_LAST;
+
+	if (!drain_pending && inst->state == IRIS_INST_INPUT_STREAMING) {
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+	}
 
 	ret = iris_hfi_start(inst, OUTPUT_MPLANE);
 	if (ret)
 		return ret;
 
+	if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE)
+		clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+
 	ret = iris_inst_state_change_streamon(inst, OUTPUT_MPLANE);
 	if (ret)
 		return ret;
+
+	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
 
 	return ret;
 }
@@ -1239,6 +1293,97 @@ int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 
 	if (vb2->type == OUTPUT_MPLANE)
 		ret = iris_release_nonref_buffers(inst);
+
+	return ret;
+}
+
+static int process_resume(struct iris_inst *inst)
+{
+	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
+	int ret;
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST) {
+		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
+
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+		}
+	} else if (inst->sub_state & IRIS_INST_SUB_DRAIN &&
+			   inst->sub_state & IRIS_INST_SUB_DRAIN_LAST) {
+		clear_sub_state = IRIS_INST_SUB_DRAIN | IRIS_INST_SUB_DRAIN_LAST;
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_DRAIN);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_DRAIN);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+		}
+	}
+
+	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
+
+	return ret;
+}
+
+int vdec_start_cmd(struct iris_inst *inst)
+{
+	int ret;
+
+	vb2_clear_last_buffer_dequeued(inst->vb2q_dst);
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST &&
+	    inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+		ret = iris_alloc_and_queue_input_int_bufs(inst);
+		if (ret)
+			return ret;
+
+		ret = set_stage(inst, STAGE);
+		if (ret)
+			return ret;
+
+		ret = set_pipe(inst, PIPE);
+		if (ret)
+			return ret;
+	}
+
+	ret = iris_alloc_and_queue_additional_dpb_buffers(inst);
+	if (ret)
+		return ret;
+
+	ret = queue_deferred_buffers(inst, BUF_OUTPUT);
+	if (ret)
+		return ret;
+
+	ret = process_resume(inst);
+
+	return ret;
+}
+
+int vdec_stop_cmd(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = iris_hfi_drain(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_inst_change_sub_state(inst, 0, IRIS_INST_SUB_DRAIN);
 
 	return ret;
 }
