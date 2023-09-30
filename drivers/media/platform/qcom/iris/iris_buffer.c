@@ -633,7 +633,7 @@ static int iris_release_internal_buffers(struct iris_inst *inst,
 	return ret;
 }
 
-int iris_release_input_internal_buffers(struct iris_inst *inst)
+static int iris_release_input_internal_buffers(struct iris_inst *inst)
 {
 	int ret = 0;
 	u32 i = 0;
@@ -664,6 +664,60 @@ int iris_alloc_and_queue_session_int_bufs(struct iris_inst *inst,
 		return ret;
 
 	ret = iris_queue_internal_buffers(inst, buffer_type);
+
+	return ret;
+}
+
+int iris_alloc_and_queue_input_int_bufs(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = iris_get_internal_buffers(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_release_input_internal_buffers(inst);
+	if (ret)
+		return ret;
+
+	ret = iris_create_input_internal_buffers(inst);
+	if (ret)
+		return ret;
+
+	ret = iris_queue_input_internal_buffers(inst);
+
+	return ret;
+}
+
+int iris_alloc_and_queue_additional_dpb_buffers(struct iris_inst *inst)
+{
+	struct iris_buffers *buffers;
+	struct iris_buffer *buffer;
+	int cur_min_count = 0;
+	int ret;
+	int i;
+
+	ret = iris_get_internal_buf_info(inst, BUF_DPB);
+	if (ret)
+		return ret;
+
+	buffers = iris_get_buffer_list(inst, BUF_DPB);
+	if (!buffers)
+		return -EINVAL;
+
+	list_for_each_entry(buffer, &buffers->list, list)
+		cur_min_count++;
+
+	if (cur_min_count >= buffers->min_count)
+		return 0;
+
+	for (i = cur_min_count; i < buffers->min_count; i++) {
+		ret = iris_create_internal_buffers(inst, BUF_DPB);
+		if (ret)
+			return ret;
+	}
+
+	ret = iris_queue_internal_buffers(inst, BUF_DPB);
 
 	return ret;
 }

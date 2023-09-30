@@ -105,6 +105,10 @@ static int get_driver_buffer_flags(struct iris_inst *inst, u32 hfi_flags)
 	if (inst->hfi_frame_info.overflow)
 		driver_flags |= BUF_FLAG_ERROR;
 
+	if (hfi_flags & HFI_BUF_FW_FLAG_LAST ||
+	    hfi_flags & HFI_BUF_FW_FLAG_PSC_LAST)
+		driver_flags |= BUF_FLAG_LAST;
+
 	return driver_flags;
 }
 
@@ -185,6 +189,46 @@ static int validate_hdr_packet(struct iris_core *core, struct hfi_header *hdr)
 
 		pkt += packet->size;
 	}
+
+	return ret;
+}
+
+static int handle_session_info(struct iris_inst *inst,
+			       struct hfi_packet *pkt)
+{
+	struct iris_core *core;
+	int ret = 0;
+	char *info;
+
+	core = inst->core;
+
+	switch (pkt->type) {
+	case HFI_INFO_UNSUPPORTED:
+		info = "unsupported";
+		break;
+	case HFI_INFO_DATA_CORRUPT:
+		info = "data corrupt";
+		inst->hfi_frame_info.data_corrupt = 1;
+		break;
+	case HFI_INFO_BUFFER_OVERFLOW:
+		info = "buffer overflow";
+		inst->hfi_frame_info.overflow = 1;
+		break;
+	case HFI_INFO_HFI_FLAG_DRAIN_LAST:
+		info = "drain last flag";
+		ret = iris_inst_sub_state_change_drain_last(inst);
+		break;
+	case HFI_INFO_HFI_FLAG_PSC_LAST:
+		info = "drc last flag";
+		ret = iris_inst_sub_state_change_drc_last(inst);
+		break;
+	default:
+		info = "unknown";
+		break;
+	}
+
+	dev_dbg(core->dev, "session info received %#x: %s\n",
+		pkt->type, info);
 
 	return ret;
 }
@@ -377,8 +421,20 @@ static int handle_output_buffer(struct iris_inst *inst,
 	bool found;
 	int ret = 0;
 
+	if (hfi_buffer->flags & HFI_BUF_FW_FLAG_LAST) {
+		ret = iris_inst_sub_state_change_drain_last(inst);
+		if (ret)
+			return ret;
+	}
+
 	if (hfi_buffer->flags & HFI_BUF_FW_FLAG_RELEASE_DONE)
 		return handle_release_output_buffer(inst, hfi_buffer);
+
+	if (hfi_buffer->flags & HFI_BUF_FW_FLAG_PSC_LAST) {
+		ret = iris_inst_sub_state_change_drc_last(inst);
+		if (ret)
+			return ret;
+	}
 
 	if (!(hfi_buffer->flags & HFI_BUF_FW_FLAG_READONLY))
 		ret = handle_non_read_only_buffer(inst, hfi_buffer);
@@ -490,6 +546,26 @@ static int handle_release_internal_buffer(struct iris_inst *inst,
 	return ret;
 }
 
+static int handle_session_stop(struct iris_inst *inst,
+			       struct hfi_packet *pkt)
+{
+	int ret = 0;
+	enum signal_session_response signal_type = -1;
+
+	if (pkt->port == HFI_PORT_RAW) {
+		signal_type = SIGNAL_CMD_STOP_OUTPUT;
+		ret = iris_inst_sub_state_change_pause(inst, OUTPUT_MPLANE);
+	} else if (pkt->port == HFI_PORT_BITSTREAM) {
+		signal_type = SIGNAL_CMD_STOP_INPUT;
+		ret = iris_inst_sub_state_change_pause(inst, INPUT_MPLANE);
+	}
+
+	if (signal_type != -1)
+		signal_session_msg_receipt(inst, signal_type);
+
+	return ret;
+}
+
 static int handle_session_buffer(struct iris_inst *inst,
 				 struct hfi_packet *pkt)
 {
@@ -551,18 +627,30 @@ static int handle_session_buffer(struct iris_inst *inst,
 	return ret;
 }
 
-static int handle_src_change(struct iris_inst *inst,
-			     struct hfi_packet *pkt)
+static int handle_session_drain(struct iris_inst *inst,
+				struct hfi_packet *pkt)
 {
 	int ret = 0;
 
-	if (pkt->port == HFI_PORT_BITSTREAM)
-		ret = vdec_src_change(inst);
-	else if (pkt->port == HFI_PORT_RAW)
-		ret = 0;
+	if (inst->sub_state & IRIS_INST_SUB_DRAIN)
+		ret = iris_inst_change_sub_state(inst, 0, IRIS_INST_SUB_INPUT_PAUSE);
 
+	return ret;
+}
+
+static int handle_src_change(struct iris_inst *inst,
+			     struct hfi_packet *pkt)
+{
+	int ret;
+
+	if (pkt->port != HFI_PORT_BITSTREAM)
+		return 0;
+
+	ret = iris_inst_sub_state_change_drc(inst);
 	if (ret)
-		iris_inst_change_state(inst, IRIS_INST_ERROR);
+		return ret;
+
+	ret = vdec_src_change(inst);
 
 	return ret;
 }
@@ -574,9 +662,14 @@ static int handle_session_command(struct iris_inst *inst,
 	static const struct iris_hfi_packet_handle hfi_pkt_handle[] = {
 		{HFI_CMD_OPEN,              NULL                    },
 		{HFI_CMD_CLOSE,             handle_session_close    },
+		{HFI_CMD_START,             NULL                    },
+		{HFI_CMD_STOP,              handle_session_stop     },
+		{HFI_CMD_DRAIN,             handle_session_drain    },
 		{HFI_CMD_BUFFER,            handle_session_buffer   },
 		{HFI_CMD_SETTINGS_CHANGE,   handle_src_change       },
 		{HFI_CMD_SUBSCRIBE_MODE,    NULL                    },
+		{HFI_CMD_PAUSE,             NULL                    },
+		{HFI_CMD_RESUME,            NULL                    },
 	};
 
 	for (i = 0; i < ARRAY_SIZE(hfi_pkt_handle); i++) {
@@ -782,6 +875,7 @@ static int handle_session_response(struct iris_core *core,
 	int i, j;
 	static const struct iris_inst_hfi_range be[] = {
 		{HFI_SESSION_ERROR_BEGIN,  HFI_SESSION_ERROR_END,  handle_session_error    },
+		{HFI_INFORMATION_BEGIN,    HFI_INFORMATION_END,    handle_session_info     },
 		{HFI_PROP_BEGIN,           HFI_PROP_END,           handle_session_property },
 		{HFI_CMD_BEGIN,            HFI_CMD_END,            handle_session_command  },
 	};

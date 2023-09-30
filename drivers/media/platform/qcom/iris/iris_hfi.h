@@ -25,7 +25,9 @@ int iris_hfi_session_set_default_header(struct iris_inst *inst);
 
 int iris_hfi_start(struct iris_inst *inst, u32 plane);
 int iris_hfi_stop(struct iris_inst *inst, u32 plane);
-
+int iris_hfi_drain(struct iris_inst *inst, u32 plane);
+int iris_hfi_pause(struct iris_inst *inst, u32 plane);
+int iris_hfi_resume(struct iris_inst *inst, u32 plane, u32 cmd);
 int iris_hfi_queue_buffer(struct iris_inst *inst,
 			  struct iris_buffer *buffer);
 int iris_hfi_release_buffer(struct iris_inst *inst,
