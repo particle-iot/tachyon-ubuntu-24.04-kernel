@@ -40,6 +40,7 @@
  * @buffers: structure of buffer info
  * @fw_min_count: minimnum count of buffers needed by fw
  * @state: instance state
+ * @sub_state: instance sub state
  * @ipsc_properties_set: boolean to set ipsc properties to fw
  * @opsc_properties_set: boolean to set opsc properties to fw
  * @hfi_frame_info: structure of frame info
@@ -73,6 +74,7 @@ struct iris_inst {
 	struct iris_buffers_info	buffers;
 	u32				fw_min_count;
 	enum iris_inst_state		state;
+	enum iris_inst_sub_state	sub_state;
 	bool				ipsc_properties_set;
 	bool				opsc_properties_set;
 	struct iris_hfi_frame_info	hfi_frame_info;
