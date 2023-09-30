@@ -19,5 +19,7 @@ int vdec_src_change(struct iris_inst *inst);
 int vdec_streamon_input(struct iris_inst *inst);
 int vdec_streamon_output(struct iris_inst *inst);
 int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2);
+int vdec_start_cmd(struct iris_inst *inst);
+int vdec_stop_cmd(struct iris_inst *inst);
 
 #endif
