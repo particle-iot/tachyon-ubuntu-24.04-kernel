@@ -4,6 +4,7 @@
  */
 
 #include "iris_buffer.h"
+#include "iris_ctrls.h"
 #include "iris_core.h"
 #include "iris_helpers.h"
 #include "iris_instance.h"
@@ -46,6 +47,22 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 	buffer_type = v4l2_type_to_driver(q->type);
 	if (!buffer_type)
 		return -EINVAL;
+
+	if (list_empty(&inst->caps_list)) {
+		ret = prepare_dependency_list(inst);
+		if (ret)
+			return ret;
+	}
+
+	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		ret = adjust_v4l2_properties(inst);
+		if (ret)
+			return ret;
+	}
+
+	ret = check_session_supported(inst);
+	if (ret)
+		return ret;
 
 	ret = iris_free_buffers(inst, buffer_type);
 	if (ret)
