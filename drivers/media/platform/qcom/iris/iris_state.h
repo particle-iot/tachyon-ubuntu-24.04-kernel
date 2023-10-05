@@ -41,4 +41,10 @@ int iris_change_core_state(struct iris_core *core,
 int iris_inst_change_state(struct iris_inst *inst,
 			   enum iris_inst_state request_state);
 
+bool allow_s_fmt(struct iris_inst *inst, u32 type);
+bool allow_reqbufs(struct iris_inst *inst, u32 type);
+bool allow_streamon(struct iris_inst *inst, u32 type);
+bool allow_streamoff(struct iris_inst *inst, u32 type);
+bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id);
+
 #endif
