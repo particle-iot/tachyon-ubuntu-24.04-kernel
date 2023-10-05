@@ -211,10 +211,10 @@ static int vdec_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
-		ctrl->val = MIN_CAPTURE_BUFFERS;
+		ctrl->val = inst->buffers.output.min_count;
 		break;
 	case V4L2_CID_MIN_BUFFERS_FOR_OUTPUT:
-		ctrl->val = MIN_OUTPUT_BUFFERS;
+		ctrl->val = inst->buffers.input.min_count;
 		break;
 	default:
 		inst = container_of(ctrl->handler, struct iris_inst, ctrl_handler);
@@ -232,11 +232,16 @@ static int vdec_op_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct cap_entry *entry = NULL, *temp = NULL;
 	struct list_head children_list, firmware_list;
+	struct ctrl_data *priv_ctrl_data;
 	enum plat_inst_cap_type cap_id;
 	bool cap_present[INST_CAP_MAX];
 	struct plat_inst_cap *cap;
 	struct iris_inst *inst;
 	int ret = 0;
+
+	priv_ctrl_data = ctrl->priv ? ctrl->priv : NULL;
+	if (priv_ctrl_data && priv_ctrl_data->skip_s_ctrl)
+		return 0;
 
 	inst = container_of(ctrl->handler, struct iris_inst, ctrl_handler);
 	cap = &inst->cap[0];
@@ -248,6 +253,9 @@ static int vdec_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	cap_id = get_cap_id(inst, ctrl->id);
 	if (!is_valid_cap_id(cap_id))
 		return -EINVAL;
+
+	if (!allow_s_ctrl(inst, cap_id))
+		return -EBUSY;
 
 	cap[cap_id].flags |= CAP_FLAG_CLIENT_SET;
 
@@ -282,11 +290,12 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 	.g_volatile_ctrl = vdec_op_g_volatile_ctrl,
 };
 
-int ctrls_init(struct iris_inst *inst)
+int ctrls_init(struct iris_inst *inst, bool init)
 {
 	int num_ctrls = 0, ctrl_idx = 0;
 	struct plat_inst_cap *cap;
 	struct iris_core *core;
+	u64 step_or_mask;
 	int idx = 0;
 	int ret = 0;
 
@@ -300,10 +309,12 @@ int ctrls_init(struct iris_inst *inst)
 	if (!num_ctrls)
 		return -EINVAL;
 
-	ret = v4l2_ctrl_handler_init(&inst->ctrl_handler,
-				     INST_CAP_MAX * core->dec_codecs_count);
-	if (ret)
-		return ret;
+	if (init) {
+		ret = v4l2_ctrl_handler_init(&inst->ctrl_handler,
+					     INST_CAP_MAX * core->dec_codecs_count);
+		if (ret)
+			return ret;
+	}
 
 	for (idx = 0; idx < INST_CAP_MAX; idx++) {
 		struct v4l2_ctrl *ctrl;
@@ -314,6 +325,27 @@ int ctrls_init(struct iris_inst *inst)
 		if (ctrl_idx >= num_ctrls) {
 			ret = -EINVAL;
 			goto error;
+		}
+
+		if (!init) {
+			struct ctrl_data ctrl_priv_data;
+
+			ctrl = v4l2_ctrl_find(&inst->ctrl_handler, cap[idx].v4l2_id);
+			if (ctrl) {
+				step_or_mask = (cap[idx].flags & CAP_FLAG_MENU) ?
+					~(cap[idx].step_or_mask) :
+					cap[idx].step_or_mask;
+				memset(&ctrl_priv_data, 0, sizeof(ctrl_priv_data));
+				ctrl_priv_data.skip_s_ctrl = true;
+				ctrl->priv = &ctrl_priv_data;
+				v4l2_ctrl_modify_range(ctrl,
+						       cap[idx].min,
+						       cap[idx].max,
+						       step_or_mask,
+						       cap[idx].value);
+				ctrl->priv = NULL;
+				continue;
+			}
 		}
 
 		if (cap[idx].flags & CAP_FLAG_MENU) {
