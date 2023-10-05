@@ -13,6 +13,10 @@ struct cap_entry {
 	enum plat_inst_cap_type cap_id;
 };
 
+struct ctrl_data {
+	bool skip_s_ctrl;
+};
+
 int set_u32_enum(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_stage(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_pipe(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
@@ -25,6 +29,6 @@ int iris_init_instance_caps(struct iris_core *core);
 int iris_init_core_caps(struct iris_core *core);
 int get_inst_capability(struct iris_inst *inst);
 int adjust_v4l2_properties(struct iris_inst *inst);
-int ctrls_init(struct iris_inst *inst);
+int ctrls_init(struct iris_inst *inst, bool init);
 
 #endif

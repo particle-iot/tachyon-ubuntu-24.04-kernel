@@ -34,6 +34,7 @@ struct iris_buffers_info {
 	struct iris_buffers	vpss;
 };
 
+int update_buffer_count(struct iris_inst *inst, u32 plane);
 int iris_get_buf_min_count(struct iris_inst *inst,
 			   enum iris_buffer_type buffer_type);
 int iris_get_buffer_size(struct iris_inst *inst,

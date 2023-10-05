@@ -23,6 +23,7 @@
  * @vb2q_src: source vb2 queue
  * @vb2q_dst: destination vb2 queue
  * @ctx_q_lock: lock to serialize queues related ioctls
+ * @lock: lock to seralise forward and reverse threads
  * @fh: reference of v4l2 file handler
  * @fmt_src: structure of v4l2_format for source
  * @fmt_dst: structure of v4l2_format for destination
@@ -39,6 +40,7 @@
  * @buffers: structure of buffer info
  * @fw_min_count: minimnum count of buffers needed by fw
  * @state: instance state
+ * @ipsc_properties_set: boolean to set ipsc properties to fw
  */
 
 struct iris_inst {
@@ -48,6 +50,7 @@ struct iris_inst {
 	struct vb2_queue		*vb2q_src;
 	struct vb2_queue		*vb2q_dst;
 	struct mutex			ctx_q_lock;/* lock to serialize queues related ioctls */
+	struct mutex			lock;
 	struct v4l2_fh			fh;
 	struct v4l2_format		*fmt_src;
 	struct v4l2_format		*fmt_dst;
@@ -64,6 +67,7 @@ struct iris_inst {
 	struct iris_buffers_info	buffers;
 	u32				fw_min_count;
 	enum iris_inst_state		state;
+	bool				ipsc_properties_set;
 };
 
 #endif
