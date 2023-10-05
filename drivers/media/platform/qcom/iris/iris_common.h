@@ -19,6 +19,8 @@ struct iris_inst;
 #define DEFAULT_HEIGHT 240
 #define DEFAULT_BSE_VPP_DELAY    2
 
+#define MAX_EVENTS   30
+
 #define MB_IN_PIXEL (16 * 16)
 
 #define NUM_MBS_4k (((4096 + 15) >> 4) * ((2304 + 15) >> 4))
