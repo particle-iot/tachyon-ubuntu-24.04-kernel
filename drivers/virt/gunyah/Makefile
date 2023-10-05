@@ -9,3 +9,4 @@ obj-$(CONFIG_GUNYAH) += gunyah.o
 obj-$(CONFIG_GUNYAH_VCPU) += gunyah_vcpu.o
 obj-$(CONFIG_GUNYAH_IRQFD) += gunyah_irqfd.o
 obj-$(CONFIG_GUNYAH_IOEVENTFD) += gunyah_ioeventfd.o
+obj-$(CONFIG_GH_VIRT_WATCHDOG) += gh_virt_wdt.o
