@@ -19,6 +19,40 @@
 #define MINIMUM_FPS         1
 #define MAXIMUM_FPS       480
 
+static struct codec_info codec_data_sm8550[] = {
+	{
+		.v4l2_codec  = V4L2_PIX_FMT_H264,
+		.codec  = H264,
+	},
+	{
+		.v4l2_codec  = V4L2_PIX_FMT_HEVC,
+		.codec  = HEVC,
+	},
+	{
+		.v4l2_codec  = V4L2_PIX_FMT_VP9,
+		.codec  = VP9,
+	},
+};
+
+static struct color_format_info color_format_data_sm8550[] = {
+	{
+		.v4l2_color_format = V4L2_PIX_FMT_NV12,
+		.color_format = FMT_NV12,
+	},
+	{
+		.v4l2_color_format = V4L2_PIX_FMT_NV21,
+		.color_format = FMT_NV21,
+	},
+	{
+		.v4l2_color_format = V4L2_PIX_FMT_QC08C,
+		.color_format = FMT_NV12C,
+	},
+	{
+		.v4l2_color_format = V4L2_PIX_FMT_QC10C,
+		.color_format = FMT_TP10C,
+	},
+};
+
 static struct plat_core_cap core_data_sm8550[] = {
 	{DEC_CODECS, H264 | HEVC | VP9},
 	{MAX_SESSION_COUNT, 16},
@@ -331,6 +365,13 @@ static struct ubwc_config_data ubwc_config_sm8550[] = {
 	UBWC_CONFIG(8, 32, 16, 0, 1, 1, 1),
 };
 
+static struct format_capability format_data_sm8550 = {
+	.codec_info = codec_data_sm8550,
+	.codec_info_size = ARRAY_SIZE(codec_data_sm8550),
+	.color_format_info = color_format_data_sm8550,
+	.color_format_info_size = ARRAY_SIZE(color_format_data_sm8550),
+};
+
 struct platform_data sm8550_data = {
 	.bus_tbl = sm8550_bus_table,
 	.bus_tbl_size = ARRAY_SIZE(sm8550_bus_table),
@@ -357,4 +398,5 @@ struct platform_data sm8550_data = {
 	.inst_cap_data = instance_cap_data_sm8550,
 	.inst_cap_data_size = ARRAY_SIZE(instance_cap_data_sm8550),
 	.ubwc_config = ubwc_config_sm8550,
+	.format_data = &format_data_sm8550,
 };
