@@ -141,6 +141,29 @@ static int output_min_count(struct iris_inst *inst)
 	return output_min_count;
 }
 
+int update_buffer_count(struct iris_inst *inst, u32 plane)
+{
+	switch (plane) {
+	case INPUT_MPLANE:
+		inst->buffers.input.min_count = input_min_count(inst);
+		if (inst->buffers.input.actual_count < inst->buffers.input.min_count)
+			inst->buffers.input.actual_count = inst->buffers.input.min_count;
+
+		break;
+	case OUTPUT_MPLANE:
+		if (!inst->vb2q_src->streaming)
+			inst->buffers.output.min_count = output_min_count(inst);
+		if (inst->buffers.output.actual_count < inst->buffers.output.min_count)
+			inst->buffers.output.actual_count = inst->buffers.output.min_count;
+
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static u32 internal_buffer_count(struct iris_inst *inst,
 				 enum iris_buffer_type buffer_type)
 {
