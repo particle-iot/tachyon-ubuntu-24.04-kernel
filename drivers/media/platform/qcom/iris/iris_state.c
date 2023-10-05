@@ -155,3 +155,41 @@ int iris_inst_change_state(struct iris_inst *inst,
 
 	return 0;
 }
+
+bool allow_s_fmt(struct iris_inst *inst, u32 type)
+{
+	return (inst->state == IRIS_INST_OPEN) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_INPUT_STREAMING) ||
+		(type == INPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING);
+}
+
+bool allow_reqbufs(struct iris_inst *inst, u32 type)
+{
+	return (inst->state == IRIS_INST_OPEN) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_INPUT_STREAMING) ||
+		(type == INPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING);
+}
+
+bool allow_streamon(struct iris_inst *inst, u32 type)
+{
+	return (type == INPUT_MPLANE && inst->state == IRIS_INST_OPEN) ||
+		(type == INPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_OPEN) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_INPUT_STREAMING);
+}
+
+bool allow_streamoff(struct iris_inst *inst, u32 type)
+{
+	return (type == INPUT_MPLANE && inst->state == IRIS_INST_INPUT_STREAMING) ||
+		(type == INPUT_MPLANE && inst->state == IRIS_INST_STREAMING) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_OUTPUT_STREAMING) ||
+		(type == OUTPUT_MPLANE && inst->state == IRIS_INST_STREAMING);
+}
+
+bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id)
+{
+	return ((inst->state == IRIS_INST_OPEN) ||
+		((inst->cap[cap_id].flags & CAP_FLAG_DYNAMIC_ALLOWED) &&
+		(inst->state == IRIS_INST_INPUT_STREAMING ||
+		inst->state == IRIS_INST_STREAMING)));
+}
