@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * qcm6490-addons IDP device tree source
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *
+ */
+
+/dts-v1/;
+
+#include "qcm6490-addons.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. qcm6490-addons IDP platform";
+	compatible = "qcom,qcm6490-addons-idp","qcom,sc7280";
+};
+
