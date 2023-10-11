@@ -23,6 +23,7 @@
  * @irq: iris irq
  * @v4l2_dev: a holder for v4l2 device structure
  * @vdev_dec: iris video device structure for decoder
+ * @vdev_enc: iris video device structure for encoder
  * @v4l2_file_ops: iris v4l2 file ops
  * @v4l2_ioctl_ops: iris v4l2 ioctl ops
  * @bus_tbl: table of iris buses
@@ -67,6 +68,7 @@ struct iris_core {
 	int					irq;
 	struct v4l2_device			v4l2_dev;
 	struct video_device			*vdev_dec;
+	struct video_device			*vdev_enc;
 	const struct v4l2_file_operations	*v4l2_file_ops;
 	const struct v4l2_ioctl_ops		*v4l2_ioctl_ops;
 	struct bus_info				*bus_tbl;
