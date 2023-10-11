@@ -32,6 +32,11 @@ struct iris_inst;
 
 #define INPUT_TIMER_LIST_SIZE 30
 
+enum domain_type {
+	ENCODER	= BIT(0),
+	DECODER	= BIT(1),
+};
+
 enum codec_type {
 	H264	= BIT(0),
 	HEVC	= BIT(1),
