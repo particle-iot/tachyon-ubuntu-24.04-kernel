@@ -10,6 +10,8 @@
 #include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
+#include <linux/of_address.h>
+#include <linux/syscore_ops.h>
 #include <soc/qcom/wdt_core.h>
 
 #define VIRT_WDT_CONTROL \
@@ -25,6 +27,9 @@
 		ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, ARM_SMCCC_SMC_32,\
 				ARM_SMCCC_OWNER_VENDOR_HYP, 0x0008)
 #define VIRT_WDT_NO_CHANGE 0xFFFF
+
+#define KASLR_OFFSET_MASK	0x00000000FFFFFFFF
+#define KASLR_IMEM_MAGIC	0xdead4ead
 
 /**
  *  gh_wdt_call() - Sends ARM SMCCC 1.1 Calls to the hypervisor
@@ -262,6 +267,42 @@ static int gh_wdt_probe(struct platform_device *pdev)
 	return qcom_wdt_register(pdev, wdog_dd, "gh-watchdog");
 }
 
+#ifdef CONFIG_RANDOMIZE_BASE
+static void __iomem *map_prop_mem(const char *propname)
+{
+	struct device_node *np = of_find_compatible_node(NULL, NULL, propname);
+	void __iomem *addr;
+
+	if (!np) {
+		pr_err("Unable to find DT property: %s\n", propname);
+		return NULL;
+	}
+	addr = of_iomap(np, 0);
+	if (!addr)
+		pr_err("Unable to map memory for DT property: %s\n", propname);
+	return addr;
+}
+
+static void store_kaslr_offset(void)
+{
+	void __iomem *mem = map_prop_mem("qcom,msm-imem-kaslr_offset");
+
+	if (!mem)
+		return;
+
+	__raw_writel(KASLR_IMEM_MAGIC, mem);
+	__raw_writel((kimage_vaddr - KIMAGE_VADDR) & KASLR_OFFSET_MASK,
+		     mem + 4);
+	__raw_writel(((kimage_vaddr - KIMAGE_VADDR) >> 32) & KASLR_OFFSET_MASK,
+		     mem + 8);
+	iounmap(mem);
+}
+
+#else
+static void store_kaslr_offset(void) { }
+#endif /* CONFIG_RANDOMIZE_BASE */
+
+
 static const struct dev_pm_ops gh_wdt_dev_pm_ops = {
 #ifdef CONFIG_PM_SLEEP
 	.suspend_late = qcom_wdt_pet_suspend,
@@ -288,6 +329,7 @@ static struct platform_driver gh_wdt_driver = {
 
 static int __init init_watchdog(void)
 {
+	store_kaslr_offset();
 	return platform_driver_register(&gh_wdt_driver);
 }
 
