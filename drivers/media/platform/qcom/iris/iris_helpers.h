@@ -42,6 +42,7 @@ enum codec_type v4l2_codec_to_driver(struct iris_inst *inst, u32 v4l2_codec);
 u32 v4l2_colorformat_from_driver(struct iris_inst *inst, enum colorformat_type colorformat);
 enum colorformat_type v4l2_colorformat_to_driver(struct iris_inst *inst, u32 v4l2_colorformat);
 struct vb2_queue *get_vb2q(struct iris_inst *inst, u32 type);
+int check_core_mbps_mbpf(struct iris_inst *inst);
 int check_session_supported(struct iris_inst *inst);
 
 struct iris_buffer *get_driver_buf(struct iris_inst *inst, u32 plane, u32 index);
@@ -52,6 +53,8 @@ int iris_vb2_buffer_done(struct iris_inst *inst,
 int iris_release_nonref_buffers(struct iris_inst *inst);
 void iris_destroy_buffers(struct iris_inst *inst);
 int session_streamoff(struct iris_inst *inst, u32 plane);
+int process_resume(struct iris_inst *inst);
+int codec_change(struct iris_inst *inst, u32 v4l2_codec);
 int iris_pm_get(struct iris_core *core);
 int iris_pm_put(struct iris_core *core, bool autosuspend);
 int iris_pm_get_put(struct iris_core *core);
