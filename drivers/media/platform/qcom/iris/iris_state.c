@@ -198,8 +198,9 @@ bool allow_s_ctrl(struct iris_inst *inst, u32 cap_id)
 {
 	return ((inst->state == IRIS_INST_OPEN) ||
 		((inst->cap[cap_id].flags & CAP_FLAG_DYNAMIC_ALLOWED) &&
-		(inst->state == IRIS_INST_INPUT_STREAMING ||
-		inst->state == IRIS_INST_STREAMING)));
+		 ((inst->state == IRIS_INST_INPUT_STREAMING && inst->domain == DECODER) ||
+		  (inst->state == IRIS_INST_OUTPUT_STREAMING && inst->domain == ENCODER) ||
+		  (inst->state == IRIS_INST_STREAMING))));
 }
 
 int iris_inst_state_change_streamon(struct iris_inst *inst, u32 plane)
