@@ -112,6 +112,7 @@ struct iris_inst_power {
 enum plat_core_cap_type {
 	CORE_CAP_NONE = 0,
 	DEC_CODECS,
+	ENC_CODECS,
 	MAX_SESSION_COUNT,
 	MAX_MBPF,
 	MAX_MBPS,
@@ -245,6 +246,7 @@ struct plat_inst_cap {
 
 struct plat_inst_caps {
 	enum codec_type codec;
+	enum domain_type domain;
 	struct plat_inst_cap cap[INST_CAP_MAX + 1];
 };
 
