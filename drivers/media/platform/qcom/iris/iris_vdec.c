@@ -22,39 +22,6 @@ struct vdec_prop_type_handle {
 	int (*handle)(struct iris_inst *inst);
 };
 
-static int vdec_codec_change(struct iris_inst *inst, u32 v4l2_codec)
-{
-	bool session_init = false;
-	int ret;
-
-	if (!inst->codec)
-		session_init = true;
-
-	if (inst->codec && inst->fmt_src->fmt.pix_mp.pixelformat == v4l2_codec)
-		return 0;
-
-	inst->codec = v4l2_codec_to_driver(inst, v4l2_codec);
-	if (!inst->codec)
-		return -EINVAL;
-
-	inst->fmt_src->fmt.pix_mp.pixelformat = v4l2_codec;
-	ret = get_inst_capability(inst);
-	if (ret)
-		return ret;
-
-	ret = ctrls_init(inst, session_init);
-	if (ret)
-		return ret;
-
-	ret = update_buffer_count(inst, INPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	ret = update_buffer_count(inst, OUTPUT_MPLANE);
-
-	return ret;
-}
-
 int vdec_inst_init(struct iris_inst *inst)
 {
 	struct v4l2_format *f;
@@ -93,7 +60,7 @@ int vdec_inst_init(struct iris_inst *inst)
 	inst->buffers.output.size = f->fmt.pix_mp.plane_fmt[0].sizeimage;
 	inst->fw_min_count = 0;
 
-	ret = vdec_codec_change(inst, inst->fmt_src->fmt.pix_mp.pixelformat);
+	ret = codec_change(inst, inst->fmt_src->fmt.pix_mp.pixelformat);
 
 	return ret;
 }
@@ -233,7 +200,7 @@ int vdec_s_fmt(struct iris_inst *inst, struct v4l2_format *f)
 	if (f->type == INPUT_MPLANE) {
 		if (inst->fmt_src->fmt.pix_mp.pixelformat !=
 			f->fmt.pix_mp.pixelformat) {
-			ret = vdec_codec_change(inst, f->fmt.pix_mp.pixelformat);
+			ret = codec_change(inst, f->fmt.pix_mp.pixelformat);
 			if (ret)
 				return ret;
 		}
@@ -1300,49 +1267,6 @@ int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 
 	if (vb2->type == OUTPUT_MPLANE)
 		ret = iris_release_nonref_buffers(inst);
-
-	return ret;
-}
-
-static int process_resume(struct iris_inst *inst)
-{
-	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
-	int ret;
-
-	if (inst->sub_state & IRIS_INST_SUB_DRC &&
-	    inst->sub_state & IRIS_INST_SUB_DRC_LAST) {
-		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
-
-		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
-			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
-			if (ret)
-				return ret;
-			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
-		}
-		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
-			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
-			if (ret)
-				return ret;
-			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
-		}
-	} else if (inst->sub_state & IRIS_INST_SUB_DRAIN &&
-			   inst->sub_state & IRIS_INST_SUB_DRAIN_LAST) {
-		clear_sub_state = IRIS_INST_SUB_DRAIN | IRIS_INST_SUB_DRAIN_LAST;
-		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
-			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_DRAIN);
-			if (ret)
-				return ret;
-			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
-		}
-		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
-			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_DRAIN);
-			if (ret)
-				return ret;
-			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
-		}
-	}
-
-	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
 
 	return ret;
 }
