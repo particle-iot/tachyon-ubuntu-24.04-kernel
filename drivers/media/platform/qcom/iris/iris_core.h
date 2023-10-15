@@ -25,7 +25,8 @@
  * @vdev_dec: iris video device structure for decoder
  * @vdev_enc: iris video device structure for encoder
  * @v4l2_file_ops: iris v4l2 file ops
- * @v4l2_ioctl_ops: iris v4l2 ioctl ops
+ * @v4l2_ioctl_ops_dec: iris v4l2 ioctl ops for decoder
+ * @v4l2_ioctl_ops_enc: iris v4l2 ioctl ops for encoder
  * @bus_tbl: table of iris buses
  * @bus_count: count of iris buses
  * @power_domain_tbl: table of iris power domains
@@ -51,6 +52,7 @@
  * @packet_id: id of packet
  * @vpu_ops: a pointer to vpu ops
  * @session_ops: a pointer to session level ops
+ * @enc_codecs_count: supported codec count for encoder
  * @dec_codecs_count: supported codec count for decoder
  * @platform_data: a structure for platform data
  * @cap: an array for supported core capabilities
@@ -70,7 +72,8 @@ struct iris_core {
 	struct video_device			*vdev_dec;
 	struct video_device			*vdev_enc;
 	const struct v4l2_file_operations	*v4l2_file_ops;
-	const struct v4l2_ioctl_ops		*v4l2_ioctl_ops;
+	const struct v4l2_ioctl_ops		*v4l2_ioctl_ops_dec;
+	const struct v4l2_ioctl_ops		*v4l2_ioctl_ops_enc;
 	struct bus_info				*bus_tbl;
 	u32					bus_count;
 	struct power_domain_info		*power_domain_tbl;
@@ -97,6 +100,7 @@ struct iris_core {
 	const struct vpu_ops			*vpu_ops;
 	const struct vpu_session_ops		*session_ops;
 	u32					dec_codecs_count;
+	u32					enc_codecs_count;
 	struct platform_data			*platform_data;
 	struct plat_core_cap			cap[CORE_CAP_MAX + 1];
 	struct plat_inst_caps			*inst_caps;
