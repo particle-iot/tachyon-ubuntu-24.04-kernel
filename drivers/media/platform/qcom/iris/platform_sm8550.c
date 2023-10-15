@@ -63,6 +63,7 @@ static struct color_format_info color_format_data_sm8550[] = {
 
 static struct plat_core_cap core_data_sm8550[] = {
 	{DEC_CODECS, H264 | HEVC | VP9},
+	{ENC_CODECS, H264 | HEVC},
 	{MAX_SESSION_COUNT, 16},
 	{MAX_MBPF, 278528}, /* ((8192x4352)/256) * 2 */
 	{MAX_MBPS, 7833600}, /* max_load 7680x4320@60fps */
