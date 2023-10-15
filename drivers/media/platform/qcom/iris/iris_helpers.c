@@ -7,6 +7,7 @@
 
 #include "hfi_defines.h"
 #include "iris_core.h"
+#include "iris_ctrls.h"
 #include "iris_helpers.h"
 #include "iris_hfi.h"
 #include "iris_hfi_packet.h"
@@ -304,7 +305,7 @@ int close_session(struct iris_inst *inst)
 	return ret;
 }
 
-static int check_core_mbps_mbpf(struct iris_inst *inst)
+int check_core_mbps_mbpf(struct iris_inst *inst)
 {
 	u32 mbpf = 0, mbps = 0, total_mbpf = 0, total_mbps = 0;
 	struct iris_core *core;
@@ -315,7 +316,9 @@ static int check_core_mbps_mbpf(struct iris_inst *inst)
 
 	mutex_lock(&core->lock);
 	list_for_each_entry(instance, &core->instances, list) {
-		fps = inst->cap[QUEUED_RATE].value >> 16;
+		fps = max3(inst->cap[QUEUED_RATE].value >> 16,
+			   inst->cap[FRAME_RATE].value >> 16,
+			   inst->cap[OPERATING_RATE].value >> 16);
 		mbpf = get_mbpf(inst);
 		mbps = mbpf * fps;
 		total_mbpf += mbpf;
@@ -843,6 +846,88 @@ error:
 	kill_session(inst);
 	iris_flush_deferred_buffers(inst, buffer_type);
 	iris_flush_read_only_buffers(inst, buffer_type);
+
+	return ret;
+}
+
+int process_resume(struct iris_inst *inst)
+{
+	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
+	int ret;
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST) {
+		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
+
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+		}
+	} else if (inst->sub_state & IRIS_INST_SUB_DRAIN &&
+		   inst->sub_state & IRIS_INST_SUB_DRAIN_LAST) {
+		clear_sub_state = IRIS_INST_SUB_DRAIN | IRIS_INST_SUB_DRAIN_LAST;
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_DRAIN);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+		if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, OUTPUT_MPLANE, HFI_CMD_DRAIN);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+		}
+	}
+
+	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
+
+	return ret;
+}
+
+int codec_change(struct iris_inst *inst, u32 v4l2_codec)
+{
+	bool session_init = false;
+	int ret;
+
+	if (!inst->codec)
+		session_init = true;
+
+	if (inst->codec &&
+	    ((inst->domain == DECODER && inst->fmt_src->fmt.pix_mp.pixelformat == v4l2_codec) ||
+	     (inst->domain == ENCODER && inst->fmt_dst->fmt.pix_mp.pixelformat == v4l2_codec)))
+		return 0;
+
+	inst->codec = v4l2_codec_to_driver(inst, v4l2_codec);
+	if (!inst->codec)
+		return -EINVAL;
+
+	if (inst->domain == DECODER)
+		inst->fmt_src->fmt.pix_mp.pixelformat = v4l2_codec;
+	else if (inst->domain == ENCODER)
+		inst->fmt_dst->fmt.pix_mp.pixelformat = v4l2_codec;
+
+	ret = get_inst_capability(inst);
+	if (ret)
+		return ret;
+
+	ret = ctrls_init(inst, session_init);
+	if (ret)
+		return ret;
+
+	ret = update_buffer_count(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = update_buffer_count(inst, OUTPUT_MPLANE);
 
 	return ret;
 }
