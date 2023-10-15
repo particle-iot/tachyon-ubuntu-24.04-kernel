@@ -217,7 +217,7 @@ static int set_dynamic_property(struct iris_inst *inst,
 	return ret;
 }
 
-static int vdec_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
+static int iris_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	enum plat_inst_cap_type cap_id;
 	struct iris_inst *inst = NULL;
@@ -242,7 +242,7 @@ static int vdec_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int vdec_op_s_ctrl(struct v4l2_ctrl *ctrl)
+static int iris_op_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct cap_entry *entry = NULL, *temp = NULL;
 	struct list_head children_list, firmware_list;
@@ -273,7 +273,8 @@ static int vdec_op_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	cap[cap_id].flags |= CAP_FLAG_CLIENT_SET;
 
-	if (!inst->vb2q_src->streaming) {
+	if ((inst->domain == ENCODER && !inst->vb2q_dst->streaming) ||
+	    (inst->domain == DECODER && !inst->vb2q_src->streaming)) {
 		inst->cap[cap_id].value = ctrl->val;
 	} else {
 		ret = adjust_dynamic_property(inst, cap_id, ctrl,
@@ -300,16 +301,16 @@ free_list:
 }
 
 static const struct v4l2_ctrl_ops ctrl_ops = {
-	.s_ctrl = vdec_op_s_ctrl,
-	.g_volatile_ctrl = vdec_op_g_volatile_ctrl,
+	.s_ctrl = iris_op_s_ctrl,
+	.g_volatile_ctrl = iris_op_g_volatile_ctrl,
 };
 
 int ctrls_init(struct iris_inst *inst, bool init)
 {
 	int num_ctrls = 0, ctrl_idx = 0;
+	u64 codecs_count, step_or_mask;
 	struct plat_inst_cap *cap;
 	struct iris_core *core;
-	u64 step_or_mask;
 	int idx = 0;
 	int ret = 0;
 
@@ -324,8 +325,11 @@ int ctrls_init(struct iris_inst *inst, bool init)
 		return -EINVAL;
 
 	if (init) {
+		codecs_count = inst->domain == ENCODER ?
+			core->enc_codecs_count :
+			core->dec_codecs_count;
 		ret = v4l2_ctrl_handler_init(&inst->ctrl_handler,
-					     INST_CAP_MAX * core->dec_codecs_count);
+					     INST_CAP_MAX * codecs_count);
 		if (ret)
 			return ret;
 	}
@@ -451,29 +455,49 @@ static int update_inst_capability(struct plat_inst_cap *in,
 int iris_init_instance_caps(struct iris_core *core)
 {
 	struct plat_inst_cap *inst_plat_cap_data = NULL;
-	u8 dec_codecs_count = 0;
-	int num_inst_cap;
-	u32 dec_valid_codecs;
+	u8 enc_codecs_count = 0, dec_codecs_count = 0;
+	u32 enc_valid_codecs, dec_valid_codecs;
 	int i, j, check_bit = 0;
+	u8 codecs_count = 0;
+	int num_inst_cap;
 	int ret = 0;
 
 	inst_plat_cap_data = core->platform_data->inst_cap_data;
 	if (!inst_plat_cap_data)
 		return -EINVAL;
 
+	enc_valid_codecs = core->cap[ENC_CODECS].value;
+	enc_codecs_count = hweight32(enc_valid_codecs);
+	core->enc_codecs_count = enc_codecs_count;
+
 	dec_valid_codecs = core->cap[DEC_CODECS].value;
 	dec_codecs_count = hweight32(dec_valid_codecs);
 	core->dec_codecs_count = dec_codecs_count;
 
+	codecs_count = enc_codecs_count + dec_codecs_count;
 	core->inst_caps = devm_kzalloc(core->dev,
-				       dec_codecs_count * sizeof(struct plat_inst_caps),
+				       codecs_count * sizeof(struct plat_inst_caps),
 				       GFP_KERNEL);
 	if (!core->inst_caps)
 		return -ENOMEM;
 
-	for (i = 0; i < dec_codecs_count; i++) {
+	for (i = 0; i < enc_codecs_count; i++) {
+		while (check_bit < (sizeof(enc_valid_codecs) * 8)) {
+			if (enc_valid_codecs & BIT(check_bit)) {
+				core->inst_caps[i].domain = ENCODER;
+				core->inst_caps[i].codec = enc_valid_codecs &
+						BIT(check_bit);
+				check_bit++;
+				break;
+			}
+			check_bit++;
+		}
+	}
+
+	for (; i < codecs_count; i++) {
 		while (check_bit < (sizeof(dec_valid_codecs) * 8)) {
 			if (dec_valid_codecs & BIT(check_bit)) {
+				core->inst_caps[i].domain = DECODER;
 				core->inst_caps[i].codec = dec_valid_codecs &
 						BIT(check_bit);
 				check_bit++;
@@ -486,9 +510,9 @@ int iris_init_instance_caps(struct iris_core *core)
 	num_inst_cap = core->platform_data->inst_cap_data_size;
 
 	for (i = 0; i < num_inst_cap; i++) {
-		for (j = 0; j < dec_codecs_count; j++) {
-			if ((inst_plat_cap_data[i].codec &
-				core->inst_caps[j].codec)) {
+		for (j = 0; j < codecs_count; j++) {
+			if ((inst_plat_cap_data[i].domain & core->inst_caps[j].domain) &&
+			    (inst_plat_cap_data[i].codec & core->inst_caps[j].codec)) {
 				ret = update_inst_capability(&inst_plat_cap_data[i],
 							     &core->inst_caps[j]);
 				if (ret)
@@ -503,11 +527,14 @@ int iris_init_instance_caps(struct iris_core *core)
 int get_inst_capability(struct iris_inst *inst)
 {
 	struct iris_core *core;
+	u32 codecs_count = 0;
 	int i;
 
 	core = inst->core;
 
-	for (i = 0; i < core->dec_codecs_count; i++) {
+	codecs_count = core->enc_codecs_count + core->dec_codecs_count;
+
+	for (i = 0; i < codecs_count; i++) {
 		if (core->inst_caps[i].codec == inst->codec) {
 			memcpy(&inst->cap[0], &core->inst_caps[i].cap[0],
 			       (INST_CAP_MAX + 1) * sizeof(struct plat_inst_cap));
