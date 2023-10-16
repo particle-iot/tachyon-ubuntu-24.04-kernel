@@ -33,6 +33,7 @@ int adjust_v4l2_properties(struct iris_inst *inst);
 int ctrls_init(struct iris_inst *inst, bool init);
 int set_q16(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_level(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
+int decide_quality_mode(struct iris_inst *inst);
 int set_req_sync_frame(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_flip(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_rotation(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
