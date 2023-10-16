@@ -362,7 +362,7 @@ static int vdec_set_bitstream_resolution(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_BITSTREAM_RESOLUTION,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_U32,
 					&resolution,
 					sizeof(u32));
@@ -388,7 +388,7 @@ static int vdec_set_crop_offsets(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_CROP_OFFSETS,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_64_PACKED,
 					&payload,
 					sizeof(u64));
@@ -409,7 +409,7 @@ static int vdec_set_bit_depth(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_LUMA_CHROMA_BIT_DEPTH,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_U32,
 					&bitdepth,
 					sizeof(u32));
@@ -426,7 +426,7 @@ static int vdec_set_coded_frames(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_CODED_FRAMES,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_U32,
 					&coded_frames,
 					sizeof(u32));
@@ -442,7 +442,7 @@ static int vdec_set_min_output_count(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_BUFFER_FW_MIN_OUTPUT_COUNT,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_U32,
 					&min_output,
 					sizeof(u32));
@@ -457,7 +457,7 @@ static int vdec_set_picture_order_count(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					HFI_PROP_PIC_ORDER_CNT_TYPE,
 					HFI_HOST_FLAGS_NONE,
-					get_hfi_port(INPUT_MPLANE),
+					get_hfi_port(inst, INPUT_MPLANE),
 					HFI_PAYLOAD_U32,
 					&poc,
 					sizeof(u32));
@@ -509,7 +509,7 @@ static int vdec_set_colorspace(struct iris_inst *inst)
 	ret = iris_hfi_set_property(inst,
 				    HFI_PROP_SIGNAL_COLOR_INFO,
 				    HFI_HOST_FLAGS_NONE,
-				    get_hfi_port(INPUT_MPLANE),
+				    get_hfi_port(inst, INPUT_MPLANE),
 				    HFI_PAYLOAD_32_PACKED,
 				    &color_info,
 				    sizeof(u32));
@@ -527,7 +527,7 @@ static int vdec_set_profile(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 				     HFI_PROP_PROFILE,
 				     HFI_HOST_FLAGS_NONE,
-				     get_hfi_port(INPUT_MPLANE),
+				     get_hfi_port(inst, INPUT_MPLANE),
 				     HFI_PAYLOAD_U32_ENUM,
 				     &profile,
 				     sizeof(u32));
@@ -543,7 +543,7 @@ static int vdec_set_level(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 				     HFI_PROP_LEVEL,
 				     HFI_HOST_FLAGS_NONE,
-				     get_hfi_port(INPUT_MPLANE),
+				     get_hfi_port(inst, INPUT_MPLANE),
 				     HFI_PAYLOAD_U32_ENUM,
 				     &level,
 				     sizeof(u32));
@@ -559,7 +559,7 @@ static int vdec_set_tier(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 				     HFI_PROP_TIER,
 				     HFI_HOST_FLAGS_NONE,
-				     get_hfi_port(INPUT_MPLANE),
+				     get_hfi_port(inst, INPUT_MPLANE),
 				     HFI_PAYLOAD_U32_ENUM,
 				     &tier,
 				     sizeof(u32));
@@ -811,7 +811,7 @@ static int vdec_set_colorformat(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					 HFI_PROP_COLOR_FORMAT,
 					 HFI_HOST_FLAGS_NONE,
-					 get_hfi_port(OUTPUT_MPLANE),
+					 get_hfi_port(inst, OUTPUT_MPLANE),
 					 HFI_PAYLOAD_U32,
 					 &hfi_colorformat,
 					 sizeof(u32));
@@ -839,7 +839,7 @@ static int vdec_set_linear_stride_scanline(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 					 HFI_PROP_LINEAR_STRIDE_SCANLINE,
 					 HFI_HOST_FLAGS_NONE,
-					 get_hfi_port(OUTPUT_MPLANE),
+					 get_hfi_port(inst, OUTPUT_MPLANE),
 					 HFI_PAYLOAD_U64,
 					 &payload,
 					 sizeof(u64));
@@ -887,7 +887,7 @@ static int vdec_set_ubwc_stride_scanline(struct iris_inst *inst)
 	return iris_hfi_set_property(inst,
 				     HFI_PROP_UBWC_STRIDE_SCANLINE,
 				     HFI_HOST_FLAGS_NONE,
-				     get_hfi_port(OUTPUT_MPLANE),
+				     get_hfi_port(inst, OUTPUT_MPLANE),
 				     HFI_PAYLOAD_U32_ARRAY,
 				     &payload[0],
 				     sizeof(u32) * 4);
@@ -1020,7 +1020,7 @@ static int vdec_subscribe_dst_change_param(struct iris_inst *inst)
 			ret = iris_hfi_set_property(inst,
 						    prop_type,
 						    HFI_HOST_FLAGS_NONE,
-						    get_hfi_port(OUTPUT_MPLANE),
+						    get_hfi_port(inst, OUTPUT_MPLANE),
 						    payload_type,
 						    &payload,
 						    payload_size);
@@ -1028,42 +1028,6 @@ static int vdec_subscribe_dst_change_param(struct iris_inst *inst)
 				return ret;
 		}
 	}
-
-	return ret;
-}
-
-static int process_streamon_input(struct iris_inst *inst)
-{
-	enum iris_inst_sub_state set_sub_state = IRIS_INST_SUB_NONE;
-	int ret;
-
-	iris_scale_power(inst);
-
-	ret = iris_hfi_start(inst, INPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
-		ret = iris_inst_change_sub_state(inst, IRIS_INST_SUB_INPUT_PAUSE, 0);
-		if (ret)
-			return ret;
-	}
-
-	if (inst->sub_state & IRIS_INST_SUB_DRC ||
-	    inst->sub_state & IRIS_INST_SUB_DRAIN) {
-		if (!(inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE)) {
-			ret = iris_hfi_pause(inst, INPUT_MPLANE);
-			if (ret)
-				return ret;
-			set_sub_state = IRIS_INST_SUB_INPUT_PAUSE;
-		}
-	}
-
-	ret = iris_inst_state_change_streamon(inst, INPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	ret = iris_inst_change_sub_state(inst, 0, set_sub_state);
 
 	return ret;
 }
@@ -1110,58 +1074,6 @@ int vdec_streamon_input(struct iris_inst *inst)
 	ret = process_streamon_input(inst);
 	if (ret)
 		return ret;
-
-	return ret;
-}
-
-static int process_streamon_output(struct iris_inst *inst)
-{
-	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
-	bool drain_pending = false;
-	int ret;
-
-	iris_scale_power(inst);
-
-	if (inst->sub_state & IRIS_INST_SUB_DRC &&
-	    inst->sub_state & IRIS_INST_SUB_DRC_LAST)
-		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
-
-	if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
-		ret = iris_alloc_and_queue_input_int_bufs(inst);
-		if (ret)
-			return ret;
-		ret = set_stage(inst, STAGE);
-		if (ret)
-			return ret;
-		ret = set_pipe(inst, PIPE);
-		if (ret)
-			return ret;
-	}
-
-	drain_pending = inst->sub_state & IRIS_INST_SUB_DRAIN &&
-		inst->sub_state & IRIS_INST_SUB_DRAIN_LAST;
-
-	if (!drain_pending && inst->state == IRIS_INST_INPUT_STREAMING) {
-		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
-			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
-			if (ret)
-				return ret;
-			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
-		}
-	}
-
-	ret = iris_hfi_start(inst, OUTPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE)
-		clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
-
-	ret = iris_inst_state_change_streamon(inst, OUTPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
 
 	return ret;
 }
@@ -1218,27 +1130,6 @@ error:
 	session_streamoff(inst, OUTPUT_MPLANE);
 
 	return ret;
-}
-
-static int vb2_buffer_to_driver(struct vb2_buffer *vb2,
-				struct iris_buffer *buf)
-{
-	struct vb2_v4l2_buffer *vbuf;
-
-	if (!vb2 || !buf)
-		return -EINVAL;
-
-	vbuf = to_vb2_v4l2_buffer(vb2);
-
-	buf->fd = vb2->planes[0].m.fd;
-	buf->data_offset = vb2->planes[0].data_offset;
-	buf->data_size = vb2->planes[0].bytesused - vb2->planes[0].data_offset;
-	buf->buffer_size = vb2->planes[0].length;
-	buf->timestamp = vb2->timestamp;
-	buf->flags = vbuf->flags;
-	buf->attr = 0;
-
-	return 0;
 }
 
 int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
