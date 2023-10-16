@@ -54,7 +54,7 @@ u64 iris_calc_freq_iris3(struct iris_inst *inst, u32 data_size)
 	if (inst->cap[STAGE].value == STAGE_1)
 		vsp_cycles = vsp_cycles * 3;
 
-	vsp_cycles += mbs_per_second * base_cycles;
+		vsp_cycles += mbs_per_second * base_cycles;
 
 	freq = max3(vpp_cycles, vsp_cycles, fw_cycles);
 
