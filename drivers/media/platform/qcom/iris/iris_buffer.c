@@ -10,6 +10,7 @@
 #include "iris_hfi_packet.h"
 #include "iris_instance.h"
 #include "memory.h"
+#include "vpu_iris3_buffer.h"
 
 static const u32 dec_ip_int_buf_type[] = {
 	BUF_BIN,
@@ -19,6 +20,18 @@ static const u32 dec_ip_int_buf_type[] = {
 };
 
 static const u32 dec_op_int_buf_type[] = {
+	BUF_DPB,
+};
+
+static const u32 enc_ip_int_buf_type[] = {
+	BUF_VPSS,
+};
+
+static const u32 enc_op_int_buf_type[] = {
+	BUF_BIN,
+	BUF_COMV,
+	BUF_NON_COMV,
+	BUF_LINE,
 	BUF_DPB,
 };
 
@@ -110,12 +123,36 @@ invalid_input:
 
 static int input_min_count(struct iris_inst *inst)
 {
-	return MIN_BUFFERS;
+	u32 input_min_count = 0;
+	u32 total_hb_layer = 0;
+
+	if (inst->domain == DECODER) {
+		input_min_count = MIN_BUFFERS;
+	} else if (inst->domain == ENCODER) {
+		total_hb_layer = is_hierb_type_requested(inst) ?
+			inst->cap[ENH_LAYER_COUNT].value + 1 : 0;
+		if (inst->codec == H264 &&
+		    !inst->cap[LAYER_ENABLE].value) {
+			total_hb_layer = 0;
+		}
+		input_min_count =
+			hfi_iris3_enc_min_input_buf_count(total_hb_layer);
+	} else {
+		return 0;
+	}
+
+	return input_min_count;
 }
 
 static int output_min_count(struct iris_inst *inst)
 {
 	int output_min_count;
+
+	if (inst->domain != DECODER && inst->domain != ENCODER)
+		return 0;
+
+	if (inst->domain == ENCODER)
+		return MIN_BUFFERS;
 
 	/* fw_min_count > 0 indicates reconfig event has already arrived */
 	if (inst->fw_min_count) {
@@ -169,16 +206,21 @@ static u32 internal_buffer_count(struct iris_inst *inst,
 {
 	u32 count = 0;
 
-	if (buffer_type == BUF_BIN || buffer_type == BUF_LINE ||
-	    buffer_type == BUF_PERSIST) {
-		count = 1;
-	} else if (buffer_type == BUF_COMV || buffer_type == BUF_NON_COMV) {
-		if (inst->codec == H264 || inst->codec == HEVC)
+	if (inst->domain == ENCODER)
+		return 1;
+
+	if (inst->domain == DECODER) {
+		if (buffer_type == BUF_BIN || buffer_type == BUF_LINE ||
+		    buffer_type == BUF_PERSIST) {
 			count = 1;
-		else
+		} else if (buffer_type == BUF_COMV || buffer_type == BUF_NON_COMV) {
+			if (inst->codec == H264 || inst->codec == HEVC)
+				count = 1;
+			else
+				count = 0;
+		} else {
 			count = 0;
-	} else {
-		count = 0;
+		}
 	}
 
 	return count;
@@ -187,6 +229,9 @@ static u32 internal_buffer_count(struct iris_inst *inst,
 static int dpb_count(struct iris_inst *inst)
 {
 	int count = 0;
+
+	if (inst->domain == ENCODER)
+		return get_recon_buf_count(inst);
 
 	if (is_split_mode_enabled(inst)) {
 		count = inst->fw_min_count ?
@@ -209,6 +254,7 @@ int iris_get_buf_min_count(struct iris_inst *inst,
 	case BUF_NON_COMV:
 	case BUF_LINE:
 	case BUF_PERSIST:
+	case BUF_ARP:
 		return internal_buffer_count(inst, buffer_type);
 	case BUF_DPB:
 		return dpb_count(inst);
@@ -217,7 +263,7 @@ int iris_get_buf_min_count(struct iris_inst *inst,
 	}
 }
 
-static u32 input_buffer_size(struct iris_inst *inst)
+static u32 dec_input_buffer_size(struct iris_inst *inst)
 {
 	u32 base_res_mbs = NUM_MBS_4k;
 	u32 frame_size, num_mbs;
@@ -249,7 +295,7 @@ static u32 input_buffer_size(struct iris_inst *inst)
 	return ALIGN(frame_size, SZ_4K);
 }
 
-static u32 output_buffer_size(struct iris_inst *inst)
+static u32 dec_output_buffer_size(struct iris_inst *inst)
 {
 	struct v4l2_format *f;
 	u32 size;
@@ -261,17 +307,42 @@ static u32 output_buffer_size(struct iris_inst *inst)
 	return size;
 }
 
+static u32 enc_input_buffer_size(struct iris_inst *inst)
+{
+	struct v4l2_format *f;
+	u32 size;
+
+	f = inst->fmt_src;
+
+	size = video_buffer_size(f->fmt.pix_mp.pixelformat, f->fmt.pix_mp.width,
+				 f->fmt.pix_mp.height);
+	return size;
+}
+
 int iris_get_buffer_size(struct iris_inst *inst,
 			 enum iris_buffer_type buffer_type)
 {
-	switch (buffer_type) {
-	case BUF_INPUT:
-		return input_buffer_size(inst);
-	case BUF_OUTPUT:
-		return output_buffer_size(inst);
-	default:
-		return 0;
+	if (inst->domain == DECODER) {
+		switch (buffer_type) {
+		case BUF_INPUT:
+			return dec_input_buffer_size(inst);
+		case BUF_OUTPUT:
+			return dec_output_buffer_size(inst);
+		default:
+			break;
+		}
+	} else if (inst->domain == ENCODER) {
+		switch (buffer_type) {
+		case BUF_INPUT:
+			return enc_input_buffer_size(inst);
+		case BUF_OUTPUT:
+			return enc_output_buffer_size_iris3(inst);
+		default:
+			break;
+		}
 	}
+
+	return 0;
 }
 
 struct iris_buffers *iris_get_buffer_list(struct iris_inst *inst,
@@ -386,14 +457,30 @@ int iris_get_internal_buffers(struct iris_inst *inst,
 	int ret = 0;
 	u32 i = 0;
 
-	if (plane == INPUT_MPLANE) {
-		for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
-			ret = iris_get_internal_buf_info(inst, dec_ip_int_buf_type[i]);
-			if (ret)
-				return ret;
+	if (inst->domain == DECODER) {
+		if (plane == INPUT_MPLANE) {
+			for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+				ret = iris_get_internal_buf_info(inst, dec_ip_int_buf_type[i]);
+				if (ret)
+					return ret;
+			}
+		} else {
+			return iris_get_internal_buf_info(inst, BUF_DPB);
 		}
-	} else {
-		return iris_get_internal_buf_info(inst, BUF_DPB);
+	} else if (inst->domain == ENCODER) {
+		if (plane == INPUT_MPLANE) {
+			for (i = 0; i < ARRAY_SIZE(enc_ip_int_buf_type); i++) {
+				ret = iris_get_internal_buf_info(inst, enc_ip_int_buf_type[i]);
+				if (ret)
+					return ret;
+			}
+		} else {
+			for (i = 0; i < ARRAY_SIZE(enc_op_int_buf_type); i++) {
+				ret = iris_get_internal_buf_info(inst, enc_op_int_buf_type[i]);
+				if (ret)
+					return ret;
+			}
+		}
 	}
 
 	return ret;
@@ -463,10 +550,18 @@ int iris_create_input_internal_buffers(struct iris_inst *inst)
 	int ret = 0;
 	u32 i = 0;
 
-	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
-		ret = iris_create_internal_buffers(inst, dec_ip_int_buf_type[i]);
-		if (ret)
-			return ret;
+	if (inst->domain == DECODER) {
+		for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+			ret = iris_create_internal_buffers(inst, dec_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
+	} else if (inst->domain == ENCODER) {
+		for (i = 0; i < ARRAY_SIZE(enc_ip_int_buf_type); i++) {
+			ret = iris_create_internal_buffers(inst, enc_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return ret;
@@ -474,7 +569,20 @@ int iris_create_input_internal_buffers(struct iris_inst *inst)
 
 int iris_create_output_internal_buffers(struct iris_inst *inst)
 {
-	return iris_create_internal_buffers(inst, BUF_DPB);
+	int ret = 0;
+	u32 i = 0;
+
+	if (inst->domain == DECODER) {
+		return iris_create_internal_buffers(inst, BUF_DPB);
+	} else if (inst->domain == ENCODER) {
+		for (i = 0; i < ARRAY_SIZE(enc_op_int_buf_type); i++) {
+			ret = iris_create_internal_buffers(inst, enc_op_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return ret;
 }
 
 static int set_num_comv(struct iris_inst *inst)
@@ -499,7 +607,7 @@ static int iris_queue_internal_buffers(struct iris_inst *inst,
 	struct iris_buffers *buffers;
 	int ret = 0;
 
-	if (buffer_type == BUF_COMV) {
+	if (inst->domain == DECODER && buffer_type == BUF_COMV) {
 		ret = set_num_comv(inst);
 		if (ret)
 			return ret;
@@ -528,10 +636,18 @@ int iris_queue_input_internal_buffers(struct iris_inst *inst)
 	int ret = 0;
 	u32 i;
 
-	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
-		ret = iris_queue_internal_buffers(inst, dec_ip_int_buf_type[i]);
-		if (ret)
-			return ret;
+	if (inst->domain == DECODER) {
+		for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+			ret = iris_queue_internal_buffers(inst, dec_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
+	} else if (inst->domain == ENCODER) {
+		for (i = 0; i < ARRAY_SIZE(enc_ip_int_buf_type); i++) {
+			ret = iris_queue_internal_buffers(inst, enc_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return ret;
@@ -539,7 +655,20 @@ int iris_queue_input_internal_buffers(struct iris_inst *inst)
 
 int iris_queue_output_internal_buffers(struct iris_inst *inst)
 {
-	return iris_queue_internal_buffers(inst, BUF_DPB);
+	int ret = 0;
+	u32 i = 0;
+
+	if (inst->domain == DECODER) {
+		return iris_queue_internal_buffers(inst, BUF_DPB);
+	} else if (inst->domain == ENCODER) {
+		for (i = 0; i < ARRAY_SIZE(enc_op_int_buf_type); i++) {
+			ret = iris_queue_internal_buffers(inst, enc_op_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return ret;
 }
 
 int iris_destroy_internal_buffer(struct iris_inst *inst,
@@ -579,12 +708,22 @@ int iris_destroy_internal_buffers(struct iris_inst *inst,
 	int ret = 0;
 	u32 i, len;
 
-	if (plane == INPUT_MPLANE) {
-		internal_buf_type = dec_ip_int_buf_type;
-		len = ARRAY_SIZE(dec_ip_int_buf_type);
-	} else {
-		internal_buf_type = dec_op_int_buf_type;
-		len = ARRAY_SIZE(dec_op_int_buf_type);
+	if (inst->domain == DECODER) {
+		if (plane == INPUT_MPLANE) {
+			internal_buf_type = dec_ip_int_buf_type;
+			len = ARRAY_SIZE(dec_ip_int_buf_type);
+		} else {
+			internal_buf_type = dec_op_int_buf_type;
+			len = ARRAY_SIZE(dec_op_int_buf_type);
+		}
+	} else if (inst->domain == ENCODER) {
+		if (plane == INPUT_MPLANE) {
+			internal_buf_type = enc_ip_int_buf_type;
+			len = ARRAY_SIZE(enc_ip_int_buf_type);
+		} else {
+			internal_buf_type = enc_op_int_buf_type;
+			len = ARRAY_SIZE(enc_op_int_buf_type);
+		}
 	}
 
 	for (i = 0; i < len; i++) {
@@ -638,10 +777,12 @@ static int iris_release_input_internal_buffers(struct iris_inst *inst)
 	int ret = 0;
 	u32 i = 0;
 
-	for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
-		ret = iris_release_internal_buffers(inst, dec_ip_int_buf_type[i]);
-		if (ret)
-			return ret;
+	if (inst->domain == DECODER) {
+		for (i = 0; i < ARRAY_SIZE(dec_ip_int_buf_type); i++) {
+			ret = iris_release_internal_buffers(inst, dec_ip_int_buf_type[i]);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return ret;
@@ -652,7 +793,7 @@ int iris_alloc_and_queue_session_int_bufs(struct iris_inst *inst,
 {
 	int ret;
 
-	if (buffer_type != BUF_PERSIST)
+	if (buffer_type != BUF_ARP && buffer_type != BUF_PERSIST)
 		return -EINVAL;
 
 	ret = iris_get_internal_buf_info(inst, buffer_type);

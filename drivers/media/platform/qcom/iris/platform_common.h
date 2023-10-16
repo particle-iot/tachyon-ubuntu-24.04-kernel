@@ -68,6 +68,11 @@ enum pipe_type {
 	PIPE_4 = 4,
 };
 
+enum quality_mode {
+	MAX_QUALITY_MODE = 0x1,
+	POWER_SAVE_MODE = 0x2,
+};
+
 extern struct platform_data sm8550_data;
 
 struct bw_info {
