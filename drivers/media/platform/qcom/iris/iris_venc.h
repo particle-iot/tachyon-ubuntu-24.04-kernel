@@ -20,5 +20,8 @@ int venc_subscribe_event(struct iris_inst *inst,
 			 const struct v4l2_event_subscription *sub);
 int venc_start_cmd(struct iris_inst *inst);
 int venc_stop_cmd(struct iris_inst *inst);
+int venc_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2);
+int venc_streamon_input(struct iris_inst *inst);
+int venc_streamon_output(struct iris_inst *inst);
 
 #endif
