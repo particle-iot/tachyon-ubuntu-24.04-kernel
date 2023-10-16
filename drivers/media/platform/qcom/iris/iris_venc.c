@@ -13,6 +13,23 @@
 #include "iris_power.h"
 #include "iris_venc.h"
 
+#define SCALE_FACTOR 8
+#define UNSPECIFIED_COLOR_FORMAT 5
+
+static const u32 enc_input_properties[] = {
+	HFI_PROP_NO_OUTPUT,
+};
+
+static const u32 enc_output_properties[] = {
+	HFI_PROP_PICTURE_TYPE,
+	HFI_PROP_BUFFER_MARK,
+};
+
+struct venc_prop_type_handle {
+	u32 type;
+	int (*handle)(struct iris_inst *inst);
+};
+
 int venc_inst_init(struct iris_inst *inst)
 {
 	struct v4l2_format *f;
@@ -520,6 +537,412 @@ int venc_stop_cmd(struct iris_inst *inst)
 	ret = iris_inst_change_sub_state(inst, 0, IRIS_INST_SUB_DRAIN);
 
 	iris_scale_power(inst);
+
+	return ret;
+}
+
+int venc_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
+{
+	struct iris_buffer *buf = NULL;
+	int ret;
+
+	buf = get_driver_buf(inst, vb2->type, vb2->index);
+	if (!buf)
+		return -EINVAL;
+
+	if (!allow_qbuf(inst, vb2->type)) {
+		buf->attr |= BUF_ATTR_DEFERRED;
+		return ret;
+	}
+
+	iris_scale_power(inst);
+
+	ret = vb2_buffer_to_driver(vb2, buf);
+	if (ret)
+		return ret;
+
+	return queue_buffer(inst, buf);
+}
+
+static int check_scaling_supported(struct iris_inst *inst)
+{
+	u32 iwidth, owidth, iheight, oheight;
+
+	if (!(inst->crop.left != inst->compose.left ||
+	      inst->crop.top != inst->compose.top ||
+	      inst->crop.width != inst->compose.width ||
+	      inst->crop.height != inst->compose.height))
+		return 0;
+
+	iwidth = inst->crop.width;
+	iheight = inst->crop.height;
+	owidth = inst->compose.width;
+	oheight = inst->compose.height;
+
+	if (owidth > iwidth || oheight > iheight)
+		return -EINVAL;
+
+	if (iwidth > owidth * SCALE_FACTOR || iheight > oheight * SCALE_FACTOR)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int venc_set_colorformat(struct iris_inst *inst)
+{
+	u32 hfi_colorformat;
+	u32 pixelformat;
+
+	pixelformat = inst->fmt_src->fmt.pix_mp.pixelformat;
+	hfi_colorformat = get_hfi_colorformat(pixelformat);
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_COLOR_FORMAT,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, INPUT_MPLANE),
+				     HFI_PAYLOAD_U32_ENUM,
+				     &hfi_colorformat,
+				     sizeof(u32));
+}
+
+static int venc_set_stride_scanline(struct iris_inst *inst)
+{
+	u32 color_format, stride_y, scanline_y;
+	u32 stride_uv = 0, scanline_uv = 0;
+	u32 payload[2];
+
+	color_format = inst->cap[PIX_FMTS].value;
+	if (!is_linear_colorformat(color_format))
+		return 0;
+
+	stride_y = color_format == FMT_TP10C ?
+		ALIGN(inst->fmt_src->fmt.pix_mp.width, 192) :
+		ALIGN(inst->fmt_src->fmt.pix_mp.width, 128);
+	scanline_y = color_format == FMT_TP10C ?
+		ALIGN(inst->fmt_src->fmt.pix_mp.height, 16) :
+		ALIGN(inst->fmt_src->fmt.pix_mp.height, 32);
+
+	if (color_format == FMT_NV12 ||
+	    color_format == FMT_NV21) {
+		stride_uv = stride_y;
+		scanline_uv = scanline_y / 2;
+	}
+
+	payload[0] = stride_y << 16 | scanline_y;
+	payload[1] = stride_uv << 16 | scanline_uv;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_LINEAR_STRIDE_SCANLINE,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, INPUT_MPLANE),
+				     HFI_PAYLOAD_64_PACKED,
+				     &payload,
+				     sizeof(u64));
+}
+
+static int venc_set_raw_resolution(struct iris_inst *inst)
+{
+	u32 resolution;
+
+	resolution = (inst->fmt_src->fmt.pix_mp.width << 16) |
+		inst->fmt_src->fmt.pix_mp.height;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_RAW_RESOLUTION,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, INPUT_MPLANE),
+				     HFI_PAYLOAD_32_PACKED,
+				     &resolution,
+				     sizeof(u32));
+}
+
+static int venc_set_bitstream_resolution(struct iris_inst *inst)
+{
+	u32 resolution;
+
+	resolution = (inst->fmt_dst->fmt.pix_mp.width << 16) |
+		inst->fmt_dst->fmt.pix_mp.height;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_BITSTREAM_RESOLUTION,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, OUTPUT_MPLANE),
+				     HFI_PAYLOAD_32_PACKED,
+				     &resolution,
+				     sizeof(u32));
+}
+
+static int venc_set_inp_crop_offsets(struct iris_inst *inst)
+{
+	u32 left_offset, top_offset, right_offset, bottom_offset;
+	u32 crop[2] = {0};
+	u32 width, height;
+
+	left_offset = inst->crop.left;
+	top_offset = inst->crop.top;
+	width = inst->crop.width;
+	height = inst->crop.height;
+
+	right_offset = (inst->fmt_src->fmt.pix_mp.width - width);
+	bottom_offset = (inst->fmt_src->fmt.pix_mp.height - height);
+
+	crop[0] = left_offset << 16 | top_offset;
+	crop[1] = right_offset << 16 | bottom_offset;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_CROP_OFFSETS,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, INPUT_MPLANE),
+				     HFI_PAYLOAD_64_PACKED,
+				     &crop,
+				     sizeof(u64));
+}
+
+static int venc_set_out_crop_offsets(struct iris_inst *inst)
+{
+	u32 left_offset, top_offset, right_offset, bottom_offset;
+	u32 crop[2] = {0};
+	u32 width, height;
+
+	left_offset = inst->compose.left;
+	top_offset = inst->compose.top;
+	width = inst->compose.width;
+	height = inst->compose.height;
+	if (inst->cap[ROTATION].value == 90 || inst->cap[ROTATION].value == 270) {
+		width = inst->compose.height;
+		height = inst->compose.width;
+	}
+
+	right_offset = (inst->fmt_src->fmt.pix_mp.width - width);
+	bottom_offset = (inst->fmt_src->fmt.pix_mp.height - height);
+
+	crop[0] = left_offset << 16 | top_offset;
+	crop[1] = right_offset << 16 | bottom_offset;
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_CROP_OFFSETS,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, OUTPUT_MPLANE),
+				     HFI_PAYLOAD_64_PACKED,
+				     &crop,
+				     sizeof(u64));
+}
+
+static int venc_set_colorspace(struct iris_inst *inst)
+{
+	u32 video_signal_type_present_flag = 0, payload = 0;
+	u32 matrix_coeff = HFI_MATRIX_COEFF_RESERVED;
+	u32 video_format = UNSPECIFIED_COLOR_FORMAT;
+	struct v4l2_pix_format_mplane *pixmp = NULL;
+	u32 transfer_char = HFI_TRANSFER_RESERVED;
+	u32 colour_description_present_flag = 0;
+	u32 primaries = HFI_PRIMARIES_RESERVED;
+	u32 full_range = 0;
+
+	pixmp = &inst->fmt_src->fmt.pix_mp;
+	if (pixmp->colorspace != V4L2_COLORSPACE_DEFAULT ||
+	    pixmp->ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT ||
+	    pixmp->xfer_func != V4L2_XFER_FUNC_DEFAULT) {
+		colour_description_present_flag = 1;
+		video_signal_type_present_flag = 1;
+		primaries = get_hfi_color_primaries(pixmp->colorspace);
+		matrix_coeff = get_hfi_matrix_coefficients(pixmp->ycbcr_enc);
+		transfer_char = get_hfi_transer_char(pixmp->xfer_func);
+	}
+
+	if (pixmp->quantization != V4L2_QUANTIZATION_DEFAULT) {
+		video_signal_type_present_flag = 1;
+		full_range = pixmp->quantization ==
+			V4L2_QUANTIZATION_FULL_RANGE ? 1 : 0;
+	}
+
+	payload = (matrix_coeff & 0xFF) |
+		((transfer_char << 8) & 0xFF00) |
+		((primaries << 16) & 0xFF0000) |
+		((colour_description_present_flag << 24) & 0x1000000) |
+		((full_range << 25) & 0x2000000) |
+		((video_format << 26) & 0x1C000000) |
+		((video_signal_type_present_flag << 29) & 0x20000000);
+
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_SIGNAL_COLOR_INFO,
+				     HFI_HOST_FLAGS_NONE,
+				     get_hfi_port(inst, INPUT_MPLANE),
+				     HFI_PAYLOAD_32_PACKED,
+				     &payload,
+				     sizeof(u32));
+}
+
+static int venc_set_quality_mode(struct iris_inst *inst)
+{
+	u32 mode;
+
+	mode = decide_quality_mode(inst);
+	return iris_hfi_set_property(inst,
+				     HFI_PROP_QUALITY_MODE,
+				     HFI_HOST_FLAGS_NONE,
+				     HFI_PORT_BITSTREAM,
+				     HFI_PAYLOAD_U32_ENUM,
+				     &mode,
+				     sizeof(u32));
+}
+
+static int venc_set_input_properties(struct iris_inst *inst)
+{
+	int j, ret;
+	static const struct venc_prop_type_handle prop_type_handle_arr[] = {
+		{HFI_PROP_COLOR_FORMAT,               venc_set_colorformat                 },
+		{HFI_PROP_RAW_RESOLUTION,             venc_set_raw_resolution              },
+		{HFI_PROP_CROP_OFFSETS,               venc_set_inp_crop_offsets            },
+		{HFI_PROP_LINEAR_STRIDE_SCANLINE,     venc_set_stride_scanline             },
+		{HFI_PROP_SIGNAL_COLOR_INFO,          venc_set_colorspace                  },
+	};
+
+	for (j = 0; j < ARRAY_SIZE(prop_type_handle_arr); j++) {
+		ret = prop_type_handle_arr[j].handle(inst);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+static int venc_property_subscription(struct iris_inst *inst, u32 plane)
+{
+	u32 payload[32] = {0};
+	u32 payload_size = 0;
+	u32 i;
+
+	payload[0] = HFI_MODE_PROPERTY;
+	if (plane == INPUT_MPLANE) {
+		for (i = 0; i < ARRAY_SIZE(enc_input_properties); i++)
+			payload[i + 1] = enc_input_properties[i];
+		payload_size = (ARRAY_SIZE(enc_input_properties) + 1) *
+				sizeof(u32);
+	} else if (plane == OUTPUT_MPLANE) {
+		for (i = 0; i < ARRAY_SIZE(enc_output_properties); i++)
+			payload[i + 1] = enc_output_properties[i];
+		payload_size = (ARRAY_SIZE(enc_output_properties) + 1) *
+				sizeof(u32);
+	} else {
+		return -EINVAL;
+	}
+
+	return iris_hfi_session_subscribe_mode(inst,
+					       HFI_CMD_SUBSCRIBE_MODE,
+					       plane,
+					       HFI_PAYLOAD_U32_ARRAY,
+					       &payload[0],
+					       payload_size);
+}
+
+int venc_streamon_input(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = check_session_supported(inst);
+	if (ret)
+		goto error;
+
+	ret = check_scaling_supported(inst);
+	if (ret)
+		goto error;
+
+	ret = venc_set_input_properties(inst);
+	if (ret)
+		goto error;
+
+	ret = iris_get_internal_buffers(inst, INPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_destroy_internal_buffers(inst, INPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_create_input_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	ret = iris_queue_input_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	ret = venc_property_subscription(inst, INPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = process_streamon_input(inst);
+	if (ret)
+		goto error;
+
+	return ret;
+
+error:
+	return ret;
+}
+
+static int venc_set_output_properties(struct iris_inst *inst)
+{
+	int j, ret;
+	static const struct venc_prop_type_handle prop_type_handle_arr[] = {
+		{HFI_PROP_BITSTREAM_RESOLUTION,       venc_set_bitstream_resolution    },
+		{HFI_PROP_CROP_OFFSETS,               venc_set_out_crop_offsets        },
+	};
+
+	for (j = 0; j < ARRAY_SIZE(prop_type_handle_arr); j++) {
+		ret = prop_type_handle_arr[j].handle(inst);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int venc_streamon_output(struct iris_inst *inst)
+{
+	int ret;
+
+	ret = venc_set_output_properties(inst);
+	if (ret)
+		goto error;
+
+	ret = set_v4l2_properties(inst);
+	if (ret)
+		goto error;
+
+	ret = venc_set_quality_mode(inst);
+	if (ret)
+		goto error;
+
+	ret = iris_get_internal_buffers(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_destroy_internal_buffers(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = iris_create_output_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	ret = iris_queue_output_internal_buffers(inst);
+	if (ret)
+		goto error;
+
+	ret = venc_property_subscription(inst, OUTPUT_MPLANE);
+	if (ret)
+		goto error;
+
+	ret = process_streamon_output(inst);
+	if (ret)
+		goto error;
+
+	return ret;
+
+error:
+	session_streamoff(inst, OUTPUT_MPLANE);
 
 	return ret;
 }
