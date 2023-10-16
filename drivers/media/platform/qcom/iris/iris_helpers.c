@@ -45,15 +45,15 @@ u32 get_port_info(struct iris_inst *inst,
 	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT &&
 	    inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT) {
 		if (inst->vb2q_dst->streaming)
-			return get_hfi_port(INPUT_MPLANE);
+			return get_hfi_port(inst, INPUT_MPLANE);
 		else
-			return get_hfi_port(OUTPUT_MPLANE);
+			return get_hfi_port(inst, OUTPUT_MPLANE);
 	}
 
 	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT)
-		return get_hfi_port(INPUT_MPLANE);
+		return get_hfi_port(inst, INPUT_MPLANE);
 	else if (inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT)
-		return get_hfi_port(OUTPUT_MPLANE);
+		return get_hfi_port(inst, OUTPUT_MPLANE);
 	else
 		return HFI_PORT_NONE;
 }
@@ -117,9 +117,14 @@ int get_mbpf(struct iris_inst *inst)
 	int height = 0, width = 0;
 	struct v4l2_format *inp_f;
 
-	inp_f = inst->fmt_src;
-	width = max(inp_f->fmt.pix_mp.width, inst->crop.width);
-	height = max(inp_f->fmt.pix_mp.height, inst->crop.height);
+	if (inst->domain == DECODER) {
+		inp_f = inst->fmt_src;
+		width = max(inp_f->fmt.pix_mp.width, inst->crop.width);
+		height = max(inp_f->fmt.pix_mp.height, inst->crop.height);
+	} else if (inst->domain == ENCODER) {
+		width = inst->crop.width;
+		height = inst->crop.height;
+	}
 
 	return NUM_MBS_PER_FRAME(height, width);
 }
@@ -131,6 +136,9 @@ inline bool is_linear_colorformat(u32 colorformat)
 
 bool is_split_mode_enabled(struct iris_inst *inst)
 {
+	if (inst->domain != DECODER)
+		return false;
+
 	if (is_linear_colorformat(inst->fmt_dst->fmt.pix_mp.pixelformat))
 		return true;
 
@@ -147,6 +155,24 @@ inline bool is_8bit_colorformat(enum colorformat_type colorformat)
 	return colorformat == FMT_NV12 ||
 		colorformat == FMT_NV12C ||
 		colorformat == FMT_NV21;
+}
+
+inline bool is_scaling_enabled(struct iris_inst *inst)
+{
+	return inst->crop.left != inst->compose.left ||
+		inst->crop.top != inst->compose.top ||
+		inst->crop.width != inst->compose.width ||
+		inst->crop.height != inst->compose.height;
+}
+
+inline bool is_hierb_type_requested(struct iris_inst *inst)
+{
+	return (inst->codec == H264 &&
+		inst->cap[LAYER_TYPE].value ==
+				V4L2_MPEG_VIDEO_H264_HIERARCHICAL_CODING_B) ||
+		(inst->codec == HEVC &&
+		inst->cap[LAYER_TYPE].value ==
+				V4L2_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_B);
 }
 
 u32 v4l2_codec_from_driver(struct iris_inst *inst, enum codec_type codec)
@@ -350,17 +376,24 @@ static int check_resolution_supported(struct iris_inst *inst)
 	u32 width = 0, height = 0, min_width, min_height,
 		max_width, max_height;
 
-	width = inst->fmt_src->fmt.pix_mp.width;
-	height = inst->fmt_src->fmt.pix_mp.height;
+	if (inst->domain == DECODER) {
+		width = inst->fmt_src->fmt.pix_mp.width;
+		height = inst->fmt_src->fmt.pix_mp.height;
+	} else if (inst->domain == ENCODER) {
+		width = inst->crop.width;
+		height = inst->crop.height;
+	}
 
 	min_width = inst->cap[FRAME_WIDTH].min;
 	max_width = inst->cap[FRAME_WIDTH].max;
 	min_height = inst->cap[FRAME_HEIGHT].min;
 	max_height = inst->cap[FRAME_HEIGHT].max;
 
-	if (!(min_width <= width && width <= max_width) ||
-	    !(min_height <= height && height <= max_height))
-		return -EINVAL;
+	if (inst->domain == DECODER || inst->domain == ENCODER) {
+		if (!(min_width <= width && width <= max_width) ||
+		    !(min_height <= height && height <= max_height))
+			return -EINVAL;
+	}
 
 	return 0;
 }
@@ -501,7 +534,7 @@ int queue_buffer(struct iris_inst *inst, struct iris_buffer *buf)
 {
 	int ret;
 
-	if (buf->type == BUF_OUTPUT)
+	if (inst->domain == DECODER && buf->type == BUF_OUTPUT)
 		process_requeued_readonly_buffers(inst, buf);
 
 	ret = iris_hfi_queue_buffer(inst, buf);
@@ -684,7 +717,7 @@ static int iris_flush_read_only_buffers(struct iris_inst *inst,
 {
 	struct iris_buffer *ro_buf, *dummy;
 
-	if (type != BUF_OUTPUT)
+	if (inst->domain != DECODER || type != BUF_OUTPUT)
 		return 0;
 
 	list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
@@ -930,6 +963,114 @@ int codec_change(struct iris_inst *inst, u32 v4l2_codec)
 	ret = update_buffer_count(inst, OUTPUT_MPLANE);
 
 	return ret;
+}
+
+int process_streamon_input(struct iris_inst *inst)
+{
+	enum iris_inst_sub_state set_sub_state = IRIS_INST_SUB_NONE;
+	int ret;
+
+	iris_scale_power(inst);
+
+	ret = iris_hfi_start(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+		ret = iris_inst_change_sub_state(inst, IRIS_INST_SUB_INPUT_PAUSE, 0);
+		if (ret)
+			return ret;
+	}
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC ||
+	    inst->sub_state & IRIS_INST_SUB_DRAIN) {
+		if (!(inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE)) {
+			ret = iris_hfi_pause(inst, INPUT_MPLANE);
+			if (ret)
+				return ret;
+			set_sub_state = IRIS_INST_SUB_INPUT_PAUSE;
+		}
+	}
+
+	ret = iris_inst_state_change_streamon(inst, INPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_inst_change_sub_state(inst, 0, set_sub_state);
+
+	return ret;
+}
+
+int process_streamon_output(struct iris_inst *inst)
+{
+	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
+	bool drain_pending = false;
+	int ret;
+
+	iris_scale_power(inst);
+
+	if (inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST)
+		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
+
+	if (inst->domain == DECODER && inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+		ret = iris_alloc_and_queue_input_int_bufs(inst);
+		if (ret)
+			return ret;
+		ret = set_stage(inst, STAGE);
+		if (ret)
+			return ret;
+		ret = set_pipe(inst, PIPE);
+		if (ret)
+			return ret;
+	}
+
+	drain_pending = inst->sub_state & IRIS_INST_SUB_DRAIN &&
+		inst->sub_state & IRIS_INST_SUB_DRAIN_LAST;
+
+	if (!drain_pending && inst->state == IRIS_INST_INPUT_STREAMING) {
+		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
+			if (ret)
+				return ret;
+			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		}
+	}
+
+	ret = iris_hfi_start(inst, OUTPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	if (inst->sub_state & IRIS_INST_SUB_OUTPUT_PAUSE)
+		clear_sub_state |= IRIS_INST_SUB_OUTPUT_PAUSE;
+
+	ret = iris_inst_state_change_streamon(inst, OUTPUT_MPLANE);
+	if (ret)
+		return ret;
+
+	ret = iris_inst_change_sub_state(inst, clear_sub_state, 0);
+
+	return ret;
+}
+
+int vb2_buffer_to_driver(struct vb2_buffer *vb2, struct iris_buffer *buf)
+{
+	struct vb2_v4l2_buffer *vbuf;
+
+	if (!vb2 || !buf)
+		return -EINVAL;
+
+	vbuf = to_vb2_v4l2_buffer(vb2);
+
+	buf->fd = vb2->planes[0].m.fd;
+	buf->data_offset = vb2->planes[0].data_offset;
+	buf->data_size = vb2->planes[0].bytesused - vb2->planes[0].data_offset;
+	buf->buffer_size = vb2->planes[0].length;
+	buf->timestamp = vb2->timestamp;
+	buf->flags = vbuf->flags;
+	buf->attr = 0;
+
+	return 0;
 }
 
 int iris_pm_get(struct iris_core *core)
