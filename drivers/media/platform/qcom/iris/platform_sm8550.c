@@ -74,6 +74,8 @@ static struct plat_core_cap core_data_sm8550[] = {
 	{CP_SIZE, 0x25800000},
 	{CP_NONPIXEL_START, 0x01000000},
 	{CP_NONPIXEL_SIZE, 0x24800000},
+	{MAX_MBPF_HQ, 8160}, /* ((1920x1088)/256) */
+	{MAX_MBPS_HQ, 489600}, /* ((1920x1088)/256)@60fps */
 };
 
 static struct plat_inst_cap instance_cap_data_sm8550[] = {
