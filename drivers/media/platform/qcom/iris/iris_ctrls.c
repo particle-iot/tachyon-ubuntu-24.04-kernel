@@ -723,11 +723,20 @@ int set_stage(struct iris_inst *inst,
 
 	hfi_id = inst->cap[cap_id].hfi_id;
 
-	inp_f = inst->fmt_src;
-	height = inp_f->fmt.pix_mp.height;
-	width = inp_f->fmt.pix_mp.width;
-	if (res_is_less_than(width, height, 1280, 720))
-		work_mode = STAGE_1;
+	if (inst->domain == DECODER) {
+		inp_f = inst->fmt_src;
+		height = inp_f->fmt.pix_mp.height;
+		width = inp_f->fmt.pix_mp.width;
+		if (res_is_less_than(width, height, 1280, 720))
+			work_mode = STAGE_1;
+	} else if (inst->domain == ENCODER) {
+		if (inst->cap[SLICE_MODE].value ==
+		    V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES)
+			work_mode = STAGE_1;
+
+		if (!inst->cap[GOP_SIZE].value)
+			work_mode = STAGE_2;
+	}
 
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
@@ -742,6 +751,12 @@ int set_pipe(struct iris_inst *inst,
 
 	work_route = inst->cap[cap_id].value;
 	hfi_id = inst->cap[cap_id].hfi_id;
+
+	if (inst->domain == ENCODER) {
+		if (inst->cap[SLICE_MODE].value ==
+		    V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES)
+			work_route = PIPE_1;
+	}
 
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
@@ -761,6 +776,30 @@ int set_level(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 					 get_port_info(inst, cap_id),
 					 HFI_PAYLOAD_U32_ENUM,
 					 &hfi_value, sizeof(u32));
+}
+
+int decide_quality_mode(struct iris_inst *inst)
+{
+	u32 fps, mbpf, mbps, max_hq_mbpf, max_hq_mbps;
+	u32 mode = POWER_SAVE_MODE;
+	struct iris_core *core;
+
+	if (inst->domain != ENCODER)
+		return 0;
+
+	mbpf = NUM_MBS_PER_FRAME(inst->crop.height, inst->crop.width);
+	fps = max3(inst->cap[QUEUED_RATE].value >> 16,
+		   inst->cap[FRAME_RATE].value >> 16,
+		   inst->cap[OPERATING_RATE].value >> 16);
+	mbps = mbpf * fps;
+	core = inst->core;
+	max_hq_mbpf = core->cap[MAX_MBPF_HQ].value;
+	max_hq_mbps = core->cap[MAX_MBPS_HQ].value;
+
+	if (mbpf <= max_hq_mbpf && mbps <= max_hq_mbps)
+		mode = MAX_QUALITY_MODE;
+
+	return mode;
 }
 
 int set_req_sync_frame(struct iris_inst *inst, enum plat_inst_cap_type cap_id)

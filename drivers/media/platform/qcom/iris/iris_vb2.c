@@ -13,6 +13,7 @@
 #include "iris_power.h"
 #include "iris_vb2.h"
 #include "iris_vdec.h"
+#include "iris_venc.h"
 
 int iris_vb2_queue_setup(struct vb2_queue *q,
 			 unsigned int *num_buffers, unsigned int *num_planes,
@@ -58,7 +59,8 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 			return ret;
 	}
 
-	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+	if ((inst->domain == DECODER && q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) ||
+	    (inst->domain == ENCODER && q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)) {
 		ret = adjust_v4l2_properties(inst);
 		if (ret)
 			return ret;
@@ -112,6 +114,11 @@ int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
 		goto error;
 	}
 
+	if (inst->domain != DECODER && inst->domain != ENCODER) {
+		ret = -EINVAL;
+		goto error;
+	}
+
 	ret = iris_pm_get(inst->core);
 	if (ret)
 		goto error;
@@ -122,21 +129,34 @@ int iris_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (ret)
 			goto err_pm_get;
 
-		ret = iris_hfi_session_set_default_header(inst);
-		if (ret)
-			goto err_pm_get;
+		if (inst->domain == ENCODER)  {
+			ret = iris_alloc_and_queue_session_int_bufs(inst, BUF_ARP);
+			if (ret)
+				goto err_pm_get;
+		} else if (inst->domain == DECODER) {
+			ret = iris_hfi_session_set_default_header(inst);
+			if (ret)
+				goto err_pm_get;
 
-		ret = iris_alloc_and_queue_session_int_bufs(inst, BUF_PERSIST);
-		if (ret)
-			goto err_pm_get;
+			ret = iris_alloc_and_queue_session_int_bufs(inst, BUF_PERSIST);
+			if (ret)
+				goto err_pm_get;
+		}
 	}
 
 	iris_scale_power(inst);
 
-	if (q->type == INPUT_MPLANE)
-		ret = vdec_streamon_input(inst);
-	else if (q->type == OUTPUT_MPLANE)
-		ret = vdec_streamon_output(inst);
+	if (q->type == INPUT_MPLANE) {
+		if (inst->domain == DECODER)
+			ret = vdec_streamon_input(inst);
+		else if (inst->domain == ENCODER)
+			ret = venc_streamon_input(inst);
+	} else if (q->type == OUTPUT_MPLANE) {
+		if (inst->domain == DECODER)
+			ret = vdec_streamon_output(inst);
+		else if (inst->domain == ENCODER)
+			ret = venc_streamon_output(inst);
+	}
 	if (ret)
 		goto err_pm_get;
 
@@ -178,6 +198,11 @@ void iris_vb2_stop_streaming(struct vb2_queue *q)
 
 	if (q->type != INPUT_MPLANE && q->type != OUTPUT_MPLANE)
 		goto error;
+
+	if (inst->domain != DECODER && inst->domain != ENCODER) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	ret = iris_pm_get_put(inst->core);
 	if (ret)
@@ -225,7 +250,10 @@ void iris_vb2_buf_queue(struct vb2_buffer *vb2)
 	if (ret)
 		goto exit;
 
-	ret = vdec_qbuf(inst, vb2);
+	if (inst->domain == DECODER)
+		ret = vdec_qbuf(inst, vb2);
+	else if (inst->domain == ENCODER)
+		ret = venc_qbuf(inst, vb2);
 
 exit:
 	if (ret) {
@@ -270,7 +298,7 @@ void *iris_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
 	buf->inst = inst;
 	buf->dmabuf = dbuf;
 
-	if (buf->type == BUF_OUTPUT) {
+	if (inst->domain == DECODER && buf->type == BUF_OUTPUT) {
 		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
 			if (ro_buf->dmabuf != buf->dmabuf)
 				continue;
@@ -307,7 +335,7 @@ int iris_vb2_map_dmabuf(void *buf_priv)
 		return -EINVAL;
 	}
 
-	if (buf->type == BUF_OUTPUT) {
+	if (inst->domain == DECODER && buf->type == BUF_OUTPUT) {
 		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
 			if (ro_buf->dmabuf != buf->dmabuf)
 				continue;
@@ -356,7 +384,7 @@ void iris_vb2_unmap_dmabuf(void *buf_priv)
 		return;
 	}
 
-	if (buf->type == BUF_OUTPUT) {
+	if (inst->domain == DECODER && buf->type == BUF_OUTPUT) {
 		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
 			if (ro_buf->dmabuf != buf->dmabuf)
 				continue;
@@ -393,7 +421,7 @@ void iris_vb2_detach_dmabuf(void *buf_priv)
 		buf->sg_table = NULL;
 	}
 
-	if (buf->type == BUF_OUTPUT) {
+	if (inst->domain == DECODER && buf->type == BUF_OUTPUT) {
 		list_for_each_entry_safe(ro_buf, dummy, &inst->buffers.read_only.list, list) {
 			if (ro_buf->dmabuf != buf->dmabuf)
 				continue;
