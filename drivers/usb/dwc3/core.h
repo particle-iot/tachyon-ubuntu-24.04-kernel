@@ -985,10 +985,12 @@ struct dwc3_scratchpad_array {
  * @notify_cable_disconnect: Notify glue of cable removal
  *				irrespective of host or device mode.
  * @set_mode: Notify glue before mode change is about to happen.
+ * @mode_changed: Notify glue that mode change was done successfully
  */
 struct dwc3_glue_ops {
 	void	(*notify_cable_disconnect)(void *glue_data);
 	void	(*set_mode)(void *glue_data, u32 desired_dr_role);
+	void	(*mode_changed)(void *glue_data, u32 current_dr_role);
 };
 
 struct dwc3_glue_data {
@@ -1628,6 +1630,13 @@ static inline void dwc3_notify_set_mode(struct dwc3 *dwc,
 {
 	if (dwc->glue_ops && dwc->glue_ops->set_mode)
 		dwc->glue_ops->set_mode(dwc->glue_data, desired_dr_role);
+}
+
+static inline void dwc3_notify_mode_changed(struct dwc3 *dwc,
+					    u32 current_dr_role)
+{
+	if (dwc->glue_ops && dwc->glue_ops->mode_changed)
+		dwc->glue_ops->mode_changed(dwc->glue_data, current_dr_role);
 }
 
 #if IS_ENABLED(CONFIG_USB_DWC3_HOST) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
