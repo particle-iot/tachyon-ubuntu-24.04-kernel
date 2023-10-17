@@ -233,6 +233,9 @@ static void __dwc3_set_mode(struct work_struct *work)
 		break;
 	}
 
+	if (!ret)
+		dwc3_notify_mode_changed(dwc, dwc->current_dr_role);
+
 out:
 	pm_runtime_mark_last_busy(dwc->dev);
 	pm_runtime_put_autosuspend(dwc->dev);
