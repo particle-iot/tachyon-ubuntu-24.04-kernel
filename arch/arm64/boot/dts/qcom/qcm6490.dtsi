@@ -81,6 +81,17 @@
 	};
 };
 
+&remoteproc_wpss {
+	compatible = "qcom,sc7280-wpss-pas";
+
+	clocks = <&rpmhcc RPMH_CXO_CLK>;
+	clock-names = "xo";
+
+	/delete-property/ qcom,halt-regs;
+	/delete-property/ resets;
+	/delete-property/ reset-names;
+};
+
 &soc {
 	remoteproc_adsp: remoteproc@3000000 {
 		compatible = "qcom,sc7280-adsp-pas";
