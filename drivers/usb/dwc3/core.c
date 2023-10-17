@@ -1953,6 +1953,7 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev)
 	 */
 	dwc_res = *res;
 	dwc_res.start += DWC3_GLOBALS_REGS_START;
+	dwc_res.end = res->start + DWC3_OTG_REGS_END;
 
 	if (dev->of_node) {
 		struct device_node *parent = of_get_parent(dev->of_node);
@@ -1960,6 +1961,7 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev)
 		if (of_device_is_compatible(parent, "realtek,rtd-dwc3")) {
 			dwc_res.start -= DWC3_GLOBALS_REGS_START;
 			dwc_res.start += DWC3_RTK_RTD_GLOBALS_REGS_START;
+			dwc_res.end = dwc_res.start + DWC3_OTG_REGS_END;
 		}
 
 		of_node_put(parent);
