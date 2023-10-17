@@ -88,6 +88,9 @@ struct dwc3_qcom {
 	bool			pm_suspended;
 	struct icc_path		*icc_path_ddr;
 	struct icc_path		*icc_path_apps;
+
+	bool			enable_rt;
+	enum usb_role		current_role;
 };
 
 static inline void dwc3_qcom_setbits(void __iomem *base, u32 offset, u32 val)
@@ -669,11 +672,63 @@ static const struct software_node dwc3_qcom_swnode = {
 	.properties = dwc3_qcom_acpi_properties,
 };
 
+static void dwc3_qcom_handle_cable_disconnect(void *data)
+{
+	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+	/*
+	 * If we are in device mode and get a cable disconnect,
+	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
+	 * The next set_mode to default role can be ignored.
+	 */
+	if (qcom->current_role == USB_ROLE_DEVICE) {
+		pm_runtime_get_sync(qcom->dev);
+		dwc3_qcom_vbus_override_enable(qcom, false);
+		pm_runtime_put_autosuspend(qcom->dev);
+	}
+
+	pm_runtime_mark_last_busy(qcom->dev);
+	qcom->current_role = USB_ROLE_NONE;
+}
+
+static void dwc3_qcom_handle_set_mode(void *data, u32 desired_dr_role)
+{
+	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+
+	/*
+	 * If we are in device mode and get a cable disconnect,
+	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
+	 * The next set_mode to default role can be ignored and
+	 * so the OTG_VBUS_VALID should be set iff the current role
+	 * is NONE and we need to enter DEVICE mode.
+	 */
+	if ((qcom->current_role == USB_ROLE_NONE) &&
+	    (desired_dr_role == DWC3_GCTL_PRTCAP_DEVICE)) {
+		dwc3_qcom_vbus_override_enable(qcom, true);
+		qcom->current_role = USB_ROLE_DEVICE;
+	} else if ((desired_dr_role == DWC3_GCTL_PRTCAP_HOST) &&
+		   (qcom->current_role != USB_ROLE_HOST)) {
+		qcom->current_role = USB_ROLE_HOST;
+	}
+
+	pm_runtime_mark_last_busy(qcom->dev);
+}
+
+struct dwc3_glue_ops dwc3_qcom_glue_hooks = {
+	.notify_cable_disconnect = dwc3_qcom_handle_cable_disconnect,
+	.set_mode = dwc3_qcom_handle_set_mode,
+};
+
 static int dwc3_qcom_probe_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
 {
 	struct dwc3 *dwc;
 
-	dwc = dwc3_probe(pdev);
+	struct dwc3_glue_data qcom_glue_data = {
+		.glue_data	= qcom,
+		.ops		= &dwc3_qcom_glue_hooks,
+	};
+
+	dwc = dwc3_probe(pdev,
+			 qcom->enable_rt ? &qcom_glue_data : NULL);
 	if (IS_ERR(dwc))
 		return PTR_ERR(dwc);
 
@@ -893,6 +948,23 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	if (ignore_pipe_clk)
 		dwc3_qcom_select_utmi_clk(qcom);
 
+	qcom->enable_rt = device_property_read_bool(dev,
+				"qcom,enable-rt");
+	if (!legacy_binding) {
+		/*
+		 * If we are enabling runtime, then we are using flattened
+		 * device implementation.
+		 */
+		qcom->mode = usb_get_dr_mode(dev);
+
+		if (qcom->mode == USB_DR_MODE_HOST)
+			qcom->current_role = USB_ROLE_HOST;
+		else if (qcom->mode == USB_DR_MODE_PERIPHERAL)
+			qcom->current_role = USB_ROLE_DEVICE;
+		else
+			qcom->current_role = USB_ROLE_NONE;
+	}
+
 	if (legacy_binding)
 		ret = dwc3_qcom_of_register_core(pdev);
 	else
@@ -909,8 +981,6 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 
 	if (qcom->dwc_dev)
 		qcom->mode = usb_get_dr_mode(&qcom->dwc_dev->dev);
-	else
-		qcom->mode = usb_get_dr_mode(dev);
 
 	/* enable vbus override for device mode */
 	if (qcom->mode != USB_DR_MODE_HOST)
