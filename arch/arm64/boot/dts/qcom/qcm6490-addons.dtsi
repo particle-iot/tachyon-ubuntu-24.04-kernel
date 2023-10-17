@@ -6,3 +6,9 @@
  *
  */
 
+&soc {
+	wdog_gh: qcom,wdt_gh {
+		compatible = "qcom,gh-watchdog";
+		interrupts = <0 0 IRQ_TYPE_LEVEL_HIGH>;
+	};
+};
