@@ -91,6 +91,7 @@ struct dwc3_qcom {
 
 	bool			enable_rt;
 	enum usb_role		current_role;
+	struct notifier_block	xhci_nb;
 };
 
 static inline void dwc3_qcom_setbits(void __iomem *base, u32 offset, u32 val)
@@ -672,6 +673,27 @@ static const struct software_node dwc3_qcom_swnode = {
 	.properties = dwc3_qcom_acpi_properties,
 };
 
+static int dwc3_xhci_event_notifier(struct notifier_block *nb,
+				    unsigned long event, void *ptr)
+{
+	struct usb_device *udev = ptr;
+
+	if (event != USB_DEVICE_ADD)
+		return NOTIFY_DONE;
+
+	/*
+	 * If this is a roothub corresponding to this controller, enable autosuspend
+	 */
+	if (!udev->parent) {
+		pm_runtime_use_autosuspend(&udev->dev);
+		pm_runtime_set_autosuspend_delay(&udev->dev, 1000);
+	}
+
+	usb_mark_last_busy(udev);
+
+	return NOTIFY_DONE;
+}
+
 static void dwc3_qcom_handle_cable_disconnect(void *data)
 {
 	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
@@ -684,6 +706,8 @@ static void dwc3_qcom_handle_cable_disconnect(void *data)
 		pm_runtime_get_sync(qcom->dev);
 		dwc3_qcom_vbus_override_enable(qcom, false);
 		pm_runtime_put_autosuspend(qcom->dev);
+	} else if (qcom->current_role == USB_ROLE_HOST) {
+		usb_unregister_notify(&qcom->xhci_nb);
 	}
 
 	pm_runtime_mark_last_busy(qcom->dev);
@@ -707,15 +731,33 @@ static void dwc3_qcom_handle_set_mode(void *data, u32 desired_dr_role)
 		qcom->current_role = USB_ROLE_DEVICE;
 	} else if ((desired_dr_role == DWC3_GCTL_PRTCAP_HOST) &&
 		   (qcom->current_role != USB_ROLE_HOST)) {
+		qcom->xhci_nb.notifier_call = dwc3_xhci_event_notifier;
+		usb_register_notify(&qcom->xhci_nb);
 		qcom->current_role = USB_ROLE_HOST;
 	}
 
 	pm_runtime_mark_last_busy(qcom->dev);
 }
 
+static void dwc3_qcom_handle_mode_changed(void *data, u32 current_dr_role)
+{
+	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+
+	/*
+	 * XHCI platform device is allocated upon host init.
+	 * So ensure we are in host mode before enabling autosuspend.
+	 */
+	if ((current_dr_role == DWC3_GCTL_PRTCAP_HOST) &&
+	    (qcom->current_role == USB_ROLE_HOST)) {
+		pm_runtime_use_autosuspend(&qcom->dwc->xhci->dev);
+		pm_runtime_set_autosuspend_delay(&qcom->dwc->xhci->dev, 0);
+	}
+}
+
 struct dwc3_glue_ops dwc3_qcom_glue_hooks = {
 	.notify_cable_disconnect = dwc3_qcom_handle_cable_disconnect,
 	.set_mode = dwc3_qcom_handle_set_mode,
+	.mode_changed = dwc3_qcom_handle_mode_changed,
 };
 
 static int dwc3_qcom_probe_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
