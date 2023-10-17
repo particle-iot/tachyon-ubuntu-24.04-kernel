@@ -1394,6 +1394,8 @@ struct dwc3 {
 
 	void			*glue_data;
 	const struct dwc3_glue_ops *glue_ops;
+
+	bool			cable_disconnected;
 };
 
 #define INCRX_BURST_MODE 0
