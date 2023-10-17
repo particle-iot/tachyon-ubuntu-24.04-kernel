@@ -979,6 +979,23 @@ struct dwc3_scratchpad_array {
 	__le64	dma_adr[DWC3_MAX_HIBER_SCRATCHBUFS];
 };
 
+/*
+ * struct dwc3_glue_ops - The ops indicate the notifications that
+ *				need to be passed on to glue layer.
+ * @notify_cable_disconnect: Notify glue of cable removal
+ *				irrespective of host or device mode.
+ * @set_mode: Notify glue before mode change is about to happen.
+ */
+struct dwc3_glue_ops {
+	void	(*notify_cable_disconnect)(void *glue_data);
+	void	(*set_mode)(void *glue_data, u32 desired_dr_role);
+};
+
+struct dwc3_glue_data {
+	void			*glue_data;
+	struct dwc3_glue_ops	*ops;
+};
+
 /**
  * struct dwc3 - representation of our controller
  * @drd_work: workqueue used for role swapping
@@ -1144,6 +1161,9 @@ struct dwc3_scratchpad_array {
  * @num_ep_resized: carries the current number endpoints which have had its tx
  *		    fifo resized.
  * @debug_root: root debugfs directory for this device to put its files in.
+ * @glue_data: Private data stored by core to be passed on to glue during
+ *		role switch notifications.
+ * @glue_ops: Store pointers to glue notifcation callbacks.
  */
 struct dwc3 {
 	struct work_struct	drd_work;
@@ -1369,6 +1389,9 @@ struct dwc3 {
 	int			last_fifo_depth;
 	int			num_ep_resized;
 	struct dentry		*debug_root;
+
+	void			*glue_data;
+	const struct dwc3_glue_ops *glue_ops;
 };
 
 #define INCRX_BURST_MODE 0
@@ -1583,7 +1606,8 @@ void dwc3_event_buffers_cleanup(struct dwc3 *dwc);
 int dwc3_core_soft_reset(struct dwc3 *dwc);
 void dwc3_enable_susphy(struct dwc3 *dwc, bool enable);
 
-struct dwc3 *dwc3_probe(struct platform_device *pdev);
+struct dwc3 *dwc3_probe(struct platform_device *pdev,
+			struct dwc3_glue_data *glue_data);
 void dwc3_remove(struct dwc3 *dwc);
 
 int dwc3_runtime_suspend(struct dwc3 *dwc);
@@ -1592,6 +1616,19 @@ int dwc3_runtime_idle(struct dwc3 *dwc);
 int dwc3_suspend(struct dwc3 *dwc);
 int dwc3_resume(struct dwc3 *dwc);
 void dwc3_complete(struct dwc3 *dwc);
+
+static inline void dwc3_notify_cable_disconnect(struct dwc3 *dwc)
+{
+	if (dwc->glue_ops && dwc->glue_ops->notify_cable_disconnect)
+		dwc->glue_ops->notify_cable_disconnect(dwc->glue_data);
+}
+
+static inline void dwc3_notify_set_mode(struct dwc3 *dwc,
+					u32 desired_dr_role)
+{
+	if (dwc->glue_ops && dwc->glue_ops->set_mode)
+		dwc->glue_ops->set_mode(dwc->glue_data, desired_dr_role);
+}
 
 #if IS_ENABLED(CONFIG_USB_DWC3_HOST) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
 int dwc3_host_init(struct dwc3 *dwc);
