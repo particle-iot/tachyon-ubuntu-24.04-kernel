@@ -6,3 +6,11 @@
  *
  */
 
+&soc {
+	sram@146a5000{
+		kaslr_offset@56d0 {
+			compatible = "qcom,msm-imem-kaslr_offset";
+			reg = <0x56d0 0xc>;
+		};
+	};
+};
