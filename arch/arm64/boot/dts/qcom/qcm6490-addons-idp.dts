@@ -8,6 +8,7 @@
 
 /dts-v1/;
 
+#include "qcm6490-idp.dts"
 #include "qcm6490-addons.dtsi"
 
 / {
