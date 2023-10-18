@@ -319,6 +319,13 @@
 	status = "okay";
 };
 
+&vreg_l1b_0p912 {
+	/delete-property/regulator-min-microvolt;
+	/delete-property/regulator-max-microvolt;
+	regulator-allow-set-load;
+	regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
+};
+
 &vreg_l7b_2p952 {
 	/delete-property/regulator-min-microvolt;
 	/delete-property/regulator-max-microvolt;
@@ -327,6 +334,13 @@
 };
 
 &vreg_l9b_1p2 {
+	/delete-property/regulator-min-microvolt;
+	/delete-property/regulator-max-microvolt;
+	regulator-allow-set-load;
+	regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
+};
+
+&vreg_l10c_0p88 {
 	/delete-property/regulator-min-microvolt;
 	/delete-property/regulator-max-microvolt;
 	regulator-allow-set-load;
