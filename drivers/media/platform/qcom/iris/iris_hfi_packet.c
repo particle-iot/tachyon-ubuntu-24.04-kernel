@@ -364,8 +364,8 @@ int get_hfi_buffer(struct iris_buffer *buffer, struct hfi_buffer *buf)
 	return 0;
 }
 
-static int hfi_create_header(u8 *packet, u32 packet_size, u32 session_id,
-			     u32 header_id)
+int hfi_create_header(u8 *packet, u32 packet_size, u32 session_id,
+		      u32 header_id)
 {
 	struct hfi_header *hdr = (struct hfi_header *)packet;
 
@@ -382,9 +382,9 @@ static int hfi_create_header(u8 *packet, u32 packet_size, u32 session_id,
 	return 0;
 }
 
-static int hfi_create_packet(u8 *packet, u32 packet_size, u32 pkt_type,
-			     u32 pkt_flags, u32 payload_type, u32 port,
-			     u32 packet_id, void *payload, u32 payload_size)
+int hfi_create_packet(u8 *packet, u32 packet_size, u32 pkt_type,
+		      u32 pkt_flags, u32 payload_type, u32 port,
+		      u32 packet_id, void *payload, u32 payload_size)
 {
 	struct hfi_header *hdr;
 	struct hfi_packet *pkt;
