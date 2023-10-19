@@ -20,9 +20,29 @@ struct iris_inst;
 #define BIT_DEPTH_8 (8 << 16 | 8)
 #define BIT_DEPTH_10 (10 << 16 | 10)
 
-#define CODED_FRAMES_PROGRESSIVE 0x0
-#define CODED_FRAMES_INTERLACE 0x1
-#define MAX_NUM_CHILD         10
+#define CODED_FRAMES_PROGRESSIVE			0x0
+#define CODED_FRAMES_INTERLACE				0x1
+#define MAX_NUM_CHILD					10
+#define MAX_ENH_LAYER_HB				3
+#define MAX_HEVC_VBR_ENH_LAYER_SLIDING_WINDOW		5
+#define MAX_HEVC_NON_VBR_ENH_LAYER_SLIDING_WINDOW	3
+#define MAX_AVC_ENH_LAYER_SLIDING_WINDOW		3
+#define MAX_AVC_ENH_LAYER_HYBRID_HP			5
+#define MAX_SLICES_FRAME_RATE				60
+#define MAX_MB_SLICE_WIDTH				4096
+#define MAX_MB_SLICE_HEIGHT				2160
+#define MAX_BYTES_SLICE_WIDTH				1920
+#define MAX_BYTES_SLICE_HEIGHT				1088
+#define MIN_HEVC_SLICE_WIDTH				384
+#define MIN_AVC_SLICE_WIDTH				192
+#define MIN_SLICE_HEIGHT				128
+#define MAX_SLICES_PER_FRAME				10
+#define MIN_QP_8BIT					1
+#define MIN_SLICE_BYTE_SIZE				512
+#define MAX_SLICE_BYTE_SIZE				((MAX_BITRATE) >> 3)
+#define MAX_SLICE_MB_SIZE				(((4096 + 15) >> 4) * ((2304 + 15) >> 4))
+#define INVALID_DEFAULT_MARK_OR_USE_LTR			-1
+#define MAX_SUPPORTED_MIN_QUALITY			70
 
 #define UBWC_CONFIG(mc, ml, hbb, bs1, bs2, bs3, bsp) \
 {	                                                 \
@@ -125,6 +145,8 @@ enum plat_inst_cap_type {
 	PIX_FMTS,
 	MBPF,
 	QUEUED_RATE,
+	FRAME_RATE,
+	OPERATING_RATE,
 	MB_CYCLES_VSP,
 	MB_CYCLES_VPP,
 	MB_CYCLES_LP,
@@ -132,6 +154,8 @@ enum plat_inst_cap_type {
 	MB_CYCLES_FW_VPP,
 	NUM_COMV,
 	ENTROPY_MODE,
+	BASELAYER_PRIORITY,
+	IR_TYPE,
 	PROFILE,
 	LEVEL,
 	HEVC_TIER,
@@ -145,6 +169,48 @@ enum plat_inst_cap_type {
 	BIT_DEPTH,
 	DEFAULT_HEADER,
 	RAP_FRAME,
+	MIN_FRAME_QP,
+	MAX_FRAME_QP,
+	B_FRAME,
+	I_FRAME_QP,
+	P_FRAME_QP,
+	B_FRAME_QP,
+	BIT_RATE,
+	PEAK_BITRATE,
+	BITRATE_MODE,
+	FRAME_SKIP_MODE,
+	FRAME_RC_ENABLE,
+	GOP_SIZE,
+	MIN_QUALITY,
+	IR_PERIOD,
+	LTR_COUNT,
+	USE_LTR,
+	MARK_LTR,
+	I_FRAME_MIN_QP,
+	P_FRAME_MIN_QP,
+	B_FRAME_MIN_QP,
+	I_FRAME_MAX_QP,
+	P_FRAME_MAX_QP,
+	B_FRAME_MAX_QP,
+	LAYER_TYPE,
+	LAYER_ENABLE,
+	L0_BR,
+	L1_BR,
+	L2_BR,
+	L3_BR,
+	L4_BR,
+	L5_BR,
+	ENH_LAYER_COUNT,
+	TRANSFORM_8X8,
+	SLICE_MODE,
+	SLICE_MAX_MB,
+	SLICE_MAX_BYTES,
+	HFLIP,
+	VFLIP,
+	ROTATION,
+	HEADER_MODE,
+	PREPEND_SPSPPS_TO_IDR,
+	REQUEST_I_FRAME,
 	INST_CAP_MAX,
 };
 
@@ -161,6 +227,7 @@ enum plat_inst_cap_flags {
 
 struct plat_inst_cap {
 	enum plat_inst_cap_type cap_id;
+	enum domain_type domain;
 	enum codec_type codec;
 	s32 min;
 	s32 max;
