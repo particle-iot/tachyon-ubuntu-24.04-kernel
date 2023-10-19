@@ -53,6 +53,9 @@
  * @power: structure of power info
  * @bus_data: structure of bus data
  * @input_timer_list: list head of input timer
+ * @ir_enabled: boolean for intra refresh
+ * @hfi_rc_type: rate control type
+ * @hfi_layer_type: type of HFI layer encoding
  */
 
 struct iris_inst {
@@ -92,6 +95,9 @@ struct iris_inst {
 	struct iris_inst_power		power;
 	struct bus_vote_data		bus_data;
 	struct list_head		input_timer_list;
+	bool				ir_enabled;
+	u32				hfi_rc_type;
+	u32				hfi_layer_type;
 };
 
 #endif
