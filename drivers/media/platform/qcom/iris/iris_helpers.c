@@ -41,12 +41,20 @@ bool res_is_less_than(u32 width, u32 height,
 u32 get_port_info(struct iris_inst *inst,
 		  enum plat_inst_cap_type cap_id)
 {
-	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT)
-		return HFI_PORT_BITSTREAM;
-	else if (inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT)
-		return HFI_PORT_RAW;
+	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT &&
+	    inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT) {
+		if (inst->vb2q_dst->streaming)
+			return get_hfi_port(INPUT_MPLANE);
+		else
+			return get_hfi_port(OUTPUT_MPLANE);
+	}
 
-	return HFI_PORT_NONE;
+	if (inst->cap[cap_id].flags & CAP_FLAG_INPUT_PORT)
+		return get_hfi_port(INPUT_MPLANE);
+	else if (inst->cap[cap_id].flags & CAP_FLAG_OUTPUT_PORT)
+		return get_hfi_port(OUTPUT_MPLANE);
+	else
+		return HFI_PORT_NONE;
 }
 
 enum iris_buffer_type v4l2_type_to_driver(u32 type)
@@ -71,6 +79,36 @@ u32 v4l2_type_from_driver(enum iris_buffer_type buffer_type)
 	default:
 		return 0;
 	}
+}
+
+int v4l2_to_hfi_enum(struct iris_inst *inst,
+		     enum plat_inst_cap_type cap_id, u32 *value)
+{
+	switch (cap_id) {
+	case ROTATION:
+		switch (inst->cap[cap_id].value) {
+		case 0:
+			*value = HFI_ROTATION_NONE;
+			break;
+		case 90:
+			*value = HFI_ROTATION_90;
+			break;
+		case 180:
+			*value = HFI_ROTATION_180;
+			break;
+		case 270:
+			*value = HFI_ROTATION_270;
+			break;
+		default:
+			*value = HFI_ROTATION_NONE;
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 int get_mbpf(struct iris_inst *inst)
