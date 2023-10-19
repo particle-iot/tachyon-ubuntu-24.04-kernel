@@ -32,6 +32,10 @@ struct iris_inst;
 
 #define INPUT_TIMER_LIST_SIZE 30
 
+#define CABAC_MAX_BITRATE 160000000
+
+#define CAVLC_MAX_BITRATE 220000000
+
 enum domain_type {
 	ENCODER	= BIT(0),
 	DECODER	= BIT(1),
