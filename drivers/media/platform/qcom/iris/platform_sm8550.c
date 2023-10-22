@@ -995,6 +995,11 @@ static struct plat_inst_cap instance_cap_data_sm8550[] = {
 		NULL,
 		set_pipe},
 
+	{QUALITY_MODE, ENC, CODECS_ALL,
+		MAX_QUALITY_MODE,
+		POWER_SAVE_MODE, 1,
+		POWER_SAVE_MODE},
+
 	{POC, DEC, H264, 0, 2, 1, 1,
 		0,
 		HFI_PROP_PIC_ORDER_CNT_TYPE},
@@ -1040,6 +1045,13 @@ static const char * const sm8550_clk_reset_table[] = { "video_axi_reset", NULL }
 static const char * const sm8550_pd_table[] = { "iris-ctl", "vcodec", NULL };
 
 static const char * const sm8550_opp_pd_table[] = { "mxc", "mmcx", NULL };
+
+static const struct bw_info sm8550_bw_table_enc[] = {
+	{ 1944000, 1491000, 2693000 },	/* 3840x2160@60 */
+	{  972000,  765000, 1366000 },	/* 3840x2160@30 */
+	{  489600,  557000, 780000 },	/* 1920x1080@60 */
+	{  244800,  288000, 399000 },	/* 1920x1080@30 */
+};
 
 static const struct bw_info sm8550_bw_table_dec[] = {
 	{ 2073600, 1608000, 2742000 },	/* 4096x2160@60 */
@@ -1122,6 +1134,8 @@ struct platform_data sm8550_data = {
 	.clk_rst_tbl = sm8550_clk_reset_table,
 	.clk_rst_tbl_size = ARRAY_SIZE(sm8550_clk_reset_table),
 
+	.bw_tbl_enc = sm8550_bw_table_enc,
+	.bw_tbl_enc_size = ARRAY_SIZE(sm8550_bw_table_enc),
 	.bw_tbl_dec = sm8550_bw_table_dec,
 	.bw_tbl_dec_size = ARRAY_SIZE(sm8550_bw_table_dec),
 
