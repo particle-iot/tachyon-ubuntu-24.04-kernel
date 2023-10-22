@@ -48,11 +48,16 @@ static int iris_vote_buses(struct iris_inst *inst)
 	vote_data->height = inp_f->fmt.pix_mp.height;
 	vote_data->fps = inst->max_rate;
 
-	if (is_linear_colorformat(out_f->fmt.pix_mp.pixelformat)) {
-		vote_data->color_formats[0] = V4L2_PIX_FMT_NV12;
-		vote_data->color_formats[1] = out_f->fmt.pix_mp.pixelformat;
-	} else {
-		vote_data->color_formats[0] = out_f->fmt.pix_mp.pixelformat;
+	if (inst->domain == ENCODER) {
+		vote_data->color_formats[0] =
+			v4l2_colorformat_to_driver(inst, inst->fmt_src->fmt.pix_mp.pixelformat);
+	} else if (inst->domain == DECODER) {
+		if (is_linear_colorformat(out_f->fmt.pix_mp.pixelformat)) {
+			vote_data->color_formats[0] = V4L2_PIX_FMT_NV12;
+			vote_data->color_formats[1] = out_f->fmt.pix_mp.pixelformat;
+		} else {
+			vote_data->color_formats[0] = out_f->fmt.pix_mp.pixelformat;
+		}
 	}
 
 	call_session_op(core, calc_bw, inst, vote_data);
