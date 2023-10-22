@@ -170,6 +170,7 @@ enum plat_inst_cap_type {
 	OUTPUT_ORDER,
 	STAGE,
 	PIPE,
+	QUALITY_MODE,
 	POC,
 	CODED_FRAMES,
 	BIT_DEPTH,
@@ -275,6 +276,8 @@ struct format_capability {
 struct platform_data {
 	const struct bus_info *bus_tbl;
 	unsigned int bus_tbl_size;
+	const struct bw_info *bw_tbl_enc;
+	unsigned int bw_tbl_enc_size;
 	const struct bw_info *bw_tbl_dec;
 	unsigned int bw_tbl_dec_size;
 	const char * const *pd_tbl;
