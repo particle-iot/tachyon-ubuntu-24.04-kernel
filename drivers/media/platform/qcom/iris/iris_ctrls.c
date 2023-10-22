@@ -799,6 +799,8 @@ int decide_quality_mode(struct iris_inst *inst)
 	if (mbpf <= max_hq_mbpf && mbps <= max_hq_mbps)
 		mode = MAX_QUALITY_MODE;
 
+	inst->cap[QUALITY_MODE].value = mode;
+
 	return mode;
 }
 
