@@ -187,6 +187,33 @@
 					IPCC_MPROC_SIGNAL_GLINK_QMP>;
 			label = "adsp";
 			qcom,remote-pid = <2>;
+
+			fastrpc {
+				compatible = "qcom,fastrpc";
+				qcom,glink-channels = "fastrpcglink-apps-dsp";
+				label = "adsp";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				compute-cb@1 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <3>;
+					iommus = <&apps_smmu 0x1803 0x0>;
+				};
+
+				compute-cb@2 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <4>;
+					iommus = <&apps_smmu 0x1804 0x0>;
+				};
+
+				compute-cb@3 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <5>;
+					iommus = <&apps_smmu 0x1805 0x0>;
+					qcom,nsessions = <5>;
+				};
+			};
 		};
 	};
 
@@ -227,6 +254,93 @@
 					IPCC_MPROC_SIGNAL_GLINK_QMP>;
 			label = "cdsp";
 			qcom,remote-pid = <5>;
+
+			fastrpc {
+				compatible = "qcom,fastrpc";
+				qcom,glink-channels = "fastrpcglink-apps-dsp";
+				label = "cdsp";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				compute-cb@1 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <1>;
+					iommus = <&apps_smmu 0x11A1 0x0420>,
+						 <&apps_smmu 0x1181 0x0420>;
+				};
+
+				compute-cb@2 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <2>;
+					iommus = <&apps_smmu 0x11A2 0x0420>,
+						 <&apps_smmu 0x1182 0x0420>;
+				};
+
+				compute-cb@3 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <3>;
+					iommus = <&apps_smmu 0x11A3 0x0420>,
+						 <&apps_smmu 0x1183 0x0420>;
+				};
+
+				compute-cb@4 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <4>;
+					iommus = <&apps_smmu 0x11A4 0x0420>,
+						 <&apps_smmu 0x1184 0x0420>;
+				};
+
+				compute-cb@5 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <5>;
+					iommus = <&apps_smmu 0x11A5 0x0420>,
+						 <&apps_smmu 0x1185 0x0420>;
+				};
+
+				compute-cb@6 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <6>;
+					iommus = <&apps_smmu 0x11A6 0x0420>,
+						 <&apps_smmu 0x1186 0x0420>;
+				};
+
+				compute-cb@7 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <7>;
+					iommus = <&apps_smmu 0x11A7 0x0420>,
+						 <&apps_smmu 0x1187 0x0420>;
+				};
+
+				compute-cb@8 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <8>;
+					iommus = <&apps_smmu 0x11A8 0x0420>,
+						 <&apps_smmu 0x1188 0x0420>;
+				};
+
+				/* note: secure cb9 in downstream */
+
+				compute-cb@10 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <12>;
+					iommus = <&apps_smmu 0x11AC 0x0420>,
+						 <&apps_smmu 0x118C 0x0420>;
+				};
+
+				compute-cb@11 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <13>;
+					iommus = <&apps_smmu 0x11AD 0x0420>,
+						 <&apps_smmu 0x118D 0x0420>;
+				};
+
+				compute-cb@12 {
+					compatible = "qcom,fastrpc-compute-cb";
+					reg = <14>;
+					iommus = <&apps_smmu 0x11AE 0x0420>,
+						 <&apps_smmu 0x118E 0x0420>;
+				};
+			};
 		};
 	};
 };
