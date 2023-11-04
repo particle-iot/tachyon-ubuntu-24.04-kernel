@@ -73,6 +73,7 @@ enum quality_mode {
 	POWER_SAVE_MODE = 0x2,
 };
 
+extern struct platform_data qcm6490_data;
 extern struct platform_data sm8550_data;
 
 struct bw_info {
