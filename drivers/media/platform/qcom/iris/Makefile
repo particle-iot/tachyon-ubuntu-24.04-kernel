@@ -21,6 +21,7 @@ iris-objs += iris_probe.o \
              vpu_iris3_buffer.o \
              vpu_iris3_power.o \
              platform_common.o \
-             platform_sm8550.o
+             platform_sm8550.o \
+             platform_qcm6490.o
 
 obj-$(CONFIG_VIDEO_QCOM_IRIS) += iris.o
