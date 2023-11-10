@@ -3028,6 +3028,149 @@
 			};
 		};
 
+		cti@6010000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06010000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6011000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06011000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6012000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06012000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6013000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06013000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6014000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06014000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6015000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06015000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6016000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06016000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6017000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06017000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6018000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06018000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@6019000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06019000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601a000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601a000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601b000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601b000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601c000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601c000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601d000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601d000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601e000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601e000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
+		cti@601f000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0601f000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
 		funnel@6041000 {
 			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
 			reg = <0 0x06041000 0 0x1000>;
@@ -3161,6 +3304,84 @@
 			};
 		};
 
+		cti@680b000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0680b000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6813000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06813000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6845000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06845000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6961000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06961000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6982000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06982000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@698b000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x0698b000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6b00000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06b00000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6b01000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06b01000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6b03000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06b03000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
 		funnel@6b04000 {
 			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
 			reg = <0 0x06b04000 0 0x1000>;
@@ -3238,6 +3459,95 @@
 			};
 		};
 
+		cti@6b41000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06b41000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6b4b000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06b4b000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6c13000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06c13000 0x0 0x1000>;
+
+			status = "disabled";
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6c61000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06c61000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6e02000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06e02000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6e0c000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06e0c000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6e0d000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06e0d000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6e0e000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06e0e000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@6e11000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x06e11000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@7020000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti","arm,primecell";
+			reg = <0x0 0x07020000 0x0 0x1000>;
+			cpu = <&CPU0>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+
+		};
+
 		etm@7040000 {
 			compatible = "arm,coresight-etm4x", "arm,primecell";
 			reg = <0 0x07040000 0 0x1000>;
@@ -3256,6 +3566,16 @@
 					};
 				};
 			};
+		};
+
+		cti@7120000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07120000 0x0 0x1000>;
+			cpu = <&CPU1>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
 		};
 
 		etm@7140000 {
@@ -3278,6 +3598,16 @@
 			};
 		};
 
+		cti@7220000 {
+			compatible = "arm,coresight-cti-v8-arch",
+				"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07220000 0x0 0x1000>;
+			cpu = <&CPU2>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
 		etm@7240000 {
 			compatible = "arm,coresight-etm4x", "arm,primecell";
 			reg = <0 0x07240000 0 0x1000>;
@@ -3296,6 +3626,16 @@
 					};
 				};
 			};
+		};
+
+		cti@7320000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07320000 0x0 0x1000>;
+			cpu = <&CPU3>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
 		};
 
 		etm@7340000 {
@@ -3318,6 +3658,16 @@
 			};
 		};
 
+		cti@7420000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07420000 0x0 0x1000>;
+			cpu = <&CPU4>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
 		etm@7440000 {
 			compatible = "arm,coresight-etm4x", "arm,primecell";
 			reg = <0 0x07440000 0 0x1000>;
@@ -3336,6 +3686,16 @@
 					};
 				};
 			};
+		};
+
+		cti@7520000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07520000 0x0 0x1000>;
+			cpu = <&CPU5>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
 		};
 
 		etm@7540000 {
@@ -3358,6 +3718,16 @@
 			};
 		};
 
+		cti@7620000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07620000 0x0 0x1000>;
+			cpu = <&CPU6>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
 		etm@7640000 {
 			compatible = "arm,coresight-etm4x", "arm,primecell";
 			reg = <0 0x07640000 0 0x1000>;
@@ -3376,6 +3746,16 @@
 					};
 				};
 			};
+		};
+
+		cti@7720000 {
+			compatible = "arm,coresight-cti-v8-arch",
+					"arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07720000 0x0 0x1000>;
+			cpu = <&CPU7>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
 		};
 
 		etm@7740000 {
@@ -3497,6 +3877,38 @@
 					};
 				};
 			};
+		};
+
+		cti@7862000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07862000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@78e0000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x078e0000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@78f0000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x078f0000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
+		};
+
+		cti@7900000 {
+			compatible = "arm,coresight-cti", "arm,primecell";
+			reg = <0x0 0x07900000 0x0 0x1000>;
+
+			clocks = <&aoss_qmp>;
+			clock-names = "apb_pclk";
 		};
 
 		sdhc_2: mmc@8804000 {
