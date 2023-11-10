@@ -43,18 +43,18 @@
 			no-map;
 		};
 
-		cvp_mem: cvp@8ac00000 {
-			reg = <0x0 0x8ac00000 0x0 0x500000>;
+		cvp_mem: cvp@8ae00000 {
+			reg = <0x0 0x8ae00000 0x0 0x500000>;
 			no-map;
 		};
 
-		ipa_gsi_mem: ipa-gsi@8b110000 {
-			reg = <0x0 0x8b110000 0x0 0xa000>;
+		ipa_gsi_mem: ipa-gsi@8b310000 {
+			reg = <0x0 0x8b310000 0x0 0xa000>;
 			no-map;
 		};
 
-		gpu_microcode_mem: gpu-microcode@8b11a000 {
-			reg = <0x0 0x8b11a000 0x0 0x2000>;
+		gpu_microcode_mem: gpu-microcode@8b31a000 {
+			reg = <0x0 0x8b31a000 0x0 0x2000>;
 			no-map;
 		};
 
@@ -226,12 +226,16 @@
 	};
 };
 
+&ipa_fw_mem {
+	reg = <0x0 0x8b300000 0x0 0x10000>;
+};
+
 &tlmm {
 	gpio-reserved-ranges = <32 2>, <48 4>;
 };
 
 &video_mem {
-	reg = <0x0 0x8a700000 0x0 0x500000>;
+	reg = <0x0 0x8a700000 0x0 0x700000>;
 };
 
 &wifi {
