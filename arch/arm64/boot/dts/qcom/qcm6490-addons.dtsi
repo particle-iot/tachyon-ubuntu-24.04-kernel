@@ -7,6 +7,10 @@
  */
 
 &soc {
+	watchdog@17c10000 {
+		status = "disabled";
+	};
+
 	sram@146a5000{
 		kaslr_offset@56d0 {
 			compatible = "qcom,msm-imem-kaslr_offset";
