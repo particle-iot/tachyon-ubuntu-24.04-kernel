@@ -269,6 +269,11 @@ static int init_reset_clocks(struct iris_core *core)
 
 	rst_tbl = core->platform_data->clk_rst_tbl;
 
+	if (!rst_tbl) {
+		dev_info(core->dev, "no reset clocks found\n");
+		return 0;
+	}
+
 	core->reset_count = core->platform_data->clk_rst_tbl_size;
 	core->reset_tbl = devm_kzalloc(core->dev,
 				       sizeof(struct reset_info) * core->reset_count,
@@ -324,7 +329,7 @@ int vote_buses(struct iris_core *core, unsigned long bus_bw)
 	for (i = 0; i < core->bus_count; i++) {
 		bus = &core->bus_tbl[i];
 		if (bus && bus->icc) {
-			if (!strcmp(bus->name, "venus-ddr")) {
+			if (!strcmp(bus->name, "iris-ddr")) {
 				bw_kbps = bus_bw;
 				bw_prev = core->power.bus_bw;
 			} else {
@@ -343,7 +348,7 @@ int vote_buses(struct iris_core *core, unsigned long bus_bw)
 			if (ret)
 				return ret;
 
-			if (!strcmp(bus->name, "venus-ddr"))
+			if (!strcmp(bus->name, "iris-ddr"))
 				core->power.bus_bw = bw_kbps;
 		}
 	}
@@ -358,6 +363,9 @@ static int deassert_reset_control(struct iris_core *core)
 	u32 i;
 
 	core->reset_count = core->platform_data->clk_rst_tbl_size;
+
+	if (!core->reset_count)
+		return ret;
 
 	for (i = 0; i < (core->reset_count - 1); i++) {
 		rcinfo = &core->reset_tbl[i];
@@ -378,6 +386,9 @@ static int assert_reset_control(struct iris_core *core)
 	u32 i;
 
 	core->reset_count = core->platform_data->clk_rst_tbl_size;
+
+	if (!core->reset_count)
+		return ret;
 
 	for (i = 0; i < (core->reset_count - 1); i++) {
 		rcinfo = &core->reset_tbl[i];
