@@ -223,6 +223,7 @@ static int iris_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	struct iris_inst *inst = NULL;
 	int ret = 0;
 
+	inst = container_of(ctrl->handler, struct iris_inst, ctrl_handler);
 	switch (ctrl->id) {
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
 		ctrl->val = inst->buffers.output.min_count;
@@ -231,7 +232,6 @@ static int iris_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl->val = inst->buffers.input.min_count;
 		break;
 	default:
-		inst = container_of(ctrl->handler, struct iris_inst, ctrl_handler);
 		cap_id = get_cap_id(inst, ctrl->id);
 		if (is_valid_cap_id(cap_id))
 			ctrl->val = inst->cap[cap_id].value;
