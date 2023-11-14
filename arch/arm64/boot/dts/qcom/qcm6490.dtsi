@@ -362,6 +362,11 @@
 	gpio-reserved-ranges = <32 2>, <48 4>;
 };
 
+&venus {
+	compatible = "qcom,qcm6490-iris";
+	interconnect-names = "iris-cnoc", "iris-ddr";
+};
+
 &video_mem {
 	reg = <0x0 0x8a700000 0x0 0x700000>;
 };
