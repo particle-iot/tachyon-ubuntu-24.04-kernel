@@ -37,3 +37,4 @@ obj-$(CONFIG_QCOM_ICC_BWMON)	+= icc-bwmon.o
 qcom_ice-objs			+= ice.o
 obj-$(CONFIG_QCOM_INLINE_CRYPTO_ENGINE)	+= qcom_ice.o
 obj-$(CONFIG_QCOM_MEM_BUF) += mem_buf/
+obj-$(CONFIG_QCOM_SMCINVOKE) += smcinvoke/
