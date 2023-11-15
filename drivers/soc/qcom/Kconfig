@@ -328,4 +328,5 @@ config QCOM_WATCHDOG_IPI_PING
          it is set to 0 no keep alive pings will be sent.
 
 source "drivers/soc/qcom/mem_buf/Kconfig"
+source "drivers/soc/qcom/smcinvoke/Kconfig"
 endmenu
