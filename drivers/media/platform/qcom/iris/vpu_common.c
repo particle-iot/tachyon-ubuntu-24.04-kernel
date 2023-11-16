@@ -5,6 +5,7 @@
 
 #include <linux/iopoll.h>
 
+#include "vpu_iris2.h"
 #include "vpu_iris3.h"
 #include "iris_core.h"
 #include "iris_helpers.h"
@@ -132,6 +133,10 @@ static const struct compat_handle compat_handle[] = {
 	{
 		.compat                  = "qcom,sm8550-iris",
 		.init                    = init_iris3,
+	},
+	{
+		.compat                  = "qcom,qcm6490-iris",
+		.init                    = init_iris2,
 	},
 };
 
