@@ -20,7 +20,9 @@ iris-objs += iris_probe.o \
              vpu_iris3.o \
              vpu_iris3_buffer.o \
              vpu_iris3_power.o \
+             vpu_iris2.o \
              vpu_iris2_buffer.o \
+             vpu_iris2_power.o \
              platform_common.o \
              platform_sm8550.o \
              platform_qcm6490.o
