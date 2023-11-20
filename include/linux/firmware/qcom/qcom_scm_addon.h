@@ -49,6 +49,7 @@ extern int qcom_scm_delete_shm_bridge(u64 handle);
 extern int qcom_scm_create_shm_bridge(u64 pfn_and_ns_perm_flags,
 			u64 ipfn_and_s_perm_flags, u64 size_and_flags, u64 ns_vmids,
 			u64 *handle);
+extern int qcom_scm_spin_cpu(void);
 
 #else
 static inline bool qcom_scm_dcvs_ca_available(void)
@@ -188,6 +189,11 @@ static inline int qcom_scm_delete_shm_bridge(u64 handle)
 static inline int qcom_scm_create_shm_bridge(u64 pfn_and_ns_perm_flags,
 			u64 ipfn_and_s_perm_flags, u64 size_and_flags, u64 ns_vmids,
 			u64 *handle)
+{
+	return -EPERM;
+}
+
+static inline int qcom_scm_spin_cpu(void)
 {
 	return -EPERM;
 }
