@@ -48,6 +48,7 @@
 #define QCOM_SCM_BOOT_SEC_WDOG_DIS	0x07
 #define QCOM_SCM_BOOT_SEC_WDOG_TRIGGER	0x08
 #define QCOM_SCM_BOOT_WDOG_DEBUG_PART	0x09
+#define QCOM_SCM_BOOT_SPIN_CPU		0x0d
 
 static int __qcom_scm_get_feat_version(struct device *dev, u64 feat_id, u64 *version)
 {
@@ -545,3 +546,20 @@ int qcom_scm_sec_wdog_trigger(void)
 	return ret ? : res.result[0];
 }
 EXPORT_SYMBOL_GPL(qcom_scm_sec_wdog_trigger);
+
+/**
+ * qcom_scm_spin_cpu(void) - spin on cpu
+ */
+int qcom_scm_spin_cpu(void)
+{
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_BOOT,
+		.cmd = QCOM_SCM_BOOT_SPIN_CPU,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = 0,
+		.arginfo = QCOM_SCM_ARGS(1),
+	};
+
+	return qcom_scm_call(__scm->dev, &desc, NULL);
+}
+EXPORT_SYMBOL_GPL(qcom_scm_spin_cpu);
