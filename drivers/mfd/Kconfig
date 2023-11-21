@@ -1107,6 +1107,17 @@ config PCF50633_GPIO
 	  Say yes here if you want to include support GPIO for pins on
 	  the PCF50633 chip.
 
+config MFD_I2C_PMIC
+	tristate "QTI I2C PMIC support"
+	depends on I2C && OF
+	select IRQ_DOMAIN
+	select REGMAP_I2C
+	help
+	 This enables support for controlling Qualcomm Technologies, Inc.
+	 PMICs over I2C. The driver controls interrupts, and provides register
+	 access for all of the device's peripherals.  Some QTI PMIC chips
+	 support communication over both I2C and SPMI.
+
 config MFD_PM8XXX
 	tristate "Qualcomm PM8xxx PMIC chips driver"
 	depends on (ARM || HEXAGON || COMPILE_TEST)
