@@ -6,6 +6,15 @@
  *
  */
 
+/{
+	/* Add overlay for firmware node containing qcom_scm in sc7280.dtsi */
+	firmware {
+		qtee_shmbridge {
+			compatible = "qcom,tee-shared-memory-bridge";
+		};
+	};
+};
+
 &soc {
 	watchdog@17c10000 {
 		status = "disabled";
