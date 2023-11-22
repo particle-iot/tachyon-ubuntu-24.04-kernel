@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015, Sony Mobile Communications, AB.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -1734,6 +1735,7 @@ static const struct of_device_id wled_match_table[] = {
 	{ .compatible = "qcom,pmi8998-wled", .data = (void *)4 },
 	{ .compatible = "qcom,pm660l-wled", .data = (void *)4 },
 	{ .compatible = "qcom,pm6150l-wled", .data = (void *)5 },
+	{ .compatible = "qcom,pm7325b-wled", .data = (void *)5 },
 	{ .compatible = "qcom,pm8150l-wled", .data = (void *)5 },
 	{}
 };
