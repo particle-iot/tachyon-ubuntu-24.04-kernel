@@ -31,4 +31,12 @@
 			reg = <0x56d0 0xc>;
 		};
 	};
+
+	qcom_tzlog: tz-log@146aa720 {
+		compatible = "qcom,tz-log";
+		reg = <0x0 0x146aa720 0x0 0x3000>;
+		qcom,hyplog-enabled;
+		hyplog-address-offset = <0x410>;
+		hyplog-size-offset = <0x414>;
+	};
 };
