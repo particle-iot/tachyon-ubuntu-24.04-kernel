@@ -364,6 +364,8 @@
 
 &venus {
 	compatible = "qcom,qcm6490-iris";
+	iommus = <&apps_smmu 0x2180 0x20>;
+	status = "okay";
 	interconnect-names = "iris-cnoc", "iris-ddr";
 };
 
