@@ -38,3 +38,4 @@ qcom_ice-objs			+= ice.o
 obj-$(CONFIG_QCOM_INLINE_CRYPTO_ENGINE)	+= qcom_ice.o
 obj-$(CONFIG_QCOM_MEM_BUF) += mem_buf/
 obj-$(CONFIG_QCOM_SMCINVOKE) += smcinvoke/
+obj-$(CONFIG_QCOM_SOC_DEBUG) += qcom_soc_debug.o

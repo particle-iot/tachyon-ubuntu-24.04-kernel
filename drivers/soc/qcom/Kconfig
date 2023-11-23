@@ -327,6 +327,13 @@ config QCOM_WATCHDOG_IPI_PING
          keep-alive ping to other cpu's if it is set to 1. Otherwise, when
          it is set to 0 no keep alive pings will be sent.
 
+config QCOM_SOC_DEBUG
+       depends on RANDOMIZE_BASE
+       tristate "SOC Debug Module"
+       help
+	 This module will write kaslr address to imem to enable debug of
+	 crashes which require loading of vmlinux and ramdumps.
+
 source "drivers/soc/qcom/mem_buf/Kconfig"
 source "drivers/soc/qcom/smcinvoke/Kconfig"
 endmenu
