@@ -21,6 +21,7 @@
  * interface support. As a result of that it has an
  * alternate register layout.
  */
+#define IS_LITE		(csid->res->is_lite)
 
 #define CSID_HW_VERSION		0x0
 #define		HW_VERSION_STEPPING	0
