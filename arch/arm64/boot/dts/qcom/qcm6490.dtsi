@@ -158,6 +158,11 @@
 };
 
 &soc {
+	refgen:regulator@88e7000 {
+		compatible = "qcom,sm8250-refgen-regulator";
+		reg = <0x0 0x088e7000 0x0 0x84>;
+	};
+
 	remoteproc_adsp: remoteproc@3000000 {
 		compatible = "qcom,sc7280-adsp-pas";
 		reg = <0x0 0x03000000 0x0 0x100>;
