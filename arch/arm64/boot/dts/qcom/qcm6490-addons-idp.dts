@@ -10,6 +10,7 @@
 
 #include "qcm6490-idp.dts"
 #include "qcm6490-addons.dtsi"
+#include "pm7325b.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. qcm6490-addons IDP platform";
