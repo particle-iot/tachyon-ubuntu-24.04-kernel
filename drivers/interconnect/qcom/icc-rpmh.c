@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/interconnect.h>
@@ -30,6 +31,7 @@ void qcom_icc_pre_aggregate(struct icc_node *node)
 	for (i = 0; i < QCOM_ICC_NUM_BUCKETS; i++) {
 		qn->sum_avg[i] = 0;
 		qn->max_peak[i] = 0;
+		qn->perf_mode[i] = false;
 	}
 
 	for (i = 0; i < qn->num_bcms; i++)
@@ -61,6 +63,8 @@ int qcom_icc_aggregate(struct icc_node *node, u32 tag, u32 avg_bw,
 		if (tag & BIT(i)) {
 			qn->sum_avg[i] += avg_bw;
 			qn->max_peak[i] = max_t(u32, qn->max_peak[i], peak_bw);
+			if (tag & QCOM_ICC_TAG_PERF_MODE && (avg_bw || peak_bw))
+				qn->perf_mode[i] = true;
 		}
 
 		if (node->init_avg || node->init_peak) {
