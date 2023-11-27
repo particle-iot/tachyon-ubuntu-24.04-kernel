@@ -327,4 +327,5 @@ config QCOM_WATCHDOG_IPI_PING
          keep-alive ping to other cpu's if it is set to 1. Otherwise, when
          it is set to 0 no keep alive pings will be sent.
 
+source "drivers/soc/qcom/mem_buf/Kconfig"
 endmenu
