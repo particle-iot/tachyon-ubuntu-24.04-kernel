@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/div64.h>
@@ -62,6 +63,7 @@ static u64 bcm_div(u64 num, u32 base)
 static void bcm_aggregate_mask(struct qcom_icc_bcm *bcm)
 {
 	struct qcom_icc_node *node;
+	bool perf_mode[QCOM_ICC_NUM_BUCKETS] = {0};
 	int bucket, i;
 
 	for (bucket = 0; bucket < QCOM_ICC_NUM_BUCKETS; bucket++) {
@@ -70,11 +72,16 @@ static void bcm_aggregate_mask(struct qcom_icc_bcm *bcm)
 
 		for (i = 0; i < bcm->num_nodes; i++) {
 			node = bcm->nodes[i];
+			perf_mode[bucket] |= node->perf_mode[bucket];
 
 			/* If any vote in this bucket exists, keep the BCM enabled */
 			if (node->sum_avg[bucket] || node->max_peak[bucket]) {
 				bcm->vote_x[bucket] = 0;
 				bcm->vote_y[bucket] = bcm->enable_mask;
+
+				if (perf_mode[bucket])
+					bcm->vote_y[bucket] |= bcm->perf_mode_mask;
+
 				break;
 			}
 		}
