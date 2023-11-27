@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __DRIVERS_INTERCONNECT_QCOM_ICC_RPMH_H__
@@ -56,6 +57,7 @@ struct bcm_db {
  * @buswidth: width of the interconnect between a node and the bus
  * @sum_avg: current sum aggregate value of all avg bw requests
  * @max_peak: current max aggregate value of all peak bw requests
+ * @perf_mode: current OR aggregate value of all QCOM_ICC_TAG_PERF_MODE votes
  * @bcms: list of bcms associated with this logical node
  * @num_bcms: num of @bcms
  */
@@ -68,6 +70,7 @@ struct qcom_icc_node {
 	u16 buswidth;
 	u64 sum_avg[QCOM_ICC_NUM_BUCKETS];
 	u64 max_peak[QCOM_ICC_NUM_BUCKETS];
+	bool perf_mode[QCOM_ICC_NUM_BUCKETS];
 	struct qcom_icc_bcm *bcms[MAX_BCM_PER_NODE];
 	size_t num_bcms;
 };
@@ -82,6 +85,7 @@ struct qcom_icc_node {
  * @vote_y: aggregated threshold values, represents peak_bw when @type is bw bcm
  * @vote_scale: scaling factor for vote_x and vote_y
  * @enable_mask: optional mask to send as vote instead of vote_x/vote_y
+ * @perf_mode_mask: mask to OR with enable_mask when QCOM_ICC_TAG_PERF_MODE is set
  * @dirty: flag used to indicate whether the bcm needs to be committed
  * @keepalive: flag used to indicate whether a keepalive is required
  * @aux_data: auxiliary data used when calculating threshold values and
@@ -99,6 +103,7 @@ struct qcom_icc_bcm {
 	u64 vote_y[QCOM_ICC_NUM_BUCKETS];
 	u64 vote_scale;
 	u32 enable_mask;
+	u32 perf_mode_mask;
 	bool dirty;
 	bool keepalive;
 	struct bcm_db aux_data;
