@@ -1116,7 +1116,7 @@ struct platform_data qcm6490_data = {
 
 	.reg_prst_tbl = qcm6490_reg_preset_table,
 	.reg_prst_tbl_size = ARRAY_SIZE(qcm6490_reg_preset_table),
-	.fwname = "vpu20_1v",
+	.fwname = "qcom/vpu-2.0/vpu20_1v",
 	.pas_id = 9,
 
 	.core_data = core_data_qcm6490,
