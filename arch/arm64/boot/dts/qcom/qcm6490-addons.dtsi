@@ -36,12 +36,64 @@
 			memory-region = <&qseecom_mem &qseecom_ta_mem>;
 		};
 	};
+
+	/* add overlay for smp2p nodes in sc7280.dtsi */
+	smp2p-adsp {
+		smp2p_rdbg2_out: qcom,smp2p-rdbg2-out {
+			qcom,entry-name = "rdbg";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		smp2p_rdbg2_in: qcom,smp2p-rdbg2-in {
+			qcom,entry-name = "rdbg";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
+
+	smp2p-cdsp {
+		smp2p_rdbg5_out: qcom,smp2p-rdbg5-out {
+			qcom,entry-name = "rdbg";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		smp2p_rdbg5_in: qcom,smp2p-rdbg5-in {
+			qcom,entry-name = "rdbg";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
 };
 
 &soc {
 	msm_stub_codec: msm-stub-codec {
 		compatible = "qcom,msm-stub-codec";
 		#sound-dai-cells = <1>;
+	};
+
+	/* smp2p information */
+	qcom,smp2p_interrupt_rdbg_2_in {
+		compatible = "qcom,smp2p-interrupt-rdbg-2-in";
+		interrupts-extended = <&smp2p_rdbg2_in 0 0>;
+		interrupt-names = "rdbg-smp2p-in";
+	};
+
+	qcom,smp2p_interrupt_rdbg_2_out {
+		compatible = "qcom,smp2p-interrupt-rdbg-2-out";
+		qcom,smem-states = <&smp2p_rdbg2_out 0>;
+		qcom,smem-state-names = "rdbg-smp2p-out";
+	};
+
+	qcom,smp2p_interrupt_rdbg_5_in {
+		compatible = "qcom,smp2p-interrupt-rdbg-5-in";
+		interrupts-extended = <&smp2p_rdbg5_in 0 0>;
+		interrupt-names = "rdbg-smp2p-in";
+	};
+
+	qcom,smp2p_interrupt_rdbg_5_out {
+		compatible = "qcom,smp2p-interrupt-rdbg-5-out";
+		qcom,smem-states = <&smp2p_rdbg5_out 0>;
+		qcom,smem-state-names = "rdbg-smp2p-out";
 	};
 
 	spf_core_platform: spf-core-platform {
