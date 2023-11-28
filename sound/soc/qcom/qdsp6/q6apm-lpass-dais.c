@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2021, Linaro Limited
+// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
 #include <linux/err.h>
@@ -241,6 +242,27 @@ static int q6i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
+static const struct snd_pcm_hardware q6apm_dummy_dma_hardware = {
+	.info               = SNDRV_PCM_INFO_INTERLEAVED |
+				SNDRV_PCM_INFO_BLOCK_TRANSFER,
+	.buffer_bytes_max   = 128 * 1024,
+	.period_bytes_min   = PAGE_SIZE,
+	.period_bytes_max   = PAGE_SIZE * 2,
+	.periods_min        = 2,
+	.periods_max        = 128,
+};
+
+static int q6apm_lpass_dai_dummy_startup(struct snd_pcm_substream *substream,
+					 struct snd_soc_dai *dai)
+{
+	snd_soc_set_runtime_hwparams(substream, &q6apm_dummy_dma_hardware);
+	return 0;
+}
+
+static const struct snd_soc_dai_ops q6dummy_ops = {
+	.startup	= q6apm_lpass_dai_dummy_startup,
+};
+
 static const struct snd_soc_dai_ops q6dma_ops = {
 	.prepare	= q6apm_lpass_dai_prepare,
 	.startup	= q6apm_lpass_dai_startup,
@@ -272,9 +294,18 @@ static const struct snd_soc_component_driver q6apm_lpass_dai_component = {
 	.use_dai_pcm_id = true,
 };
 
+static const struct snd_soc_component_driver q6apm_lpass_dummy_dai_component = {
+	.name = "q6apm-be-dai-component",
+	.of_xlate_dai_name = q6dsp_audio_ports_of_xlate_dai_name,
+	.be_pcm_base = AUDIOREACH_BE_PCM_BASE,
+	.use_dai_pcm_id = false,
+};
+
 static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 {
+	const struct snd_soc_component_driver *q6apm_lpass_component = NULL;
 	struct q6dsp_audio_port_dai_driver_config cfg;
+	bool q6apm_lpass_dai_uses_dummy_ops  = false;
 	struct q6apm_lpass_dai_data *dai_data;
 	struct snd_soc_dai_driver *dais;
 	struct device *dev = &pdev->dev;
@@ -287,12 +318,27 @@ static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, dai_data);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.q6i2s_ops = &q6i2s_ops;
-	cfg.q6dma_ops = &q6dma_ops;
-	cfg.q6hdmi_ops = &q6hdmi_ops;
+
+	q6apm_lpass_dai_uses_dummy_ops = of_property_read_bool(dev->of_node,
+							       "q6apm-dai-uses-dummy-ops");
+	if (q6apm_lpass_dai_uses_dummy_ops) {
+		dev_info(dev, "Q6 APM DAI uses dummy ops\n");
+		cfg.q6i2s_ops = &q6dummy_ops;
+		cfg.q6dma_ops = &q6dummy_ops;
+		cfg.q6hdmi_ops = &q6dummy_ops;
+		cfg.q6tdm_ops = &q6dummy_ops;
+		cfg.q6slim_ops = &q6dummy_ops;
+		q6apm_lpass_component = &q6apm_lpass_dummy_dai_component;
+	} else {
+		cfg.q6i2s_ops = &q6i2s_ops;
+		cfg.q6dma_ops = &q6dma_ops;
+		cfg.q6hdmi_ops = &q6hdmi_ops;
+		q6apm_lpass_component = &q6apm_lpass_dai_component;
+	}
+
 	dais = q6dsp_audio_ports_set_config(dev, &cfg, &num_dais);
 
-	return devm_snd_soc_register_component(dev, &q6apm_lpass_dai_component, dais, num_dais);
+	return devm_snd_soc_register_component(dev, q6apm_lpass_component, dais, num_dais);
 }
 
 #ifdef CONFIG_OF
