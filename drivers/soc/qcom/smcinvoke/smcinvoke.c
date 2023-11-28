@@ -17,11 +17,13 @@
 #include <linux/cdev.h>
 #include <linux/uaccess.h>
 #include <linux/dma-buf.h>
+#include <linux/dma-heap.h>
 #include <linux/delay.h>
 #include <linux/kref.h>
 #include <linux/signal.h>
 #include <linux/mem-buf.h>
 #include <linux/of_platform.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/firmware.h>
 #include <linux/firmware/qcom/qcom_scm_addon.h>
 #include <linux/freezer.h>
@@ -185,6 +187,14 @@ enum worker_thread_type {
 	ADCI_WORKER_THREAD,
 	MAX_THREAD_NUMBER
 };
+
+enum cma_heap {
+	QCOM_QSEECOM = 0,
+	QCOM_QSEECOM_TA,
+	QCOM_QSEECOM_MAX
+};
+
+char *cma_heap_arr[] = {"qcom,qseecom", "qcom,qseecom-ta"};
 
 static DEFINE_HASHTABLE(g_cb_servers, 8);
 static LIST_HEAD(g_mem_objs);
@@ -3035,6 +3045,32 @@ int process_invoke_request_from_kernel_client(int fd,
 	return ret;
 }
 
+static int smci_alloc_cma_heap(struct device *dev)
+{
+	int cma_heap_type = 0;
+	int rc = 0;
+
+	for (cma_heap_type = QCOM_QSEECOM; cma_heap_type < QCOM_QSEECOM_MAX; cma_heap_type++) {
+		rc = of_reserved_mem_device_init_by_idx(dev, dev->of_node, cma_heap_type);
+		if (rc) {
+			pr_err("%s: No reserved DMA memory, ret=%d\n",
+					cma_heap_arr[cma_heap_type], rc);
+			rc = -EINVAL;
+			goto err;
+		}
+
+		rc = cma_heap_add(dev->cma_area, NULL);
+		if (rc) {
+			pr_err("%s: cma_heap_add failed, ret=%d\n",
+					cma_heap_arr[cma_heap_type], rc);
+			rc = -EINVAL;
+			goto err;
+		}
+	}
+err:
+	return rc;
+}
+
 static int smcinvoke_open(struct inode *nodp, struct file *filp)
 {
 	struct smcinvoke_file_data *tzcxt = NULL;
@@ -3162,16 +3198,25 @@ static int smcinvoke_release(struct inode *nodp, struct file *filp)
 
 static int smcinvoke_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	unsigned int baseminor = 0;
 	unsigned int count = 1;
 	int rc = 0;
 
-	rc = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	/* Create CMA heaps for smcinvoke clients */
+	rc = smci_alloc_cma_heap(dev);
+	if (rc) {
+		pr_err("CMA heap allocation failed, ret: %d\n", rc);
+		return rc;
+	}
+
+	rc = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64));
 	if (rc) {
 		pr_err("dma_set_mask_and_coherent failed %d\n", rc);
 		return rc;
 	}
-	legacy_smc_call = of_property_read_bool((&pdev->dev)->of_node,
+
+	legacy_smc_call = of_property_read_bool(dev->of_node,
 			"qcom,support-legacy_smc");
 	invoke_cmd = legacy_smc_call ? SMCINVOKE_INVOKE_CMD_LEGACY : SMCINVOKE_INVOKE_CMD;
 
