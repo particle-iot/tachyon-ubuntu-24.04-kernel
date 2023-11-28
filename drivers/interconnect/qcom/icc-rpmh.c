@@ -4,6 +4,7 @@
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/clk.h>
 #include <linux/interconnect.h>
 #include <linux/interconnect-provider.h>
 #include <linux/module.h>
@@ -14,6 +15,43 @@
 #include "bcm-voter.h"
 #include "icc-common.h"
 #include "icc-rpmh.h"
+
+/* QNOC QoS */
+#define QOSGEN_MAINCTL_LO(p, qp)	(0x8 + (p->offsets[qp]))
+#define QOS_SLV_URG_MSG_EN_SHFT		3
+#define QOS_DFLT_PRIO_MASK		0x7
+#define QOS_DFLT_PRIO_SHFT		4
+#define QOS_DISABLE_SHIFT		24
+
+/**
+ * qcom_icc_set_qos - initialize static QoS configurations
+ * @node: qcom icc node to operate on
+ */
+static void qcom_icc_set_qos(struct qcom_icc_node *node)
+{
+	struct qcom_icc_qosbox *qos = node->qosbox;
+	int port;
+
+	if (!node->regmap)
+		return;
+
+	if (!qos)
+		return;
+
+	for (port = 0; port < qos->num_ports; port++) {
+		regmap_update_bits(node->regmap, QOSGEN_MAINCTL_LO(qos, port),
+				   BIT(QOS_DISABLE_SHIFT),
+				   qos->prio_fwd_disable << QOS_DISABLE_SHIFT);
+
+		regmap_update_bits(node->regmap, QOSGEN_MAINCTL_LO(qos, port),
+				   QOS_DFLT_PRIO_MASK << QOS_DFLT_PRIO_SHFT,
+				   qos->prio << QOS_DFLT_PRIO_SHFT);
+
+		regmap_update_bits(node->regmap, QOSGEN_MAINCTL_LO(qos, port),
+				   BIT(QOS_SLV_URG_MSG_EN_SHFT),
+				   qos->urg_fwd << QOS_SLV_URG_MSG_EN_SHFT);
+	}
+}
 
 /**
  * qcom_icc_pre_aggregate - cleans up stale values from prior icc_set
@@ -163,6 +201,113 @@ int qcom_icc_bcm_init(struct qcom_icc_bcm *bcm, struct device *dev)
 }
 EXPORT_SYMBOL_GPL(qcom_icc_bcm_init);
 
+static bool bcm_needs_qos_proxy(struct qcom_icc_bcm *bcm)
+{
+	int i;
+
+	for (i = 0; i < bcm->num_nodes; i++)
+		if (bcm->nodes[i]->qosbox)
+			return true;
+
+	return false;
+}
+
+static int enable_qos_deps(struct qcom_icc_provider *qp)
+{
+	struct qcom_icc_bcm *bcm;
+	bool keepalive;
+	int ret, i;
+
+	for (i = 0; i < qp->num_bcms; i++) {
+		bcm = qp->bcms[i];
+		if (bcm_needs_qos_proxy(bcm)) {
+			keepalive = bcm->keepalive;
+			bcm->keepalive = true;
+
+			qcom_icc_bcm_voter_add(qp->voter, bcm);
+			ret = qcom_icc_bcm_voter_commit(qp->voter);
+
+			bcm->keepalive = keepalive;
+
+			if (ret) {
+				dev_err(qp->dev, "failed to vote BW to %s for QoS\n",
+					bcm->name);
+				return ret;
+			}
+		}
+	}
+
+	ret = clk_bulk_prepare_enable(qp->num_clks, qp->clks);
+	if (ret) {
+		dev_err(qp->dev, "failed to enable clocks for QoS\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static void disable_qos_deps(struct qcom_icc_provider *qp)
+{
+	struct qcom_icc_bcm *bcm;
+	int i;
+
+	clk_bulk_disable_unprepare(qp->num_clks, qp->clks);
+
+	for (i = 0; i < qp->num_bcms; i++) {
+		bcm = qp->bcms[i];
+		if (bcm_needs_qos_proxy(bcm)) {
+			qcom_icc_bcm_voter_add(qp->voter, bcm);
+			qcom_icc_bcm_voter_commit(qp->voter);
+		}
+	}
+}
+
+int qcom_icc_rpmh_configure_qos(struct qcom_icc_provider *qp)
+{
+	struct qcom_icc_node *qnode;
+	size_t i;
+	int ret;
+
+	ret = enable_qos_deps(qp);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < qp->num_nodes; i++) {
+		qnode = qp->nodes[i];
+		if (!qnode)
+			continue;
+
+		if (qnode->qosbox)
+			qcom_icc_set_qos(qnode);
+	}
+
+	disable_qos_deps(qp);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(qcom_icc_rpmh_configure_qos);
+
+static struct regmap *qcom_icc_rpmh_map(struct platform_device *pdev,
+					const struct qcom_icc_desc *desc)
+{
+	void __iomem *base;
+	struct resource *res;
+	struct device *dev = &pdev->dev;
+
+	if (!desc->config)
+		return NULL;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return NULL;
+
+	base = devm_ioremap(dev, res->start, resource_size(res));
+	if (IS_ERR(base))
+		return ERR_CAST(base);
+
+	return devm_regmap_init_mmio(dev, base, desc->config);
+}
+
 int qcom_icc_rpmh_probe(struct platform_device *pdev)
 {
 	const struct qcom_icc_desc *desc;
@@ -203,11 +348,21 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 
 	qp->dev = dev;
 	qp->bcms = desc->bcms;
+	qp->nodes = desc->nodes;
 	qp->num_bcms = desc->num_bcms;
+	qp->num_nodes = desc->num_nodes;
 
 	qp->voter = of_bcm_voter_get(qp->dev, NULL);
 	if (IS_ERR(qp->voter))
 		return PTR_ERR(qp->voter);
+
+	qp->regmap = qcom_icc_rpmh_map(pdev, desc);
+	if (IS_ERR(qp->regmap))
+		return PTR_ERR(qp->regmap);
+
+	qp->num_clks = devm_clk_bulk_get_all(qp->dev, &qp->clks);
+	if (qp->num_clks < 0)
+		return qp->num_clks;
 
 	for (i = 0; i < qp->num_bcms; i++)
 		qcom_icc_bcm_init(qp->bcms[i], dev);
@@ -216,6 +371,8 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 		qn = qnodes[i];
 		if (!qn)
 			continue;
+
+		qn->regmap = dev_get_regmap(qp->dev, NULL);
 
 		node = icc_node_create(qn->id);
 		if (IS_ERR(node)) {
@@ -232,6 +389,10 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 
 		data->nodes[i] = node;
 	}
+
+	ret = qcom_icc_rpmh_configure_qos(qp);
+	if (ret)
+		goto err_remove_nodes;
 
 	ret = icc_provider_register(provider);
 	if (ret)
@@ -251,6 +412,7 @@ int qcom_icc_rpmh_probe(struct platform_device *pdev)
 err_deregister_provider:
 	icc_provider_deregister(provider);
 err_remove_nodes:
+	clk_bulk_put_all(qp->num_clks, qp->clks);
 	icc_nodes_remove(provider);
 
 	return ret;
@@ -262,6 +424,7 @@ void qcom_icc_rpmh_remove(struct platform_device *pdev)
 	struct qcom_icc_provider *qp = platform_get_drvdata(pdev);
 
 	icc_provider_deregister(&qp->provider);
+	clk_bulk_put_all(qp->num_clks, qp->clks);
 	icc_nodes_remove(&qp->provider);
 }
 EXPORT_SYMBOL_GPL(qcom_icc_rpmh_remove);
