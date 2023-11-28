@@ -8,6 +8,7 @@
 #define __DRIVERS_INTERCONNECT_QCOM_ICC_RPMH_H__
 
 #include <dt-bindings/interconnect/qcom,icc.h>
+#include <linux/regmap.h>
 
 #define to_qcom_provider(_provider) \
 	container_of(_provider, struct qcom_icc_provider, provider)
@@ -19,6 +20,11 @@
  * @bcms: list of bcms that maps to the provider
  * @num_bcms: number of @bcms
  * @voter: bcm voter targeted by this provider
+ * @nodes: list of icc nodes that maps to the provider
+ * @num_nodes: number of @nodes
+ * @regmap: used for NOC registers access
+ * @clks : clks required for register access
+ * @num_clks: number of @clks
  */
 struct qcom_icc_provider {
 	struct icc_provider provider;
@@ -26,6 +32,11 @@ struct qcom_icc_provider {
 	struct qcom_icc_bcm * const *bcms;
 	size_t num_bcms;
 	struct bcm_voter *voter;
+	struct qcom_icc_node * const *nodes;
+	size_t num_nodes;
+	struct regmap *regmap;
+	struct clk_bulk_data *clks;
+	int num_clks;
 };
 
 /**
@@ -40,6 +51,23 @@ struct bcm_db {
 	__le16 width;
 	u8 vcd;
 	u8 reserved;
+};
+
+/**
+ * struct qcom_icc_qosbox - Qualcomm Technologies, Inc specific QoS config
+ * @prio: priority value assigned to requests on the node
+ * @urg_fwd: if set, master priority is used for requests.
+ * @prio_fwd_disable: if set, master priority is ignored and NOCs default priority is used.
+ * @num_ports: number of @ports
+ * @offsets: qos register offsets
+ */
+
+struct qcom_icc_qosbox {
+	u32 prio;
+	u32 urg_fwd;
+	bool prio_fwd_disable;
+	u32 num_ports;
+	u32 offsets[];
 };
 
 #define MAX_LINKS		128
@@ -60,6 +88,8 @@ struct bcm_db {
  * @perf_mode: current OR aggregate value of all QCOM_ICC_TAG_PERF_MODE votes
  * @bcms: list of bcms associated with this logical node
  * @num_bcms: num of @bcms
+ * @regmap: used for NOC registers access
+ * @qosbox: qos config data associated with node
  */
 struct qcom_icc_node {
 	const char *name;
@@ -73,6 +103,8 @@ struct qcom_icc_node {
 	bool perf_mode[QCOM_ICC_NUM_BUCKETS];
 	struct qcom_icc_bcm *bcms[MAX_BCM_PER_NODE];
 	size_t num_bcms;
+	struct regmap *regmap;
+	struct qcom_icc_qosbox *qosbox;
 };
 
 /**
@@ -119,6 +151,7 @@ struct qcom_icc_fabric {
 };
 
 struct qcom_icc_desc {
+	const struct regmap_config *config;
 	struct qcom_icc_node * const *nodes;
 	size_t num_nodes;
 	struct qcom_icc_bcm * const *bcms;
