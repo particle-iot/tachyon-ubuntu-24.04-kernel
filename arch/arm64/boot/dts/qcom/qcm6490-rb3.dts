@@ -9,6 +9,7 @@
 #define PM7250B_SID 8
 #define PM7250B_SID1 9
 
+#include <dt-bindings/iio/qcom,spmi-adc7-pmk8350.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include "qcm6490.dtsi"
@@ -286,6 +287,14 @@
 			regulator-min-microvolt = <3008000>;
 			regulator-max-microvolt = <3960000>;
 		};
+	};
+};
+
+&pmk8350_vadc {
+	pmk8350-die-temp@3 {
+		reg = <PMK8350_ADC7_DIE_TEMP>;
+		label = "pmk8350_die_temp";
+		qcom,pre-scaling = <1 1>;
 	};
 };
 
