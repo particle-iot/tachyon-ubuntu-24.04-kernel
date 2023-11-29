@@ -4,6 +4,8 @@
  *
  * Copyright (C) 2011 Google, Inc.
  * Copyright (C) 2019 Linaro Ltd.
+ *
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _DMA_HEAPS_H
@@ -50,6 +52,15 @@ struct dma_heap_export_info {
  * The per-heap data for the heap.
  */
 void *dma_heap_get_drvdata(struct dma_heap *heap);
+
+/**
+ * dma_heap_get_dev() - get device struct for the heap
+ * @heap: DMA-Heap to retrieve device struct from
+ *
+ * Returns:
+ * The device struct for the heap.
+ */
+struct device *dma_heap_get_dev(struct dma_heap *heap);
 
 /**
  * dma_heap_get_name() - get heap name
