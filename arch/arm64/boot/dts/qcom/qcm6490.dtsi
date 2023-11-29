@@ -321,6 +321,18 @@
 						#clock-cells = <2>;
 					};
 				};
+
+				spf-core {
+					compatible = "qcom,spf_core";
+					reg = <GPR_AMDB_MODULE_IID>;
+				};
+
+				audio-pkt {
+					compatible = "qcom,audio-pkt";
+					reg = <GPR_VCPM_MODULE_IID>;
+
+					qcom,audiopkt-ch-name = "apr_audio_svc";
+				};
 			};
 		};
 	};
