@@ -17,3 +17,7 @@ obj-$(CONFIG_SND_SOC_QDSP6_APM_DAI) += q6apm-dai.o
 obj-$(CONFIG_SND_SOC_QDSP6_APM_LPASS_DAI) += q6apm-lpass-dais.o
 obj-$(CONFIG_SND_SOC_QDSP6_PRM) += q6prm.o
 obj-$(CONFIG_SND_SOC_QDSP6_PRM_LPASS_CLOCKS) += q6prm-clocks.o
+
+obj-$(CONFIG_SND_SOC_SPF_CORE) += spf-core.o
+obj-$(CONFIG_SND_SOC_AUDIO_PKT) += audio-pkt.o
+obj-$(CONFIG_SND_SOC_MSM_AUDIO_MEM) += msm_audio_mem.o
