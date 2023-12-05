@@ -52,6 +52,27 @@
 /* Clock ID for QUINARY MI2S OSR CLK  */
 #define Q6PRM_LPASS_CLK_ID_QUI_MI2S_OSR                         0x116
 
+/* Clock ID for Primary TDM IBIT */
+#define Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT				0x122
+/* Clock ID for Primary TDM EBIT */
+#define Q6PRM_LPASS_CLK_ID_PRI_TDM_EBIT				0x123
+/* Clock ID for Secondary TDM IBIT */
+#define Q6PRM_LPASS_CLK_ID_SEC_TDM_IBIT				0x124
+/* Clock ID for Secondary TDM EBIT */
+#define Q6PRM_LPASS_CLK_ID_SEC_TDM_EBIT				0x125
+/* Clock ID for Tertiary TDM IBIT */
+#define Q6PRM_LPASS_CLK_ID_TER_TDM_IBIT				0x126
+/* Clock ID for Tertiary TDM EBIT */
+#define Q6PRM_LPASS_CLK_ID_TER_TDM_EBIT				0x127
+/* Clock ID for Quartnery TDM IBIT */
+#define Q6PRM_LPASS_CLK_ID_QUAD_TDM_IBIT			0x128
+/* Clock ID for Quartnery TDM EBIT */
+#define Q6PRM_LPASS_CLK_ID_QUAD_TDM_EBIT			0x129
+/* Clock ID for QUINARY TDM IBIT */
+#define Q6PRM_LPASS_CLK_ID_QUIN_TDM_IBIT			0x12A
+/* Clock ID for QUINARY TDM EBIT */
+#define Q6PRM_LPASS_CLK_ID_QUIN_TDM_EBIT			0x12B
+
 #define Q6PRM_LPASS_CLK_ID_WSA_CORE_MCLK			0x305
 #define Q6PRM_LPASS_CLK_ID_WSA_CORE_NPL_MCLK			0x306
 
