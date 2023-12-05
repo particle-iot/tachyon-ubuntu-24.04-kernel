@@ -12,10 +12,6 @@
 #include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
 #include "q6dsp-lpass-clocks.h"
 
-#define Q6DSP_MAX_CLK_ID			104
-#define Q6DSP_LPASS_CLK_ROOT_DEFAULT		0
-
-
 struct q6dsp_clk {
 	struct device *dev;
 	int q6dsp_clk_id;
@@ -26,12 +22,6 @@ struct q6dsp_clk {
 };
 
 #define to_q6dsp_clk(_hw) container_of(_hw, struct q6dsp_clk, hw)
-
-struct q6dsp_cc {
-	struct device *dev;
-	struct q6dsp_clk *clks[Q6DSP_MAX_CLK_ID];
-	const struct q6dsp_clk_desc *desc;
-};
 
 static int clk_q6dsp_prepare(struct clk_hw *hw)
 {
