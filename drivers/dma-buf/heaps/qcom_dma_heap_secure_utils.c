@@ -96,7 +96,8 @@ static int hyp_unassign_sg(struct sg_table *sgt, int *source_vm_list,
 	u32 dest_vmid = VMID_HLOS;
 	u32 dest_perms = PERM_READ | PERM_WRITE | PERM_EXEC;
 	struct scatterlist *sg;
-	int ret, i;
+	int ret, i, k = 0;
+	struct qcom_scm_vmperm dest[1];
 
 	if (source_nelems <= 0) {
 		pr_err("%s: source_nelems invalid\n",
@@ -105,10 +106,19 @@ static int hyp_unassign_sg(struct sg_table *sgt, int *source_vm_list,
 		goto out;
 	}
 
-	ret = hyp_assign_table(sgt, source_vm_list, source_nelems, &dest_vmid,
-			       &dest_perms, 1);
-	if (ret)
-		goto out;
+	dest[0].vmid = cpu_to_le32(dest_vmid);
+	dest[0].perm = cpu_to_le32(dest_perms);
+
+	for_each_sgtable_sg(sgt, sg, k) {
+		struct page *page = sg_page(sg);
+
+		ret = qcom_scm_assign_mem(page_to_phys(page),
+				page_size(page), (u64 *) source_vm_list,
+				dest, 1);
+
+		if (ret)
+			goto out;
+	}
 
 	if (clear_page_private)
 		for_each_sg(sgt->sgl, sg, sgt->nents, i)
@@ -120,10 +130,11 @@ out:
 static int hyp_assign_sg(struct sg_table *sgt, int *dest_vm_list,
 			 int dest_nelems, bool set_page_private)
 {
-	u32 source_vmid = VMID_HLOS;
+	u64 source_vmid = VMID_HLOS;
 	struct scatterlist *sg;
 	int *dest_perms;
-	int ret, i;
+	int ret, i, j, k = 0;
+	struct qcom_scm_vmperm dest[dest_nelems];
 
 	if (dest_nelems <= 0) {
 		pr_err("%s: dest_nelems invalid\n",
@@ -141,14 +152,25 @@ static int hyp_assign_sg(struct sg_table *sgt, int *dest_vm_list,
 	for (i = 0; i < dest_nelems; i++)
 		dest_perms[i] = msm_secure_get_vmid_perms(dest_vm_list[i]);
 
-	ret = hyp_assign_table(sgt, &source_vmid, 1,
-			       dest_vm_list, dest_perms, dest_nelems);
-
-	if (ret) {
-		pr_err("%s: Assign call failed\n",
-		       __func__);
-		goto out_free_dest;
+	for (j = 0; j < dest_nelems ; j++) {
+		dest[j].vmid = cpu_to_le32(dest_vm_list[i]);
+		dest[j].perm = cpu_to_le32(dest_perms[i]);
 	}
+
+	for_each_sgtable_sg(sgt, sg, k) {
+		struct page *page = sg_page(sg);
+
+		ret = qcom_scm_assign_mem(page_to_phys(page),
+				page_size(page), &source_vmid,
+				dest, 1);
+
+		if (ret) {
+			pr_err("%s: Assign call failed\n",
+					__func__);
+			goto out_free_dest;
+		}
+	}
+
 	if (set_page_private)
 		for_each_sg(sgt->sgl, sg, sgt->nents, i)
 			SetPagePrivate(sg_page(sg));
