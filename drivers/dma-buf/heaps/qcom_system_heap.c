@@ -58,7 +58,6 @@
 #include "qcom_dynamic_page_pool.h"
 #include "qcom_sg_ops.h"
 #include "qcom_system_heap.h"
-#include "qcom_system_movable_heap.h"
 #include "../../../mm/internal.h"
 
 #if IS_ENABLED(CONFIG_QCOM_DMABUF_HEAPS_PAGE_POOL_REFILL)
@@ -399,8 +398,6 @@ struct page *qcom_sys_heap_alloc_largest_available(struct dynamic_page_pool **po
 			page = dynamic_page_pool_remove(pools[i], false);
 		spin_unlock_irqrestore(&pools[i]->lock, flags);
 
-		if (!page && movable)
-			page = qcom_movable_heap_alloc_pages(pools[i]);
 		if (!page)
 			page = alloc_pages(pools[i]->gfp_mask, pools[i]->order);
 		if (!page)
