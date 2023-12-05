@@ -13,10 +13,8 @@
 #include "qcom_cma_heap.h"
 #include "qcom_dt_parser.h"
 #include "qcom_system_heap.h"
-#include "qcom_carveout_heap.h"
 #include "qcom_secure_system_heap.h"
 #include "qcom_dma_heap_priv.h"
-#include "qcom_system_movable_heap.h"
 
 /*
  * We cache the file ops used by DMA-BUFs so that a user with a struct file
@@ -40,8 +38,6 @@ static int qcom_dma_heap_probe(struct platform_device *pdev)
 				       QCOM_DMA_HEAP_FLAG_CP_PIXEL);
 	qcom_secure_system_heap_create("qcom,secure-non-pixel", NULL,
 				       QCOM_DMA_HEAP_FLAG_CP_NON_PIXEL);
-	qcom_sys_movable_heap_create();
-
 	heaps = parse_heap_dt(pdev);
 	if (IS_ERR_OR_NULL(heaps))
 		return PTR_ERR(heaps);
@@ -50,22 +46,9 @@ static int qcom_dma_heap_probe(struct platform_device *pdev)
 		struct platform_heap *heap_data = &heaps->heaps[i];
 
 		switch (heap_data->type) {
-		case HEAP_TYPE_SECURE_CARVEOUT:
-			ret = qcom_secure_carveout_heap_create(heap_data);
-			break;
-#ifdef CONFIG_QCOM_DMABUF_HEAPS_CARVEOUT
-		case HEAP_TYPE_CARVEOUT:
-			ret = qcom_carveout_heap_create(heap_data);
-			break;
-#endif
 		case HEAP_TYPE_CMA:
 			ret = qcom_add_cma_heap(heap_data);
 			break;
-#ifdef CONFIG_QCOM_DMABUF_HEAPS_TUI_CARVEOUT
-		case HEAP_TYPE_TUI_CARVEOUT:
-			ret = qcom_tui_carveout_heap_create(heap_data);
-			break;
-#endif
 		default:
 			pr_err("%s: Unknown heap type %u\n", __func__, heap_data->type);
 			break;
