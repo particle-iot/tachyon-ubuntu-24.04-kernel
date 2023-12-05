@@ -3,6 +3,9 @@
 #ifndef __Q6DSP_AUDIO_CLOCKS_H__
 #define __Q6DSP_AUDIO_CLOCKS_H__
 
+#define Q6DSP_MAX_CLK_ID			104
+#define Q6DSP_LPASS_CLK_ROOT_DEFAULT		0
+
 struct q6dsp_clk_init {
 	int clk_id;
 	int q6dsp_clk_id;
@@ -23,6 +26,12 @@ struct q6dsp_clk_desc {
 			      int root_clk, unsigned int freq);
 	int (*lpass_vote_clk)(struct device *dev, uint32_t hid, const char *n, uint32_t *h);
 	int (*lpass_unvote_clk)(struct device *dev, uint32_t hid, uint32_t h);
+};
+
+struct q6dsp_cc {
+	struct device *dev;
+	struct q6dsp_clk *clks[Q6DSP_MAX_CLK_ID];
+	const struct q6dsp_clk_desc *desc;
 };
 
 int q6dsp_clock_dev_probe(struct platform_device *pdev);
