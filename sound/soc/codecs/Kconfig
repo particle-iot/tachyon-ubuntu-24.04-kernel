@@ -152,6 +152,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_MAX9877
 	imply SND_SOC_MC13783
 	imply SND_SOC_ML26124
+	imply SND_SOC_MSM_STUB
 	imply SND_SOC_MT6351
 	imply SND_SOC_MT6358
 	imply SND_SOC_MT6359
@@ -1281,6 +1282,14 @@ config SND_SOC_MAX9860
 	tristate "Maxim MAX9860 Mono Audio Voice Codec"
 	depends on I2C
 	select REGMAP_I2C
+
+config SND_SOC_MSM_STUB
+        tristate "Qualcomm Technologies, Inc. MSM Stub audio codec"
+	help
+	  Enable support for MSM_STUB Audio codec.
+	  This codec driver provides the PCM interface for
+	  I2S and TDM interface audio data communication.
+	  To compile this codec driver say Y or m.
 
 config SND_SOC_MSM8916_WCD_ANALOG
 	tristate "Qualcomm MSM8916 WCD Analog Codec"
