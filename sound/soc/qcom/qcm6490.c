@@ -15,6 +15,7 @@
 #include <sound/pcm_params.h>
 #include "lpass.h"
 #include "qdsp6/q6afe.h"
+#include "qdsp6/q6prm.h"
 #include "common.h"
 #include "sdw.h"
 
@@ -40,6 +41,10 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 		return qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
 	case VA_CODEC_DMA_TX_0:
 	case WSA_CODEC_DMA_RX_0:
+	case PRIMARY_MI2S_RX:
+	case PRIMARY_MI2S_TX:
+	case PRIMARY_TDM_RX_0:
+	case PRIMARY_TDM_TX_0:
 		return 0;
 	default:
 		dev_err(rtd->dev, "%s: invalid dai id 0x%x\n", __func__, cpu_dai->id);
@@ -81,6 +86,23 @@ static int qcm6490_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct qcm6490_snd_data *pdata = snd_soc_card_get_drvdata(rtd->card);
 
+	switch (cpu_dai->id) {
+	case PRIMARY_MI2S_RX:
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_MI2S_IBIT, 19200000, 0);
+		break;
+	case PRIMARY_MI2S_TX:
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_SEC_MI2S_IBIT, 19200000, 0);
+		break;
+	case PRIMARY_TDM_RX_0:
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT, 19200000, 0);
+		break;
+	case PRIMARY_TDM_TX_0:
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_SEC_TDM_IBIT, 19200000, 0);
+		break;
+	default:
+		break;
+	}
+
 	return qcom_snd_sdw_hw_params(substream, params, &pdata->sruntime[cpu_dai->id]);
 }
 
@@ -105,6 +127,17 @@ static int qcm6490_snd_hw_free(struct snd_pcm_substream *substream)
 	return qcom_snd_sdw_hw_free(substream, sruntime,
 				    &data->stream_prepared[cpu_dai->id]);
 }
+
+static const struct snd_soc_dapm_widget qcm6490_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+	SND_SOC_DAPM_PINCTRL("AUDIO_OUT_PINCTRL", "audio_out_active", "audio_out_sleep"),
+};
+
+static const struct snd_soc_dapm_route qcm6490_dapm_routes[] = {
+	{"Playback", NULL, "AUDIO_OUT_PINCTRL"},
+	{"Capture", NULL, "AUDIO_OUT_PINCTRL"},
+};
 
 static const struct snd_soc_ops qcm6490_be_ops = {
 	.hw_params = qcm6490_snd_hw_params,
@@ -144,6 +177,11 @@ static int qcm6490_platform_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	card->dev = dev;
+	card->dapm_widgets = qcm6490_dapm_widgets;
+	card->num_dapm_widgets = ARRAY_SIZE(qcm6490_dapm_widgets);
+	card->dapm_routes = qcm6490_dapm_routes;
+	card->num_dapm_routes = ARRAY_SIZE(qcm6490_dapm_routes);
+
 	dev_set_drvdata(dev, card);
 	snd_soc_card_set_drvdata(card, data);
 	ret = qcom_snd_parse_of(card);
