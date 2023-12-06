@@ -64,3 +64,5 @@
 		compatible = "qcom,mem-buf-msgq";
 	};
 };
+
+#include "qcm6490-dma-heaps.dtsi"
