@@ -39,6 +39,11 @@
 };
 
 &soc {
+	msm_stub_codec: msm-stub-codec {
+		compatible = "qcom,msm-stub-codec";
+		#sound-dai-cells = <1>;
+	};
+
 	spf_core_platform: spf-core-platform {
 		compatible = "qcom,spf-core-platform";
 
