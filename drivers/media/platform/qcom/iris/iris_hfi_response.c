@@ -83,6 +83,14 @@ static bool is_valid_hfi_port(u32 port, u32 buffer_type)
 	return true;
 }
 
+static void cache_operation_dqbuf(struct iris_buffer *buf)
+{
+	if  (buf->type == BUF_OUTPUT && buf->dmabuf) {
+		dma_buf_begin_cpu_access(buf->dmabuf, DMA_FROM_DEVICE);
+		dma_buf_end_cpu_access(buf->dmabuf, DMA_FROM_DEVICE);
+	}
+}
+
 static int get_driver_buffer_flags(struct iris_inst *inst, u32 hfi_flags)
 {
 	u32 driver_flags = 0;
@@ -530,6 +538,9 @@ static int handle_dequeue_buffers(struct iris_inst *inst)
 				buf->attr &= ~BUF_ATTR_DEQUEUED;
 				if (!(buf->attr & BUF_ATTR_BUFFER_DONE)) {
 					buf->attr |= BUF_ATTR_BUFFER_DONE;
+
+					cache_operation_dqbuf(buf);
+
 					ret = iris_vb2_buffer_done(inst, buf);
 					if (ret)
 						ret = 0;
