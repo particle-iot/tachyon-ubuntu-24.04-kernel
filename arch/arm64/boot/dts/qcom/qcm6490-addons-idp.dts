@@ -238,3 +238,107 @@
 		};
 	};
 };
+
+&q6apmbedai {
+	qcom,prmcc_clk = <&q6prmcc>;
+};
+
+&sound {
+	pinctrl-names = "default", "audio_out_active", "audio_out_sleep";
+	pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk_sleep>,
+				<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+	pinctrl-1 = <&mi2s0_data0>, <&mi2s0_data1>, <&mi2s0_mclk>,
+				<&mi2s0_sclk>, <&mi2s0_ws>;
+	pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk_sleep>,
+				<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+
+	mi2s-capture-dai-link {
+		link-name = "MI2S-LPAIF-TX-PRIMARY";
+
+		cpu {
+			sound-dai = <&q6apmbedai PRIMARY_MI2S_TX>;
+		};
+
+		codec {
+			sound-dai = <&msm_stub_codec 1>;
+		};
+	};
+
+	mi2s-playback-dai-link {
+		link-name = "MI2S-LPAIF-RX-PRIMARY";
+
+		cpu {
+			sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
+		};
+
+		codec {
+			sound-dai = <&msm_stub_codec 0>;
+		};
+	};
+
+	tdm-capture-dai-link {
+		link-name = "TDM-LPAIF-TX-PRIMARY";
+
+		cpu {
+			sound-dai = <&q6apmbedai PRIMARY_TDM_TX_0>;
+		};
+
+		codec {
+			sound-dai = <&msm_stub_codec 1>;
+		};
+	};
+
+	tdm-playback-dai-link {
+		link-name = "TDM-LPAIF-RX-PRIMARY";
+
+		cpu {
+			sound-dai = <&q6apmbedai PRIMARY_TDM_RX_0>;
+		};
+
+		codec {
+			sound-dai = <&msm_stub_codec 0>;
+		};
+	};
+};
+
+&tlmm {
+	mi2s0_data0_sleep: mi2s0-data0-sleep {
+		pins = "gpio98";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_data1_sleep: mi2s0-data1-sleep {
+		pins = "gpio99";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_mclk_sleep: mi2s0-mclk-sleep {
+		pins = "gpio96";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_sclk_sleep: mi2s0-sclk-sleep {
+		pins = "gpio97";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_ws_sleep: mi2s0-ws-sleep {
+		pins = "gpio100";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+};
