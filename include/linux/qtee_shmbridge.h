@@ -118,4 +118,20 @@ void qtee_shmbridge_flush_shm_buf(struct qtee_shm *shm);
  */
 void qtee_shmbridge_inv_shm_buf(struct qtee_shm *shm);
 
+#ifndef CONFIG_QTEE_SHM_BRIDGE
+bool qtee_shmbridge_is_enabled(void)
+{
+	return false;
+}
+
+int32_t qtee_shmbridge_allocate_shm(size_t size, struct qtee_shm *shm)
+{
+	return -EINVAL;
+}
+
+void qtee_shmbridge_free_shm(struct qtee_shm *shm)
+{
+}
+#endif
+
 #endif /*__QTEE_SHMBRIDGE_H__*/
