@@ -94,6 +94,31 @@ static int sys_image_version(struct iris_core *core)
 	return ret;
 }
 
+static int cache_operation_qbuf(struct iris_buffer *buffer)
+{
+	int ret = 0;
+
+	if (buffer->type == BUF_INPUT && buffer->dmabuf) {
+		ret = dma_buf_begin_cpu_access(buffer->dmabuf, DMA_TO_DEVICE);
+		if (ret)
+			return ret;
+
+		ret = dma_buf_end_cpu_access(buffer->dmabuf, DMA_FROM_DEVICE);
+		if (ret)
+			return ret;
+	} else if (buffer->type == BUF_OUTPUT && buffer->dmabuf) {
+		ret = dma_buf_begin_cpu_access(buffer->dmabuf, DMA_FROM_DEVICE);
+		if (ret)
+			return ret;
+
+		ret = dma_buf_end_cpu_access(buffer->dmabuf, DMA_FROM_DEVICE);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
 int iris_hfi_core_init(struct iris_core *core)
 {
 	int ret;
@@ -677,6 +702,10 @@ int iris_hfi_queue_buffer(struct iris_inst *inst,
 	}
 
 	ret = get_hfi_buffer(inst, buffer, &hfi_buffer);
+	if (ret)
+		goto unlock;
+
+	ret = cache_operation_qbuf(buffer);
 	if (ret)
 		goto unlock;
 
