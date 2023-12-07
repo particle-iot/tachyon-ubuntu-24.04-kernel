@@ -167,7 +167,7 @@
 		};
 
 		vreg_l1b_0p912: ldo1 {
-			regulator-min-microvolt = <825000>;
+			regulator-min-microvolt = <912000>;
 			regulator-max-microvolt = <925000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
@@ -364,7 +364,7 @@
 		};
 
 		vreg_l10c_0p88:ldo10 {
-			regulator-min-microvolt = <720000>;
+			regulator-min-microvolt = <880000>;
 			regulator-max-microvolt = <1050000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
@@ -739,13 +739,6 @@
 	remote-endpoint = <&pmic_glink_ss_in>;
 };
 
-&vreg_l1b_0p912 {
-	/delete-property/regulator-min-microvolt;
-	/delete-property/regulator-max-microvolt;
-	regulator-allow-set-load;
-	regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
-};
-
 &vreg_l7b_2p952 {
 	/delete-property/regulator-min-microvolt;
 	/delete-property/regulator-max-microvolt;
@@ -754,13 +747,6 @@
 };
 
 &vreg_l9b_1p2 {
-	/delete-property/regulator-min-microvolt;
-	/delete-property/regulator-max-microvolt;
-	regulator-allow-set-load;
-	regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
-};
-
-&vreg_l10c_0p88 {
 	/delete-property/regulator-min-microvolt;
 	/delete-property/regulator-max-microvolt;
 	regulator-allow-set-load;
