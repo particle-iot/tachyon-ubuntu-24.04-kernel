@@ -943,6 +943,16 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 		adjust_output_order,
 		set_u32},
 
+	{INPUT_BUF_HOST_MAX_COUNT, ENC | DEC, CODECS_ALL,
+		DEFAULT_MAX_HOST_BUF_COUNT, DEFAULT_MAX_HOST_BURST_BUF_COUNT,
+		1, DEFAULT_MAX_HOST_BUF_COUNT,
+		0,
+		HFI_PROP_BUFFER_HOST_MAX_COUNT,
+		CAP_FLAG_INPUT_PORT,
+		{0},
+		NULL,
+		set_u32},
+
 	{STAGE, ENC | DEC, CODECS_ALL,
 		STAGE_1,
 		STAGE_2, 1,
