@@ -550,16 +550,16 @@ int venc_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 	if (!buf)
 		return -EINVAL;
 
+	ret = vb2_buffer_to_driver(vb2, buf);
+	if (ret)
+		return ret;
+
 	if (!allow_qbuf(inst, vb2->type)) {
 		buf->attr |= BUF_ATTR_DEFERRED;
 		return ret;
 	}
 
 	iris_scale_power(inst);
-
-	ret = vb2_buffer_to_driver(vb2, buf);
-	if (ret)
-		return ret;
 
 	return queue_buffer(inst, buf);
 }
