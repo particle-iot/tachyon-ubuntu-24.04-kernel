@@ -43,6 +43,8 @@ struct iris_inst;
 #define MAX_SLICE_MB_SIZE				(((4096 + 15) >> 4) * ((2304 + 15) >> 4))
 #define INVALID_DEFAULT_MARK_OR_USE_LTR			-1
 #define MAX_SUPPORTED_MIN_QUALITY			70
+#define DEFAULT_MAX_HOST_BUF_COUNT			64
+#define DEFAULT_MAX_HOST_BURST_BUF_COUNT		256
 
 #define UBWC_CONFIG(mc, ml, hbb, bs1, bs2, bs3, bsp) \
 {	                                                 \
@@ -169,6 +171,7 @@ enum plat_inst_cap_type {
 	DISPLAY_DELAY_ENABLE,
 	DISPLAY_DELAY,
 	OUTPUT_ORDER,
+	INPUT_BUF_HOST_MAX_COUNT,
 	STAGE,
 	PIPE,
 	QUALITY_MODE,
