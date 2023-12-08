@@ -470,6 +470,12 @@ static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 	if (!qcom->is_suspended)
 		return 0;
 
+	if (qcom->dwc) {
+		ret = reset_control_deassert(qcom->dwc->reset);
+		if (ret)
+			return ret;
+	}
+
 	if (dwc3_qcom_is_host(qcom) && wakeup)
 		dwc3_qcom_disable_interrupts(qcom);
 
