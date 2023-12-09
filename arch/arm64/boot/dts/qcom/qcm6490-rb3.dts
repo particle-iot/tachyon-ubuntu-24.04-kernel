@@ -767,6 +767,7 @@
 	vdda-phy-supply = <&vreg_l6b_1p2>;
 	vdda-pll-supply = <&vreg_l1b_0p912>;
 
+	orientation-switch;
 	status = "okay";
 };
 
