@@ -708,12 +708,47 @@
 	status = "okay";
 };
 
-&usb_1 {
-	status = "okay";
-};
+/delete-node/ &usb_1_dwc3;
 
-&usb_1_dwc3 {
-	dr_mode = "peripheral";
+&usb_1 {
+
+	reg = <0x0 0x0a600000 0x0 0x200000>;
+
+	interrupts-extended = <&intc GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>,
+			      <&intc GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>,
+			      <&pdc 14 IRQ_TYPE_LEVEL_HIGH>,
+			      <&pdc 15 IRQ_TYPE_EDGE_BOTH>,
+			      <&pdc 17 IRQ_TYPE_EDGE_BOTH>;
+	interrupt-names = "dwc_usb3",
+			  "hs_phy_irq",
+			  "dp_hs_phy_irq",
+			  "dm_hs_phy_irq",
+			  "ss_phy_irq";
+
+	iommus = <&apps_smmu 0xe0 0x0>;
+	snps,dis_u2_susphy_quirk;
+	snps,dis_enblslpm_quirk;
+	phys = <&usb_1_hsphy>, <&usb_1_ssphy>;
+	phy-names = "usb2-phy", "usb3-phy";
+	maximum-speed = "super-speed";
+
+	dr_mode = "otg";
+	usb-role-switch;
+	qcom,enable-rt;
+	wakeup-source;
+
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			usb_1_dwc3_hs: endpoint {
+			};
+		};
+	};
 };
 
 &usb_1_dwc3_hs {
