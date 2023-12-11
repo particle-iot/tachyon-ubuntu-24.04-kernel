@@ -713,8 +713,8 @@ static int venc_set_out_crop_offsets(struct iris_inst *inst)
 		height = inst->compose.width;
 	}
 
-	right_offset = (inst->fmt_src->fmt.pix_mp.width - width);
-	bottom_offset = (inst->fmt_src->fmt.pix_mp.height - height);
+	right_offset = (inst->fmt_dst->fmt.pix_mp.width - width);
+	bottom_offset = (inst->fmt_dst->fmt.pix_mp.height - height);
 
 	crop[0] = left_offset << 16 | top_offset;
 	crop[1] = right_offset << 16 | bottom_offset;
