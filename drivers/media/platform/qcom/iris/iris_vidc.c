@@ -167,7 +167,7 @@ int vidc_open(struct file *filp)
 	struct iris_core *core = video_drvdata(filp);
 	struct iris_inst *inst = NULL;
 	struct video_device *vdev;
-	u32 session_type;
+	u32 session_type = 0;
 	int i = 0;
 	int ret;
 
@@ -379,7 +379,7 @@ static __poll_t vidc_poll(struct file *filp, struct poll_table_struct *pt)
 static int vidc_enum_fmt(struct file *filp, void *fh, struct v4l2_fmtdesc *f)
 {
 	struct iris_inst *inst;
-	int ret;
+	int ret = 0;
 
 	inst = get_vidc_inst(filp, fh);
 	if (!inst)
@@ -405,7 +405,7 @@ unlock:
 static int vidc_try_fmt(struct file *filp, void *fh, struct v4l2_format *f)
 {
 	struct iris_inst *inst;
-	int ret;
+	int ret = 0;
 
 	inst = get_vidc_inst(filp, fh);
 	if (!inst)
@@ -436,7 +436,7 @@ unlock:
 static int vidc_s_fmt(struct file *filp, void *fh, struct v4l2_format *f)
 {
 	struct iris_inst *inst;
-	int ret;
+	int ret = 0;
 
 	inst = get_vidc_inst(filp, fh);
 	if (!inst)
@@ -953,7 +953,7 @@ unlock:
 static int vidc_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscription *sub)
 {
 	struct iris_inst *inst;
-	int ret;
+	int ret = 0;
 
 	inst = container_of(fh, struct iris_inst, fh);
 
