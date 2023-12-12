@@ -911,21 +911,21 @@ int set_gop_size(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 
 int set_bitrate(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 {
-	//TODO: Vikash
 	u32 hfi_id, hfi_val;
-	s32 prepend_sps_pps;
 
-	prepend_sps_pps = inst->cap[PREPEND_SPSPPS_TO_IDR].value;
+	if (inst->cap[BIT_RATE].flags & CAP_FLAG_CLIENT_SET)
+		goto set_total_bitrate;
+
+	if (inst->vb2q_dst->streaming)
+		return 0;
+
+set_total_bitrate:
 	hfi_id = inst->cap[cap_id].hfi_id;
-
-	if (prepend_sps_pps)
-		hfi_val = HFI_SYNC_FRAME_REQUEST_WITH_PREFIX_SEQ_HDR;
-	else
-		hfi_val = HFI_SYNC_FRAME_REQUEST_WITHOUT_SEQ_HDR;
+	hfi_val = inst->cap[cap_id].value;
 
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
-				     HFI_PAYLOAD_U32_ENUM,
+				     HFI_PAYLOAD_U32,
 				     &hfi_val, sizeof(u32));
 }
 
