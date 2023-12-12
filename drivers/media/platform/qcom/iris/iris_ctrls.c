@@ -990,7 +990,7 @@ int set_use_and_mark_ltr(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 
 int set_ir_period(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 {
-	u32 hfi_id, hfi_val;
+	u32 hfi_id = 0, hfi_val;
 
 	hfi_val = inst->cap[cap_id].value;
 
@@ -1258,7 +1258,7 @@ int adjust_bitrate(struct iris_inst *inst, struct v4l2_ctrl *ctrl)
 {
 	u32 layer_br_caps[6] = {L0_BR, L1_BR, L2_BR, L3_BR, L4_BR, L5_BR};
 	u32 adjusted_value, cumulative_bitrate, cap_id, cap_val, i;
-	s32 layer_count, max_bitrate, entropy_mode;
+	s32 layer_count, max_bitrate = 0, entropy_mode;
 
 	adjusted_value = ctrl ? ctrl->val : inst->cap[BIT_RATE].value;
 

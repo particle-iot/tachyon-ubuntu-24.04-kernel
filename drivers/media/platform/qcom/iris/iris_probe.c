@@ -42,7 +42,7 @@ static void iris_unregister_video_device(struct iris_core *core, enum domain_typ
 static int iris_register_video_device(struct iris_core *core, enum domain_type type)
 {
 	struct video_device *vdev;
-	int ret;
+	int ret = 0;
 
 	vdev = video_device_alloc();
 	if (!vdev)
