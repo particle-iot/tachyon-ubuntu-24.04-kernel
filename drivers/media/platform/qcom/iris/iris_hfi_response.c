@@ -321,14 +321,14 @@ static int handle_session_close(struct iris_inst *inst,
 static int handle_read_only_buffer(struct iris_inst *inst,
 				   struct iris_buffer *buf)
 {
-	struct iris_buffer *ro_buf, *iter;
+	struct iris_buffer *ro_buf, *iter = NULL;
 	bool found = false;
 
-	if (inst->domain != DECODER || inst->domain != ENCODER)
+	if (inst->domain != DECODER && inst->domain != ENCODER)
 		return 0;
 
-	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {
-		if (ro_buf->device_addr == buf->device_addr) {
+	list_for_each_entry(iter, &inst->buffers.read_only.list, list) {
+		if (iter->device_addr == buf->device_addr) {
 			found = true;
 			ro_buf = iter;
 			break;
@@ -359,7 +359,7 @@ static int handle_non_read_only_buffer(struct iris_inst *inst,
 {
 	struct iris_buffer *ro_buf;
 
-	if (inst->domain != DECODER || inst->domain != ENCODER)
+	if (inst->domain != DECODER && inst->domain != ENCODER)
 		return 0;
 
 	list_for_each_entry(ro_buf, &inst->buffers.read_only.list, list) {

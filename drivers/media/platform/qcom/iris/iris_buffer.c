@@ -704,9 +704,9 @@ int iris_destroy_internal_buffers(struct iris_inst *inst,
 {
 	struct iris_buffer *buf, *dummy;
 	struct iris_buffers *buffers;
-	const u32 *internal_buf_type;
+	const u32 *internal_buf_type = NULL;
 	int ret = 0;
-	u32 i, len;
+	u32 i, len = 0;
 
 	if (inst->domain == DECODER) {
 		if (plane == INPUT_MPLANE) {
