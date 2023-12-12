@@ -91,13 +91,13 @@ static int qcm6490_snd_hw_params(struct snd_pcm_substream *substream,
 		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_MI2S_IBIT, 19200000, 0);
 		break;
 	case PRIMARY_MI2S_TX:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_SEC_MI2S_IBIT, 19200000, 0);
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_MI2S_IBIT, 19200000, 0);
 		break;
 	case PRIMARY_TDM_RX_0:
 		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT, 19200000, 0);
 		break;
 	case PRIMARY_TDM_TX_0:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_SEC_TDM_IBIT, 19200000, 0);
+		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT, 19200000, 0);
 		break;
 	default:
 		break;
