@@ -1135,7 +1135,7 @@ error:
 int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 {
 	struct iris_buffer *buf = NULL;
-	int ret = 0;
+	int ret;
 
 	buf = get_driver_buf(inst, vb2->type, vb2->index);
 	if (!buf)
@@ -1147,7 +1147,7 @@ int vdec_qbuf(struct iris_inst *inst, struct vb2_buffer *vb2)
 
 	if (!allow_qbuf(inst, vb2->type)) {
 		buf->attr |= BUF_ATTR_DEFERRED;
-		return ret;
+		return 0;
 	}
 
 	iris_scale_power(inst);
