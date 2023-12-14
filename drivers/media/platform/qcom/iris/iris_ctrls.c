@@ -856,12 +856,10 @@ int set_flip(struct iris_inst *inst,
 
 int set_rotation(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 {
-	u32 rot, hfi_id, hfi_val;
+	u32 hfi_id, hfi_val;
 
-	rot = inst->cap[cap_id].value;
 	hfi_id = inst->cap[cap_id].hfi_id;
-
-	hfi_val = v4l2_to_hfi_enum(inst, cap_id, &rot);
+	v4l2_to_hfi_enum(inst, cap_id, &hfi_val);
 
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
