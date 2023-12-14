@@ -24,8 +24,8 @@ u32 get_port_info(struct iris_inst *inst,
 		  enum plat_inst_cap_type cap_id);
 enum iris_buffer_type v4l2_type_to_driver(u32 type);
 u32 v4l2_type_from_driver(enum iris_buffer_type buffer_type);
-int v4l2_to_hfi_enum(struct iris_inst *inst,
-		     enum plat_inst_cap_type cap_id, u32 *value);
+void v4l2_to_hfi_enum(struct iris_inst *inst,
+		      enum plat_inst_cap_type cap_id, u32 *value);
 int get_mbpf(struct iris_inst *inst);
 int close_session(struct iris_inst *inst);
 
