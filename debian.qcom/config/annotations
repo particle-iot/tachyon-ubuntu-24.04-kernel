@@ -1770,3 +1770,16 @@ CONFIG_ZYNQMP_FIRMWARE_DEBUG                    policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_IPI_MBOX                          policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_PM_DOMAINS                        policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_POWER                             policy<{'arm64': '-'}>
+
+CONFIG_ARCH_SUPPORTS_SHADOW_CALL_STACK policy<{'arm64': '-'}>
+CONFIG_CC_HAS_AUTO_VAR_INIT_PATTERN policy<{'amd64': 'y', 'arm64': '-', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO policy<{'amd64': 'y', 'arm64': '-', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO_BARE policy<{'amd64': 'y', 'arm64': '-', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_CC_HAVE_SHADOW_CALL_STACK policy<{'arm64': '-'}>
+CONFIG_DEBUG_INFO_COMPRESSED_ZSTD policy<{'amd64': 'n', 'arm64': '-', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
+CONFIG_INIT_STACK_ALL_PATTERN policy<{'amd64': 'n', 'arm64': '-', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
+CONFIG_INIT_STACK_ALL_ZERO policy<{'amd64': 'y', 'arm64': '-', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_INIT_STACK_NONE policy<{'amd64': 'n', 'arm64': 'y', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
+CONFIG_KCOV policy<{'amd64': 'n', 'arm64': '-', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
+CONFIG_PAHOLE_HAS_LANG_EXCLUDE policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_SHADOW_CALL_STACK policy<{'arm64': '-'}>
