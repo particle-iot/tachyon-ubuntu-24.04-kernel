@@ -46,7 +46,7 @@
 #define QCOM_ICE_REG_HWKM_BANK0_BBAC_4		0x5010
 
 /* QCOM ICE HWKM BIST vals */
-#define QCOM_ICE_HWKM_BIST_DONE_V1_VAL		0x11
+#define QCOM_ICE_HWKM_BIST_DONE_V1_VAL		0x14007
 #define QCOM_ICE_HWKM_BIST_DONE_V2_VAL		0x287
 
 /* BIST ("built-in self-test") status flags */
@@ -351,8 +351,8 @@ int qcom_ice_program_key(struct qcom_ice *ice,
 
 	/* Only AES-256-XTS has been tested so far. */
 	if (algorithm_id != QCOM_ICE_CRYPTO_ALG_AES_XTS ||
-	    key_size != QCOM_ICE_CRYPTO_KEY_SIZE_256 ||
-	    key_size != QCOM_ICE_CRYPTO_KEY_SIZE_WRAPPED) {
+	    (key_size != QCOM_ICE_CRYPTO_KEY_SIZE_256 &&
+	    key_size != QCOM_ICE_CRYPTO_KEY_SIZE_WRAPPED)) {
 		dev_err_ratelimited(dev,
 				    "Unhandled crypto capability; algorithm_id=%d, key_size=%d\n",
 				    algorithm_id, key_size);
