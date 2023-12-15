@@ -1417,6 +1417,8 @@ int adjust_bitrate_mode(struct iris_inst *inst, struct v4l2_ctrl *ctrl)
 			inst->hfi_rc_type = HFI_RC_CBR_CFR;
 	} else if (bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ) {
 		inst->hfi_rc_type = HFI_RC_CQ;
+	} else if (bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_MBR) {
+		inst->hfi_rc_type = HFI_RC_MBR;
 	}
 
 	return 0;
