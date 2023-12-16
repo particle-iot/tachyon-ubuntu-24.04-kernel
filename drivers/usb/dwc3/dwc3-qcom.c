@@ -760,10 +760,19 @@ static void dwc3_qcom_handle_mode_changed(void *data, u32 current_dr_role)
 	}
 }
 
+static void dwc3_qcom_handle_run_stop_notification(void *data, bool enable)
+{
+	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+
+	if (enable)
+		dwc3_qcom_vbus_override_enable(qcom, true);
+}
+
 struct dwc3_glue_ops dwc3_qcom_glue_hooks = {
 	.notify_cable_disconnect = dwc3_qcom_handle_cable_disconnect,
 	.set_mode = dwc3_qcom_handle_set_mode,
 	.mode_changed = dwc3_qcom_handle_mode_changed,
+	.notify_run_stop = dwc3_qcom_handle_run_stop_notification,
 };
 
 static int dwc3_qcom_probe_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
