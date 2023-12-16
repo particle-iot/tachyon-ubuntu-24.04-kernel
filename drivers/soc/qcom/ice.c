@@ -297,8 +297,7 @@ EXPORT_SYMBOL_GPL(qcom_ice_suspend);
  */
 static int translate_hwkm_slot(struct qcom_ice *ice, int slot)
 {
-	return (ice->hwkm_version == 1) ?
-	       (10 + slot * 2) : (slot * 2);
+	return (ice->hwkm_version == 1) ? slot : (slot * 2);
 }
 
 static int qcom_ice_program_wrapped_key(struct qcom_ice *ice,
@@ -362,8 +361,8 @@ int qcom_ice_program_key(struct qcom_ice *ice,
 	if (bkey->crypto_cfg.key_type == BLK_CRYPTO_KEY_TYPE_HW_WRAPPED) {
 		if (!ice->hwkm_version)
 			return -EINVAL;
-		err = qcom_ice_program_wrapped_key(ice, bkey, slot,
-						   data_unit_size);
+		err = qcom_ice_program_wrapped_key(ice, bkey, data_unit_size,
+				slot);
 	} else {
 		if (bkey->size != QCOM_ICE_CRYPTO_KEY_SIZE_256)
 			dev_err_ratelimited(dev,
