@@ -429,13 +429,19 @@ EXPORT_SYMBOL_GPL(qcom_ice_derive_sw_secret);
  * Make a scm call into trustzone to generate a wrapped key for storage
  * encryption using hwkm.
  *
- * Return: 0 on success; err on failure.
+ * Return: Keysize on success; err on failure.
  */
 int qcom_ice_generate_key(struct qcom_ice *ice,
 			  u8 lt_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE])
 {
-	return qcom_scm_generate_ice_key(lt_key,
+	int ret;
+
+	ret = qcom_scm_generate_ice_key(lt_key,
 					 QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version));
+	if (!ret)
+		return QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version);
+	else
+		return ret;
 }
 EXPORT_SYMBOL_GPL(qcom_ice_generate_key);
 
@@ -450,13 +456,19 @@ EXPORT_SYMBOL_GPL(qcom_ice_generate_key);
  * encryption by rewrapping the longterm wrapped key with a per boot ephemeral
  * key using hwkm.
  *
- * Return: 0 on success; err on failure.
+ * Return: Keysize on success; err on failure.
  */
 int qcom_ice_prepare_key(struct qcom_ice *ice, const u8 *lt_key, size_t lt_key_size,
 			 u8 eph_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE])
 {
-	return qcom_scm_prepare_ice_key(lt_key, lt_key_size, eph_key,
+	int ret;
+
+	ret = qcom_scm_prepare_ice_key(lt_key, lt_key_size, eph_key,
 					QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version));
+	if (!ret)
+		return QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version);
+	else
+		return ret;
 }
 EXPORT_SYMBOL_GPL(qcom_ice_prepare_key);
 
@@ -470,13 +482,19 @@ EXPORT_SYMBOL_GPL(qcom_ice_prepare_key);
  * Make a scm call into trustzone to import a raw key for storage encryption
  * and generate a longterm wrapped key using hwkm.
  *
- * Return: 0 on success; err on failure.
+ * Return: Keysize on success; err on failure.
  */
 int qcom_ice_import_key(struct qcom_ice *ice, const u8 *imp_key, size_t imp_key_size,
 			u8 lt_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE])
 {
-	return qcom_scm_import_ice_key(imp_key, imp_key_size, lt_key,
+	int ret;
+
+	ret = qcom_scm_import_ice_key(imp_key, imp_key_size, lt_key,
 				       QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version));
+	if (!ret)
+		return QCOM_ICE_HWKM_WRAPPED_KEY_SIZE(ice->hwkm_version);
+	else
+		return ret;
 }
 EXPORT_SYMBOL_GPL(qcom_ice_import_key);
 
