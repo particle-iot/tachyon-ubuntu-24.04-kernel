@@ -2650,6 +2650,8 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 	if (saved_config)
 		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 
+	dwc3_notify_run_stop(dwc, is_on);
+
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
 		if (DWC3_VER_IS_WITHIN(DWC3, ANY, 187A)) {
