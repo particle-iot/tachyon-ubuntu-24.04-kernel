@@ -66,6 +66,8 @@ enum i2c_op {
  * @rx_len: receive length for buffer
  * @op: i2c cmd
  * @muli-msg: is part of multi i2c r-w msgs
+ * @status: gpi event status
+ * @gi2c: pointer to qcom i2c structure
  */
 struct gpi_i2c_config {
 	u8 set_config;
@@ -82,6 +84,8 @@ struct gpi_i2c_config {
 	bool shared_se;
 	bool first_msg;
 	bool last_msg;
+	u32 status;
+	struct geni_i2c_dev *gi2c;
 };
 
 #endif /* QCOM_GPI_DMA_H */
