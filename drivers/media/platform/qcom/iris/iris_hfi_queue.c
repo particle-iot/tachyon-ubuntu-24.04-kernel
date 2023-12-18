@@ -71,6 +71,7 @@ static int __write_queue(struct iface_q_info *qinfo, void *packet)
 		memcpy(write_ptr, packet, (packet_size - residue));
 		memcpy(qinfo->q_array.kernel_vaddr,
 		       packet + (packet_size - residue), residue);
+		new_write_idx = residue;
 	}
 
 	/* Make sure packet is written before updating the write index */
@@ -131,6 +132,7 @@ static int __read_queue(struct iface_q_info *qinfo, void *packet)
 			memcpy(packet, read_ptr, (packet_size - residue));
 			memcpy((packet + (packet_size - residue)),
 			       qinfo->q_array.kernel_vaddr, residue);
+			new_read_idx = residue;
 		}
 	} else {
 		new_read_idx = write_idx;
