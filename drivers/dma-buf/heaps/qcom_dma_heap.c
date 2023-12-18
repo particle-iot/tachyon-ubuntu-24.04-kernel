@@ -30,7 +30,7 @@ static int qcom_dma_heap_probe(struct platform_device *pdev)
 	int i;
 	struct platform_data *heaps;
 
-	qcom_system_heap_create("qcom,system", "system", false);
+	qcom_system_heap_create("qcom,system", NULL, false);
 #ifdef CONFIG_QCOM_DMABUF_HEAPS_SYSTEM_UNCACHED
 	qcom_system_heap_create("qcom,system-uncached", NULL, true);
 #endif
