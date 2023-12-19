@@ -22,6 +22,8 @@
 #define DRIVER_NAME		"qcm6490"
 #define TDM_SLOTS_PER_FRAME	8
 #define TDM_SLOT_WIDTH		16
+#define WCN_CDC_SLIM_RX_CH_MAX	2
+#define WCN_CDC_SLIM_TX_CH_MAX	2
 
 struct qcm6490_snd_data {
 	bool stream_prepared[AFE_PORT_MAX];
@@ -30,6 +32,19 @@ struct qcm6490_snd_data {
 	struct snd_soc_jack jack;
 	bool jack_setup;
 };
+
+static int qcm6490_slim_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret = 0;
+	unsigned int rx_ch[WCN_CDC_SLIM_RX_CH_MAX] = {157, 158};
+	unsigned int tx_ch[WCN_CDC_SLIM_TX_CH_MAX]  = {159, 160};
+	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
+
+	ret = snd_soc_dai_set_channel_map(codec_dai, ARRAY_SIZE(tx_ch),
+		tx_ch, ARRAY_SIZE(rx_ch), rx_ch);
+
+	return ret;
+}
 
 static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -48,6 +63,9 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 	case PRIMARY_TDM_RX_0:
 	case PRIMARY_TDM_TX_0:
 		return 0;
+	case SLIMBUS_0_RX:
+	case SLIMBUS_0_TX:
+		return qcm6490_slim_dai_init(rtd);
 	default:
 		dev_err(rtd->dev, "%s: invalid dai id 0x%x\n", __func__, cpu_dai->id);
 	}
