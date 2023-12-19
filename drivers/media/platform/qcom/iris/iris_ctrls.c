@@ -1465,7 +1465,7 @@ int adjust_ltr_count(struct iris_inst *inst, struct v4l2_ctrl *ctrl)
 
 	rc_mode = inst->cap[BITRATE_MODE].value;
 
-	if (rc_mode != V4L2_MPEG_VIDEO_BITRATE_MODE_CBR ||
+	if (rc_mode != V4L2_MPEG_VIDEO_BITRATE_MODE_CBR &&
 	    inst->hfi_rc_type != HFI_RC_OFF)
 		adjusted_value = 0;
 
