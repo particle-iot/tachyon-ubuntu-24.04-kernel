@@ -1252,70 +1252,71 @@ int qcom_scm_ice_set_key(u32 index, const u8 *key, u32 key_size,
 EXPORT_SYMBOL_GPL(qcom_scm_ice_set_key);
 
 /**
- * qcom_scm_derive_sw_secret() - Derive SW secret from wrapped key
- * @wrapped_key: the wrapped key used for inline encryption
- * @wrapped_key_size: size of the wrapped key
+ * qcom_scm_derive_sw_secret() - Derive software secret from wrapped key
+ * @wkey: the hardware wrapped key inaccessible to software
+ * @wkey_size: size of the wrapped key
  * @sw_secret: the secret to be derived which is exactly the secret size
- * @secret_size: size of the secret
+ * @sw_secret_size: size of the sw_secret
  *
- * Derive a SW secret from a HW Wrapped key for non HW key operations.
+ * Derive a software secret from a hardware wrapped key for software crypto
+ * operations.
  * For wrapped keys, the key needs to be unwrapped, in order to derive a
- * SW secret, which can be done only by the secure EE.
+ * software secret, which can be done in the hardware from a secure execution
+ * environment.
  *
  * For more information on sw secret, please refer to "Hardware-wrapped keys"
  * section of Documentation/block/inline-encryption.rst.
  *
  * Return: 0 on success; -errno on failure.
  */
-int qcom_scm_derive_sw_secret(const u8 *wrapped_key, u32 wrapped_key_size,
-				u8 *sw_secret, u32 secret_size)
+int qcom_scm_derive_sw_secret(const u8 *wkey, size_t wkey_size,
+			      u8 *sw_secret, size_t sw_secret_size)
 {
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_ES,
 		.cmd =  QCOM_SCM_ES_DERIVE_SW_SECRET,
 		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW,
-				QCOM_SCM_VAL, QCOM_SCM_RW,
-				QCOM_SCM_VAL),
-		.args[1] = wrapped_key_size,
-		.args[3] = secret_size,
+					 QCOM_SCM_VAL, QCOM_SCM_RW,
+					 QCOM_SCM_VAL),
+		.args[1] = wkey_size,
+		.args[3] = sw_secret_size,
 		.owner = ARM_SMCCC_OWNER_SIP,
 	};
 
-	void *keybuf, *secretbuf;
-	dma_addr_t key_phys, secret_phys;
+	void *wkey_buf, *secret_buf;
+	dma_addr_t wkey_phys, secret_phys;
 	int ret;
 
 	/*
 	 * Like qcom_scm_ice_set_key(), we use dma_alloc_coherent() to properly
 	 * get a physical address, while guaranteeing that we can zeroize the
 	 * key material later using memzero_explicit().
-	 *
 	 */
-	keybuf = dma_alloc_coherent(__scm->dev, wrapped_key_size, &key_phys,
-					GFP_KERNEL);
-	if (!keybuf)
+	wkey_buf = dma_alloc_coherent(__scm->dev, wkey_size, &wkey_phys, GFP_KERNEL);
+	if (!wkey_buf)
 		return -ENOMEM;
-	secretbuf = dma_alloc_coherent(__scm->dev, secret_size, &secret_phys,
-					GFP_KERNEL);
-	if (!secretbuf) {
+	secret_buf = dma_alloc_coherent(__scm->dev, sw_secret_size, &secret_phys, GFP_KERNEL);
+	if (!secret_buf) {
 		ret = -ENOMEM;
-		goto bail_keybuf;
+		goto err_free_wrapped;
 	}
 
-	memcpy(keybuf, wrapped_key, wrapped_key_size);
-	desc.args[0] = key_phys;
+	memcpy(wkey_buf, wkey, wkey_size);
+	desc.args[0] = wkey_phys;
 	desc.args[2] = secret_phys;
 
 	ret = qcom_scm_call(__scm->dev, &desc, NULL);
 	if (!ret)
-		memcpy(sw_secret, secretbuf, secret_size);
+		memcpy(sw_secret, secret_buf, sw_secret_size);
 
-	memzero_explicit(secretbuf, secret_size);
-	dma_free_coherent(__scm->dev, secret_size, secretbuf, secret_phys);
+	memzero_explicit(secret_buf, sw_secret_size);
 
-bail_keybuf:
-	memzero_explicit(keybuf, wrapped_key_size);
-	dma_free_coherent(__scm->dev, wrapped_key_size, keybuf, key_phys);
+	dma_free_coherent(__scm->dev, sw_secret_size, secret_buf, secret_phys);
+
+err_free_wrapped:
+	memzero_explicit(wkey_buf, wkey_size);
+
+	dma_free_coherent(__scm->dev, wkey_size, wkey_buf, wkey_phys);
 
 	return ret;
 }

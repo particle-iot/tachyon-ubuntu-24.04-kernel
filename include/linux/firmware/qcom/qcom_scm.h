@@ -103,9 +103,8 @@ bool qcom_scm_ice_available(void);
 int qcom_scm_ice_invalidate_key(u32 index);
 int qcom_scm_ice_set_key(u32 index, const u8 *key, u32 key_size,
 			 enum qcom_scm_ice_cipher cipher, u32 data_unit_size);
-int qcom_scm_derive_sw_secret(const u8 *wrapped_key,
-			      u32 wrapped_key_size, u8 *sw_secret,
-			      u32 secret_size);
+int qcom_scm_derive_sw_secret(const u8 *wkey, size_t wkey_size,
+			      u8 *sw_secret, size_t sw_secret_size);
 
 int qcom_scm_generate_ice_key(u8 *lt_key, size_t lt_key_size);
 int qcom_scm_prepare_ice_key(const u8 *lt_key, size_t lt_key_size,
