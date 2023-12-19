@@ -370,6 +370,10 @@
 	clock-frequency = <32000>;
 };
 
+&iris {
+	status = "okay";
+};
+
 &ufs_mem_hc {
 	reset-gpios = <&tlmm 210 GPIO_ACTIVE_LOW>;
 	vcc-supply = <&vreg_l17b_2p5>;
