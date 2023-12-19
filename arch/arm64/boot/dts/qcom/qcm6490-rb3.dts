@@ -57,7 +57,7 @@
 	};
 
 	pmic-glink {
-		compatible = "qcom,sm8350-pmic-glink", "qcom,pmic-glink";
+		compatible = "qcom,sm8450-pmic-glink", "qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		orientation-gpios = <&tlmm 140 GPIO_ACTIVE_HIGH>;
