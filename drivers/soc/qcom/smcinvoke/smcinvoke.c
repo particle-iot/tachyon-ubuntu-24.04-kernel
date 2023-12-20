@@ -21,7 +21,7 @@
 #include <linux/delay.h>
 #include <linux/kref.h>
 #include <linux/signal.h>
-//#include <linux/mem-buf.h>
+#include <linux/mem-buf.h>
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/firmware.h>
@@ -1145,33 +1145,25 @@ static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 {
 	int ret = 0;
 	int tz_perm = PERM_READ|PERM_WRITE;
-	/*
-	 * Add hardcoded mem-buf API values. Keep READ/WRITE perm for HLOS.
-	 * TODO: Remove later.
-	 */
-	uint32_t s_vmid_list[] = { VMID_HLOS };
-	uint32_t s_perms_list[] = { PERM_READ | PERM_WRITE };
-	uint32_t *vmid_list = &s_vmid_list[0];
-	uint32_t *perms_list = &s_perms_list[0];
-	uint32_t nelems = 1;
-
-	//struct dma_buf *dmabuf = mem_obj->dma_buf;
+	uint32_t *vmid_list;
+	uint32_t *perms_list;
+	uint32_t nelems = 0;
+	struct dma_buf *dmabuf = mem_obj->dma_buf;
 	phys_addr_t phys = mem_obj->p_addr;
 	size_t size = mem_obj->p_addr_len;
 
 	if (!qtee_shmbridge_is_enabled())
 		return 0;
 
-//	ret = mem_buf_dma_buf_copy_vmperm(dmabuf, (int **)&vmid_list,
-//			(int **)&perms_list, (int *)&nelems);
-//	if (ret) {
-//		pr_err("mem_buf_dma_buf_copy_vmperm failure, err=%d\n", ret);
-//		return ret;
-//	}
-//
-//	if (mem_buf_dma_buf_exclusive_owner(dmabuf))
-//		perms_list[0] = PERM_READ | PERM_WRITE;
-//
+	ret = mem_buf_dma_buf_copy_vmperm(dmabuf, (int **)&vmid_list,
+			(int **)&perms_list, (int *)&nelems);
+	if (ret) {
+		pr_err("mem_buf_dma_buf_copy_vmperm failure, err=%d\n", ret);
+		return ret;
+	}
+
+	if (mem_buf_dma_buf_exclusive_owner(dmabuf))
+		perms_list[0] = PERM_READ | PERM_WRITE;
 
 	ret = qtee_shmbridge_register(phys, size, vmid_list, perms_list, nelems,
 			tz_perm, &mem_obj->shmbridge_handle);
@@ -1184,8 +1176,8 @@ static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 
 	trace_smcinvoke_create_bridge(mem_obj->shmbridge_handle, mem_obj->mem_region_id);
 exit:
-//	kfree(perms_list);
-//	kfree(vmid_list);
+	kfree(perms_list);
+	kfree(vmid_list);
 	return ret;
 }
 
