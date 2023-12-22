@@ -2719,6 +2719,13 @@ static void fastrpc_rpmsg_remove(struct rpmsg_device *rpdev)
 		fastrpc_notify_users(user);
 	spin_unlock_irqrestore(&cctx->lock, flags);
 
+	if (cctx->domain_id == ADSP_DOMAIN_ID) {
+		pdr_handle_release(cctx->spd[0].pdrhandle);
+		pdr_handle_release(cctx->spd[1].pdrhandle);
+	} else if (cctx->domain_id == SDSP_DOMAIN_ID) {
+		pdr_handle_release(cctx->spd[0].pdrhandle);
+	}
+
 	if (cctx->fdevice)
 		misc_deregister(&cctx->fdevice->miscdev);
 
