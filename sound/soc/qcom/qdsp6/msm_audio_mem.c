@@ -11,18 +11,24 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/list.h>
+#include <linux/cdev.h>
+#include <linux/device.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-buf.h>
-#include <linux/iosys-map.h>
-#include <linux/platform_device.h>
-#include <linux/of_device.h>
+#include <linux/dma-heap.h>
 #include <linux/export.h>
-#include <linux/ioctl.h>
-#include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/device.h>
 
 #include "msm_audio_mem.h"
+
+#include <linux/iosys-map.h>
+#include <linux/of_device.h>
+#include <linux/of_reserved_mem.h>
+#include <linux/ioctl.h>
+#include <linux/platform_device.h>
+#include <linux/firmware/qcom/qcom_scm.h>
+#include <soc/qcom/secure_buffer.h>
 
 MODULE_IMPORT_NS(DMA_BUF);
 
@@ -556,6 +562,26 @@ static int msm_audio_mem_free(struct dma_buf *dma_buf, struct msm_audio_mem_priv
 	return 0;
 }
 
+static int msm_audio_hyp_unassign(struct msm_audio_fd_data *msm_audio_fd_data)
+{
+	int ret = 0;
+	u64 src_vmid_unmap_list = BIT(VMID_LPASS) | BIT(VMID_ADSP_HEAP);
+	struct qcom_scm_vmperm dst_vmids_unmap[] = {{QCOM_SCM_VMID_HLOS,
+		PERM_READ | PERM_WRITE | PERM_EXEC}};
+
+	if (msm_audio_fd_data->hyp_assign) {
+		ret = qcom_scm_assign_mem(msm_audio_fd_data->paddr, msm_audio_fd_data->plen,
+				&src_vmid_unmap_list, dst_vmids_unmap, ARRAY_SIZE(dst_vmids_unmap));
+		if (ret < 0) {
+			pr_err("%s: qcom assign unmap failed result = %d addr = 0x%llx size = %zu\n",
+				__func__, ret, msm_audio_fd_data->paddr, msm_audio_fd_data->plen);
+		}
+		msm_audio_fd_data->hyp_assign = false;
+		pr_debug("%s: qcom scm unmap success\n", __func__);
+	}
+	return ret;
+}
+
 /**
  * msm_audio_mem_crash_handler -
  *        handles cleanup after userspace crashes.
@@ -575,7 +601,10 @@ void msm_audio_mem_crash_handler(void)
 		handle = msm_audio_fd_data->handle;
 		mem_data = dev_get_drvdata(msm_audio_fd_data->dev);
 		/*  clean if CMA was used*/
-		msm_audio_mem_free(handle, mem_data);
+		if (msm_audio_fd_data->hyp_assign)
+			msm_audio_hyp_unassign(msm_audio_fd_data);
+		if (handle)
+			msm_audio_mem_free(handle, mem_data);
 	}
 	list_for_each_safe(ptr, next,
 		&msm_audio_mem_fd_list.fd_list) {
@@ -621,6 +650,12 @@ static long msm_audio_mem_ioctl(struct file *file, unsigned int ioctl_num,
 	struct msm_audio_fd_data *msm_audio_fd_data = NULL;
 	struct msm_audio_mem_private *mem_data =
 			container_of(file->f_inode->i_cdev, struct msm_audio_mem_private, cdev);
+	u64 src_vmid_map_list = BIT(QCOM_SCM_VMID_HLOS);
+	struct qcom_scm_vmperm dst_vmids_map[] = {{VMID_LPASS, PERM_READ | PERM_WRITE},
+						{VMID_ADSP_HEAP, PERM_READ | PERM_WRITE}};
+	u64 src_vmid_unmap_list = BIT(VMID_LPASS) | BIT(VMID_ADSP_HEAP);
+	struct qcom_scm_vmperm dst_vmids_unmap[] = {{QCOM_SCM_VMID_HLOS,
+					PERM_READ | PERM_WRITE | PERM_EXEC}};
 
 	switch (ioctl_num) {
 	case IOCTL_MAP_PHYS_ADDR:
@@ -656,6 +691,38 @@ static long msm_audio_mem_ioctl(struct file *file, unsigned int ioctl_num,
 			return ret;
 		}
 		msm_audio_delete_fd_entry(mem_handle);
+		break;
+	case IOCTL_MAP_HYP_ASSIGN:
+		ret = msm_audio_get_phy_addr((int)ioctl_param, &paddr, &pa_len);
+		if (ret < 0) {
+			pr_err("%s get phys addr failed %d\n", __func__, ret);
+			return ret;
+		}
+		ret = qcom_scm_assign_mem(paddr, pa_len, &src_vmid_map_list,
+			dst_vmids_map, ARRAY_SIZE(dst_vmids_map));
+		if (ret < 0) {
+			pr_err("%s: qcom_assign failed result = %d addr = 0x%llx size = %lu\n",
+					__func__, ret, paddr, pa_len);
+			return ret;
+		}
+		pr_debug("%s: qcom scm assign success\n", __func__);
+		msm_audio_set_hyp_assign((int)ioctl_param, true);
+		break;
+	case IOCTL_UNMAP_HYP_ASSIGN:
+		ret = msm_audio_get_phy_addr((int)ioctl_param, &paddr, &pa_len);
+		if (ret < 0) {
+			pr_err("%s get phys addr failed %d\n", __func__, ret);
+			return ret;
+		}
+		ret = qcom_scm_assign_mem(paddr, pa_len, &src_vmid_unmap_list,
+			dst_vmids_unmap, ARRAY_SIZE(dst_vmids_unmap));
+		if (ret < 0) {
+			pr_err("%s: qcom scm unassign failed result = %d addr = 0x%llx size = %lu\n",
+					__func__, ret, paddr, pa_len);
+			return ret;
+		}
+		pr_debug("%s: qcom scm unassign success\n", __func__);
+		msm_audio_set_hyp_assign((int)ioctl_param, false);
 		break;
 	default:
 		pr_err("%s Entered default. Invalid ioctl num %u\n",
@@ -758,10 +825,8 @@ static int msm_audio_mem_probe(struct platform_device *pdev)
 					     msm_audio_mem_dt);
 	msm_audio_mem_data->smmu_enabled = smmu_enabled;
 
-	if (!smmu_enabled)
-		dev_dbg(dev, "%s: SMMU is Disabled\n", __func__);
+	dev_dbg(dev, "%s: SMMU is %s\n", __func__, (!smmu_enabled) ? "Disabled" : "Enabled");
 
-	dev_dbg(dev, "%s: adsp is ready\n", __func__);
 	if (smmu_enabled) {
 		msm_audio_mem_data->driver_name = "msm_audio_mem";
 		/* Get SMMU SID information from Devicetree */
@@ -787,6 +852,18 @@ static int msm_audio_mem_probe(struct platform_device *pdev)
 			smmu_sid << MSM_AUDIO_SMMU_SID_OFFSET;
 	} else {
 		msm_audio_mem_data->driver_name = "msm_audio_mem_cma";
+
+		rc = of_reserved_mem_device_init(dev);
+		if (rc) {
+			pr_err("%s: No reserved DMA memory, ret=%d\n", __func__, rc);
+			return -EINVAL;
+		}
+
+		rc = cma_heap_add(dev->cma_area, NULL);
+		if (rc) {
+			pr_err("%s: cma_heap_add failed, ret=%d\n", __func__, rc);
+			return -EINVAL;
+		}
 	}
 
 	if (!rc)
