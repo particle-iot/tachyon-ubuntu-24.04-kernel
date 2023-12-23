@@ -8,6 +8,14 @@
 
 /{
 	reserved-memory {
+		audio_cma_mem: qcom,audio-ml {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+			reusable;
+			alignment = <0x0 0x400000>;
+			size = <0x0 0x1000000>; /* 16M */
+		};
+
 		qseecom_mem: qcom,qseecom {
 			compatible = "shared-dma-pool";
 			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
@@ -107,6 +115,11 @@
 			qcom,iommu-dma-addr-pool = <0x10000000 0x10000000>;
 			qcom,smmu-sid-mask = /bits/ 64 <0xf>;
 			dma-coherent;
+		};
+
+		msm_audio_mem_cma: msm-audio-mem-cma {
+			compatible = "qcom,msm-audio-mem";
+			memory-region = <&audio_cma_mem>;
 		};
 	};
 
