@@ -3000,9 +3000,11 @@
 		};
 
 		dma@117f000 {
-			compatible = "qcom,sc7280-dcc", "qcom,dcc";
+			compatible = "qcom,dcc-v2", "qcom,dcc";
 			reg = <0x0 0x0117f000 0x0 0x1000>,
 			      <0x0 0x01112000 0x0 0x6000>;
+
+			qcom,dcc-offset = <0x12000>;
 		};
 
 		adreno_smmu: iommu@3da0000 {
