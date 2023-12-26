@@ -4,6 +4,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/iopoll.h>
 
 #include "iris_hfi.h"
 #include "vpu_iris2.h"
@@ -84,6 +85,8 @@
 #define SFR_ADDR_IRIS2                         CPU_CS_SCIBCMD_IRIS2
 #define UC_REGION_ADDR_IRIS2                   CPU_CS_SCIBARG1_IRIS2
 #define UC_REGION_SIZE_IRIS2                   CPU_CS_SCIBARG2_IRIS2
+#define WRAPPER_CORE_POWER_STATUS              0xB0080
+#define WRAPPER_CORE_POWER_CONTROL             0xB0084
 
 #define VCODEC_SS_IDLE_STATUSN                 (VCODEC_BASE_OFFS_IRIS2 + 0x70)
 
@@ -145,6 +148,32 @@ static int setup_ucregion_memory_map_iris2(struct iris_core *core)
 	}
 
 	return ret;
+}
+
+static int switch_vcodec_gdsc_mode(struct iris_core *core, bool sw_mode)
+{
+	void __iomem *base_addr;
+	u32 mask = 0;
+	u32 val = 0;
+	int ret;
+
+	base_addr = core->reg_base;
+
+	if (sw_mode) {
+		writel_relaxed(0, base_addr + WRAPPER_CORE_POWER_CONTROL);
+		ret = readl_relaxed_poll_timeout(base_addr + WRAPPER_CORE_POWER_STATUS, val,
+						 ((val & mask) == (val & BIT(1))), 1, 20000);
+		if (ret)
+			return ret;
+	} else {
+		writel_relaxed(1, base_addr + WRAPPER_CORE_POWER_CONTROL);
+		ret = readl_relaxed_poll_timeout(base_addr + WRAPPER_CORE_POWER_STATUS, val,
+						 ((val & mask) != (val & BIT(1))), 1, 20000);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int boot_firmware_iris2(struct iris_core *core)
@@ -416,18 +445,26 @@ static int power_on_iris2_hardware(struct iris_core *core)
 	if (ret)
 		return ret;
 
-	ret = prepare_enable_clock(core, "vcodec_bus");
+	ret = switch_vcodec_gdsc_mode(core, true);
 	if (ret)
 		goto err_disable_power;
+
+	ret = prepare_enable_clock(core, "vcodec_bus");
+	if (ret)
+		goto err_gdsc_switch;
 
 	ret = prepare_enable_clock(core, "vcodec_core");
 	if (ret)
 		goto err_disable_bus;
 
+	ret = switch_vcodec_gdsc_mode(core, false);
+
 	return ret;
 
 err_disable_bus:
 	disable_unprepare_clock(core, "vcodec_bus");
+err_gdsc_switch:
+	switch_vcodec_gdsc_mode(core, false);
 err_disable_power:
 	disable_power_domains(core, "vcodec0");
 
