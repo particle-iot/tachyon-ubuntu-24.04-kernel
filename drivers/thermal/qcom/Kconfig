@@ -54,3 +54,13 @@ config QCOM_QMI_COOLING
 	   remote subsystem voltage restriction at low temperatures etc.
 	   The QMI cooling device will interface with remote subsystem
 	   using Qualcomm remoteproc interface.
+
+config QTI_BCL_PMIC5
+	tristate "BCL driver for BCL peripherals in PMIC5"
+	depends on SPMI && THERMAL
+	help
+	  This driver provides routines to configure and monitor the BCL
+	  PMIC peripheral. This driver registers the battery current and
+	  voltage sensors with the thermal core framework and can take
+	  threshold input and notify the thermal core when the threshold is
+	  reached.
