@@ -445,7 +445,7 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 		 B_FRAME_QP, ENH_LAYER_COUNT, BIT_RATE,
 		 MIN_QUALITY, PEAK_BITRATE, SLICE_MODE},
 		adjust_bitrate_mode,
-		set_u32_enum},
+		set_bitrate_mode},
 
 	{FRAME_SKIP_MODE, ENC, H264 | HEVC,
 		V4L2_MPEG_VIDEO_FRAME_SKIP_MODE_DISABLED,
