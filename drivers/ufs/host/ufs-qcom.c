@@ -162,6 +162,9 @@ static int ufs_qcom_ice_program_key(struct ufs_hba *hba,
 		cfg->config_enable & UFS_CRYPTO_CONFIGURATION_ENABLE;
 	u8 ice_key_size;
 
+	if (!config_enable)
+		return qcom_ice_evict_key(host->ice, slot);
+
 	/* Only AES-256-XTS has been tested so far. */
 	cap = hba->crypto_cap_array[cfg->crypto_cap_idx];
 	if (cap.algorithm_id != UFS_CRYPTO_ALG_AES_XTS ||
@@ -173,13 +176,10 @@ static int ufs_qcom_ice_program_key(struct ufs_hba *hba,
 	else
 		ice_key_size = QCOM_ICE_CRYPTO_KEY_SIZE_256;
 
-	if (config_enable)
-		return qcom_ice_program_key(host->ice,
-					    QCOM_ICE_CRYPTO_ALG_AES_XTS,
-					    ice_key_size, bkey,
-					    cfg->data_unit_size, slot);
-	else
-		return qcom_ice_evict_key(host->ice, slot);
+	return qcom_ice_program_key(host->ice,
+				    QCOM_ICE_CRYPTO_ALG_AES_XTS,
+				    ice_key_size, bkey,
+				    cfg->data_unit_size, slot);
 }
 
 /*
