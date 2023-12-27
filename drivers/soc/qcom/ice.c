@@ -37,13 +37,14 @@
 #define QCOM_ICE_LUT_KEYS_CRYPTOCFG_R16		0x4040
 
 /* QCOM ICE HWKM registers */
-#define QCOM_ICE_REG_HWKM_TZ_KM_CTL		0x1000
-#define QCOM_ICE_REG_HWKM_TZ_KM_STATUS		0x1004
-#define QCOM_ICE_REG_HWKM_BANK0_BBAC_0		0x5000
-#define QCOM_ICE_REG_HWKM_BANK0_BBAC_1		0x5004
-#define QCOM_ICE_REG_HWKM_BANK0_BBAC_2		0x5008
-#define QCOM_ICE_REG_HWKM_BANK0_BBAC_3		0x500C
-#define QCOM_ICE_REG_HWKM_BANK0_BBAC_4		0x5010
+#define QCOM_ICE_REG_HWKM_TZ_KM_CTL			0x1000
+#define QCOM_ICE_REG_HWKM_TZ_KM_STATUS			0x1004
+#define QCOM_ICE_REG_HWKM_BANK0_BANKN_IRQ_STATUS	0x2008
+#define QCOM_ICE_REG_HWKM_BANK0_BBAC_0			0x5000
+#define QCOM_ICE_REG_HWKM_BANK0_BBAC_1			0x5004
+#define QCOM_ICE_REG_HWKM_BANK0_BBAC_2			0x5008
+#define QCOM_ICE_REG_HWKM_BANK0_BBAC_3			0x500C
+#define QCOM_ICE_REG_HWKM_BANK0_BBAC_4			0x5010
 
 /* QCOM ICE HWKM BIST vals */
 #define QCOM_ICE_HWKM_BIST_DONE_V1_VAL		0x14007
@@ -59,7 +60,7 @@
 #define QCOM_ICE_LUT_KEYS_CRYPTOCFG_OFFSET	0x80
 
 #define QCOM_ICE_HWKM_REG_OFFSET	0x8000
-#define HWKM_OFFSET(reg)		(reg + QCOM_ICE_HWKM_REG_OFFSET)
+#define HWKM_OFFSET(reg)		((reg) + QCOM_ICE_HWKM_REG_OFFSET)
 
 #define qcom_ice_writel(engine, val, reg)	\
 	writel((val), (engine)->base + (reg))
@@ -74,6 +75,7 @@ struct qcom_ice {
 
 	struct clk *core_clk;
 	u8 hwkm_version;
+	bool use_hwkm;
 	bool hwkm_init_complete;
 };
 
@@ -102,12 +104,15 @@ static bool qcom_ice_check_supported(struct qcom_ice *ice)
 		return false;
 	}
 
-	if ((major >= 4) || ((major == 3) && (minor == 2) && (step >= 1)))
+	if (major >= 4 || (major == 3 && minor == 2 && step >= 1))
 		ice->hwkm_version = 2;
-	else if ((major == 3) && (minor == 2))
+	else if (major == 3 && minor == 2)
 		ice->hwkm_version = 1;
 	else
 		ice->hwkm_version = 0;
+
+	if (ice->hwkm_version == 0)
+		ice->use_hwkm = false;
 
 	dev_info(dev, "Found QC Inline Crypto Engine (ICE) v%d.%d.%d\n",
 		 major, minor, step);
@@ -116,6 +121,9 @@ static bool qcom_ice_check_supported(struct qcom_ice *ice)
 	else
 		dev_info(dev, "QC ICE HWKM (Hardware Key Manager) version = %d",
 			 ice->hwkm_version);
+
+	if (!ice->use_hwkm)
+		dev_info(dev, "QC ICE HWKM (Hardware Key Manager) not used\n");
 
 	/* If fuses are blown, ICE might not work in the standard way. */
 	regval = qcom_ice_readl(ice, QCOM_ICE_REG_FUSE_SETTING);
@@ -180,7 +188,7 @@ static int qcom_ice_wait_bist_status(struct qcom_ice *ice)
 	if (err)
 		dev_err(ice->dev, "Timed out waiting for ICE self-test to complete\n");
 
-	if (ice->hwkm_version) {
+	if (ice->use_hwkm) {
 		bist_done_val = (ice->hwkm_version == 1) ?
 				 QCOM_ICE_HWKM_BIST_DONE_V1_VAL :
 				 QCOM_ICE_HWKM_BIST_DONE_V2_VAL;
@@ -188,7 +196,7 @@ static int qcom_ice_wait_bist_status(struct qcom_ice *ice)
 				   HWKM_OFFSET(QCOM_ICE_REG_HWKM_TZ_KM_STATUS)) !=
 				   bist_done_val) {
 			dev_warn(ice->dev, "HWKM BIST error\n");
-			ice->hwkm_version = 0;
+			ice->use_hwkm = false;
 		}
 	}
 	return err;
@@ -198,7 +206,7 @@ static void qcom_ice_enable_standard_mode(struct qcom_ice *ice)
 {
 	u32 val = 0;
 
-	if (!ice->hwkm_version)
+	if (!ice->use_hwkm)
 		return;
 
 	/*
@@ -225,8 +233,12 @@ static void qcom_ice_enable_standard_mode(struct qcom_ice *ice)
 
 static void qcom_ice_hwkm_init(struct qcom_ice *ice)
 {
-	if (!ice->hwkm_version)
+	if (!ice->use_hwkm)
 		return;
+
+	/* Disable CRC checks. This HWKM feature is not used. */
+	qcom_ice_writel(ice, 0x6,
+			HWKM_OFFSET(QCOM_ICE_REG_HWKM_TZ_KM_CTL));
 
 	/*
 	 * Give register bank of the HWKM slave access to read and modify
@@ -243,6 +255,10 @@ static void qcom_ice_hwkm_init(struct qcom_ice *ice)
 			HWKM_OFFSET(QCOM_ICE_REG_HWKM_BANK0_BBAC_3));
 	qcom_ice_writel(ice, 0xFFFFFFFF,
 			HWKM_OFFSET(QCOM_ICE_REG_HWKM_BANK0_BBAC_4));
+
+	/* Clear HWKM response FIFO before doing anything */
+	qcom_ice_writel(ice, 0x8,
+			HWKM_OFFSET(QCOM_ICE_REG_HWKM_BANK0_BANKN_IRQ_STATUS));
 
 	ice->hwkm_init_complete = true;
 }
@@ -278,6 +294,8 @@ int qcom_ice_resume(struct qcom_ice *ice)
 		return err;
 	}
 
+	qcom_ice_enable_standard_mode(ice);
+	qcom_ice_hwkm_init(ice);
 	return qcom_ice_wait_bist_status(ice);
 }
 EXPORT_SYMBOL_GPL(qcom_ice_resume);
@@ -293,7 +311,7 @@ EXPORT_SYMBOL_GPL(qcom_ice_suspend);
 /*
  * HW dictates the internal mapping between the ICE and HWKM slots,
  * which are different for different versions, make the translation
- * here.
+ * here. For v1 however, the translation is done in trustzone.
  */
 static int translate_hwkm_slot(struct qcom_ice *ice, int slot)
 {
@@ -359,16 +377,11 @@ int qcom_ice_program_key(struct qcom_ice *ice,
 	}
 
 	if (bkey->crypto_cfg.key_type == BLK_CRYPTO_KEY_TYPE_HW_WRAPPED) {
-		if (!ice->hwkm_version)
+		if (!ice->use_hwkm)
 			return -EINVAL;
 		err = qcom_ice_program_wrapped_key(ice, bkey, data_unit_size,
 				slot);
 	} else {
-		if (bkey->size != QCOM_ICE_CRYPTO_KEY_SIZE_256)
-			dev_err_ratelimited(dev,
-				    "Incorrect key size; bkey->size=%d\n",
-				    algorithm_id);
-		return -EINVAL;
 		memcpy(key.bytes, bkey->raw, AES_256_XTS_KEY_SIZE);
 
 		/* The SCM call requires that the key words are encoded in big endian */
@@ -389,7 +402,8 @@ int qcom_ice_evict_key(struct qcom_ice *ice, int slot)
 {
 	int hwkm_slot = slot;
 
-	if (ice->hwkm_version) {
+
+	if (ice->use_hwkm) {
 		hwkm_slot = translate_hwkm_slot(ice, slot);
 	/*
 	 * Ignore calls to evict key when HWKM is supported and hwkm init
@@ -407,15 +421,15 @@ EXPORT_SYMBOL_GPL(qcom_ice_evict_key);
 
 bool qcom_ice_hwkm_supported(struct qcom_ice *ice)
 {
-	return (ice->hwkm_version > 0);
+	return ice->use_hwkm;
 }
 EXPORT_SYMBOL_GPL(qcom_ice_hwkm_supported);
 
-int qcom_ice_derive_sw_secret(struct qcom_ice *ice, const u8 wrapped_key[],
-			      unsigned int wrapped_key_size,
+int qcom_ice_derive_sw_secret(struct qcom_ice *ice, const u8 wkey[],
+			      unsigned int wkey_size,
 			      u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE])
 {
-	return qcom_scm_derive_sw_secret(wrapped_key, wrapped_key_size,
+	return qcom_scm_derive_sw_secret(wkey, wkey_size,
 					 sw_secret, BLK_CRYPTO_SW_SECRET_SIZE);
 }
 EXPORT_SYMBOL_GPL(qcom_ice_derive_sw_secret);
@@ -531,6 +545,8 @@ static struct qcom_ice *qcom_ice_create(struct device *dev,
 		engine->core_clk = devm_clk_get_enabled(dev, NULL);
 	if (IS_ERR(engine->core_clk))
 		return ERR_CAST(engine->core_clk);
+	engine->use_hwkm = of_property_read_bool(dev->of_node,
+						 "qcom,ice-use-hwkm");
 
 	if (!qcom_ice_check_supported(engine))
 		return ERR_PTR(-EOPNOTSUPP);
