@@ -64,3 +64,12 @@ config QTI_BCL_PMIC5
 	  voltage sensors with the thermal core framework and can take
 	  threshold input and notify the thermal core when the threshold is
 	  reached.
+
+config QTI_DEVFREQ_CDEV
+	tristate "QTI Devfreq cooling device"
+	depends on PM_DEVFREQ && THERMAL && PM_OPP
+	help
+	   This enables the QTI devfreq cooling device, which
+	   will help register the devfreq cooling devices with
+	   thermal framework and allow limiting the devfreq
+	   frequency.
