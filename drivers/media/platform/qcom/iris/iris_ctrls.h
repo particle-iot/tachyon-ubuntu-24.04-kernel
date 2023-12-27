@@ -43,6 +43,7 @@ int set_bitrate(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_layer_bitrate(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_peak_bitrate(struct iris_inst *inst,
 		     enum plat_inst_cap_type cap_id);
+int set_bitrate_mode(struct iris_inst *inst, enum plat_inst_cap_type cap_id);
 int set_use_and_mark_ltr(struct iris_inst *inst,
 			 enum plat_inst_cap_type cap_id);
 int set_ir_period(struct iris_inst *inst,
