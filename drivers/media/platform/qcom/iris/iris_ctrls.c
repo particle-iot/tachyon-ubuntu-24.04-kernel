@@ -969,6 +969,19 @@ int set_peak_bitrate(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 				     &hfi_val, sizeof(u32));
 }
 
+int set_bitrate_mode(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
+{
+	u32 hfi_value, hfi_id;
+
+	hfi_id = inst->cap[cap_id].hfi_id;
+	hfi_value = inst->hfi_rc_type;
+
+	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
+			get_port_info(inst, cap_id),
+			HFI_PAYLOAD_U32_ENUM,
+			&hfi_value, sizeof(u32));
+}
+
 int set_use_and_mark_ltr(struct iris_inst *inst, enum plat_inst_cap_type cap_id)
 {
 	u32 hfi_id, hfi_val;
