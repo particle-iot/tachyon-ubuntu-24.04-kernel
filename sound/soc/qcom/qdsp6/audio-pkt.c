@@ -23,6 +23,7 @@
 #define APM_CMD_SHARED_MEM_MAP_REGIONS          0x0100100C
 #define APM_MEMORY_MAP_BIT_MASK_IS_OFFSET_MODE  0x00000004UL
 
+static bool audio_pkt_probed;
 /* Define Logging Macros */
 static int audio_pkt_debug_mask;
 enum {
@@ -408,6 +409,11 @@ static int audio_pkt_probe(gpr_device_t *adev)
 	struct device *dev = &adev->dev;
 	int ret;
 
+	if (audio_pkt_probed) {
+		AUDIO_PKT_ERR("audio packet probe already done, ssr unsupported\n");
+		return -EINVAL;
+	}
+
 	audpkt_dev = devm_kzalloc(dev, sizeof(*audpkt_dev), GFP_KERNEL);
 	if (!audpkt_dev)
 		return -ENOMEM;
@@ -461,7 +467,7 @@ static int audio_pkt_probe(gpr_device_t *adev)
 	}
 
 	AUDIO_PKT_INFO("Audio Packet Port Driver Initialized\n");
-
+	audio_pkt_probed = true;
 	return of_platform_populate(dev->of_node, NULL, NULL, dev);
 
 free_dev:
