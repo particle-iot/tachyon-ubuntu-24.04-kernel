@@ -100,6 +100,70 @@
 	};
 };
 
+&CPU0 {
+	CPU0_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU1 {
+	CPU1_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU2 {
+	CPU2_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU3 {
+	CPU3_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU4 {
+	CPU4_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU5 {
+	CPU5_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU6 {
+	CPU6_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
+&CPU7 {
+	CPU7_idle: thermal-idle {
+		#cooling-cells = <2>;
+		duration-us = <2000000>;
+		exit-latency-us = <10000>;
+	};
+};
+
 &gcc {
 	protected-clocks = <GCC_AGGRE_NOC_PCIE_1_AXI_CLK> ,<GCC_PCIE_1_AUX_CLK>,
 			<GCC_PCIE_1_AUX_CLK_SRC>, <GCC_PCIE_1_CFG_AHB_CLK>,
