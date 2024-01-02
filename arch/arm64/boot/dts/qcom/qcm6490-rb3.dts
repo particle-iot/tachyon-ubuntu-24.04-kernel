@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /dts-v1/;
@@ -497,6 +497,15 @@
 };
 
 &lpass_dmic23_data {
+	bias-pull-down;
+};
+
+&lpass_dmic45_clk {
+	drive-strength = <8>;
+	bias-disable;
+};
+
+&lpass_dmic45_data {
 	bias-pull-down;
 };
 
