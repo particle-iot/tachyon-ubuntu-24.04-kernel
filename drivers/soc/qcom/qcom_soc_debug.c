@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
 #include <linux/of_address.h>
+#include <linux/panic_notifier.h>
+#include <soc/qcom/wdt_core.h>
 
 #define KASLR_IMEM_ADDR_NAME	"qcom,msm-imem-kaslr_offset"
 #define KASLR_IMEM_MAGIC	0xdead4ead
 #define KASLR_OFFSET_MASK	0x00000000FFFFFFFF
+
+struct notifier_block panic_notifier;
+
+static int panic_handler(struct notifier_block *this,
+			      unsigned long event, void *ptr)
+{
+	pr_info("Triggering bite\n");
+	qcom_wdt_trigger_bite();
+	return NOTIFY_DONE;
+}
 
 static void __iomem *get_iomap_addr(const char *prop_name)
 {
@@ -47,6 +59,11 @@ static void store_kaslr_offset(void)
 static int __init qcom_soc_debug_init(void)
 {
 	store_kaslr_offset();
+
+	panic_notifier.priority = INT_MAX - 1;
+	panic_notifier.notifier_call = panic_handler;
+	atomic_notifier_chain_register(&panic_notifier_list,
+				       &panic_notifier);
 	return 0;
 }
 
