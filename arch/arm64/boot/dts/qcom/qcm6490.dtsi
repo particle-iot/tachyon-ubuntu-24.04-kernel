@@ -121,6 +121,17 @@
 			<GCC_WPSS_AHB_BDG_MST_CLK>, <GCC_WPSS_RSCP_CLK>;
 };
 
+&ipa {
+	qcom,gsi-loader = "self";
+	memory-region = <&ipa_fw_mem>;
+	firmware-name = "qcom/qcm6490/ipa_fws.mdt";
+	status = "okay";
+};
+
+&ipa_fw_mem {
+	reg = <0x0 0x8b300000 0x0 0x10000>;
+};
+
 &lpass_audiocc {
 	qcom,adsp-skip-pll;
 	protected-clocks = <LPASS_AUDIO_CC_CDIV_RX_MCLK_DIV_CLK_SRC>,
@@ -500,10 +511,6 @@
 
 &swr2 {
 	status = "okay";
-};
-
-&ipa_fw_mem {
-	reg = <0x0 0x8b300000 0x0 0x10000>;
 };
 
 &tlmm {
