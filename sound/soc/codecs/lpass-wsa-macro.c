@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -2523,6 +2523,8 @@ static int __maybe_unused wsa_macro_runtime_suspend(struct device *dev)
 	regcache_cache_only(wsa->regmap, true);
 	regcache_mark_dirty(wsa->regmap);
 
+	clk_disable_unprepare(wsa->macro);
+	clk_disable_unprepare(wsa->dcodec);
 	clk_disable_unprepare(wsa->fsgen);
 	clk_disable_unprepare(wsa->npl);
 	clk_disable_unprepare(wsa->mclk);
@@ -2534,6 +2536,18 @@ static int __maybe_unused wsa_macro_runtime_resume(struct device *dev)
 {
 	struct wsa_macro *wsa = dev_get_drvdata(dev);
 	int ret;
+
+	ret = clk_prepare_enable(wsa->macro);
+	if (ret) {
+		dev_err(dev, "unable to prepare macro\n");
+		return ret;
+	}
+
+	ret = clk_prepare_enable(wsa->dcodec);
+	if (ret) {
+		dev_err(dev, "unable to prepare dcodec\n");
+		return ret;
+	}
 
 	ret = clk_prepare_enable(wsa->mclk);
 	if (ret) {
