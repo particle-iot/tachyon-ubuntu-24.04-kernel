@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
@@ -1604,6 +1604,8 @@ static int __maybe_unused va_macro_runtime_suspend(struct device *dev)
 	regcache_mark_dirty(va->regmap);
 
 	clk_disable_unprepare(va->mclk);
+	clk_disable_unprepare(va->dcodec);
+	clk_disable_unprepare(va->macro);
 
 	return 0;
 }
@@ -1612,6 +1614,18 @@ static int __maybe_unused va_macro_runtime_resume(struct device *dev)
 {
 	struct va_macro *va = dev_get_drvdata(dev);
 	int ret;
+
+	ret = clk_prepare_enable(va->dcodec);
+	if (ret) {
+		dev_err(dev, "unable to prepare dcodec\n");
+		return ret;
+	}
+
+	ret = clk_prepare_enable(va->macro);
+	if (ret) {
+		dev_err(dev, "unable to prepare macro\n");
+		return ret;
+	}
 
 	ret = clk_prepare_enable(va->mclk);
 	if (ret) {
