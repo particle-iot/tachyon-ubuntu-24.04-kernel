@@ -180,6 +180,8 @@ struct qcom_slim_ngd_ctrl {
 	int tx_tail;
 	int tx_head;
 	u32 ver;
+	int irq;
+	bool irq_disabled;
 };
 
 enum slimbus_mode_enum_type_v01 {
@@ -776,13 +778,20 @@ static int qcom_slim_ngd_init_dma(struct qcom_slim_ngd_ctrl *ctrl)
 	return ret;
 }
 
+static bool device_pending_suspend(struct qcom_slim_ngd_ctrl *ctrl)
+{
+	int usage_count = atomic_read(&ctrl->ctrl.dev->power.usage_count);
+
+	return (pm_runtime_status_suspended(ctrl->ctrl.dev) || !usage_count);
+}
+
 static irqreturn_t qcom_slim_ngd_interrupt(int irq, void *d)
 {
 	struct qcom_slim_ngd_ctrl *ctrl = d;
 	void __iomem *base = ctrl->ngd->base;
 	u32 stat;
 
-	if (pm_runtime_suspended(ctrl->ctrl.dev)) {
+	if (device_pending_suspend(ctrl)) {
 		dev_warn_once(ctrl->dev, "Interrupt received while suspended\n");
 		return IRQ_NONE;
 	}
@@ -1399,6 +1408,11 @@ static int qcom_slim_ngd_runtime_resume(struct device *dev)
 			dev_err(ctrl->dev, "HW wakeup attempt during SSR\n");
 	} else {
 		ctrl->state = QCOM_SLIM_NGD_CTRL_AWAKE;
+
+		if (ctrl->irq_disabled) {
+			enable_irq(ctrl->irq);
+			ctrl->irq_disabled = false;
+		}
 	}
 
 	mutex_unlock(&ctrl->suspend_resume_lock);
@@ -1705,14 +1719,18 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 	if (IS_ERR(ctrl->base))
 		return PTR_ERR(ctrl->base);
 
-	ret = platform_get_irq(pdev, 0);
-	if (ret < 0)
-		return ret;
+	ctrl->irq = platform_get_irq(pdev, 0);
+	if (ctrl->irq < 0) {
+		dev_err(&pdev->dev, "Slimbus IRQ get failed\n");
+		return ctrl->irq;
+	}
 
-	ret = devm_request_irq(dev, ret, qcom_slim_ngd_interrupt,
+	ret = devm_request_irq(dev, ctrl->irq, qcom_slim_ngd_interrupt,
 			       IRQF_TRIGGER_HIGH, "slim-ngd", ctrl);
 	if (ret)
 		return dev_err_probe(&pdev->dev, ret, "request IRQ failed\n");
+
+	ctrl->irq_disabled = false;
 
 	ctrl->nb.notifier_call = qcom_slim_ngd_ssr_notify;
 	ctrl->notifier = qcom_register_ssr_notifier("lpass", &ctrl->nb);
@@ -1820,6 +1838,11 @@ static int __maybe_unused qcom_slim_ngd_runtime_suspend(struct device *dev)
 	 */
 	mutex_lock(&ctrl->suspend_resume_lock);
 	qcom_slim_ngd_exit_dma(ctrl);
+
+	if (!ctrl->irq_disabled) {
+		disable_irq(ctrl->irq);
+		ctrl->irq_disabled = true;
+	}
 
 	if (!ctrl->qmi.handle) {
 		mutex_unlock(&ctrl->suspend_resume_lock);
