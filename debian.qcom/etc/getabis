@@ -1,4 +1,4 @@
-getabis_ppa="${HOME}/.getabis.noble-qcom"
+getabis_ppa="${HOME}/.getabis.jammy-qcom"
 
 if ! [ -e "${getabis_ppa}" ] ; then
 	cat <<EOF >&2
