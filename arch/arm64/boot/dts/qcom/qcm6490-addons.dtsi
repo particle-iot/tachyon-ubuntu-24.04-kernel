@@ -73,6 +73,10 @@
 			#interrupt-cells = <2>;
 		};
 	};
+
+	/* Gunyah expects arch_timer symbol for boot time overlay */
+	arch_timer: timer {
+	};
 };
 
 &gmu {
