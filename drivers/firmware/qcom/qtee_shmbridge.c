@@ -2,10 +2,10 @@
 /*
  * QTI TEE shared memory bridge driver
  *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#define pr_fmt(fmt) "shmbridge: %s: " fmt, __func__
+#define pr_fmt(fmt) "shmbridge: [%d][%s]: " fmt, __LINE__,  __func__
 
 #include <linux/module.h>
 #include <linux/device.h>
@@ -480,18 +480,30 @@ static int qtee_shmbridge_init(struct platform_device *pdev)
 	pr_err("qtee shmbridge registered default bridge with size %zu bytes\n",
 		default_bridge.size);
 
-	default_bridge.vaddr = (void *)__get_free_pages(GFP_KERNEL|__GFP_COMP,
+	/*
+	 * First try to allocate memory via free_pages speciying DMA capabilities
+	 * as 32bit(GFP_DMA32) by default as _scm->dev is also based on 32bit.
+	 *
+	 * In case of failures, try to allocate with dma_alloc_coherent.
+	 */
+	default_bridge.vaddr = (void *)__get_free_pages(GFP_KERNEL|__GFP_COMP|GFP_DMA32,
 				get_order(default_bridge.size));
-	if (!default_bridge.vaddr)
-		return -ENOMEM;
 
-	default_bridge.paddr = dma_map_single(&pdev->dev,
+	if (default_bridge.vaddr) {
+		default_bridge.paddr = dma_map_single(&pdev->dev,
 				default_bridge.vaddr, default_bridge.size,
 				DMA_TO_DEVICE);
-	if (dma_mapping_error(&pdev->dev, default_bridge.paddr)) {
-		pr_err("dma_map_single() failed\n");
-		ret = -ENOMEM;
-		goto exit_freebuf;
+		if (dma_mapping_error(&pdev->dev, default_bridge.paddr)) {
+			pr_err("dma_map_single() failed\n");
+			ret = -ENOMEM;
+			goto exit_freebuf;
+		}
+	} else {
+		pr_info("Allocation via free_pages failed, trying with dma_alloc now..\n");
+		default_bridge.vaddr = dma_alloc_coherent(&pdev->dev, default_bridge.size,
+								&default_bridge.paddr, GFP_KERNEL);
+		if (!default_bridge.vaddr)
+			return -ENOMEM;
 	}
 	default_bridge.dev = &pdev->dev;
 
@@ -565,9 +577,6 @@ exit:
 
 static int qtee_shmbridge_probe(struct platform_device *pdev)
 {
-#ifdef CONFIG_ARM64
-	dma_set_mask(&pdev->dev, DMA_BIT_MASK(64));
-#endif
 	return qtee_shmbridge_init(pdev);
 }
 
