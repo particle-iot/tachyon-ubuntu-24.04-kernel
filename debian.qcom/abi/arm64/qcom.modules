@@ -500,6 +500,7 @@ au0828
 au8522_common
 au8522_decoder
 au8522_dig
+audio-pkt
 auo-pixcir-ts
 auth_rpcgss
 authenc
@@ -2441,6 +2442,7 @@ ir36021
 ir38064
 ir_toy
 irdma
+iris
 irps5401
 irq-madera
 irsd200
@@ -3248,6 +3250,7 @@ msg2638
 msi001
 msi2500
 msm
+msm_audio_mem
 msp3400
 mspro_block
 mss-sc7180
@@ -5339,6 +5342,7 @@ snd-soc-pcm512x
 snd-soc-pcm512x-i2c
 snd-soc-pcm512x-spi
 snd-soc-peb2466
+snd-soc-qcm6490
 snd-soc-qcom-common
 snd-soc-qcom-sdw
 snd-soc-rk3328
@@ -5437,6 +5441,8 @@ snd-soc-wcd-classh
 snd-soc-wcd-mbhc
 snd-soc-wcd9335
 snd-soc-wcd934x
+snd-soc-wcd937x
+snd-soc-wcd937x-sdw
 snd-soc-wcd938x
 snd-soc-wcd938x-sdw
 snd-soc-wm-adsp
@@ -5539,6 +5545,7 @@ speakup_spkout
 speakup_txprt
 speedfax
 speedtch
+spf-core
 spi-altera-core
 spi-altera-dfl
 spi-altera-platform
