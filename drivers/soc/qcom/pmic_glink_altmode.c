@@ -49,6 +49,11 @@ struct usbc_sc8180x_notify {
 	__le32 reserved[2];
 };
 
+struct pmic_glink_altmode_client_data {
+	void *data;
+	void (*cb)(void *priv, struct typec_displayport_data data, int orientation);
+};
+
 enum pmic_glink_altmode_pin_assignment {
 	DPAM_HPD_OUT,
 	DPAM_HPD_A,
@@ -98,11 +103,30 @@ struct pmic_glink_altmode {
 
 	struct completion pan_ack;
 	struct pmic_glink_client *client;
+	struct pmic_glink_altmode_client_data dp_client;
 
 	struct work_struct enable_work;
 
 	struct pmic_glink_altmode_port ports[PMIC_GLINK_MAX_PORTS];
 };
+
+static struct pmic_glink_altmode *__altmode;
+
+int pmic_glink_altmode_register_client(void (*cb)(void *priv, struct typec_displayport_data data,
+					int orientation),
+					void *priv)
+{
+	if (!__altmode) {
+		pr_debug("pmic_glink_altmode is not yet registered\n");
+		return -EPROBE_DEFER;
+	}
+
+	__altmode->dp_client.cb = cb;
+	__altmode->dp_client.data = priv;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pmic_glink_altmode_register_client);
 
 static int pmic_glink_altmode_request(struct pmic_glink_altmode *altmode, u32 cmd, u32 arg)
 {
@@ -169,6 +193,9 @@ static void pmic_glink_altmode_enable_dp(struct pmic_glink_altmode *altmode,
 	ret = typec_retimer_set(port->typec_retimer, &port->retimer_state);
 	if (ret)
 		dev_err(altmode->dev, "failed to setup retimer to DP: %d\n", ret);
+
+	if (altmode->dp_client.cb)
+		altmode->dp_client.cb(altmode->dp_client.data, dp_data, port->orientation);
 }
 
 static void pmic_glink_altmode_enable_usb(struct pmic_glink_altmode *altmode,
@@ -196,6 +223,7 @@ static void pmic_glink_altmode_enable_usb(struct pmic_glink_altmode *altmode,
 static void pmic_glink_altmode_safe(struct pmic_glink_altmode *altmode,
 				    struct pmic_glink_altmode_port *port)
 {
+	struct typec_displayport_data dp_data = {};
 	int ret;
 
 	port->state.alt = NULL;
@@ -213,6 +241,16 @@ static void pmic_glink_altmode_safe(struct pmic_glink_altmode *altmode,
 	ret = typec_retimer_set(port->typec_retimer, &port->retimer_state);
 	if (ret)
 		dev_err(altmode->dev, "failed to setup retimer to USB: %d\n", ret);
+
+	dp_data.status = DP_STATUS_CON_DISABLED;
+	if (port->hpd_state)
+		dp_data.status |= DP_STATUS_HPD_STATE;
+	if (port->hpd_irq)
+		dp_data.status |= DP_STATUS_IRQ_HPD;
+	dp_data.conf = DP_CONF_SET_PIN_ASSIGN(port->mode);
+
+	if (altmode->dp_client.cb)
+		altmode->dp_client.cb(altmode->dp_client.data, dp_data, port->orientation);
 }
 
 static void pmic_glink_altmode_worker(struct work_struct *work)
@@ -529,6 +567,8 @@ static int pmic_glink_altmode_probe(struct auxiliary_device *adev,
 		return PTR_ERR(altmode->client);
 
 	pmic_glink_client_register(altmode->client);
+
+	__altmode = altmode;
 
 	return 0;
 }
