@@ -928,12 +928,10 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 interconnect_exit:
 	dwc3_qcom_interconnect_exit(qcom);
 depopulate:
-	if (np) {
+	if (np)
 		of_platform_depopulate(&pdev->dev);
-	} else {
-		device_remove_software_node(&qcom->dwc3->dev);
+	else
 		platform_device_del(qcom->dwc3);
-	}
 	platform_device_put(qcom->dwc3);
 clk_disable:
 	for (i = qcom->num_clocks - 1; i >= 0; i--) {
@@ -953,12 +951,11 @@ static void dwc3_qcom_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int i;
 
-	if (np) {
+	device_remove_software_node(&qcom->dwc3->dev);
+	if (np)
 		of_platform_depopulate(&pdev->dev);
-	} else {
-		device_remove_software_node(&qcom->dwc3->dev);
+	else
 		platform_device_del(qcom->dwc3);
-	}
 	platform_device_put(qcom->dwc3);
 
 	for (i = qcom->num_clocks - 1; i >= 0; i--) {
