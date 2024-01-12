@@ -21,7 +21,8 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/device.h>
-#include <msm_audio_mem.h>
+
+#include "msm_audio_mem.h"
 
 MODULE_IMPORT_NS(DMA_BUF);
 

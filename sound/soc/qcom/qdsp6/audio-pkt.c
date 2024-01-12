@@ -15,9 +15,10 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/termios.h>
-#include <msm_audio_mem.h>
 #include <linux/soc/qcom/apr.h>
 #include <dt-bindings/soc/qcom,gpr.h>
+
+#include "msm_audio_mem.h"
 
 #define APM_CMD_SHARED_MEM_MAP_REGIONS          0x0100100C
 #define APM_MEMORY_MAP_BIT_MASK_IS_OFFSET_MODE  0x00000004UL
