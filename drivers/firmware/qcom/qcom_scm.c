@@ -479,7 +479,7 @@ int qcom_scm_set_remote_state(u32 state, u32 id)
 }
 EXPORT_SYMBOL_GPL(qcom_scm_set_remote_state);
 
-static int qcom_scm_disable_sdi(void)
+int qcom_scm_disable_sdi(void)
 {
 	int ret;
 	struct qcom_scm_desc desc = {
@@ -501,6 +501,7 @@ static int qcom_scm_disable_sdi(void)
 
 	return ret ? : res.result[0];
 }
+EXPORT_SYMBOL_GPL(qcom_scm_disable_sdi);
 
 static int __qcom_scm_set_dload_mode(struct device *dev, bool enable)
 {
