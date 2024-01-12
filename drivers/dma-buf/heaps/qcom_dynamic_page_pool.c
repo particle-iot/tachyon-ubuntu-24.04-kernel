@@ -315,24 +315,21 @@ void dynamic_page_pool_release_pools(struct dynamic_page_pool **pool_list)
 	kfree(pool_list);
 }
 
-static struct shrinker pool_shrinker = {
-	.count_objects = dynamic_page_pool_shrink_count,
-	.scan_objects = dynamic_page_pool_shrink_scan,
-	.seeks = DEFAULT_SEEKS,
-	.batch = 0,
-};
-
 int dynamic_page_pool_init_shrinker(void)
 {
-	int ret;
 	static bool registered;
+	static struct shrinker *shrinker;
 
 	if (registered)
 		return 0;
 
-	ret = register_shrinker(&pool_shrinker, "dynamic_page_pool");
-	if (ret)
-		return ret;
+	shrinker = shrinker_alloc(0, "dynamic_page_pool");
+	if (!shrinker)
+		return -ENOMEM;
+
+	shrinker->count_objects = dynamic_page_pool_shrink_count;
+	shrinker->scan_objects = dynamic_page_pool_shrink_scan;
+	shrinker_register(shrinker);
 
 	registered = true;
 	return 0;
