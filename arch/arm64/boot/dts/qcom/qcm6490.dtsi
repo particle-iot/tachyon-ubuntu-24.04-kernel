@@ -24,7 +24,7 @@
 			no-map;
 		};
 
-		wpss_mem: wpss@0x84800000 {
+		wpss_mem: wpss@84800000 {
 			reg = <0x0 0x84800000 0x0 0x1900000>;
 			no-map;
 		};
