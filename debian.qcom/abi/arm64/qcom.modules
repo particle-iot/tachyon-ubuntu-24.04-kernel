@@ -4193,6 +4193,7 @@ qcom-spmi-temp-alarm
 qcom-spmi-vadc
 qcom-vadc-common
 qcom-wdt
+qcom-wled
 qcom_bam_dmux
 qcom_battmgr
 qcom_common
@@ -4213,7 +4214,6 @@ qcom_q6v5_wcss
 qcom_rpm
 qcom_rpm-regulator
 qcom_smbb
-qcom_smcinvoke
 qcom_stats
 qcom_sysmon
 qcom_tsens
@@ -5311,7 +5311,6 @@ snd-soc-max9860
 snd-soc-max9867
 snd-soc-max98927
 snd-soc-mikroe-proto
-snd-soc-msm-stub
 snd-soc-msm8916-analog
 snd-soc-msm8916-digital
 snd-soc-mt6351
@@ -5670,7 +5669,6 @@ stm_core
 stm_ftrace
 stm_heartbeat
 stm_p_basic
-stm_p_ost
 stm_p_sys-t
 stmfts
 stmfx
@@ -6062,7 +6060,6 @@ typec_displayport
 typec_nvidia
 typec_ucsi
 typhoon
-tz_log
 uPD60620
 u_audio
 u_ether
