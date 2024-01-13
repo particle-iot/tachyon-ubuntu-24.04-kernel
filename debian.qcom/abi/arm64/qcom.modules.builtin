@@ -95,7 +95,6 @@ ctr
 cts
 da9063
 dax
-debug-regulator
 deflate
 dh_generic
 digsig
@@ -163,7 +162,6 @@ gcc-sm8550
 gcm
 geniv
 gf128mul
-gh_virt_wdt
 ghash-generic
 ghes_edac
 glob
@@ -240,8 +238,6 @@ md-mod
 md5
 mdio-bitbang
 mdio_devres
-mem_buf
-mem_buf_dev
 mfd-core
 mii
 mmc_block
@@ -319,7 +315,6 @@ ppp_generic
 pps_core
 pretimeout_noop
 processor
-proxy-consumer
 pstore
 ptp
 public_key
@@ -327,20 +322,16 @@ pwm-regulator
 qcom-apcs-ipc-mailbox
 qcom-cpufreq-hw
 qcom-geni-se
-qcom-i2c-pmic
 qcom-ipcc
 qcom-pdc
 qcom-rpmh-regulator
 qcom-scm
 qcom-spmi-pmic
-qcom-wled
 qcom_aoss
-qcom_dma_heaps
 qcom_geni_serial
 qcom_glink
 qcom_glink_rpm
 qcom_ice
-qcom_pm8008-regulator
 qcom_qseecom
 qcom_qseecom_uefisecapp
 qcom_rpmh
@@ -356,8 +347,6 @@ qnoc-sc8280xp
 qnoc-sdm845
 qnoc-sm8450
 qnoc-sm8550
-qpnp-lcdb-regulator
-qtee_shmbridge
 rapidio
 rational
 regmap-i2c
@@ -472,7 +461,6 @@ virtio_ring
 virtio_scsi
 vivaldi-fmap
 watchdog
-wdt_core
 wwan
 wwnr
 x509_key_parser
