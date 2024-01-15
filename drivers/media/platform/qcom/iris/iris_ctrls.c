@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
+
 #include <linux/vmalloc.h>
 #include <linux/types.h>
 #include <linux/list.h>
@@ -732,6 +734,10 @@ int set_stage(struct iris_inst *inst,
 	} else if (inst->domain == ENCODER) {
 		if (inst->cap[SLICE_MODE].value ==
 		    V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES)
+			work_mode = STAGE_1;
+
+		if (inst->hfi_rc_type == HFI_RC_CBR_CFR ||
+		    inst->hfi_rc_type == HFI_RC_CBR_VFR)
 			work_mode = STAGE_1;
 
 		if (!inst->cap[GOP_SIZE].value)
