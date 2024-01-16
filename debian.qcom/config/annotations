@@ -47,6 +47,9 @@ CONFIG_SERIAL_SH_SCI_CONSOLE                    note<'LP: #2022361'>
 CONFIG_SERIAL_SH_SCI_EARLYCON                   policy<{'arm64': '-'}>
 CONFIG_SERIAL_SH_SCI_EARLYCON                   note<'LP: #2022361'>
 
+CONFIG_SUN6I_RTC_CCU                            policy<{'arm64': '-'}>
+CONFIG_SUN6I_RTC_CCU                            note<'needed by Allwinner D1 pinctrl/gpio'>
+
 
 # ---- Annotations without notes ----
 
@@ -1391,6 +1394,7 @@ CONFIG_RTC_DRV_TEGRA                            policy<{'arm64': '-'}>
 CONFIG_RTC_DRV_TI_K3                            policy<{'arm64': '-'}>
 CONFIG_RTC_DRV_XGENE                            policy<{'arm64': '-'}>
 CONFIG_RTD119X_WATCHDOG                         policy<{'arm64': '-'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': '-'}>
 CONFIG_RZG2L_ADC                                policy<{'arm64': '-'}>
 CONFIG_RZG2L_THERMAL                            policy<{'arm64': '-'}>
 CONFIG_RZ_DMAC                                  policy<{'arm64': '-'}>
@@ -1728,7 +1732,6 @@ CONFIG_SUN50I_H6_CCU                            policy<{'arm64': '-'}>
 CONFIG_SUN50I_H6_R_CCU                          policy<{'arm64': '-'}>
 CONFIG_SUN50I_IOMMU                             policy<{'arm64': '-'}>
 CONFIG_SUN6I_MSGBOX                             policy<{'arm64': '-'}>
-CONFIG_SUN6I_RTC_CCU                            policy<{'arm64': '-'}>
 CONFIG_SUN6I_R_INTC                             policy<{'arm64': '-'}>
 CONFIG_SUN8I_DE2_CCU                            policy<{'arm64': '-'}>
 CONFIG_SUN8I_H3_CCU                             policy<{'arm64': '-'}>
@@ -1867,6 +1870,10 @@ CONFIG_VIDEO_IMX8_ISI_M2M                       policy<{'arm64': '-'}>
 CONFIG_VIDEO_IMX8_JPEG                          policy<{'arm64': '-'}>
 CONFIG_VIDEO_IMX_MIPI_CSIS                      policy<{'arm64': '-'}>
 CONFIG_VIDEO_IMX_PXP                            policy<{'arm64': '-'}>
+CONFIG_VIDEO_MEDIATEK_JPEG                      policy<{'arm64': '-'}>
+CONFIG_VIDEO_MEDIATEK_MDP                       policy<{'arm64': '-'}>
+CONFIG_VIDEO_MEDIATEK_MDP3                      policy<{'arm64': '-'}>
+CONFIG_VIDEO_MEDIATEK_VCODEC                    policy<{'arm64': '-'}>
 CONFIG_VIDEO_MEDIATEK_VPU                       policy<{'arm64': '-'}>
 CONFIG_VIDEO_MESON_GE2D                         policy<{'arm64': '-'}>
 CONFIG_VIDEO_MESON_VDEC                         policy<{'arm64': '-'}>
