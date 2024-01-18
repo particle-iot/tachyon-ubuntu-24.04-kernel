@@ -72,6 +72,16 @@ config QCOM_OCMEM
 	  requirements. This is typically used by the GPU, camera/video, and
 	  audio components on some Snapdragon SoCs.
 
+config QCOM_PANEL_EVENT_NOTIFIER
+        tristate "panel event notifier"
+        depends on DRM
+        help
+          Enabling this option adds panel event notifier driver.
+          This driver is responsible for notifying clients interested in display
+          panel events such as panel on , panel off, fps change etc.  Clients
+          can use these notifications for power saving or align its operations
+          with display panel power state.
+
 config QCOM_PDR_HELPERS
 	tristate
 	select QCOM_QMI_HELPERS
