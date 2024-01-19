@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2010,2015,2019 The Linux Foundation. All rights reserved.
  * Copyright (C) 2015 Linaro Ltd.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/arm-smccc.h>
@@ -44,7 +44,8 @@ struct qcom_scm {
 
 	u64 dload_mode_addr;
 };
-
+#if 0
+/* moved to include/linux/firmware/qcom/qcom_scm.h */
 struct qcom_scm_current_perm_info {
 	__le32 vmid;
 	__le32 perm;
@@ -57,7 +58,7 @@ struct qcom_scm_mem_map_info {
 	__le64 mem_addr;
 	__le64 mem_size;
 };
-
+#endif
 /**
  * struct qcom_scm_qseecom_resp - QSEECOM SCM call response.
  * @result:    Result or status of the SCM call. See &enum qcom_scm_qseecom_result.
@@ -1056,6 +1057,39 @@ int qcom_scm_assign_mem(phys_addr_t mem_addr, size_t mem_sz,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qcom_scm_assign_mem);
+
+/**
+ *  qcom_scm_assign_mem_regions() - Make a secure call to reassign memory
+ *                                   ownership of several memory regions
+ *  @mem_regions:    A buffer describing the set of memory regions that need to
+ *                   be reassigned
+ *  @mem_regions_sz: The size of the buffer describing the set of memory
+ *                   regions that need to be reassigned (in bytes)
+ *  @srcvms:         A buffer populated with he vmid(s) for the current set of
+ *                   owners
+ *  @src_sz:         The size of the src_vms buffer (in bytes)
+ *  @newvms:         A buffer populated with the new owners and corresponding
+ *                  permission flags.
+ *  @newvms_sz:      The size of the new_vms buffer (in bytes)
+ *
+ *  NOTE: It is up to the caller to ensure that the buffers that will be accessed
+ *  by the secure world are cache aligned, and have been flushed prior to
+ *  invoking this call.
+ *
+ *  Return negative errno on failure, 0 on success.
+ */
+int qcom_scm_assign_mem_regions(struct qcom_scm_mem_map_info *mem_regions,
+		size_t mem_regions_sz, u32 *srcvms,
+		size_t src_sz,
+		struct qcom_scm_current_perm_info *newvms,
+		size_t newvms_sz)
+{
+	return __qcom_scm_assign_mem(__scm ? __scm->dev : NULL,
+			virt_to_phys(mem_regions), mem_regions_sz,
+			virt_to_phys(srcvms), src_sz,
+			virt_to_phys(newvms), newvms_sz);
+}
+EXPORT_SYMBOL_GPL(qcom_scm_assign_mem_regions);
 
 /**
  * qcom_scm_ocmem_lock_available() - is OCMEM lock/unlock interface available
