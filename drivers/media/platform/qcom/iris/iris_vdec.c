@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <media/v4l2-event.h>
@@ -117,7 +117,7 @@ int vdec_enum_fmt(struct iris_inst *inst, struct v4l2_fmtdesc *f)
 		if (!array[f->index])
 			return -EINVAL;
 		f->pixelformat = v4l2_codec_from_driver(inst, array[f->index]);
-		f->flags = V4L2_FMT_FLAG_COMPRESSED;
+		f->flags = V4L2_FMT_FLAG_COMPRESSED | V4L2_FMT_FLAG_DYN_RESOLUTION;
 		strscpy(f->description, "codec", sizeof(f->description));
 	} else if (f->type == OUTPUT_MPLANE) {
 		u32 formats = inst->cap[PIX_FMTS].step_or_mask;
