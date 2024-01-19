@@ -2,7 +2,7 @@
 /*
  * qcm6490-addons device tree source
  *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -42,6 +42,9 @@
 		qcom_smcinvoke {
 			compatible = "qcom,smcinvoke";
 		};
+	};
+
+	pmic_glink: pmic-glink {
 	};
 
 	/* add overlay for smp2p nodes in sc7280.dtsi */
