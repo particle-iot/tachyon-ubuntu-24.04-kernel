@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -10,11 +10,21 @@
 
 #define DRV_NAME "msm-stub-codec"
 
+static const struct snd_soc_dapm_widget msm_stub_dapm_widgets[] = {
+	SND_SOC_DAPM_OUTPUT("STUB_AIF1_RX"),
+	SND_SOC_DAPM_INPUT("STUB_AIF1_TX"),
+};
+
+static const struct snd_soc_dapm_route msm_stub_dapm_routes[] = {
+	{"STUB_AIF1_RX", NULL, "STUB_AIF1_RX Playback"},
+	{"STUB_AIF1_TX Capture", NULL, "STUB_AIF1_TX"},
+};
+
 static struct snd_soc_dai_driver msm_stub_dais[] = {
 	{
-		.name = "msm-stub-rx",
+		.name = "msm-stub-aif1-rx",
 		.playback = {
-			.stream_name = "Playback",
+			.stream_name = "STUB_AIF1_RX Playback",
 			.channels_min = 1,
 			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_8000_48000,
@@ -25,9 +35,9 @@ static struct snd_soc_dai_driver msm_stub_dais[] = {
 		},
 	},
 	{
-		.name = "msm-stub-tx",
+		.name = "msm-stub-aif1-tx",
 		.capture = {
-			.stream_name = "Capture",
+			.stream_name = "STUB_AIF1_TX Capture",
 			.channels_min = 1,
 			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_8000_48000,
@@ -41,6 +51,10 @@ static struct snd_soc_dai_driver msm_stub_dais[] = {
 
 static const struct snd_soc_component_driver soc_msm_stub = {
 	.name = DRV_NAME,
+	.dapm_widgets = msm_stub_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(msm_stub_dapm_widgets),
+	.dapm_routes = msm_stub_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(msm_stub_dapm_routes),
 };
 
 static int msm_stub_dev_probe(struct platform_device *pdev)
