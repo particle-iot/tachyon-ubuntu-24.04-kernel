@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
 #include <linux/input.h>
@@ -159,12 +159,12 @@ static int qcm6490_snd_hw_free(struct snd_pcm_substream *substream)
 static const struct snd_soc_dapm_widget qcm6490_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
-	SND_SOC_DAPM_PINCTRL("AUDIO_OUT_PINCTRL", "audio_out_active", "audio_out_sleep"),
+	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
 };
 
 static const struct snd_soc_dapm_route qcm6490_dapm_routes[] = {
-	{"Playback", NULL, "AUDIO_OUT_PINCTRL"},
-	{"Capture", NULL, "AUDIO_OUT_PINCTRL"},
+	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
 };
 
 static const struct snd_soc_ops qcm6490_be_ops = {
