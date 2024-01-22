@@ -32,11 +32,11 @@
 		"VA DMIC5", "vdd-micb";
 
 	pinctrl-names = "default", "stub_aif1_active", "stub_aif1_sleep";
-	pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_mclk_sleep>, <&mi2s0_sclk_sleep>,
-		    <&mi2s0_ws_sleep>;
-	pinctrl-1 = <&mi2s0_data0>, <&mi2s0_mclk>, <&mi2s0_sclk>, <&mi2s0_ws>;
-	pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_mclk_sleep>, <&mi2s0_sclk_sleep>,
-		    <&mi2s0_ws_sleep>;
+	pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk_sleep>,
+		    <&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+	pinctrl-1 = <&mi2s0_data0>, <&mi2s0_data1>, <&mi2s0_mclk>, <&mi2s0_sclk>, <&mi2s0_ws>;
+	pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk_sleep>,
+		    <&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
 
 	mi2s-capture-dai-link {
 		link-name = "MI2S-LPAIF-TX-PRIMARY";
@@ -97,6 +97,14 @@
 		input-enable;
 	};
 
+	mi2s0_data1_sleep: mi2s0-data1-sleep {
+		pins = "gpio99";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
 	mi2s0_mclk_sleep: mi2s0-mclk-sleep {
 		pins = "gpio96";
 		function = "gpio";
@@ -120,4 +128,32 @@
 		bias-pull-down;
 		input-enable;
 	};
+};
+
+&mi2s0_data0 {
+	drive-strength = <8>;
+	bias-disable;
+};
+
+&mi2s0_data1 {
+	drive-strength = <8>;
+	bias-disable;
+};
+
+&mi2s0_mclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_sclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_ws {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
 };
