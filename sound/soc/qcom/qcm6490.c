@@ -102,34 +102,9 @@ static int qcm6490_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 static int qcm6490_snd_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params)
 {
-	unsigned int mi2s_clk_freq = 0;
-	unsigned int tdm_clk_freq = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct qcm6490_snd_data *pdata = snd_soc_card_get_drvdata(rtd->card);
-	struct snd_interval *rate = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
-	struct snd_interval *channels = hw_param_interval(params, SNDRV_PCM_HW_PARAM_CHANNELS);
-	struct snd_interval *bit_width =  hw_param_interval(params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS);
-
-	mi2s_clk_freq = rate->max * channels->max * bit_width->max;
-	tdm_clk_freq = rate->max * TDM_SLOTS_PER_FRAME * TDM_SLOT_WIDTH;
-
-	switch (cpu_dai->id) {
-	case PRIMARY_MI2S_RX:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_MI2S_IBIT, mi2s_clk_freq, 0);
-		break;
-	case PRIMARY_MI2S_TX:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_MI2S_IBIT, mi2s_clk_freq, 0);
-		break;
-	case PRIMARY_TDM_RX_0:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT, tdm_clk_freq, 0);
-		break;
-	case PRIMARY_TDM_TX_0:
-		snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_PRI_TDM_IBIT, tdm_clk_freq, 0);
-		break;
-	default:
-		break;
-	}
 
 	return qcom_snd_sdw_hw_params(substream, params, &pdata->sruntime[cpu_dai->id]);
 }
