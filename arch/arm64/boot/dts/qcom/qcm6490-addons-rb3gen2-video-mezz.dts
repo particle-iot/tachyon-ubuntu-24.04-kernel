@@ -31,7 +31,7 @@
 		"VA DMIC4", "vdd-micb",
 		"VA DMIC5", "vdd-micb";
 
-	pinctrl-names = "default", "audio_out_active", "audio_out_sleep";
+	pinctrl-names = "default", "stub_aif1_active", "stub_aif1_sleep";
 	pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_mclk_sleep>, <&mi2s0_sclk_sleep>,
 		    <&mi2s0_ws_sleep>;
 	pinctrl-1 = <&mi2s0_data0>, <&mi2s0_mclk>, <&mi2s0_sclk>, <&mi2s0_ws>;
