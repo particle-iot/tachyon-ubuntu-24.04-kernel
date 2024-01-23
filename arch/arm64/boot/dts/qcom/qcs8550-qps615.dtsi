@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+*/
+
+#include <dt-bindings/gpio/gpio.h>
+
+&pcie1 {
+	pcie1_rp: pcie1-rp {
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+	};
+};
+
+&pcie1_rp {
+	#address-cells = <5>;
+	#size-cells = <0>;
+
+	/* BDF 1.0.0 */
+	pcie1_bus1_dev0_fn0: pcie1-bus1-dev0-fn0 {
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+
+		/* BDF 2.3.0 */
+		pcie1_bus2_dev3_fn0: pcie1-bus2-dev3-fn0 {
+			reg = <0x1800 0x0 0x0 0x0 0x0>;
+			qps615_rlt8211_eth1,qps615-rlt8211-eth1@pcie1_rp {
+				reg = <0x100 0x0 0x0 0x0 0x0>;
+				qcom,not-need-pinctrl;
+				qcom,phy-port-interface = <2>;
+				/* phy intn_wol int */
+				qcom,phy-built-in-wol;
+
+				/* phy reset*/
+				qcom,phy-rst-gpio = <1>;
+				qcom,phy-rst-delay-us = <10000>;
+				qcom,phy-rst-settling-delay-us = <72000>;
+				qcom,phy-reverse-rst;
+
+				/* power enable*/
+				phy-supply = <&ethernet_phy_vreg>;
+			};
+		};
+	};
+};
+
+&soc {
+	ethernet_phy_vreg: phy-vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "ethernet_phy_vreg";
+		gpio = <&tlmm 106 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-enable-ramp-delay = <10000>;
+	};
+};
