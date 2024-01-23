@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "iris_core.h"
@@ -142,7 +142,7 @@ int iris_calc_bw_iris3(struct iris_inst *inst, struct bus_vote_data *data)
 			data->bus_bw = bw_tbl[i].bw_ddr;
 	}
 
-	dev_info(core->dev, "bus_bw %llu\n", data->bus_bw);
+	dev_dbg(core->dev, "bus_bw %llu\n", data->bus_bw);
 
 	return 0;
 }
