@@ -250,3 +250,28 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-qrd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-crd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-qcp.dtb
+
+# External overlays
+dtb-$(CONFIG_ARCH_QCOM) += qcm6490-addons-rb3-ovl.dtb
+qcm6490-addons-rb3-ovl-dtbs := \
+    qcm6490-addons-rb3.dtb \
+    qcm6490-graphics.dtbo \
+    qcm6490-wlan-rb3.dtbo \
+    qcm6490-display-rb3.dtbo \
+    qcm6490-bt.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcm6490-addons-rb3gen2-video-mezz-ovl.dtb
+qcm6490-addons-rb3gen2-video-mezz-ovl-dtbs := \
+    qcm6490-addons-rb3gen2-video-mezz.dtb \
+    qcm6490-graphics.dtbo \
+    qcm6490-camera-rb3.dtbo \
+    qcm6490-display-rb3.dtbo \
+    qcm6490-wlan-rb3.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcm6490-addons-rb3gen2-vision-mezz-ovl.dtb
+qcm6490-addons-rb3gen2-vision-mezz-ovl-dtbs := \
+    qcm6490-addons-rb3gen2-vision-mezz.dtb \
+    qcm6490-graphics.dtbo \
+    qcm6490-camera-rb3.dtbo \
+    qcm6490-display-rb3.dtbo \
+    qcm6490-wlan-rb3.dtbo
