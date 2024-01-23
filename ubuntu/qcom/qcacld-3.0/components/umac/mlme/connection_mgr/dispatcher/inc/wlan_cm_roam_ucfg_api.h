@@ -125,9 +125,11 @@ ucfg_cm_update_session_assoc_ie(struct wlan_objmgr_psoc *psoc,
 
 static inline void
 ucfg_cm_get_associated_ch_info(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
-			       struct connect_chan_info *chan_info)
+			       enum phy_ch_width scanned_ch_width,
+			       struct assoc_channel_info *assoc_chan_info)
 {
-	wlan_cm_get_associated_ch_info(psoc, vdev_id, chan_info);
+	wlan_cm_get_associated_ch_info(psoc, vdev_id, scanned_ch_width,
+				       assoc_chan_info);
 }
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
@@ -151,7 +153,7 @@ void ucfg_cm_roam_link_speed_update(struct wlan_objmgr_psoc *psoc,
 }
 
 /**
- * ucfg_mlme_is_linkspeed_roam_trigger_supported() - Get roam linkspeed check
+ * ucfg_cm_is_linkspeed_roam_trigger_supported() - Get roam linkspeed check
  * @psoc: pointer to psoc object
  *
  * Return: bool, true: Linkspeed check for low rssi roaming supported
@@ -403,6 +405,24 @@ ucfg_cm_exclude_rm_partial_scan_freq(struct wlan_objmgr_pdev *pdev,
 QDF_STATUS ucfg_cm_roam_full_scan_6ghz_on_disc(struct wlan_objmgr_pdev *pdev,
 					       uint8_t vdev_id,
 					       uint8_t param_value);
+
+/**
+ * ucfg_cm_set_roam_scan_high_rssi_offset() - Set the delta change in high RSSI
+ * at which roam scan is triggered in 2.4/5 GHz.
+ * @psoc: Pointer to psoc object
+ * @vdev_id: vdev id
+ * @param_value: Set the High RSSI delta for roam scan trigger
+ * 0    - Disable
+ * 1-16 - Set an offset value in this range
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+ucfg_cm_set_roam_scan_high_rssi_offset(struct wlan_objmgr_psoc *psoc,
+				       uint8_t vdev_id, uint8_t param_value)
+{
+	return cm_set_roam_scan_high_rssi_offset(psoc, vdev_id, param_value);
+}
 #else
 static inline void
 ucfg_cm_reset_key(struct wlan_objmgr_pdev *pdev, uint8_t vdev_id) {}
@@ -434,16 +454,24 @@ ucfg_cm_roam_full_scan_6ghz_on_disc(struct wlan_objmgr_pdev *pdev,
 {
 	return QDF_STATUS_SUCCESS;
 }
+
+static inline QDF_STATUS
+ucfg_cm_set_roam_scan_high_rssi_offset(struct wlan_objmgr_psoc *psoc,
+				       uint8_t vdev_id, uint8_t param_value)
+{
+	return QDF_STATUS_SUCCESS;
+}
 #endif /* WLAN_FEATURE_ROAM_OFFLOAD */
 
 #ifdef WLAN_VENDOR_HANDOFF_CONTROL
 /**
  * ucfg_cm_roam_send_vendor_handoff_param_req() - send vendor handoff params
  * command request to FW
- * @pdev: Pointer to pdev
+ * @psoc: Pointer to psoc
  * @vdev_id: vdev id
  * @param_id: Vendor Control Param ID from
  * enum WMI_ROAM_GET_VENDOR_CONTROL_PARAM_ID
+ * @vendor_handoff_context:
  *
  * Return: QDF_STATUS
  */
@@ -471,6 +499,7 @@ ucfg_cm_roam_is_vendor_handoff_control_enable(struct wlan_objmgr_psoc *psoc)
 
 /**
  * ucfg_cm_get_sae_auth_ta() - Get SAE auth tx address
+ * @pdev: pointer to pdev object
  * @vdev_id: Vdev id
  * @sae_auth_ta: SAE auth tx address
  *
@@ -484,7 +513,7 @@ ucfg_cm_get_sae_auth_ta(struct wlan_objmgr_pdev *pdev,
 	return wlan_cm_get_sae_auth_ta(pdev, vdev_id, sae_auth_ta);
 }
 
-/*
+/**
  * ucfg_cm_get_roam_intra_band() - get Intra band roaming
  * @psoc: pointer to psoc object
  * @val:  Infra band value
@@ -680,6 +709,54 @@ ucfg_cm_get_neighbor_scan_refresh_period(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS
 ucfg_cm_get_empty_scan_refresh_period_global(struct wlan_objmgr_psoc *psoc,
 					     uint16_t *roam_scan_period_global);
+
+#if defined(WLAN_FEATURE_ROAM_OFFLOAD) && defined(WLAN_FEATURE_ROAM_INFO_STATS)
+/**
+ * ucfg_cm_roam_stats_info_get() - get vdev roam stats info
+ *
+ * @vdev: pointer to vdev
+ * @roam_info: pointer to buffer to copy roam stats info
+ * @roam_num: pointer to valid roam stats num
+ *
+ * After use, roam_info must be released by using
+ * ucfg_cm_roam_stats_info_put()
+ *
+ * Return: QDF_STATUS
+ */
+static inline QDF_STATUS
+ucfg_cm_roam_stats_info_get(struct wlan_objmgr_vdev *vdev,
+			    struct enhance_roam_info **roam_info,
+			    uint32_t *roam_num)
+{
+	return wlan_cm_roam_stats_info_get(vdev, roam_info, roam_num);
+}
+
+/**
+ * ucfg_cm_roam_stats_info_put() - put vdev roam stats info
+ *
+ * @roam_info: pointer to buffer of roam stats info
+ *
+ * Return: QDF_STATUS
+ */
+static inline void
+ucfg_cm_roam_stats_info_put(struct enhance_roam_info *roam_info)
+{
+	qdf_mem_free(roam_info);
+}
+#else
+static inline QDF_STATUS
+ucfg_cm_roam_stats_info_get(struct wlan_objmgr_vdev *vdev,
+			    struct enhance_roam_info **roam_info,
+			    uint32_t *roam_num)
+{
+	return QDF_STATUS_E_NOSUPPORT;
+}
+
+static inline void
+ucfg_cm_roam_stats_info_put(struct enhance_roam_info *roam_info)
+{
+}
+#endif
 
 #ifdef WLAN_FEATURE_11BE_MLO
 /**

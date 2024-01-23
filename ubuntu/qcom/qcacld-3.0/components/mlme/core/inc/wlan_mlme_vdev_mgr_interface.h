@@ -346,9 +346,8 @@ QDF_STATUS mlme_set_tx_power(struct wlan_objmgr_vdev *vdev,
 /**
  * mlme_get_tx_power() - get tx power
  * @vdev: vdev pointer
- * @tx_power: tx power info
  *
- * Return: None
+ * Return: current tx power
  */
 int8_t mlme_get_tx_power(struct wlan_objmgr_vdev *vdev);
 
@@ -363,7 +362,7 @@ int8_t mlme_get_max_reg_power(struct wlan_objmgr_vdev *vdev);
 /**
  * mlme_set_max_reg_power() - set max reg power
  * @vdev: vdev pointer
- * @max_tx_power: max tx power to be set
+ * @max_reg_power: max regulatory power to be set
  *
  * Return: QDF_STATUS
  */
@@ -442,22 +441,20 @@ void mlme_set_notify_co_located_ap_update_rnr(struct wlan_objmgr_vdev *vdev,
 bool wlan_is_vdev_traffic_ll_ht(struct wlan_objmgr_vdev *vdev);
 
 /**
+ * mlme_get_vdev_wifi_std() - get the wifi std version for the vdev
+ * @vdev: vdev pointer
+ *
+ * Return: WMI_HOST_WIFI_STANDARD
+ */
+WMI_HOST_WIFI_STANDARD mlme_get_vdev_wifi_std(struct wlan_objmgr_vdev *vdev);
+
+/**
  * mlme_get_assoc_type() - get associate type
  * @vdev: vdev pointer
  *
  * Return: associate type
  */
 enum vdev_assoc_type  mlme_get_assoc_type(struct wlan_objmgr_vdev *vdev);
-
-/**
- * mlme_vdev_create_send() - function to send the vdev create to firmware
- * @vdev: vdev pointer
- *
- * Return: QDF_STATUS_SUCCESS when the command has been successfully sent
- * to firmware or QDF_STATUS_E_** when there is a failure in sending the command
- * to firmware.
- */
-QDF_STATUS mlme_vdev_create_send(struct wlan_objmgr_vdev *vdev);
 
 /**
  * mlme_vdev_self_peer_create() - function to send the vdev create self peer
@@ -478,10 +475,11 @@ QDF_STATUS mlme_vdev_self_peer_create(struct wlan_objmgr_vdev *vdev);
 QDF_STATUS mlme_vdev_self_peer_delete(struct scheduler_msg *self_peer_del_msg);
 
 /**
- * mlme_vdev_uses_self_peer() - send vdev del resp to Upper layer
- * @vdev_type: params of del vdev response
+ * mlme_vdev_uses_self_peer() - does vdev use self peer?
+ * @vdev_type: vdev type
+ * @vdev_subtype: vdev subtype
  *
- * Return: boolean
+ * Return: true if the vdev type/subtype uses the self peer
  */
 bool mlme_vdev_uses_self_peer(uint32_t vdev_type, uint32_t vdev_subtype);
 
@@ -575,4 +573,49 @@ wlan_handle_emlsr_sta_concurrency(struct wlan_objmgr_psoc *psoc,
 {
 }
 #endif
+
+#ifdef WLAN_FEATURE_LL_LT_SAP
+/**
+ * wlan_ll_sap_sort_channel_list() - Sort channel list
+ * @vdev_id: Vdev Id
+ * @list: Pointer to list
+ * @ch_info: Pointer to ch_info
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS
+wlan_ll_sap_sort_channel_list(uint8_t vdev_id, qdf_list_t *list,
+			      struct sap_sel_ch_info *ch_info);
+
+/**
+ * wlan_ll_sap_free_chan_info() - API to free allocated memory
+ * @ch_param: pointer to sap_sel_ch_info structure
+ *
+ * Return: None
+ */
+void wlan_ll_sap_free_chan_info(struct sap_sel_ch_info *ch_param);
+
+/**
+ * wlan_ll_sap_freq_present_in_pcl() - API to check whether given
+ * frequency is present in PCL or not
+ * @pcl: pcl list
+ * @freq: Frequency to check in PCL list
+ *
+ * Return: True/False
+ */
+bool wlan_ll_sap_freq_present_in_pcl(struct policy_mgr_pcl_list *pcl,
+				     qdf_freq_t freq);
+#endif
+
+/**
+ * wlan_sap_get_user_config_acs_ch_list: Get user configured channel list
+ * @vdev_id: Vdev Id
+ * @filter: Filter to apply to get scan result
+ *
+ * Return: None
+ *
+ */
+void
+wlan_sap_get_user_config_acs_ch_list(uint8_t vdev_id,
+				     struct scan_filter *filter);
 #endif

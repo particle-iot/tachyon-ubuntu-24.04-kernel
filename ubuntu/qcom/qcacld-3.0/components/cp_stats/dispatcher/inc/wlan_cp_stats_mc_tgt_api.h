@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -85,18 +85,6 @@ QDF_STATUS
 tgt_mc_cp_stats_process_big_data_stats_event(
 				struct wlan_objmgr_psoc *psoc,
 				struct big_data_stats_event *event);
-
-/**
- * tgt_send_cp_big_data_stats_req(): API to send big data stats request
- * to lmac
- * @psoc: pointer to psoc object
- * @req: pointer to request info
- *
- * Return: status of operation
- */
-QDF_STATUS tgt_send_cp_big_data_stats_req(struct wlan_objmgr_psoc *psoc,
-					  struct request_info *req);
-
 #endif
 
 /**
@@ -110,6 +98,18 @@ QDF_STATUS tgt_send_cp_big_data_stats_req(struct wlan_objmgr_psoc *psoc,
 QDF_STATUS tgt_send_mc_cp_stats_req(struct wlan_objmgr_psoc *psoc,
 				    enum stats_req_type type,
 				    struct request_info *req);
+
+/**
+ * tgt_set_pdev_stats_update_period(): API to set pdev stats update
+ * period to FW
+ * @psoc: pointer to psoc object
+ * @pdev_id: pdev id
+ * @val: pdev stats update period, 0: disabled periodical stats report.
+ *
+ * Return: status of operation
+ */
+QDF_STATUS tgt_set_pdev_stats_update_period(struct wlan_objmgr_psoc *psoc,
+					    uint8_t pdev_id, uint32_t val);
 
 /**
  * tgt_mc_cp_stats_inc_wake_lock_stats() : API to increment wake lock stats

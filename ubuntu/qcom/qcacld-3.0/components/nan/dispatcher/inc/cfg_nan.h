@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -21,7 +21,6 @@
 #define __NAN_CFG_H__
 
 /**
- *
  * DOC: nan_cfg.h
  *
  * NAN feature INI configuration parameter definitions
@@ -253,7 +252,7 @@
  *
  * This parameter helps to enable/disable a particular feature config by setting
  * corresponding bit and send to firmware through the VDEV param
- * WMI_VDEV_PARAM_ENABLE_DISABLE_NAN_CONFIG_FEATURES
+ * wmi_vdev_param_enable_disable_nan_config_features
  * Acceptable values for this:
  * BIT(0): Allow DW configuration from framework in sync role.
  *	   If this is not set, firmware shall follow the spec/default behavior.
@@ -296,6 +295,28 @@
 					0, \
 					"Disable NAN Support in 6GHz")
 
+/*
+ * <ini>
+ * g_nan_enable_eht_cap- enable/disable NAN EHT CAP
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to enable/disable NAN EHT capability
+ *
+ * Related: None
+ *
+ * Supported Feature: NAN
+ *
+ * Usage: Internal/External
+ *
+ * </ini>
+ */
+#define CFG_NAN_ENABLE_EHT_CAP CFG_INI_BOOL("g_nan_enable_eht_cap", \
+					     0, \
+					     "Enable NAN EHT CAP")
+
+
 #ifdef WLAN_FEATURE_NAN
 #define CFG_NAN_DISC CFG(CFG_NAN_ENABLE) \
 			CFG(CFG_DISABLE_6G_NAN) \
@@ -314,6 +335,7 @@
 			CFG_NAN_DP \
 			CFG(CFG_NDP_MAX_SESSIONS) \
 			CFG(CFG_NDI_MAX_SUPPORT) \
-			CFG(CFG_NAN_FEATURE_CONFIG)
+			CFG(CFG_NAN_FEATURE_CONFIG) \
+			CFG(CFG_NAN_ENABLE_EHT_CAP)
 
 #endif

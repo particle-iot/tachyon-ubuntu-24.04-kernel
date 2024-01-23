@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -252,6 +252,8 @@ static struct log_msg gplog_msg[MAX_LOGMSG_COUNT];
 
 static inline QDF_STATUS allocate_log_msg_buffer(void)
 {
+	qdf_minidump_log(&gwlan_logging, sizeof(gwlan_logging),
+			 "gwlan_logging");
 	qdf_minidump_log(gplog_msg, sizeof(gplog_msg), "wlan_logs");
 	qdf_ssr_driver_dump_register_region("gwlan_logging", &gwlan_logging,
 					    sizeof(gwlan_logging));
@@ -265,6 +267,8 @@ static inline void free_log_msg_buffer(void)
 	qdf_ssr_driver_dump_unregister_region("wlan_logs");
 	qdf_ssr_driver_dump_unregister_region("gwlan_logging");
 	qdf_minidump_remove(gplog_msg, sizeof(gplog_msg), "wlan_logs");
+	qdf_minidump_remove(&gwlan_logging, sizeof(gwlan_logging),
+			    "gwlan_logging");
 }
 #endif
 
@@ -679,6 +683,7 @@ static int send_filled_buffers_to_user(void)
 	static int nlmsg_seq;
 	unsigned long flags;
 	static int rate_limit;
+	void *out;
 
 	while (!list_empty(&gwlan_logging.filled_list)
 	       && !gwlan_logging.exit) {
@@ -725,7 +730,12 @@ static int send_filled_buffers_to_user(void)
 
 		wnl = (tAniNlHdr *) nlh;
 		wnl->radio = plog_msg->radio;
-		memcpy(&wnl->wmsg, plog_msg->logbuf,
+		/* kernel FORTIFY_SOURCE may warn when multiple struct
+		 * are copied using memcpy. So, to avoid, assign a
+		 * void pointer to the struct and copy using memcpy
+		 */
+		out = &wnl->wmsg;
+		memcpy(out, plog_msg->logbuf,
 		       plog_msg->filled_length + sizeof(tAniHdr));
 
 		spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
@@ -797,7 +807,7 @@ static void send_flush_completion_to_user(uint8_t ring_id)
 	wlan_report_log_completion(is_fatal, indicator, reason_code, ring_id);
 
 	if (recovery_needed)
-		cds_trigger_recovery(QDF_REASON_UNSPECIFIED);
+		cds_trigger_recovery(QDF_FLUSH_LOGS);
 }
 #endif
 

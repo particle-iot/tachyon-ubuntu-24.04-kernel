@@ -111,7 +111,7 @@ qdf_ssr_driver_dump_register_region(char *region_name, void *region_buffer,
 
 	entry = qdf_ssr_driver_dump_find_next_free_entry();
 	if (!entry) {
-		qdf_err("too many entries: %zd, cannot insert %s",
+		qdf_err("too many entries: %d, cannot insert %s",
 			num_of_regions_registered, region_name);
 		status = QDF_STATUS_E_NOMEM;
 		goto ret;
@@ -195,7 +195,7 @@ qdf_ssr_driver_dump_retrieve_regions(qdf_ssr_driver_dump_entry
 		}
 	}
 	if (input_index != num_of_regions_registered) {
-		qdf_err("num entries mismatch index:%zd num reg registered:%zd",
+		qdf_err("num entries mismatch index:%d num reg registered:%d",
 			input_index, num_of_regions_registered);
 		status = QDF_STATUS_E_INVAL;
 		goto ret;

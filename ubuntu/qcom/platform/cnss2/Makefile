@@ -22,5 +22,11 @@ cnss2-y += debug.o
 cnss2-y += pci.o
 cnss2-y += power.o
 cnss2-y += genl.o
-cnss2-$(CONFIG_PCI_MSM) += pci_qcom.o
+
+ifeq ($(CONFIG_PCI_MSM), y)
+cnss2-y += pci_qcom.o
+else
+cnss2-y += pci_upstream.o
+endif
+
 cnss2-$(CONFIG_CNSS2_QMI) += qmi.o coexistence_service_v01.o ip_multimedia_subsystem_private_service_v01.o

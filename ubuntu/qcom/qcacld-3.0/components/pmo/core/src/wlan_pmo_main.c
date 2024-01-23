@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021,2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -154,7 +154,7 @@ static void wlan_pmo_runtime_pm_init_cfg(struct wlan_objmgr_psoc *psoc,
 }
 #endif
 
-#if FEATURE_WLAN_RA_FILTERING
+#ifdef FEATURE_WLAN_RA_FILTERING
 static void wlan_pmo_ra_filtering_init_cfg(struct wlan_objmgr_psoc *psoc,
 					   struct pmo_psoc_cfg *psoc_cfg)
 {
@@ -281,6 +281,8 @@ static void wlan_pmo_init_cfg(struct wlan_objmgr_psoc *psoc,
 	psoc_cfg->enable_sap_suspend = cfg_get(psoc, CFG_ENABLE_SAP_SUSPEND);
 	psoc_cfg->wow_data_inactivity_timeout =
 			cfg_get(psoc, CFG_PMO_WOW_DATA_INACTIVITY_TIMEOUT);
+	psoc_cfg->wow_spec_wake_interval =
+			cfg_get(psoc, CFG_PMO_WOW_SPEC_WAKE_INTERVAL);
 	psoc_cfg->active_uc_apf_mode =
 			cfg_get(psoc, CFG_ACTIVE_UC_APF_MODE);
 	psoc_cfg->active_mc_bc_apf_mode =
@@ -292,6 +294,18 @@ static void wlan_pmo_init_cfg(struct wlan_objmgr_psoc *psoc,
 	psoc_cfg->disconnect_sap_tdls_in_wow =
 			cfg_get(psoc, CFG_DISCONNECT_SAP_TDLS_IN_WOW);
 	wlan_pmo_get_icmp_offload_enable_cfg(psoc, psoc_cfg);
+
+	psoc_cfg->enable_ssr_on_page_fault =
+				cfg_get(psoc,
+					CFG_ENABLE_SSR_ON_PAGEFAULT);
+	psoc_cfg->max_pagefault_wakeups_for_ssr =
+				cfg_get(psoc,
+					CFG_MAX_PAGEFAULT_WAKEUPS_FOR_SSR);
+	psoc_cfg->interval_for_pagefault_wakeup_counts =
+			cfg_get(psoc,
+				CFG_INTERVAL_FOR_PAGEFAULT_WAKEUP_COUNT);
+	psoc_cfg->ssr_frequency_on_pagefault =
+			cfg_get(psoc, CFG_SSR_FREQUENCY_ON_PAGEFAULT);
 }
 
 QDF_STATUS pmo_psoc_open(struct wlan_objmgr_psoc *psoc)
@@ -489,6 +503,47 @@ uint8_t pmo_core_psoc_get_txrx_handle(struct wlan_objmgr_psoc *psoc)
 	return txrx_pdev_id;
 }
 
+bool pmo_enable_ssr_on_page_fault(struct wlan_objmgr_psoc *psoc)
+{
+	struct pmo_psoc_priv_obj *pmo_psoc_ctx = pmo_psoc_get_priv(psoc);
+
+	if (!pmo_psoc_ctx)
+		return 0;
+
+	return pmo_psoc_ctx->psoc_cfg.enable_ssr_on_page_fault;
+}
+
+uint8_t pmo_get_max_pagefault_wakeups_for_ssr(struct wlan_objmgr_psoc *psoc)
+{
+	struct pmo_psoc_priv_obj *pmo_psoc_ctx = pmo_psoc_get_priv(psoc);
+
+	if (!pmo_psoc_ctx)
+		return 0;
+
+	return pmo_psoc_ctx->psoc_cfg.max_pagefault_wakeups_for_ssr;
+}
+
+uint32_t
+pmo_get_interval_for_pagefault_wakeup_counts(struct wlan_objmgr_psoc *psoc)
+{
+	struct pmo_psoc_priv_obj *pmo_psoc_ctx = pmo_psoc_get_priv(psoc);
+
+	if (!pmo_psoc_ctx)
+		return 0;
+
+	return pmo_psoc_ctx->psoc_cfg.interval_for_pagefault_wakeup_counts;
+}
+
+uint32_t pmo_get_ssr_frequency_on_pagefault(struct wlan_objmgr_psoc *psoc)
+{
+	struct pmo_psoc_priv_obj *pmo_psoc_ctx = pmo_psoc_get_priv(psoc);
+
+	if (!pmo_psoc_ctx)
+		return 0;
+
+	return pmo_psoc_ctx->psoc_cfg.ssr_frequency_on_pagefault;
+}
+
 QDF_STATUS pmo_get_vdev_bridge_addr(struct wlan_objmgr_vdev *vdev,
 				    struct qdf_mac_addr *bridgeaddr)
 {
@@ -517,8 +572,25 @@ QDF_STATUS pmo_set_vdev_bridge_addr(struct wlan_objmgr_vdev *vdev,
 	}
 
 	vdev_ctx = pmo_vdev_get_priv(vdev);
-	qdf_mem_copy(vdev_ctx->bridgeaddr, bridgeaddr->bytes,
-		     QDF_MAC_ADDR_SIZE);
+	qdf_mem_copy(vdev_ctx->bridgeaddr, bridgeaddr->bytes, QDF_MAC_ADDR_SIZE);
+
+	return QDF_STATUS_SUCCESS;
+}
+
+QDF_STATUS pmo_core_get_listen_interval(struct wlan_objmgr_vdev *vdev,
+					uint32_t *listen_interval)
+{
+	struct pmo_vdev_priv_obj *vdev_ctx;
+
+	if (!vdev || !listen_interval) {
+		pmo_err("vdev NULL or NULL ptr");
+		return QDF_STATUS_E_NULL_VALUE;
+	}
+
+	vdev_ctx = pmo_vdev_get_priv(vdev);
+	qdf_spin_lock_bh(&vdev_ctx->pmo_vdev_lock);
+	*listen_interval = vdev_ctx->dyn_listen_interval;
+	qdf_spin_unlock_bh(&vdev_ctx->pmo_vdev_lock);
 
 	return QDF_STATUS_SUCCESS;
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -9,7 +9,9 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
+#ifdef CONFIG_CNSS_PINCTRL_MSM
 #include <linux/pinctrl/qcom-pinctrl.h>
+#endif
 #include <linux/regulator/consumer.h>
 #if IS_ENABLED(CONFIG_QCOM_COMMAND_DB)
 #include <soc/qcom/cmd-db.h>
@@ -18,9 +20,7 @@
 #include "main.h"
 #include "debug.h"
 #include "bus.h"
-#if IS_ENABLED(CONFIG_MSM_QMP)
 #include <linux/soc/qcom/qcom_aoss.h>
-#endif
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
 static struct cnss_vreg_cfg cnss_vreg_list[] = {
@@ -781,13 +781,52 @@ static int cnss_clk_off(struct cnss_plat_data *plat_priv,
 	return 0;
 }
 
+#ifdef CONFIG_CNSS_PINCTRL_MSM
+static void cnss_set_wakeup_cap_for_gpios(struct device *dev)
+{
+	int ret;
+	u32 gpio_id, i;
+	int gpio_id_n;
+
+	/* Find out and configure all those GPIOs which need to be setup
+	 * for interrupt wakeup capable
+	 */
+	gpio_id_n = of_property_count_u32_elems(dev->of_node, "mpm_wake_set_gpios");
+	cnss_pr_dbg("Num of GPIOs to be setup for interrupt wakeup capable: %d\n",
+		    gpio_id_n);
+	if (gpio_id_n <= 0)
+		return;
+
+	for (i = 0; i < gpio_id_n; i++) {
+		ret = of_property_read_u32_index(dev->of_node,
+						 "mpm_wake_set_gpios",
+						 i, &gpio_id);
+		if (ret) {
+			cnss_pr_err("Failed to read gpio_id at index: %d\n", i);
+			continue;
+		}
+
+		ret = msm_gpio_mpm_wake_set(gpio_id, 1);
+		if (ret < 0) {
+			cnss_pr_err("Failed to setup gpio_id: %d as interrupt wakeup capable, ret: %d\n",
+				    gpio_id, ret);
+		} else {
+			cnss_pr_dbg("gpio_id: %d successfully setup for interrupt wakeup capable\n",
+				    gpio_id);
+		}
+	}
+}
+#else
+static inline void cnss_set_wakeup_cap_for_gpios(struct device *dev)
+{
+}
+#endif
+
 int cnss_get_pinctrl(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
 	struct device *dev;
 	struct cnss_pinctrl_info *pinctrl_info;
-	u32 gpio_id, i;
-	int gpio_id_n;
 
 	dev = &plat_priv->plat_dev->dev;
 	pinctrl_info = &plat_priv->pinctrl_info;
@@ -884,35 +923,7 @@ int cnss_get_pinctrl(struct cnss_plat_data *plat_priv)
 		pinctrl_info->sw_ctrl_gpio = -EINVAL;
 	}
 
-	/* Find out and configure all those GPIOs which need to be setup
-	 * for interrupt wakeup capable
-	 */
-	gpio_id_n = of_property_count_u32_elems(dev->of_node, "mpm_wake_set_gpios");
-	if (gpio_id_n > 0) {
-		cnss_pr_dbg("Num of GPIOs to be setup for interrupt wakeup capable: %d\n",
-			    gpio_id_n);
-		for (i = 0; i < gpio_id_n; i++) {
-			ret = of_property_read_u32_index(dev->of_node,
-							 "mpm_wake_set_gpios",
-							 i, &gpio_id);
-			if (ret) {
-				cnss_pr_err("Failed to read gpio_id at index: %d\n", i);
-				continue;
-			}
-
-			ret = msm_gpio_mpm_wake_set(gpio_id, 1);
-			if (ret < 0) {
-				cnss_pr_err("Failed to setup gpio_id: %d as interrupt wakeup capable, ret: %d\n",
-					    ret);
-			} else {
-				cnss_pr_dbg("gpio_id: %d successfully setup for interrupt wakeup capable\n",
-					    gpio_id);
-			}
-		}
-	} else {
-		cnss_pr_dbg("No GPIOs to be setup for interrupt wakeup capable\n");
-	}
-
+	cnss_set_wakeup_cap_for_gpios(dev);
 	return 0;
 out:
 	return ret;
@@ -1324,6 +1335,157 @@ out:
 
 #if IS_ENABLED(CONFIG_MSM_QMP)
 /**
+ * cnss_mbox_init: Initialize mbox interface
+ * @plat_priv: Pointer to cnss platform data
+ *
+ * Try to get property 'mboxes' from device tree and
+ * initialize the interface for AOP configuration.
+ *
+ * Return: 0 for success, otherwise error code
+ */
+static int cnss_mbox_init(struct cnss_plat_data *plat_priv)
+{
+	struct mbox_client *mbox = &plat_priv->mbox_client_data;
+	struct mbox_chan *chan;
+	int ret = 0;
+
+	plat_priv->mbox_chan = NULL;
+	mbox->dev = &plat_priv->plat_dev->dev;
+	mbox->tx_block = true;
+	mbox->tx_tout = CNSS_MBOX_TIMEOUT_MS;
+	mbox->knows_txdone = false;
+	chan = mbox_request_channel(mbox, 0);
+	if (IS_ERR(chan)) {
+		ret = PTR_ERR(chan);
+		cnss_pr_dbg("Failed to get mbox channel[%d]\n", ret);
+	} else {
+		plat_priv->mbox_chan = chan;
+		cnss_pr_dbg("Mbox channel initialized\n");
+	}
+
+	return ret;
+}
+
+/**
+ * cnss_mbox_deinit: De-Initialize mbox interface
+ * @plat_priv: Pointer to cnss platform data
+ *
+ * Return: None
+ */
+static void cnss_mbox_deinit(struct cnss_plat_data *plat_priv)
+{
+	if (!plat_priv->mbox_chan) {
+		mbox_free_channel(plat_priv->mbox_chan);
+		plat_priv->mbox_chan = NULL;
+	}
+}
+
+/**
+ * cnss_mbox_send_msg: Send json message to AOP using mbox channel
+ * @plat_priv: Pointer to cnss platform data
+ * @msg: String in json format
+ *
+ * Return: 0 for success, otherwise error code
+ */
+static int
+cnss_mbox_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
+{
+	struct qmp_pkt pkt;
+	int ret = 0;
+
+	if (!plat_priv->mbox_chan)
+		return -ENODEV;
+
+	cnss_pr_dbg("Sending AOP Mbox msg: %s\n", mbox_msg);
+	pkt.size = CNSS_MBOX_MSG_MAX_LEN;
+	pkt.data = mbox_msg;
+	ret = mbox_send_message(plat_priv->mbox_chan, &pkt);
+	if (ret < 0)
+		cnss_pr_err("Failed to send AOP mbox msg: %s\n", mbox_msg);
+
+	return ret;
+}
+#else
+static inline int cnss_mbox_init(struct cnss_plat_data *plat_priv)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline void cnss_mbox_deinit(struct cnss_plat_data *plat_priv)
+{
+}
+
+static inline int
+cnss_mbox_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
+{
+	return -EOPNOTSUPP;
+}
+#endif
+
+/**
+ * cnss_qmp_init: Initialize direct QMP interface
+ * @plat_priv: Pointer to cnss platform data
+ *
+ * Try to get property 'qcom,qmp' from device tree and
+ * initialize the interface for AOP configuration.
+ *
+ * Return: 0 for success, otherwise error code
+ */
+static int cnss_qmp_init(struct cnss_plat_data *plat_priv)
+{
+	struct qmp *qmp;
+
+	plat_priv->qmp = NULL;
+	qmp = qmp_get(&plat_priv->plat_dev->dev);
+	if (IS_ERR(qmp)) {
+		cnss_pr_err("Failed to get qmp: %d\n",
+			    PTR_ERR(qmp));
+		return PTR_ERR(qmp);
+	}
+
+	plat_priv->qmp = qmp;
+	cnss_pr_dbg("QMP initialized\n");
+	return 0;
+}
+
+/**
+ * cnss_qmp_deinit: De-Initialize direct QMP interface
+ * @plat_priv: Pointer to cnss platform data
+ *
+ * Return: None
+ */
+static void cnss_qmp_deinit(struct cnss_plat_data *plat_priv)
+{
+	if (plat_priv->qmp) {
+		qmp_put(plat_priv->qmp);
+		plat_priv->qmp = NULL;
+	}
+}
+
+/**
+ * cnss_qmp_send_msg: Send json message to AOP using direct QMP
+ * @plat_priv: Pointer to cnss platform data
+ * @msg: String in json format
+ *
+ * Return: 0 for success, otherwise error code
+ */
+static int
+cnss_qmp_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
+{
+	int ret;
+
+	if (!plat_priv->qmp)
+		return -ENODEV;
+
+	cnss_pr_dbg("Sending AOP QMP msg: %s\n", mbox_msg);
+	ret = qmp_send(plat_priv->qmp, mbox_msg, CNSS_MBOX_MSG_MAX_LEN);
+	if (ret)
+		cnss_pr_err("Failed to send AOP QMP msg: %d[%s]\n", ret, mbox_msg);
+
+	return ret;
+}
+
+/**
  * cnss_aop_interface_init: Initialize AOP interface: either mbox channel or direct QMP
  * @plat_priv: Pointer to cnss platform data
  *
@@ -1334,37 +1496,17 @@ out:
  */
 int cnss_aop_interface_init(struct cnss_plat_data *plat_priv)
 {
-	struct mbox_client *mbox = &plat_priv->mbox_client_data;
-	struct mbox_chan *chan;
 	int ret;
-
-	plat_priv->mbox_chan = NULL;
-	plat_priv->qmp = NULL;
-	plat_priv->use_direct_qmp = false;
-
-	mbox->dev = &plat_priv->plat_dev->dev;
-	mbox->tx_block = true;
-	mbox->tx_tout = CNSS_MBOX_TIMEOUT_MS;
-	mbox->knows_txdone = false;
 
 	/* First try to get mbox channel, if it fails then try qmp_get
 	 * In device tree file there should be either mboxes or qmp,
 	 * cannot have both properties at the same time.
 	 */
-	chan = mbox_request_channel(mbox, 0);
-	if (IS_ERR(chan)) {
-		cnss_pr_dbg("Failed to get mbox channel, try qmp get\n");
-		plat_priv->qmp = qmp_get(&plat_priv->plat_dev->dev);
-		if (IS_ERR(plat_priv->qmp)) {
-			cnss_pr_err("Failed to get qmp\n");
-			return PTR_ERR(plat_priv->qmp);
-		} else {
-			plat_priv->use_direct_qmp = true;
-			cnss_pr_dbg("QMP initialized\n");
-		}
-	} else {
-		plat_priv->mbox_chan = chan;
-		cnss_pr_dbg("Mbox channel initialized\n");
+	ret = cnss_mbox_init(plat_priv);
+	if (ret) {
+		ret = cnss_qmp_init(plat_priv);
+		if (ret)
+			return ret;
 	}
 
 	ret = cnss_aop_pdc_reconfig(plat_priv);
@@ -1384,13 +1526,8 @@ int cnss_aop_interface_init(struct cnss_plat_data *plat_priv)
  */
 void cnss_aop_interface_deinit(struct cnss_plat_data *plat_priv)
 {
-	if (!IS_ERR_OR_NULL(plat_priv->mbox_chan))
-		mbox_free_channel(plat_priv->mbox_chan);
-
-	if (!IS_ERR_OR_NULL(plat_priv->qmp)) {
-		qmp_put(plat_priv->qmp);
-		plat_priv->use_direct_qmp = false;
-	}
+	cnss_mbox_deinit(plat_priv);
+	cnss_qmp_deinit(plat_priv);
 }
 
 /**
@@ -1409,29 +1546,20 @@ void cnss_aop_interface_deinit(struct cnss_plat_data *plat_priv)
  */
 int cnss_aop_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
 {
-	struct qmp_pkt pkt;
-	int ret = 0;
+	int ret;
 
+	ret = cnss_mbox_send_msg(plat_priv, mbox_msg);
+	if (ret)
+		ret = cnss_qmp_send_msg(plat_priv, mbox_msg);
 
-	if (plat_priv->use_direct_qmp) {
-		cnss_pr_dbg("Sending AOP QMP msg: %s\n", mbox_msg);
-		ret = qmp_send(plat_priv->qmp, mbox_msg, CNSS_MBOX_MSG_MAX_LEN);
-		if (ret < 0)
-			cnss_pr_err("Failed to send AOP QMP msg: %s\n", mbox_msg);
-		else
-			ret = 0;
-	} else {
-		cnss_pr_dbg("Sending AOP Mbox msg: %s\n", mbox_msg);
-		pkt.size = CNSS_MBOX_MSG_MAX_LEN;
-		pkt.data = mbox_msg;
-		ret = mbox_send_message(plat_priv->mbox_chan, &pkt);
-		if (ret < 0)
-			cnss_pr_err("Failed to send AOP mbox msg: %s\n", mbox_msg);
-		else
-			ret = 0;
-	}
-
+	if (ret)
+		cnss_pr_err("Failed to send AOP msg: %d\n", ret);
 	return ret;
+}
+
+static inline bool cnss_aop_interface_ready(struct cnss_plat_data *plat_priv)
+{
+	return (plat_priv->mbox_chan || plat_priv->qmp);
 }
 
 /* cnss_pdc_reconfig: Send PDC init table as configured in DT for wlan device */
@@ -1626,42 +1754,6 @@ end:
 	return ret;
 }
 
-#else
-int cnss_aop_interface_init(struct cnss_plat_data *plat_priv)
-{
-	return 0;
-}
-
-void cnss_aop_interface_deinit(struct cnss_plat_data *plat_priv)
-{
-}
-
-int cnss_aop_send_msg(struct cnss_plat_data *plat_priv, char *msg)
-{
-	return 0;
-}
-
-int cnss_aop_pdc_reconfig(struct cnss_plat_data *plat_priv)
-{
-	return 0;
-}
-
-static int cnss_aop_set_vreg_param(struct cnss_plat_data *plat_priv,
-				   const char *vreg_name,
-				   enum cnss_aop_vreg_param param,
-				   enum cnss_aop_tcs_seq_param seq_param,
-				   int val)
-{
-	return 0;
-}
-
-int cnss_aop_ol_cpr_cfg_setup(struct cnss_plat_data *plat_priv,
-			      struct wlfw_pmu_cfg_v01 *fw_pmu_cfg)
-{
-	return 0;
-}
-#endif
-
 void cnss_power_misc_params_init(struct cnss_plat_data *plat_priv)
 {
 	struct device *dev = &plat_priv->plat_dev->dev;
@@ -1784,8 +1876,8 @@ int cnss_update_cpr_info(struct cnss_plat_data *plat_priv)
 		return -EINVAL;
 
 	if (!plat_priv->vreg_ol_cpr ||
-	    (!plat_priv->mbox_chan && !plat_priv->qmp)) {
-		cnss_pr_dbg("Mbox channel / QMP / OL CPR Vreg not configured\n");
+	    !cnss_aop_interface_ready(plat_priv)) {
+		cnss_pr_dbg("AOP interface / OL CPR Vreg not configured\n");
 	} else {
 		return cnss_aop_set_vreg_param(plat_priv,
 					       plat_priv->vreg_ol_cpr,
@@ -1865,8 +1957,8 @@ int cnss_enable_int_pow_amp_vreg(struct cnss_plat_data *plat_priv)
 	}
 
 	if (!plat_priv->vreg_ipa ||
-	    (!plat_priv->mbox_chan && !plat_priv->qmp)) {
-		cnss_pr_dbg("Mbox channel / QMP / IPA Vreg not configured\n");
+	    !cnss_aop_interface_ready(plat_priv)) {
+		cnss_pr_dbg("AOP interface / IPA Vreg not configured\n");
 	} else {
 		ret = cnss_aop_set_vreg_param(plat_priv,
 					      plat_priv->vreg_ipa,

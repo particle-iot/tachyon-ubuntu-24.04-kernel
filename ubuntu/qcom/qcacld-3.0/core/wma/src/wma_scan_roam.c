@@ -297,14 +297,17 @@ cm_handle_auth_offload(struct auth_offload_event *auth_event)
 				auth_event->vdev_id,
 				auth_event->ta);
 
-	status = wlan_cm_update_offload_ssid_from_candidate(mac_ctx->pdev,
-				auth_event->vdev_id, &auth_event->ap_bssid);
+	wlan_cm_store_mlo_roam_peer_address(mac_ctx->pdev, auth_event);
+
+	status =
+		wlan_cm_update_offload_ssid_from_candidate(mac_ctx->pdev,
+							   auth_event->vdev_id,
+							   &auth_event->ap_bssid);
+
 	if (QDF_IS_STATUS_ERROR(status)) {
 		wma_err_rl("Set offload ssid failed %d", status);
 		return QDF_STATUS_E_FAILURE;
 	}
-
-	wlan_cm_store_mlo_roam_peer_address(mac_ctx->pdev, auth_event);
 
 	status = wma->csr_roam_auth_event_handle_cb(mac_ctx, auth_event->vdev_id,
 						    auth_event->ap_bssid,
@@ -485,6 +488,12 @@ void wma_process_set_pdev_vht_ie_req(tp_wma_handle wma,
 		wmi_buf_free(buf);
 }
 
+#define MAX_VDEV_ROAM_SCAN_PARAMS 2
+/* params being sent:
+ * wmi_vdev_param_bmiss_first_bcnt
+ * wmi_vdev_param_bmiss_final_bcnt
+ */
+
 /**
  * wma_roam_scan_bmiss_cnt() - set bmiss count to fw
  * @wma_handle: wma handle
@@ -500,28 +509,33 @@ QDF_STATUS wma_roam_scan_bmiss_cnt(tp_wma_handle wma_handle,
 				   A_INT32 first_bcnt,
 				   A_UINT32 final_bcnt, uint32_t vdev_id)
 {
-	QDF_STATUS status;
+	QDF_STATUS status = QDF_STATUS_SUCCESS;
+	struct dev_set_param setparam[MAX_VDEV_ROAM_SCAN_PARAMS] = {};
+	uint8_t index = 0;
 
 	wma_debug("first_bcnt: %d, final_bcnt: %d", first_bcnt, final_bcnt);
 
-	status = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
-				    WMI_VDEV_PARAM_BMISS_FIRST_BCNT,
-				    first_bcnt);
+	status = mlme_check_index_setparam(setparam,
+					   wmi_vdev_param_bmiss_first_bcnt,
+					   first_bcnt, index++,
+					   MAX_VDEV_ROAM_SCAN_PARAMS);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		wma_err("wma_vdev_set_param WMI_VDEV_PARAM_BMISS_FIRST_BCNT returned Error %d",
-			status);
-		return status;
+		wma_err("failed to set wmi_vdev_param_bmiss_first_bcnt");
+		goto error;
 	}
-
-	status = wma_vdev_set_param(wma_handle->wmi_handle, vdev_id,
-				    WMI_VDEV_PARAM_BMISS_FINAL_BCNT,
-				    final_bcnt);
+	status = mlme_check_index_setparam(setparam,
+					   wmi_vdev_param_bmiss_final_bcnt,
+					   final_bcnt, index++,
+					   MAX_VDEV_ROAM_SCAN_PARAMS);
 	if (QDF_IS_STATUS_ERROR(status)) {
-		wma_err("wma_vdev_set_param WMI_VDEV_PARAM_BMISS_FINAL_BCNT returned Error %d",
-			status);
-		return status;
+		wma_err("failed to set wmi_vdev_param_bmiss_final_bcnt");
+		goto error;
 	}
-
+	status = wma_send_multi_pdev_vdev_set_params(MLME_VDEV_SETPARAM,
+						     vdev_id, setparam, index);
+	if (QDF_IS_STATUS_ERROR(status))
+		wma_err("Failed to set BMISS FIRST and FINAL vdev set params");
+error:
 	return status;
 }
 
@@ -760,6 +774,12 @@ wma_roam_update_vdev(tp_wma_handle wma,
 					 vdev_id,
 					 mac_addr.bytes);
 
+	if (wlan_vdev_mlme_get_opmode(wma->interfaces[vdev_id].vdev) ==
+								QDF_STA_MODE)
+		wlan_cdp_set_peer_freq(wma->psoc, mac_addr.bytes,
+				       wma->interfaces[vdev_id].ch_freq,
+				       vdev_id);
+
 	/* Update new peer's uc cipher */
 	uc_cipher = wlan_crypto_get_param(wma->interfaces[vdev_id].vdev,
 					   WLAN_CRYPTO_PARAM_UCAST_CIPHER);
@@ -843,7 +863,7 @@ static void wma_update_phymode_on_roam(tp_wma_handle wma,
 	qdf_mem_copy(bss_chan, des_chan, sizeof(struct wlan_channel));
 
 	/* Till conversion is not done in WMI we need to fill fw phy mode */
-	vdev_mlme->mgmt.generic.phy_mode = wma_host_to_fw_phymode(bss_phymode);
+	vdev_mlme->mgmt.generic.phy_mode = wmi_host_to_fw_phymode(bss_phymode);
 
 	/* update new phymode to peer */
 	wma_objmgr_set_peer_mlme_phymode(wma, bssid->bytes, bss_phymode);
@@ -1557,9 +1577,9 @@ int wma_extscan_capabilities_event_handler(void *handle,
 	dest_capab->max_number_epno_networks_by_ssid =
 				event->num_epno_networks;
 	dest_capab->max_number_of_allow_listed_ssid =
-				event->num_roam_ssid_allowlist;
+				event->num_roam_ssid_whitelist;
 	dest_capab->max_number_of_deny_listed_bssid =
-				event->num_roam_bssid_denylist;
+				event->num_roam_bssid_blacklist;
 	dest_capab->status = 0;
 
 	wma_debug("request_id: %u status: %d",
@@ -2683,7 +2703,8 @@ void wma_handle_roam_sync_timeout(tp_wma_handle wma_handle,
 					CM_ROAM_NOTIF_ROAM_ABORT);
 }
 
-void cm_invalid_roam_reason_handler(uint32_t vdev_id, enum cm_roam_notif notif)
+void cm_invalid_roam_reason_handler(uint32_t vdev_id, enum cm_roam_notif notif,
+				    uint32_t reason)
 {
 	tp_wma_handle wma_handle = cds_get_context(QDF_MODULE_ID_WMA);
 
@@ -2697,7 +2718,7 @@ void cm_invalid_roam_reason_handler(uint32_t vdev_id, enum cm_roam_notif notif)
 	    notif == CM_ROAM_NOTIF_SCAN_END)
 		cm_report_roam_rt_stats(wma_handle->psoc, vdev_id,
 					ROAM_RT_STATS_TYPE_SCAN_STATE,
-					NULL, notif, 0);
+					NULL, notif, 0, reason);
 }
 #endif
 
@@ -2862,7 +2883,7 @@ cm_handle_roam_reason_invoke_roam_fail(uint8_t vdev_id,	uint32_t notif_params,
 						notif_params);
 	cm_report_roam_rt_stats(wma_handle->psoc, vdev_id,
 				ROAM_RT_STATS_TYPE_INVOKE_FAIL_REASON,
-				NULL, notif_params, 0);
+				NULL, notif_params, 0, 0);
 }
 
 void
@@ -3207,3 +3228,10 @@ wlan_cm_fw_to_host_phymode(WMI_HOST_WLAN_PHY_MODE phymode)
 	return wma_fw_to_host_phymode(phymode);
 }
 #endif
+
+QDF_STATUS
+wlan_update_peer_phy_mode(struct wlan_channel *des_chan,
+			  struct wlan_objmgr_vdev *vdev)
+{
+	return wma_update_bss_peer_phy_mode(des_chan, vdev);
+}

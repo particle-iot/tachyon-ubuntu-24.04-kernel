@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CNSS_MAIN_H
@@ -609,10 +609,7 @@ struct cnss_plat_data {
 	u8 charger_mode;
 	struct mbox_client mbox_client_data;
 	struct mbox_chan *mbox_chan;
-#if IS_ENABLED(CONFIG_MSM_QMP)
 	struct qmp *qmp;
-#endif
-	bool use_direct_qmp;
 	const char *vreg_ol_cpr, *vreg_ipa;
 	const char **pdc_init_table, **vreg_pdc_map, **pmu_vreg_map;
 	int pdc_init_table_len, vreg_pdc_map_len, pmu_vreg_map_len;
@@ -638,6 +635,7 @@ struct cnss_plat_data {
 	u32 *on_chip_pmic_board_ids;
 	bool no_bwscale;
 	bool sleep_clk;
+	bool is_msm_ramdump;
 };
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)

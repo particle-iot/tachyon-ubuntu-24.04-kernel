@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include "pci_platform.h"
 #include "debug.h"
+
+#define DEVICE_MAJOR_VERSION_MASK	0xF
 
 static struct cnss_msi_config msi_config = {
 	.total_vectors = 32,
@@ -670,3 +672,56 @@ void cnss_pci_wake_gpio_deinit(struct cnss_pci_data *pci_priv)
 }
 #endif
 
+void cnss_mhi_report_error(struct cnss_pci_data *pci_priv)
+{
+	if (pci_priv->mhi_ctrl) {
+		/* Notify MHI about link down*/
+		mhi_report_error(pci_priv->mhi_ctrl);
+	}
+}
+
+void cnss_pci_set_tme_support(struct mhi_controller *mhi_ctrl,
+			      struct cnss_pci_data *pci_priv)
+{
+	switch (pci_priv->device_id) {
+	case PEACH_DEVICE_ID:
+		mhi_ctrl->tme_supported_image = true;
+		break;
+	default:
+		mhi_ctrl->tme_supported_image = false;
+		break;
+	}
+}
+
+bool cnss_pci_is_sync_probe(void)
+{
+	return true;
+}
+
+#ifdef CONFIG_CNSS2_CONDITIONAL_POWEROFF
+bool cnss_should_suspend_pwroff(struct pci_dev *pci_dev)
+{
+	bool suspend_pwroff;
+
+	switch (pci_dev->device) {
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
+		suspend_pwroff = false;
+		break;
+	default:
+		suspend_pwroff = true;
+	}
+
+	return suspend_pwroff;
+}
+#else
+bool cnss_should_suspend_pwroff(struct pci_dev *pci_dev)
+{
+	return true;
+}
+#endif
+
+int cnss_mhi_get_soc_info(struct mhi_controller *mhi_ctrl)
+{
+	return mhi_get_soc_info(mhi_ctrl);
+}

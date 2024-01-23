@@ -48,7 +48,8 @@ struct HTC_CREDIT_HISTORY htc_credit_history_buffer[HTC_CREDIT_HISTORY_MAX];
 #ifdef QCA_WIFI_EMULATION
 #define HTC_EMULATION_DELAY_IN_MS 20
 /**
- * htc_add_delay(): Adds a delay in before proceeding, only for emulation
+ * htc_add_emulation_delay() - Adds a delay in before proceeding, only for
+ *                             emulation
  *
  * Return: None
  */
@@ -92,12 +93,12 @@ void htc_credit_history_init(void)
  * htc_credit_record() - records tx que state & credit transactions
  * @type:		type of echange can be HTC_REQUEST_CREDIT
  *			or HTC_PROCESS_CREDIT_REPORT
- * @tx_credits:		current number of tx_credits
+ * @tx_credit:		current number of tx_credits
  * @htc_tx_queue_depth:	current hct tx queue depth
  *
  * This function records the credits and pending commands whenever a command is
  * sent or credits are returned.  Call this after the credits have been updated
- * according to the transaction.  Call this before dequeing commands.
+ * according to the transaction.  Call this before dequeuing commands.
  *
  * Consider making this function accept an HTC_ENDPOINT and find the current
  * credits and queue depth itself.

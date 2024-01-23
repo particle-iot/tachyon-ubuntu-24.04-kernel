@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -442,6 +442,8 @@ enum wma_rx_exec_ctx {
  * @noa_sub_ie_len: NOA sub IE length
  * @noa_ie: NOA IE
  * @p2p_ie_offset: p2p IE offset
+ * @csa_count_offset: Offset of Switch count field in CSA IE
+ * @ecsa_count_offset: Offset of Switch count field in ECSA IE
  * @lock: lock
  */
 struct beacon_info {
@@ -455,6 +457,8 @@ struct beacon_info {
 	uint16_t noa_sub_ie_len;
 	uint8_t *noa_ie;
 	uint16_t p2p_ie_offset;
+	uint16_t csa_count_offset;
+	uint16_t ecsa_count_offset;
 	qdf_spinlock_t lock;
 };
 
@@ -765,11 +769,13 @@ struct mac_ss_bw_info {
 /**
  * struct wma_ini_config - Structure to hold wma ini configuration
  * @max_no_of_peers: Max Number of supported
+ * @exclude_selftx_from_cca_busy: Exclude self tx time from cca busy time flag.
  *
  * Placeholder for WMA ini parameters.
  */
 struct wma_ini_config {
 	uint8_t max_no_of_peers;
+	bool exclude_selftx_from_cca_busy;
 };
 
 /**
@@ -836,7 +842,6 @@ struct wma_wlm_stats_data {
  * @vht_supp_mcs: VHT supported MCS
  * @is_fw_assert: is fw asserted
  * @ack_work_ctx: Context for deferred processing of TX ACK
- * @powersave_mode: power save mode
  * @pGetRssiReq: get RSSI request
  * @get_one_peer_info: When a "get peer info" request is active, is
  *   the request for a single peer?
@@ -868,7 +873,6 @@ struct wma_wlm_stats_data {
  * @log_completion_timer: log completion timer
  * @old_hw_mode_index: Previous configured HW mode index
  * @new_hw_mode_index: Current configured HW mode index
- * @peer_authorized_cb: peer authorized hdd callback
  * @ocb_config_req: OCB request context
  * @self_gen_frm_pwr: Self-generated frame power
  * @tx_chain_mask_cck: Is the CCK tx chain mask enabled
@@ -885,6 +889,7 @@ struct wma_wlm_stats_data {
  * @pe_roam_synch_cb: pe callback for firmware Roam Sync events
  * @csr_roam_auth_event_handle_cb: CSR callback for target authentication
  * offload event.
+ * @pe_roam_set_ie_cb: PE callback to set IEs to firmware.
  * @wmi_cmd_rsp_wake_lock: wmi command response wake lock
  * @wmi_cmd_rsp_runtime_lock: wmi command response bus lock
  * @active_uc_apf_mode: Setting that determines how APF is applied in
@@ -915,6 +920,10 @@ struct wma_wlm_stats_data {
  * * @fw_therm_throt_support: FW Supports thermal throttling?
  * @eht_cap: 802.11be capabilities
  * @set_hw_mode_resp_status: Set HW mode response status
+ * @pagefault_wakeups_ts: Stores timestamps at which host wakes up by fw
+ * because of pagefaults
+ * @num_page_fault_wakeups: Stores the number of times host wakes up by fw
+ * because of pagefaults
  *
  * This structure is the global wma context.  It contains global wma
  * module parameters and handles of other modules.
@@ -958,7 +967,6 @@ typedef struct {
 	uint32_t vht_supp_mcs;
 	uint8_t is_fw_assert;
 	struct wma_tx_ack_work_ctx *ack_work_ctx;
-	uint8_t powersave_mode;
 	void *pGetRssiReq;
 	bool get_one_peer_info;
 	struct qdf_mac_addr peer_macaddr;
@@ -992,8 +1000,6 @@ typedef struct {
 	qdf_mc_timer_t log_completion_timer;
 	uint32_t old_hw_mode_index;
 	uint32_t new_hw_mode_index;
-	wma_peer_authorized_fp peer_authorized_cb;
-	struct sir_ocb_config *ocb_config_req;
 	uint16_t self_gen_frm_pwr;
 	bool tx_chain_mask_cck;
 	qdf_mc_timer_t service_ready_ext_timer;
@@ -1012,6 +1018,9 @@ typedef struct {
 					uint8_t *deauth_disassoc_frame,
 					uint16_t deauth_disassoc_frame_len,
 					uint16_t reason_code);
+	QDF_STATUS (*pe_roam_set_ie_cb)(struct mac_context *mac_ctx,
+					uint8_t vdev_id, uint16_t dot11_mode,
+					enum QDF_OPMODE device_mode);
 	qdf_wake_lock_t wmi_cmd_rsp_wake_lock;
 	qdf_runtime_lock_t wmi_cmd_rsp_runtime_lock;
 	qdf_runtime_lock_t sap_prevent_runtime_pm_lock;
@@ -1051,6 +1060,8 @@ typedef struct {
 	qdf_wake_lock_t sap_d3_wow_wake_lock;
 	qdf_wake_lock_t go_d3_wow_wake_lock;
 	enum set_hw_mode_status set_hw_mode_resp_status;
+	qdf_time_t *pagefault_wakeups_ts;
+	uint8_t num_page_fault_wakeups;
 } t_wma_handle, *tp_wma_handle;
 
 /**
@@ -1113,12 +1124,14 @@ enum frame_index {
  * @sub_type: sub type
  * @status: status
  * @ack_cmp_work: work structure
+ * @frame: frame nbuf
  */
 struct wma_tx_ack_work_ctx {
 	tp_wma_handle wma_handle;
 	uint16_t sub_type;
 	int32_t status;
 	qdf_work_t ack_cmp_work;
+	qdf_nbuf_t frame;
 };
 
 /**
@@ -1139,32 +1152,6 @@ struct wma_target_req {
 	uint32_t msg_type;
 	uint8_t vdev_id;
 	uint8_t type;
-};
-
-/**
- * struct wma_set_key_params - set key parameters
- * @vdev_id: vdev id
- * @def_key_idx: used to see if we have to read the key from cfg
- * @key_len: key length
- * @peer_mac: peer mac address
- * @singl_tid_rc: 1=Single TID based Replay Count, 0=Per TID based RC
- * @key_type: key type
- * @key_idx: key index
- * @unicast: unicast flag
- * @key_data: key data
- */
-struct wma_set_key_params {
-	uint8_t vdev_id;
-	/* def_key_idx can be used to see if we have to read the key from cfg */
-	uint32_t def_key_idx;
-	uint16_t key_len;
-	uint8_t peer_mac[QDF_MAC_ADDR_SIZE];
-	uint8_t singl_tid_rc;
-	enum eAniEdType key_type;
-	uint32_t key_idx;
-	bool unicast;
-	uint8_t key_data[SIR_MAC_MAX_KEY_LENGTH];
-	uint8_t key_rsc[WLAN_CRYPTO_RSC_SIZE];
 };
 
 /**
@@ -1358,24 +1345,24 @@ typedef enum {
 
 /**
  * enum green_tx_param - green tx parameters
- * @WMI_VDEV_PARAM_GTX_HT_MCS: ht mcs param
- * @WMI_VDEV_PARAM_GTX_VHT_MCS: vht mcs param
- * @WMI_VDEV_PARAM_GTX_USR_CFG: user cfg param
- * @WMI_VDEV_PARAM_GTX_THRE: thre param
- * @WMI_VDEV_PARAM_GTX_MARGIN: green tx margin param
- * @WMI_VDEV_PARAM_GTX_STEP: green tx step param
- * @WMI_VDEV_PARAM_GTX_MINTPC: mintpc param
- * @WMI_VDEV_PARAM_GTX_BW_MASK: bandwidth mask
+ * @wmi_vdev_param_gtx_ht_mcs: ht mcs param
+ * @wmi_vdev_param_gtx_vht_mcs: vht mcs param
+ * @wmi_vdev_param_gtx_usr_cfg: user cfg param
+ * @wmi_vdev_param_gtx_thre: thre param
+ * @wmi_vdev_param_gtx_margin: green tx margin param
+ * @wmi_vdev_param_gtx_step: green tx step param
+ * @wmi_vdev_param_gtx_mintpc: mintpc param
+ * @wmi_vdev_param_gtx_bw_mask: bandwidth mask
  */
 typedef enum {
-	WMI_VDEV_PARAM_GTX_HT_MCS,
-	WMI_VDEV_PARAM_GTX_VHT_MCS,
-	WMI_VDEV_PARAM_GTX_USR_CFG,
-	WMI_VDEV_PARAM_GTX_THRE,
-	WMI_VDEV_PARAM_GTX_MARGIN,
-	WMI_VDEV_PARAM_GTX_STEP,
-	WMI_VDEV_PARAM_GTX_MINTPC,
-	WMI_VDEV_PARAM_GTX_BW_MASK,
+	wmi_vdev_param_gtx_ht_mcs,
+	wmi_vdev_param_gtx_vht_mcs,
+	wmi_vdev_param_gtx_usr_cfg,
+	wmi_vdev_param_gtx_thre,
+	wmi_vdev_param_gtx_margin,
+	wmi_vdev_param_gtx_step,
+	wmi_vdev_param_gtx_mintpc,
+	wmi_vdev_param_gtx_bw_mask,
 } green_tx_param;
 
 /**
@@ -1501,8 +1488,29 @@ int wma_mgmt_tx_bundle_completion_handler(void *handle,
 uint32_t wma_get_vht_ch_width(void);
 
 #ifdef WLAN_FEATURE_11BE
+/**
+ * wma_get_orig_eht_ch_width() - Get original EHT channel width supported
+ *
+ * API to get original EHT channel width
+ *
+ * Return: void
+ */
+uint32_t wma_get_orig_eht_ch_width(void);
+
+/**
+ * wma_get_orig_eht_ch_width() - Get current EHT channel width supported
+ *
+ * API to get current EHT channel width
+ *
+ * Return: void
+ */
 uint32_t wma_get_eht_ch_width(void);
 #else
+static inline uint32_t wma_get_orig_eht_ch_width(void)
+{
+	return 0;
+}
+
 static inline uint32_t wma_get_eht_ch_width(void)
 {
 	return 0;
@@ -1535,9 +1543,6 @@ QDF_STATUS wma_set_gateway_params(tp_wma_handle wma,
 	return QDF_STATUS_SUCCESS;
 }
 #endif /* FEATURE_LFR_SUBNET_DETECTION */
-
-QDF_STATUS wma_lro_config_cmd(void *handle,
-	 struct cdp_lro_hash_config *wma_lro_cmd);
 
 QDF_STATUS wma_ht40_stop_obss_scan(tp_wma_handle wma_handle,
 				int32_t vdev_id);
@@ -1730,15 +1735,6 @@ struct wma_ini_config *wma_get_ini_handle(tp_wma_handle wma_handle);
  */
 enum wlan_phymode wma_chan_phy_mode(uint32_t freq, enum phy_ch_width chan_width,
 				    uint8_t dot11_mode);
-
-/**
- * wma_host_to_fw_phymode() - convert host to fw phymode
- * @host_phymode: phymode to convert
- *
- * Return: one of the values defined in enum WMI_HOST_WLAN_PHY_MODE;
- *         or WMI_HOST_MODE_UNKNOWN if the conversion fails
- */
-WMI_HOST_WLAN_PHY_MODE wma_host_to_fw_phymode(enum wlan_phymode host_phymode);
 
 /**
  * wma_fw_to_host_phymode() - convert fw to host phymode
@@ -2487,6 +2483,15 @@ QDF_STATUS wma_add_bss_lfr2_vdev_start(struct wlan_objmgr_vdev *vdev,
 #endif
 
 /**
+ * wma_set_vdev_bw() - wma send vdev bw
+ * @vdev_id: vdev id
+ * @bw: band width
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS wma_set_vdev_bw(uint8_t vdev_id, uint8_t bw);
+
+/**
  * wma_send_peer_assoc_req() - wma send peer assoc req when sta connect
  * @add_bss: add bss param
  *
@@ -2622,15 +2627,6 @@ QDF_STATUS wma_post_vdev_start_setup(uint8_t vdev_id);
 QDF_STATUS wma_pre_vdev_start_setup(uint8_t vdev_id,
 				    struct bss_params *add_bss);
 
-/**
- * wma_is_multipass_sap() - wma api to verify whether multipass sap
- * support is present in FW
- *
- * @tgt_hdl: target if handler.
- *
- * Return: Success if multipass sap is supported.
- */
-inline bool wma_is_multipass_sap(struct target_psoc_info *tgt_hdl);
 #ifdef FEATURE_ANI_LEVEL_REQUEST
 /**
  * wma_send_ani_level_request() - Send get ani level cmd to WMI

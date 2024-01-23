@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -20,7 +21,6 @@
 #define __NAN_CFG_API_H__
 
 /**
- *
  * DOC: nan_cfg_api.h
  *
  * NAN feature INI configuration parameters get/set APIs
@@ -110,6 +110,15 @@ bool cfg_nan_get_support_mp0_discovery(struct wlan_objmgr_psoc *psoc);
  * Return: true on sta roam disable by nan else false
  */
 bool cfg_nan_is_roam_config_disabled(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * cfg_nan_is_eht_cap_enable() - Get NAN EHT capability
+ * @psoc: pointer to psoc object
+ *
+ * Return: Boolean flag indicating whether the NAN EHT capability is
+ * disabled or not
+ */
+bool cfg_nan_is_eht_cap_enable(struct wlan_objmgr_psoc *psoc);
 #else
 static inline
 bool cfg_nan_is_roam_config_disabled(struct wlan_objmgr_psoc *psoc)
@@ -161,6 +170,12 @@ QDF_STATUS cfg_nan_get_max_ndi(struct wlan_objmgr_psoc *psoc, uint32_t *val)
 
 static inline bool cfg_nan_get_support_mp0_discovery(
 						struct wlan_objmgr_psoc *psoc)
+{
+	return false;
+}
+
+
+static inline bool cfg_nan_is_eht_cap_enable(struct wlan_objmgr_psoc *psoc)
 {
 	return false;
 }

@@ -27,7 +27,8 @@
 #if defined(WIFI_POS_CONVERGED) && defined(WLAN_FEATURE_RTT_11AZ_SUPPORT)
 /**
  * wlan_wifi_pos_pasn_peer_delete_all  - Delete all pasn peer callback
- * @self_peer_del_msg: Scheduler message
+ * @psoc: Psoc pointer
+ * @vdev_id: vdev for which PASN peers are to be deleted
  *
  * Return: True if PASN peer delete all is required
  */

@@ -101,8 +101,9 @@ enum nan_disc_state {
  * @max_ndi: max number of ndi host supports
  * @nan_feature_config: Bitmap to enable/disable a particular NAN feature
  *                      configuration in firmware. It's sent to firmware through
- *                      WMI_VDEV_PARAM_ENABLE_DISABLE_NAN_CONFIG_FEATURES
+ *                      wmi_vdev_param_enable_disable_nan_config_features
  * @disable_6g_nan: Disable NAN in 6GHz frequency band
+ * @enable_nan_eht_cap: Enable(1)/Disable(0) NAN EHT capability
  */
 struct nan_cfg_params {
 	bool enable;
@@ -116,6 +117,7 @@ struct nan_cfg_params {
 	uint32_t max_ndi;
 	uint32_t nan_feature_config;
 	bool disable_6g_nan;
+	bool enable_nan_eht_cap;
 };
 
 /**
@@ -275,10 +277,12 @@ enum nan_disc_state nan_get_discovery_state(struct wlan_objmgr_psoc *psoc);
  * nan_is_enable_allowed: Queries whether NAN Discovery is allowed
  * @psoc: PSOC object
  * @nan_ch_freq: Possible primary social channel for NAN Discovery
+ * @vdev_id: Vdev Id
  *
  * Return: True if NAN Enable is allowed on given channel, False otherwise
  */
-bool nan_is_enable_allowed(struct wlan_objmgr_psoc *psoc, uint32_t nan_ch_freq);
+bool nan_is_enable_allowed(struct wlan_objmgr_psoc *psoc, uint32_t nan_ch_freq,
+			   uint8_t vdev_id);
 
 /*
  * nan_is_disc_active: Queries whether NAN Discovery is active
@@ -314,5 +318,13 @@ uint8_t nan_get_vdev_id_from_bssid(struct wlan_objmgr_pdev *pdev,
 				   tSirMacAddr bssid,
 				   wlan_objmgr_ref_dbgid dbg_id);
 
+/*
+ * nan_is_sta_sta_concurrency_present: Queries whether STA + STA concurrency
+ * present
+ * @psoc: PSOC object
+ *
+ * Return: True if concurrency is present, False otherwise
+ */
+bool nan_is_sta_sta_concurrency_present(struct wlan_objmgr_psoc *psoc);
 #endif /* _WLAN_NAN_MAIN_I_H_ */
 #endif /* WLAN_FEATURE_NAN */

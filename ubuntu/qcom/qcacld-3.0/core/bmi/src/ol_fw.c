@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -543,7 +543,7 @@ struct ramdump_info {
 	unsigned long size;
 };
 
-/**
+/*
  * if have platform driver support, reinit will be called by CNSS.
  * recovery flag will be cleaned and CRASHED indication will be sent
  * to user space by reinit function. If not support, clean recovery
@@ -1723,6 +1723,7 @@ void ol_dump_target_memory(struct hif_opaque_softc *scn, void *memory_block)
 		case 1:
 			address = AXI_LOCATION;
 			size = AXI_SIZE;
+			break;
 		default:
 			break;
 		}
@@ -1762,7 +1763,7 @@ ol_get_max_section_count(struct hif_opaque_softc *scn)
 
 /**
  * ol_set_ram_config_reg() - set target RAM configuration register
- * @sc: pointer of hif_softc context
+ * @scn: pointer of hif_softc context
  * @config: value to be written to the register
  *
  * This function will write the given value to target RAM configuration
@@ -1850,9 +1851,9 @@ ol_get_iram_len_and_pos(struct hif_opaque_softc *scn, uint32_t *pos,
 
 /**
  * ol_target_coredump() - API to collect target ramdump
- * @inst - private context
- * @memory_block - non-NULL reserved memory location
- * @block_len - size of the dump to collect
+ * @inst: private context
+ * @memory_block: non-NULL reserved memory location
+ * @block_len: size of the dump to collect
  *
  * Function to perform core dump for the target.
  *

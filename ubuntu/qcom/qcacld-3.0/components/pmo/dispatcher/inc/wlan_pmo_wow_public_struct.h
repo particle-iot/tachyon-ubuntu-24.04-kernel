@@ -188,13 +188,13 @@ struct pmo_action_wakeup_set_params {
 };
 
 /**
- * enum pmo_wow_action_wakeup_opertion: describe action wakeup operation
+ * enum pmo_wow_action_wakeup_operation - describe action wakeup operation
  * @pmo_action_wakeup_reset: reset
  * @pmo_action_wakeup_set: set
  * @pmo_action_wakeup_add_set: add and set
  * @pmo_action_wakeup_del_set: delete and set
  */
-enum pmo_wow_action_wakeup_opertion {
+enum pmo_wow_action_wakeup_operation {
 	pmo_action_wakeup_reset = 0,
 	pmo_action_wakeup_set,
 	pmo_action_wakeup_add_set,
@@ -230,7 +230,7 @@ enum pmo_wow_state {
  * @lphb_cache: lphb cache
  * @lphb_cb_ctx: callback context for lphb, kept as void* as
  *                        osif structures are opaque to pmo.
- * @pmo_lphb_callback: registered os if calllback function
+ * @lphb_cb: registered os if calllback function
  * @ptrn_id_def: default pattern id counter for legacy firmware
  * @ptrn_id_usr: user pattern id counter for legacy firmware
  * @txrx_suspended: flag to determine if TX/RX is suspended
@@ -288,6 +288,7 @@ struct pmo_wow_add_pattern {
  * @enable: wow enable or disable flag
  * @can_suspend_link: flag to indicate if link can be suspended
  * @pause_iface_config: interface config
+ * @flags: bitmap of WMI_WOW_FLAG_* flags
  */
 struct pmo_wow_cmd_params {
 	bool enable;

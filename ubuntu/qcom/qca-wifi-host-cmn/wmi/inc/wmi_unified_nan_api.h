@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
@@ -91,7 +90,7 @@ QDF_STATUS wmi_unified_terminate_all_ndps_req_cmd(wmi_unified_t wmi_handle,
 
 /**
  * wmi_extract_ndp_initiator_rsp - api to extract initiator rsp from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @rsp: buffer to populate
  *
@@ -103,7 +102,7 @@ wmi_extract_ndp_initiator_rsp(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_ind - api to extract ndp indication struct from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @ind: buffer to populate
  *
@@ -114,6 +113,7 @@ QDF_STATUS wmi_extract_ndp_ind(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_nan_msg - api to extract ndp dmesg buffer to print logs
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @msg: buffer to populate
  *
@@ -124,7 +124,7 @@ QDF_STATUS wmi_extract_nan_msg(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_confirm - api to extract ndp confim struct from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @ev: buffer to populate
  *
@@ -135,7 +135,7 @@ QDF_STATUS wmi_extract_ndp_confirm(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_responder_rsp - api to extract responder rsp from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @rsp: buffer to populate
  *
@@ -147,7 +147,7 @@ wmi_extract_ndp_responder_rsp(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_end_rsp - api to extract ndp end rsp from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @rsp: buffer to populate
  *
@@ -158,7 +158,7 @@ QDF_STATUS wmi_extract_ndp_end_rsp(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_end_ind - api to extract ndp end indication from even buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @ind: buffer to populate
  *
@@ -170,7 +170,7 @@ wmi_extract_ndp_end_ind(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_ndp_sch_update - api to extract ndp sch update from event buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @ind: buffer to populate
  *
@@ -182,8 +182,8 @@ wmi_extract_ndp_sch_update(wmi_unified_t wmi_handle, uint8_t *data,
 
 /**
  * wmi_extract_nan_event_rsp - api to extract nan event into event parameters
- * @wmi_hdl: wmi handle
- * @wvt_buf: pointer to the event buffer
+ * @wmi_handle: wmi handle
+ * @evt_buf: pointer to the event buffer
  * @temp_evt_params: Pointer to a temporary parameters structure to populate
  * @nan_msg_buf: Pointer to the NAN Message buffer encapsulated in the event
  *
@@ -195,7 +195,7 @@ QDF_STATUS wmi_extract_nan_event_rsp(wmi_unified_t wmi_handle, void *evt_buf,
 
 /**
  * wmi_extract_ndp_host_event - api to extract ndp event from event buffer
- * @wmi_hdl: wmi handle
+ * @wmi_handle: wmi handle
  * @data: event buffer
  * @evt: event buffer to populate
  *

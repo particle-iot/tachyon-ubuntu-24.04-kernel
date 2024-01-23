@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -57,9 +58,9 @@
 
 /**
  * enum pkt_capture_tx_status - packet capture tx status
- * @pktcapture_tx_status_ok: successfully sent + acked
- * @pktcapture_tx_status_discard: discard - not sent
- * @pktcapture_tx_status_no_ack: no_ack - sent, but no ack
+ * @pkt_capture_tx_status_ok: successfully sent + acked
+ * @pkt_capture_tx_status_discard: discard - not sent
+ * @pkt_capture_tx_status_no_ack: no_ack - sent, but no ack
  *
  * This enum has tx status types for packet capture mode
  */
@@ -237,6 +238,20 @@ QDF_STATUS pkt_capture_set_filter(struct pkt_capture_frame_filter frame_filter,
  * Return: bool
  */
 bool pkt_capture_is_tx_mgmt_enable(struct wlan_objmgr_pdev *pdev);
+
+/**
+ * pkt_capture_is_frame_filter_set - Check if filter type set by user and packet
+ * type matches
+ * @buf: netbuf
+ * @frame_filter: filter set by user via vendor command
+ * @direction: Tx or Rx
+ *
+ * Return: bool
+ */
+bool
+pkt_capture_is_frame_filter_set(qdf_nbuf_t buf,
+				struct pkt_capture_frame_filter *frame_filter,
+				bool direction);
 
 #ifdef WLAN_FEATURE_PKT_CAPTURE_V2
 /**

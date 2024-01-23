@@ -565,6 +565,12 @@ QDF_STATUS ucfg_pmo_config_listen_interval(struct wlan_objmgr_vdev *vdev,
 	return pmo_core_config_listen_interval(vdev, listen_interval);
 }
 
+QDF_STATUS ucfg_pmo_get_listen_interval(struct wlan_objmgr_vdev *vdev,
+					uint32_t *listen_interval)
+{
+	return pmo_core_get_listen_interval(vdev, listen_interval);
+}
+
 QDF_STATUS ucfg_pmo_config_modulated_dtim(struct wlan_objmgr_vdev *vdev,
 					  uint32_t mod_dtim)
 {
@@ -586,6 +592,31 @@ ucfg_pmo_set_wow_enable(struct wlan_objmgr_psoc *psoc,
 	struct pmo_psoc_priv_obj *pmo_psoc_ctx = pmo_psoc_get_priv(psoc);
 
 	pmo_psoc_ctx->psoc_cfg.wow_enable = val;
+}
+
+void
+ucfg_pmo_set_ps_params(struct wlan_objmgr_vdev *vdev,
+		       struct pmo_ps_params *ps_params)
+{
+	pmo_core_vdev_set_ps_params(vdev, ps_params);
+}
+
+QDF_STATUS ucfg_pmo_get_ps_params(struct wlan_objmgr_vdev *vdev,
+				  struct pmo_ps_params *ps_params)
+{
+	return pmo_core_vdev_get_ps_params(vdev, ps_params);
+}
+
+QDF_STATUS ucfg_pmo_core_vdev_set_ps_opm_mode(struct wlan_objmgr_vdev *vdev,
+					      enum powersave_mode opm_mode)
+{
+	return pmo_vdev_set_ps_opm_mode(vdev, opm_mode);
+}
+
+QDF_STATUS ucfg_pmo_core_vdev_get_ps_opm_mode(struct wlan_objmgr_vdev *vdev,
+					      enum powersave_mode *opm_mode)
+{
+	return pmo_vdev_get_ps_opm_mode(vdev, opm_mode);
 }
 
 bool
@@ -1024,6 +1055,12 @@ bool ucfg_pmo_get_moddtim_user_active(struct wlan_objmgr_vdev *vdev)
 uint32_t ucfg_pmo_get_moddtim_user(struct wlan_objmgr_vdev *vdev)
 {
 	return pmo_core_vdev_get_moddtim_user(vdev);
+}
+
+uint32_t
+ucfg_pmo_get_ssr_frequency_on_pagefault(struct wlan_objmgr_psoc *psoc)
+{
+	return pmo_get_ssr_frequency_on_pagefault(psoc);
 }
 
 bool

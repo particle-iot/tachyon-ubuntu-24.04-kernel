@@ -64,6 +64,16 @@ static QDF_STATUS policy_mgr_init_cfg(struct wlan_objmgr_psoc *psoc)
 	cfg = &pm_ctx->cfg;
 
 	cfg->mcc_to_scc_switch = cfg_get(psoc, CFG_MCC_TO_SCC_SWITCH);
+	if (cfg->mcc_to_scc_switch != QDF_MCC_TO_SCC_SWITCH_DISABLE &&
+	    cfg->mcc_to_scc_switch <
+			QDF_MCC_TO_SCC_SWITCH_FORCE_WITHOUT_DISCONNECTION) {
+		policy_mgr_info("User configured mcc_to_scc_switch: %d, overwrite it to: %d",
+			cfg->mcc_to_scc_switch,
+			QDF_MCC_TO_SCC_SWITCH_FORCE_WITHOUT_DISCONNECTION);
+		cfg->mcc_to_scc_switch =
+			QDF_MCC_TO_SCC_SWITCH_FORCE_WITHOUT_DISCONNECTION;
+	}
+
 	cfg->sys_pref = cfg_get(psoc, CFG_CONC_SYS_PREF);
 
 	if (wlan_is_mlo_sta_nan_ndi_allowed(psoc)) {
@@ -127,6 +137,8 @@ static QDF_STATUS policy_mgr_init_cfg(struct wlan_objmgr_psoc *psoc)
 	policy_mgr_init_same_mac_conc_sr_status(psoc);
 	cfg->use_sap_original_bw =
 		cfg_get(psoc, CFG_SAP_DEFAULT_BW_FOR_RESTART);
+	cfg->move_sap_go_1st_on_dfs_sta_csa =
+		cfg_get(psoc, CFG_MOVE_SAP_GO_1ST_ON_DFS_STA_CSA);
 
 	return QDF_STATUS_SUCCESS;
 }
@@ -334,4 +346,36 @@ ucfg_policy_mgr_get_sta_sap_scc_on_indoor_chnl(struct wlan_objmgr_psoc *psoc)
 bool ucfg_policy_mgr_is_fw_supports_dbs(struct wlan_objmgr_psoc *psoc)
 {
 	return policy_mgr_find_if_fw_supports_dbs(psoc);
+}
+
+uint32_t ucfg_policy_mgr_get_connection_count(struct wlan_objmgr_psoc *psoc)
+{
+	return policy_mgr_get_connection_count(psoc);
+}
+
+bool ucfg_policy_mgr_is_hw_sbs_capable(struct wlan_objmgr_psoc *psoc)
+{
+	return policy_mgr_is_hw_dbs_capable(psoc);
+}
+
+bool ucfg_policy_mgr_get_vdev_same_freq_new_conn(struct wlan_objmgr_psoc *psoc,
+						 uint32_t new_freq,
+						 uint8_t *vdev_id)
+{
+	return policy_mgr_get_vdev_same_freq_new_conn(psoc, new_freq, vdev_id);
+}
+
+bool ucfg_policy_mgr_get_vdev_diff_freq_new_conn(struct wlan_objmgr_psoc *psoc,
+						 uint32_t new_freq,
+						 uint8_t *vdev_id)
+{
+	return policy_mgr_get_vdev_diff_freq_new_conn(psoc, new_freq, vdev_id);
+}
+
+QDF_STATUS ucfg_policy_mgr_get_dbs_hw_modes(struct wlan_objmgr_psoc *psoc,
+					    bool *one_by_one_dbs,
+					    bool *two_by_two_dbs)
+{
+	return policy_mgr_get_dbs_hw_modes(psoc, one_by_one_dbs,
+					   two_by_two_dbs);
 }

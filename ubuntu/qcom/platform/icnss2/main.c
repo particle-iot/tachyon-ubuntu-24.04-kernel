@@ -557,7 +557,8 @@ static int icnss_send_smp2p(struct icnss_priv *priv,
 	value <<= ICNSS_SMEM_SEQ_NO_POS;
 	value |= msg_id;
 
-	icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
+	if (msg_id == ICNSS_POWER_SAVE_ENTER || msg_id == ICNSS_POWER_SAVE_EXIT)
+		icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
 
 	ret = qcom_smem_state_update_bits(
 			priv->smp2p_info[ICNSS_SMP2P_OUT_POWER_SAVE].smem_state,

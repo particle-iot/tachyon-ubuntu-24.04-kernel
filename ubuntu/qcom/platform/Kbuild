@@ -82,6 +82,11 @@ ifeq ($(CONFIG_SLATE_MODULE_ENABLED), y)
 KBUILD_CPPFLAGS += -DSLATE_MODULE_ENABLED
 endif
 
+ifneq ($(filter $(CONFIG_PINCTRL_MSM),y m),)
+KBUILD_CPPFLAGS += -DCONFIG_CNSS_PINCTRL_MSM
+endif
+
+obj-$(CONFIG_CNSS2) += cnss2/
 obj-$(CONFIG_ICNSS2) += icnss2/
 obj-$(CONFIG_CNSS_GENL) += cnss_genl/
 obj-$(CONFIG_WCNSS_MEM_PRE_ALLOC) += cnss_prealloc/

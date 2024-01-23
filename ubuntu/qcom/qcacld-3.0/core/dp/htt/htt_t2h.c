@@ -226,7 +226,9 @@ static void htt_t2h_lp_msg_handler(void *context, qdf_nbuf_t htt_t2h_msg,
 	switch (msg_type) {
 	case HTT_T2H_MSG_TYPE_VERSION_CONF:
 	{
-		htc_pm_runtime_put(pdev->htc_pdev);
+		if (htc_dec_return_htt_runtime_cnt(pdev->htc_pdev) >= 0)
+			htc_pm_runtime_put(pdev->htc_pdev);
+
 		pdev->tgt_ver.major = HTT_VER_CONF_MAJOR_GET(*msg_word);
 		pdev->tgt_ver.minor = HTT_VER_CONF_MINOR_GET(*msg_word);
 		QDF_TRACE(QDF_MODULE_ID_HTT, QDF_TRACE_LEVEL_INFO_LOW,
@@ -1086,8 +1088,8 @@ void htt_t2h_msg_handler(void *context, HTC_PACKET *pkt)
 #ifdef WLAN_FEATURE_FASTPATH
 #define HTT_T2H_MSG_BUF_REINIT(_buf, dev)				\
 	do {								\
-		QDF_NBUF_CB_PADDR(_buf) -= (HTC_HEADER_LEN +		\
-					HTC_HDR_ALIGNMENT_PADDING);	\
+		qdf_nbuf_push_head(_buf, (HTC_HEADER_LEN) +		\
+				   HTC_HDR_ALIGNMENT_PADDING);		\
 		qdf_nbuf_init_fast((_buf));				\
 		qdf_mem_dma_sync_single_for_device(dev,			\
 					(QDF_NBUF_CB_PADDR(_buf)),	\
