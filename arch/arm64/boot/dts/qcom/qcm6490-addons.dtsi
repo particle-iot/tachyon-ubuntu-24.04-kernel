@@ -75,6 +75,14 @@
 	};
 };
 
+&gmu {
+	status = "disabled";
+};
+
+&gpu {
+	status = "disabled";
+};
+
 &soc {
 	msm_stub_codec: msm-stub-codec {
 		compatible = "qcom,msm-stub-codec";
