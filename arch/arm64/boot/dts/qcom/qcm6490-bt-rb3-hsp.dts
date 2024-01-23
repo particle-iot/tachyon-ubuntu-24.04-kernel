@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/qcom,gcc-sc7280.h>
+#include <dt-bindings/interconnect/qcom,sc7280.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/power/qcom-rpmpd.h>
+#include "qcm6490-bt-rb3-hsp.dtsi"
+
+/ {
+       model = "Qualcomm Technologies, Inc. QCM6490 RB3";
+       compatible = "qcom,qcm6490-addons-rb3gen2-hsp", "qcom,qcm6490";
+
+       /* This will be deprecated soon */
+       qcom,msm-id = <497 0x10000>, <498 0x10000>, <475 0x10000>, <515 0x10000>;
+       qcom,board-id = <32 0x6>, <32 0x606>, <32 0x7>, <32 0x607>;
+};

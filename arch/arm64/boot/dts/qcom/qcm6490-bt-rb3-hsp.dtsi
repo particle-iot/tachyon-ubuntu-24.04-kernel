@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+#include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
+
+&soc{
+	slimbam: dma-controller@3a84000 {
+		status = "okay";
+	};
+
+	slim_msm: slim-ngd@3ac0000 {
+		status = "okay";
+		ngd@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			slimbus: btfmslim-driver {
+				compatible = "slim217,221";
+				reg = <1 0>;
+				btfm_socname = "wcn6855";
+				#sound-dai-cells = <1>;
+			};
+		};
+	};
+};
+
+&sound{
+/* Dai-link nodes for binding slimbus codec dais with appropriate cpu dais */
+	slimbus-rx0-dai-link {
+		link-name = "SLIM-DEV1-RX-7";
+
+		cpu {
+			sound-dai = <&q6apmbedai SLIMBUS_0_RX>;
+		};
+
+		codec {
+			sound-dai = <&slimbus 2>;
+		};
+	};
+	slimbus-tx0-dai-link {
+		link-name = "SLIM-DEV1-TX-7";
+
+		cpu {
+			sound-dai = <&q6apmbedai SLIMBUS_0_TX>;
+		};
+
+		codec {
+			sound-dai = <&slimbus 1>;
+		};
+	};
+	slimbus-a2dp-tx0-dai-link {
+		link-name = "SLIM-DEV1-TX-9";
+
+		cpu {
+			sound-dai = <&q6apmbedai SLIMBUS_0_TX>;
+		};
+
+		codec {
+			sound-dai = <&slimbus 4>;
+		};
+	};
+};

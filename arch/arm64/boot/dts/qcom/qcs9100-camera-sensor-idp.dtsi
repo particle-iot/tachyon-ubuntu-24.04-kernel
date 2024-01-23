@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+#include <dt-bindings/msm-camera.h>
+
+&soc {
+	qcom,cam-res-mgr {
+		compatible = "qcom,cam-res-mgr";
+		status = "ok";
+	};
+};
+
+&cam_cci0 {
+	actuator_triple_wide: qcom,actuator0 {
+		cell-index = <4>;
+		compatible = "qcom,actuator";
+		cci-master = <0>;
+		status = "disabled";
+		cam_vaf-supply = <>;
+		regulator-names = "cam_vaf";
+		power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <>;
+		rgltr-max-voltage = <>;
+		rgltr-load-current = <>;
+	};
+
+	eeprom_triple_wide: qcom,eeprom0 {
+		cell-index = <4>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <>;
+		cam_vana-supply = <>;
+		cam_vana1-supply = <>;
+		cam_vdig-supply = <>;
+		cam_vaf-supply = <>;
+		regulator-names = "cam_vio", "cam_vana", "cam_vana1",
+			"cam_vdig", "cam_vaf";
+		power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <>;
+		rgltr-max-voltage = <>;
+		rgltr-load-current = <>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <>;
+		pinctrl-1 = <>;
+		gpios = <&tlmm 64 0>,
+			<&tlmm 20 0>;
+		gpio-reset = <1>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK0",
+					"CAM_RESET0";
+		cci-master = <0>;
+		status = "disabled";
+		clocks = <>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "nominal";
+		clock-rates = <>;
+	};
+
+	/* GMSL */
+	qcom,cam-sensor4 {
+		cell-index = <4>;
+		compatible = "qcom,cam-sensor";
+		csiphy-sd-index = <4>;
+		sensor-position-roll = <0>;
+		sensor-position-pitch = <0>;
+		sensor-position-yaw = <180>;
+		cam_vio-supply = <>;
+		regulator-names = "cam_vio", "cam_clk";
+		power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
+		rgltr-cntrl-support;
+		pwm-switch;
+		rgltr-min-voltage = <>;
+		rgltr-max-voltage = <>;
+		rgltr-load-current = <>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <>;
+		pinctrl-1 = <>;
+		gpios = <&tlmm 68 0>,
+			<&tlmm 93 0>;
+		gpio-reset = <1>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK4",
+			"CAM_RESET4";
+		sensor-mode = <0>;
+		cci-master = <1>;
+		status = "disabled";
+		clocks = <>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "nominal";
+		clock-rates = <>;
+	};
+};
