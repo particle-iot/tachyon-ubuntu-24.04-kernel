@@ -1,0 +1,4 @@
+# The following upstream releases have been ported:
+[upstream-realtime]
+        linux-6.7.y-rt = 6.7-rt6
+
