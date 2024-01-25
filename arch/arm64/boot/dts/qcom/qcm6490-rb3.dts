@@ -470,6 +470,10 @@
 	};
 };
 
+&lpasscc {
+	status = "disabled";
+};
+
 &pm7325_gpios {
 	key_vol_up_default: key-vol-up-state {
 		pins = "gpio6";
