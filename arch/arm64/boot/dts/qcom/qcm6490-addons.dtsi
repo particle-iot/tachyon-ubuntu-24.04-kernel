@@ -88,6 +88,8 @@
 };
 
 &soc {
+	msm_gpu: qcom,kgsl-3d0@3d00000 { };
+
 	msm_stub_codec: msm-stub-codec {
 		compatible = "qcom,msm-stub-codec";
 		#sound-dai-cells = <1>;
