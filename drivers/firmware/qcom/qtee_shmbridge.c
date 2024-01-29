@@ -391,6 +391,12 @@ int32_t qtee_shmbridge_allocate_shm(size_t size, struct qtee_shm *shm)
 		goto exit;
 	}
 
+	if (!default_bridge.genpool) {
+		pr_err("Shmbridge pool not available!\n");
+		ret = -ENOMEM;
+		goto exit;
+	}
+
 	size = roundup(size, 1 << default_bridge.min_alloc_order);
 
 	va = gen_pool_alloc(default_bridge.genpool, size);
@@ -574,6 +580,10 @@ exit:
 
 static int qtee_shmbridge_probe(struct platform_device *pdev)
 {
+	/* Defer if qcom_scm is not available */
+	if (!qcom_scm_is_available())
+		return dev_err_probe(&pdev->dev, -EPROBE_DEFER, "qcom_scm is not up!\n");
+
 	return qtee_shmbridge_init(pdev);
 }
 
