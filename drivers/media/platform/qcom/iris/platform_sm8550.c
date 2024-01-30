@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/clock/qcom,sm8550-gcc.h>
@@ -1157,7 +1157,7 @@ struct platform_data sm8550_data = {
 
 	.reg_prst_tbl = sm8550_reg_preset_table,
 	.reg_prst_tbl_size = ARRAY_SIZE(sm8550_reg_preset_table),
-	.fwname = "vpu30_4v",
+	.fwname = "qcom/vpu-3.0/vpu30_4v",
 	.pas_id = 9,
 
 	.core_data = core_data_sm8550,
