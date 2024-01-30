@@ -1770,6 +1770,10 @@ static int tz_log_probe(struct platform_device *pdev)
 	uint32_t *ptr = NULL;
 	int ret = 0, i;
 
+	/* Defer if qcom_scm is not available */
+	if (!qcom_scm_is_available())
+		return dev_err_probe(&pdev->dev, -EPROBE_DEFER, "qcom_scm is not up!\n");
+
 	/*
 	 * By default all nodes will be created.
 	 * Mark avail as false later selectively if there's need to skip proc node creation.
