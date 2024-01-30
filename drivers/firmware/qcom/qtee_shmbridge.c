@@ -97,6 +97,7 @@ static struct bridge_info default_bridge;
 static struct bridge_list bridge_list_head;
 static bool qtee_shmbridge_enabled;
 static bool support_hyp;
+static bool qtee_shmbridge_free_pages_alloc;
 
 /* enable shared memory bridge mechanism in HYP */
 static int32_t qtee_shmbridge_enable(bool enable)
@@ -501,6 +502,7 @@ static int qtee_shmbridge_init(struct platform_device *pdev)
 			ret = -ENOMEM;
 			goto exit_freebuf;
 		}
+		qtee_shmbridge_free_pages_alloc = true;
 	} else {
 		pr_info("Allocation via free_pages failed, trying with dma_alloc now..\n");
 		default_bridge.vaddr = dma_alloc_coherent(&pdev->dev, default_bridge.size,
@@ -569,10 +571,16 @@ exit_deregister_default_bridge:
 exit_destroy_pool:
 	gen_pool_destroy(default_bridge.genpool);
 exit_unmap:
-	dma_unmap_single(&pdev->dev, default_bridge.paddr, default_bridge.size,
+	if (qtee_shmbridge_free_pages_alloc)
+		dma_unmap_single(&pdev->dev, default_bridge.paddr, default_bridge.size,
 			DMA_TO_DEVICE);
 exit_freebuf:
-	free_pages((long)default_bridge.vaddr, get_order(default_bridge.size));
+	if (qtee_shmbridge_free_pages_alloc)
+		free_pages((long)default_bridge.vaddr, get_order(default_bridge.size));
+	else
+		dma_free_coherent(&pdev->dev, default_bridge.size,
+			default_bridge.vaddr, default_bridge.paddr);
+
 	default_bridge.vaddr = NULL;
 exit:
 	return ret;
@@ -591,9 +599,14 @@ static int qtee_shmbridge_remove(struct platform_device *pdev)
 {
 	qtee_shmbridge_deregister(default_bridge.handle);
 	gen_pool_destroy(default_bridge.genpool);
-	dma_unmap_single(&pdev->dev, default_bridge.paddr, default_bridge.size,
+	if (qtee_shmbridge_free_pages_alloc) {
+		dma_unmap_single(&pdev->dev, default_bridge.paddr, default_bridge.size,
 			DMA_TO_DEVICE);
-	free_pages((long)default_bridge.vaddr, get_order(default_bridge.size));
+		free_pages((long)default_bridge.vaddr, get_order(default_bridge.size));
+	} else {
+		dma_free_coherent(&pdev->dev, default_bridge.size,
+			default_bridge.vaddr, default_bridge.paddr);
+	}
 	return 0;
 }
 
