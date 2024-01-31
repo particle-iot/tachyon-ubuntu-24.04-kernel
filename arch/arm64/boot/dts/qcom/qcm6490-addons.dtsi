@@ -499,6 +499,9 @@
 	/* Gunyah expects arch_timer symbol for boot time overlay */
 	arch_timer: timer {
 	};
+
+	redriver: typec-retimer@1c {
+	};
 };
 
 &gmu {
