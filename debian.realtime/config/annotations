@@ -26,6 +26,9 @@ CONFIG_OSNOISE_TRACER                           note<'LP: #1961588'>
 CONFIG_PREEMPT_RT                               policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_PREEMPT_RT                               note<'must be enabled in the real-time kernel'>
 
+CONFIG_RUST                                     policy<{'amd64': 'n'}>
+CONFIG_RUST                                     note<'{Disable Rust in linux-realtime}'>
+
 CONFIG_TIMERLAT_TRACER                          policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_TIMERLAT_TRACER                          note<'LP: #1961588'>
 
@@ -161,7 +164,6 @@ CONFIG_RCU_NOCB_CPU_CB_BOOST                    policy<{'amd64': 'y', 'arm64': '
 CONFIG_RCU_NOCB_CPU_DEFAULT_ALL                 policy<{'amd64': 'n', 'arm64': 'n'}>
 CONFIG_READ_ONLY_THP_FOR_FS                     policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_RING_BUFFER_ALLOW_SWAP                   policy<{'amd64': 'y'}>
-CONFIG_RUSTC_VERSION_TEXT                       policy<{'amd64': '"rustc 1.74.1 (a28077b28 2023-12-04) (built from a source tarball)"'}>
 CONFIG_RV_MON_WIP                               policy<{'amd64': 'n'}>
 CONFIG_SENSORS_AAEON                            policy<{'amd64': 'n'}>
 CONFIG_SLAB                                     policy<{'amd64': '-', 'arm64': '-'}>
