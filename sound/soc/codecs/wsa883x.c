@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitops.h>
@@ -415,6 +416,7 @@
 #define WSA883X_VERSION_1_0 0
 #define WSA883X_VERSION_1_1 1
 
+#define SWRS_SCP_HOST_CLK_DIV2_CTL_BANK(m)	(0xE0 + 0x10 * (m))
 #define WSA883X_MAX_SWR_PORTS   4
 #define WSA883X_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
@@ -434,6 +436,7 @@ struct wsa883x_priv {
 	struct regulator *vdd;
 	struct sdw_slave *slave;
 	struct sdw_stream_config sconfig;
+	struct sdw_stream_config vi_sconfig;
 	struct sdw_stream_runtime *sruntime;
 	struct sdw_port_config port_config[WSA883X_MAX_SWR_PORTS];
 	struct gpio_desc *sd_n;
@@ -512,7 +515,7 @@ static struct sdw_dpn_prop wsa_sink_dpn_prop[WSA883X_MAX_SWR_PORTS] = {
 		.num = 4,
 		.type = SDW_DPN_SIMPLE,
 		.min_ch = 1,
-		.max_ch = 1,
+		.max_ch = 2,
 		.simple_ch_prep_sm = true,
 		.read_only_wordlength = true,
 	}
@@ -949,59 +952,70 @@ static struct regmap_config wsa883x_regmap_config = {
 	.use_single_read = true,
 };
 
-static const struct reg_sequence reg_init[] = {
-	{WSA883X_PA_FSM_BYP, 0x00},
-	{WSA883X_ADC_6, 0x02},
-	{WSA883X_CDC_SPK_DSM_A2_0, 0x0A},
-	{WSA883X_CDC_SPK_DSM_A2_1, 0x08},
-	{WSA883X_CDC_SPK_DSM_A3_0, 0xF3},
-	{WSA883X_CDC_SPK_DSM_A3_1, 0x07},
-	{WSA883X_CDC_SPK_DSM_A4_0, 0x79},
-	{WSA883X_CDC_SPK_DSM_A4_1, 0x02},
-	{WSA883X_CDC_SPK_DSM_A5_0, 0x0B},
-	{WSA883X_CDC_SPK_DSM_A5_1, 0x02},
-	{WSA883X_CDC_SPK_DSM_A6_0, 0x8A},
-	{WSA883X_CDC_SPK_DSM_A7_0, 0x9B},
-	{WSA883X_CDC_SPK_DSM_C_0, 0x68},
-	{WSA883X_CDC_SPK_DSM_C_1, 0x54},
-	{WSA883X_CDC_SPK_DSM_C_2, 0xF2},
-	{WSA883X_CDC_SPK_DSM_C_3, 0x20},
-	{WSA883X_CDC_SPK_DSM_R1, 0x83},
-	{WSA883X_CDC_SPK_DSM_R2, 0x7F},
-	{WSA883X_CDC_SPK_DSM_R3, 0x9D},
-	{WSA883X_CDC_SPK_DSM_R4, 0x82},
-	{WSA883X_CDC_SPK_DSM_R5, 0x8B},
-	{WSA883X_CDC_SPK_DSM_R6, 0x9B},
-	{WSA883X_CDC_SPK_DSM_R7, 0x3F},
-	{WSA883X_VBAT_SNS, 0x20},
-	{WSA883X_DRE_CTL_0, 0x92},
-	{WSA883X_DRE_IDLE_DET_CTL, 0x0F},
-	{WSA883X_CURRENT_LIMIT, 0xC4},
-	{WSA883X_VAGC_TIME, 0x0F},
-	{WSA883X_VAGC_ATTN_LVL_1_2, 0x00},
-	{WSA883X_VAGC_ATTN_LVL_3, 0x01},
-	{WSA883X_VAGC_CTL, 0x01},
-	{WSA883X_TAGC_CTL, 0x1A},
-	{WSA883X_TAGC_TIME, 0x2C},
-	{WSA883X_TEMP_CONFIG0, 0x02},
-	{WSA883X_TEMP_CONFIG1, 0x02},
-	{WSA883X_OTP_REG_1, 0x49},
-	{WSA883X_OTP_REG_2, 0x80},
-	{WSA883X_OTP_REG_3, 0xC9},
-	{WSA883X_OTP_REG_4, 0x40},
-	{WSA883X_TAGC_CTL, 0x1B},
-	{WSA883X_ADC_2, 0x00},
-	{WSA883X_ADC_7, 0x85},
-	{WSA883X_ADC_7, 0x87},
-	{WSA883X_CKWD_CTL_0, 0x14},
-	{WSA883X_CKWD_CTL_1, 0x1B},
-	{WSA883X_GMAMP_SUP1, 0xE2},
+struct wsa_reg_mask_val {
+	u16 reg;
+	u8 mask;
+	u8 val;
+};
+
+static const struct wsa_reg_mask_val reg_init[] = {
+
+	{WSA883X_PA_FSM_BYP, 0x01, 0x00},
+	{WSA883X_ISENSE2, 0xE0, 0x40},
+	{WSA883X_ADC_6, 0x02, 0x02},
+	{WSA883X_CDC_SPK_DSM_A2_0, 0xFF, 0x0A},
+	{WSA883X_CDC_SPK_DSM_A2_1, 0x0F, 0x08},
+	{WSA883X_CDC_SPK_DSM_A3_0, 0xFF, 0xF3},
+	{WSA883X_CDC_SPK_DSM_A3_1, 0x07, 0x07},
+	{WSA883X_CDC_SPK_DSM_A4_0, 0xFF, 0x79},
+	{WSA883X_CDC_SPK_DSM_A4_1, 0x03, 0x02},
+	{WSA883X_CDC_SPK_DSM_A5_0, 0xFF, 0x0B},
+	{WSA883X_CDC_SPK_DSM_A5_1, 0x03, 0x02},
+	{WSA883X_CDC_SPK_DSM_A6_0, 0xFF, 0x8A},
+	{WSA883X_CDC_SPK_DSM_A7_0, 0xFF, 0x9B},
+	{WSA883X_CDC_SPK_DSM_C_0, 0xFF, 0x68},
+	{WSA883X_CDC_SPK_DSM_C_1, 0xFF, 0x54},
+	{WSA883X_CDC_SPK_DSM_C_2, 0xFF, 0xF2},
+	{WSA883X_CDC_SPK_DSM_C_3, 0x3F, 0x20},
+	{WSA883X_CDC_SPK_DSM_R1, 0xFF, 0x83},
+	{WSA883X_CDC_SPK_DSM_R2, 0xFF, 0x7F},
+	{WSA883X_CDC_SPK_DSM_R3, 0xFF, 0x9D},
+	{WSA883X_CDC_SPK_DSM_R4, 0xFF, 0x82},
+	{WSA883X_CDC_SPK_DSM_R5, 0xFF, 0x8B},
+	{WSA883X_CDC_SPK_DSM_R6, 0xFF, 0x9B},
+	{WSA883X_CDC_SPK_DSM_R7, 0xFF, 0x3F},
+	{WSA883X_VBAT_SNS, 0x60, 0x20},
+	{WSA883X_DRE_CTL_0, 0xF0, 0x90},
+	{WSA883X_DRE_IDLE_DET_CTL, 0x10, 0x00},
+	{WSA883X_CURRENT_LIMIT, 0x78, 0x40},
+	{WSA883X_DRE_CTL_0, 0x07, 0x02},
+	{WSA883X_VAGC_TIME, 0x0F, 0x0F},
+	{WSA883X_VAGC_ATTN_LVL_1_2, 0xFF, 0x00},
+	{WSA883X_VAGC_ATTN_LVL_3, 0xFF, 0x00},
+	{WSA883X_VAGC_CTL, 0x01, 0x01},
+	{WSA883X_TAGC_CTL, 0x0E, 0x0A},
+	{WSA883X_TAGC_TIME, 0x0C, 0x0C},
+	{WSA883X_TAGC_E2E_GAIN, 0x1F, 0x02},
+	{WSA883X_TEMP_CONFIG0, 0x07, 0x02},
+	{WSA883X_TEMP_CONFIG1, 0x07, 0x02},
+	{WSA883X_OTP_REG_1, 0xFF, 0x49},
+	{WSA883X_OTP_REG_2, 0xC0, 0x80},
+	{WSA883X_OTP_REG_3, 0xFF, 0xC9},
+	{WSA883X_OTP_REG_4, 0xC0, 0x40},
+	{WSA883X_TAGC_CTL, 0x01, 0x01},
+	{WSA883X_ADC_2, 0x40, 0x00},
+	{WSA883X_ADC_7, 0x04, 0x04},
+	{WSA883X_ADC_7, 0x02, 0x02},
+	{WSA883X_CKWD_CTL_0, 0x60, 0x00},
+	{WSA883X_DRE_CTL_1, 0x3E, 0x20},
+	{WSA883X_CKWD_CTL_1, 0x1F, 0x1B},
+	{WSA883X_GMAMP_SUP1, 0x60, 0x60},
 };
 
 static void wsa883x_init(struct wsa883x_priv *wsa883x)
 {
 	struct regmap *regmap = wsa883x->regmap;
-	int variant, version;
+	int variant, version, i;
 
 	regmap_read(regmap, WSA883X_OTP_REG_0, &variant);
 	wsa883x->variant = variant & WSA883X_ID_MASK;
@@ -1033,7 +1047,9 @@ static void wsa883x_init(struct wsa883x_priv *wsa883x)
 	wsa883x->comp_offset = COMP_OFFSET2;
 
 	/* Initial settings */
-	regmap_multi_reg_write(regmap, reg_init, ARRAY_SIZE(reg_init));
+	for (i = 0; i < ARRAY_SIZE(reg_init); i++)
+		regmap_update_bits(regmap, reg_init[i].reg,
+				reg_init[i].mask, reg_init[i].val);
 
 	if (wsa883x->variant == WSA8830 || wsa883x->variant == WSA8832) {
 		wsa883x->comp_offset = COMP_OFFSET3;
@@ -1068,8 +1084,18 @@ static int wsa883x_port_prep(struct sdw_slave *slave,
 	return 0;
 }
 
+static int wsa883x_bus_config(struct sdw_slave *slave,
+			      struct sdw_bus_params *params)
+{
+	sdw_write(slave, SWRS_SCP_HOST_CLK_DIV2_CTL_BANK(params->next_bank),
+		  0x01);
+
+	return 0;
+}
+
 static const struct sdw_slave_ops wsa883x_slave_ops = {
 	.update_status = wsa883x_update_status,
+	.bus_config = wsa883x_bus_config,
 	.port_prep = wsa883x_port_prep,
 };
 
@@ -1211,6 +1237,11 @@ static int wsa883x_spkr_event(struct snd_soc_dapm_widget *w,
 			snd_soc_component_write_field(component, WSA883X_DRE_CTL_0,
 						      WSA883X_DRE_OFFSET_MASK,
 						      wsa883x->comp_offset);
+		usleep_range(250, 300);
+		snd_soc_component_write_field(component, WSA883X_DRE_CTL_1,
+					      WSA883X_DRE_GAIN_EN_MASK,
+					      WSA883X_DRE_GAIN_FROM_CSR);
+		usleep_range(250, 300);
 		snd_soc_component_write_field(component, WSA883X_VBAT_ADC_FLT_CTL,
 					      WSA883X_VBAT_ADC_COEF_SEL_MASK,
 					      WSA883X_VBAT_ADC_COEF_F_1DIV16);
@@ -1219,6 +1250,14 @@ static int wsa883x_spkr_event(struct snd_soc_dapm_widget *w,
 		snd_soc_component_write_field(component, WSA883X_PDM_WD_CTL,
 					      WSA883X_PDM_EN_MASK,
 					      WSA883X_PDM_ENABLE);
+		snd_soc_component_write_field(component, WSA883X_PA_FSM_CTL,
+					      WSA883X_GLOBAL_PA_EN_MASK,
+					      WSA883X_GLOBAL_PA_ENABLE);
+		usleep_range(3000, 3100);
+		snd_soc_component_write_field(component,
+						WSA883X_DRE_CTL_1,
+						WSA883X_DRE_GAIN_EN_MASK, 0x00);
+		usleep_range(5000, 5050);
 
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
@@ -1227,6 +1266,12 @@ static int wsa883x_spkr_event(struct snd_soc_dapm_widget *w,
 		snd_soc_component_write_field(component, WSA883X_VBAT_ADC_FLT_CTL,
 					      WSA883X_VBAT_ADC_COEF_SEL_MASK,
 					      WSA883X_VBAT_ADC_COEF_F_1DIV2);
+		snd_soc_component_write_field(component, WSA883X_PA_FSM_CTL,
+					      0x01, 0x00);
+		snd_soc_component_write_field(component, WSA883X_PA_FSM_CTL,
+					      0x10, 0x00);
+		snd_soc_component_write_field(component, WSA883X_PA_FSM_CTL,
+					      0x0f, 0x10);
 		snd_soc_component_write_field(component, WSA883X_PA_FSM_CTL,
 					      WSA883X_GLOBAL_PA_EN_MASK, 0);
 		snd_soc_component_write_field(component, WSA883X_PDM_WD_CTL,
@@ -1361,6 +1406,19 @@ static struct snd_soc_dai_driver wsa883x_dais[] = {
 		},
 		.ops = &wsa883x_dai_ops,
 	},
+	{
+		.name = "VI",
+		.capture = {
+			.stream_name = "VI Capture",
+			.rates = WSA883X_RATES | WSA883X_FRAC_RATES,
+			.formats = WSA883X_FORMATS,
+			.rate_min = 8000,
+			.rate_max = 352800,
+			.channels_min = 1,
+			.channels_max = 2,
+		},
+		.ops = &wsa883x_dai_ops,
+	},
 };
 
 static int wsa883x_probe(struct sdw_slave *pdev,
@@ -1378,6 +1436,16 @@ static int wsa883x_probe(struct sdw_slave *pdev,
 	if (IS_ERR(wsa883x->vdd))
 		return dev_err_probe(dev, PTR_ERR(wsa883x->vdd),
 				     "No vdd regulator found\n");
+
+	ret = regulator_set_voltage(wsa883x->vdd, 1800000, 1800000);
+	if (ret)
+		dev_err_probe(dev, PTR_ERR(wsa883x->vdd),
+			      "failed to set the vdd vol 1.8v\n");
+
+	ret = regulator_set_load(wsa883x->vdd, 20000);
+	if (ret)
+		dev_err_probe(dev, PTR_ERR(wsa883x->vdd),
+			      "failed to set the load 20mA\n");
 
 	ret = regulator_enable(wsa883x->vdd);
 	if (ret)
@@ -1399,13 +1467,12 @@ static int wsa883x_probe(struct sdw_slave *pdev,
 	wsa883x->sconfig.direction = SDW_DATA_DIR_RX;
 	wsa883x->sconfig.type = SDW_STREAM_PDM;
 
-	/**
-	 * Port map index starts with 0, however the data port for this codec
-	 * are from index 1
-	 */
-	if (of_property_read_u32_array(dev->of_node, "qcom,port-mapping", &pdev->m_port_map[1],
-					WSA883X_MAX_SWR_PORTS))
-		dev_dbg(dev, "Static Port mapping not specified\n");
+	if (of_property_read_u32_array(dev->of_node, "qcom,port-mapping",
+			       &pdev->m_port_map[1],
+			       WSA883X_MAX_SWR_PORTS))
+		dev_err(dev, "Static Port mapping not specified\n");
+	else
+		dev_dbg(dev, "static port mapping read from DT for wsa883x.c\n");
 
 	pdev->prop.sink_ports = GENMASK(WSA883X_MAX_SWR_PORTS - 1, 0);
 	pdev->prop.simple_clk_stop_capable = true;
