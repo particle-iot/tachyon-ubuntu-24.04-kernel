@@ -15,6 +15,7 @@
 #include <sound/tlv.h>
 #include <linux/of_clk.h>
 #include <linux/clk-provider.h>
+#include <linux/soundwire/sdw.h>
 
 #include "lpass-macro-common.h"
 
@@ -368,6 +369,7 @@
 #define RX_MAX_OFFSET				(0x0F8C)
 
 #define MCLK_FREQ		19200000
+#define MCLK_NATIVE_FREQ		11289600
 
 #define RX_MACRO_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
@@ -395,6 +397,11 @@
 
 #define COMP_MAX_COEFF 25
 #define RX_NUM_CLKS_MAX	5
+
+#define SAMPLING_RATE_44P1KHZ   44100
+#define SAMPLING_RATE_88P2KHZ   88200
+#define SAMPLING_RATE_176P4KHZ  176400
+#define SAMPLING_RATE_352P8KHZ  352800
 
 struct comp_coeff_val {
 	u8 lsb;
@@ -600,6 +607,7 @@ struct rx_macro {
 	int clsh_users;
 	int rx_mclk_cnt;
 	bool is_ear_mode_on;
+	bool is_native_on;
 	bool hph_pwr_mode;
 	bool hph_hd2_mode;
 	struct snd_soc_component *component;
@@ -611,11 +619,14 @@ struct rx_macro {
 	int softclip_clk_users;
 	struct lpass_macro *pds;
 	struct regmap *regmap;
+	char __iomem *rx_clk_muxsel;
 	struct clk *mclk;
 	struct clk *npl;
 	struct clk *macro;
 	struct clk *dcodec;
 	struct clk *fsgen;
+	struct clk *rx_mclk;
+	struct clk *rx_npl;
 	struct clk_hw hw;
 };
 #define to_rx_macro(_hw) container_of(_hw, struct rx_macro, hw)
@@ -1612,15 +1623,40 @@ static int rx_macro_set_mix_interpolator_rate(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static bool rx_macro_is_fractional_sample_rate(u32 sample_rate)
+{
+	switch (sample_rate) {
+	case SAMPLING_RATE_44P1KHZ:
+	case SAMPLING_RATE_88P2KHZ:
+	case SAMPLING_RATE_176P4KHZ:
+	case SAMPLING_RATE_352P8KHZ:
+		return true;
+	default:
+		return false;
+	}
+	return false;
+}
+
 static int rx_macro_set_interpolator_rate(struct snd_soc_dai *dai,
 					  u32 sample_rate)
 {
 	int rate_val = 0;
 	int i, ret;
+	struct snd_soc_component *component = dai->component;
+	struct rx_macro *rx = snd_soc_component_get_drvdata(component);
 
-	for (i = 0; i < ARRAY_SIZE(sr_val_tbl); i++)
-		if (sample_rate == sr_val_tbl[i].sample_rate)
+	for (i = 0; i < ARRAY_SIZE(sr_val_tbl); i++) {
+		if (sample_rate == sr_val_tbl[i].sample_rate) {
 			rate_val = sr_val_tbl[i].rate_val;
+			if (rx_macro_is_fractional_sample_rate(sample_rate))
+				rx->is_native_on = true;
+			else
+				rx->is_native_on = false;
+			break;
+		}
+	}
+
+	sdw_native_notify(rx->is_native_on);
 
 	ret = rx_macro_set_prim_interpolator_rate(dai, rate_val, sample_rate);
 	if (ret)
@@ -1629,6 +1665,29 @@ static int rx_macro_set_interpolator_rate(struct snd_soc_dai *dai,
 	ret = rx_macro_set_mix_interpolator_rate(dai, rate_val, sample_rate);
 
 	return ret;
+}
+
+static int rx_macro_mclk_mode_mux_sel(struct rx_macro *rx, bool state)
+{
+	int muxsel = 0;
+
+	if (state) {
+		if (rx->is_native_on) {
+			clk_prepare_enable(rx->rx_mclk);
+			clk_prepare_enable(rx->rx_npl);
+			iowrite32(0x1, rx->rx_clk_muxsel);
+			muxsel = ioread32(rx->rx_clk_muxsel);
+		}
+	} else {
+		if (rx->is_native_on) {
+			iowrite32(0x0, rx->rx_clk_muxsel);
+			muxsel = ioread32(rx->rx_clk_muxsel);
+			clk_disable_unprepare(rx->rx_npl);
+			clk_disable_unprepare(rx->rx_mclk);
+			rx->is_native_on = false;
+		}
+	}
+	return 0;
 }
 
 static int rx_macro_hw_params(struct snd_pcm_substream *substream,
@@ -1913,10 +1972,12 @@ static int rx_macro_mclk_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		rx_macro_mclk_mode_mux_sel(rx, true);
 		rx_macro_mclk_enable(rx, true);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		rx_macro_mclk_enable(rx, false);
+		rx_macro_mclk_mode_mux_sel(rx, false);
 		break;
 	default:
 		dev_err(component->dev, "%s: invalid DAPM event %d\n", __func__, event);
@@ -3540,6 +3601,7 @@ static int rx_macro_probe(struct platform_device *pdev)
 	kernel_ulong_t flags;
 	struct rx_macro *rx;
 	void __iomem *base;
+	int muxsel = 0;
 	int ret;
 
 	flags = (kernel_ulong_t)device_get_match_data(dev);
@@ -3566,9 +3628,26 @@ static int rx_macro_probe(struct platform_device *pdev)
 			return dev_err_probe(dev, PTR_ERR(rx->npl), "unable to get npl clock\n");
 	}
 
+	rx->rx_mclk = devm_clk_get(dev, "rx-mclk");
+	if (IS_ERR(rx->rx_mclk))
+		dev_info(dev, "unable to get rx mclk\n");
+
+	rx->rx_npl = devm_clk_get(dev, "rx-npl");
+	if (IS_ERR(rx->rx_npl))
+		dev_info(dev, "unable to get rx npl\n");
+
 	rx->fsgen = devm_clk_get(dev, "fsgen");
 	if (IS_ERR(rx->fsgen))
 		return dev_err_probe(dev, PTR_ERR(rx->fsgen), "unable to get fsgen clock\n");
+
+	ret = of_property_read_u32(dev->of_node, "qcom,rx_mclk_mode_muxsel", &muxsel);
+	if (ret) {
+		dev_info(dev, "Could not find qcom,rx_mclk_mode_muxsel entry\n");
+	} else {
+		rx->rx_clk_muxsel = devm_ioremap(dev, muxsel, 0x4);
+		if (!rx->rx_clk_muxsel)
+			dev_err(dev, "rx mux io remap failed\n");
+	}
 
 	rx->pds = lpass_macro_pds_init(dev);
 	if (IS_ERR(rx->pds))
@@ -3593,6 +3672,9 @@ static int rx_macro_probe(struct platform_device *pdev)
 	/* set MCLK and NPL rates */
 	clk_set_rate(rx->mclk, MCLK_FREQ);
 	clk_set_rate(rx->npl, MCLK_FREQ);
+
+	clk_set_rate(rx->rx_mclk, 2 * MCLK_NATIVE_FREQ);
+	clk_set_rate(rx->rx_npl, 2 * MCLK_NATIVE_FREQ);
 
 	ret = clk_prepare_enable(rx->macro);
 	if (ret)
