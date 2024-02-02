@@ -289,6 +289,54 @@ static void qce_crypto_remove(struct platform_device *pdev)
 	clk_disable_unprepare(qce->core);
 }
 
+static int  qce_crypto_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct qce_device *qce = platform_get_drvdata(pdev);
+
+	clk_disable_unprepare(qce->bus);
+	clk_disable_unprepare(qce->iface);
+	clk_disable_unprepare(qce->core);
+	icc_set_bw(qce->mem_path, 0, 0);
+
+	return 0;
+}
+
+static int  qce_crypto_resume(struct platform_device *pdev)
+{
+	struct qce_device *qce = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	ret = icc_set_bw(qce->mem_path, QCE_DEFAULT_MEM_BANDWIDTH, QCE_DEFAULT_MEM_BANDWIDTH);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(qce->core);
+	if (ret)
+		goto err_mem_path_disable;
+
+	ret = clk_prepare_enable(qce->iface);
+	if (ret)
+		goto err_clks_core;
+
+	ret = clk_prepare_enable(qce->bus);
+	if (ret)
+		goto err_clks_iface;
+
+err_clks_iface:
+	clk_disable_unprepare(qce->iface);
+err_clks_core:
+	clk_disable_unprepare(qce->core);
+err_mem_path_disable:
+	icc_set_bw(qce->mem_path, 0, 0);
+
+	return ret;
+}
+
+static void qce_crypto_shutdown(struct platform_device *pdev)
+{
+	qce_crypto_remove(pdev);
+}
+
 static const struct of_device_id qce_crypto_of_match[] = {
 	{ .compatible = "qcom,crypto-v5.1", },
 	{ .compatible = "qcom,crypto-v5.4", },
@@ -300,6 +348,9 @@ MODULE_DEVICE_TABLE(of, qce_crypto_of_match);
 static struct platform_driver qce_crypto_driver = {
 	.probe = qce_crypto_probe,
 	.remove_new = qce_crypto_remove,
+	.suspend = qce_crypto_suspend,
+	.resume = qce_crypto_resume,
+	.shutdown = qce_crypto_shutdown,
 	.driver = {
 		.name = KBUILD_MODNAME,
 		.of_match_table = qce_crypto_of_match,
