@@ -70,8 +70,7 @@ CONFIG_ARCH_SUPPORTS_PER_VMA_LOCK               policy<{'amd64': '-', 'arm64': '
 CONFIG_ARCH_SUPPORTS_RT                         policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_ARCH_WANT_PMD_MKWRITE                    policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_ARM64_ERRATUM_834220                     policy<{'arm64': '-'}>
-CONFIG_AS_VERSION                               policy<{'amd64': '24200', 'arm64': '24200'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'amd64': '"x86_64-linux-gnu-gcc-13 (Ubuntu 13.2.0-13ubuntu1) 13.2.0"', 'arm64': '"aarch64-linux-gnu-gcc-13 (Ubuntu 13.2.0-11ubuntu1) 13.2.0"'}>
+CONFIG_BINDGEN_VERSION_TEXT                     policy<{'amd64': '-'}>
 CONFIG_CEC_GPIO                                 policy<{'amd64': 'm', 'arm64': 'n'}>
 CONFIG_CEC_PIN                                  policy<{'amd64': 'y', 'arm64': '-'}>
 CONFIG_CEC_PIN_ERROR_INJ                        policy<{'amd64': 'y', 'arm64': '-'}>
@@ -135,7 +134,6 @@ CONFIG_KVM_GENERIC_HARDWARE_ENABLING            policy<{'amd64': 'y', 'arm64': '
 CONFIG_KVM_MMIO                                 policy<{'amd64': 'y', 'arm64': '-'}>
 CONFIG_KVM_VFIO                                 policy<{'amd64': 'y', 'arm64': '-'}>
 CONFIG_KVM_XFER_TO_GUEST_WORK                   policy<{'amd64': 'y', 'arm64': '-'}>
-CONFIG_LD_VERSION                               policy<{'amd64': '24200', 'arm64': '24200'}>
 CONFIG_LEDS_AAEON                               policy<{'amd64': 'n'}>
 CONFIG_LEDS_TRIGGER_CPU                         policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_MARVELL_GTI_WDT                          policy<{'arm64': 'y'}>
