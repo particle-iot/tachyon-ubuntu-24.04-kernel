@@ -31,6 +31,17 @@ EXPORT_SYMBOL(sdw_rows);
 int sdw_cols[SDW_FRAME_COLS] = {2, 4, 6, 8, 10, 12, 14, 16};
 EXPORT_SYMBOL(sdw_cols);
 
+static bool is_native_on;
+
+void sdw_native_notify(bool native_rate_status)
+{
+	if (native_rate_status)
+		is_native_on = true;
+	else
+		is_native_on = false;
+}
+EXPORT_SYMBOL_GPL(sdw_native_notify);
+
 int sdw_find_col_index(int col)
 {
 	int i;
@@ -1364,10 +1375,13 @@ static int _sdw_prepare_stream(struct sdw_stream_runtime *stream,
 		prop = &bus->prop;
 		memcpy(&params, &bus->params, sizeof(params));
 
-		/* TODO: Support Asynchronous mode */
-		if ((prop->max_clk_freq % stream->params.rate) != 0) {
-			dev_err(bus->dev, "Async mode not supported\n");
-			return -EINVAL;
+		/*Skip Async mode support for native playback*/
+		if (!is_native_on) {
+			/* TODO: Support Asynchronous mode */
+			if ((prop->max_clk_freq % stream->params.rate) != 0) {
+				dev_err(bus->dev, "Async mode not supported\n");
+				return -EINVAL;
+			}
 		}
 
 		if (update_params) {
