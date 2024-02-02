@@ -58,6 +58,7 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 		return qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
 	case VA_CODEC_DMA_TX_0:
 	case WSA_CODEC_DMA_RX_0:
+	case WSA_CODEC_DMA_TX_0:
 	case PRIMARY_MI2S_RX:
 	case PRIMARY_MI2S_TX:
 	case PRIMARY_TDM_RX_0:
