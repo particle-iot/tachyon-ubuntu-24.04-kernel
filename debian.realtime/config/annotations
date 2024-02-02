@@ -26,7 +26,7 @@ CONFIG_OSNOISE_TRACER                           note<'LP: #1961588'>
 CONFIG_PREEMPT_RT                               policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_PREEMPT_RT                               note<'must be enabled in the real-time kernel'>
 
-CONFIG_RUST                                     policy<{'amd64': '-'}>
+CONFIG_RUST                                     policy<{'amd64': 'n'}>
 CONFIG_RUST                                     note<'Disable Rust in linux-realtime'>
 
 CONFIG_TIMERLAT_TRACER                          policy<{'amd64': 'y', 'arm64': 'y'}>
@@ -77,6 +77,7 @@ CONFIG_CEC_GPIO                                 policy<{'amd64': 'm', 'arm64': '
 CONFIG_CEC_PIN                                  policy<{'amd64': 'y', 'arm64': '-'}>
 CONFIG_CEC_PIN_ERROR_INJ                        policy<{'amd64': 'y', 'arm64': '-'}>
 CONFIG_COMPACT_UNEVICTABLE_DEFAULT              policy<{'amd64': '0', 'arm64': '0'}>
+CONFIG_CONSTRUCTORS                             policy<{'amd64': '-'}>
 CONFIG_CONTEXT_TRACKING_FORCE                   policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_CONTEXT_TRACKING_USER                    policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_CONTEXT_TRACKING_USER_FORCE              policy<{'amd64': 'n', 'arm64': 'n'}>
@@ -171,9 +172,10 @@ CONFIG_RING_BUFFER_ALLOW_SWAP                   policy<{'amd64': 'y'}>
 CONFIG_RUSTC_VERSION_TEXT                       policy<{'amd64': '-'}>
 CONFIG_RUST_BUILD_ASSERT_ALLOW                  policy<{'amd64': '-'}>
 CONFIG_RUST_DEBUG_ASSERTIONS                    policy<{'amd64': '-'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'amd64': '-', 'arm64': '-'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_RUST_OVERFLOW_CHECKS                     policy<{'amd64': '-'}>
 CONFIG_RV_MON_WIP                               policy<{'amd64': 'n'}>
+CONFIG_SAMPLES_RUST                             policy<{'amd64': '-'}>
 CONFIG_SENSORS_AAEON                            policy<{'amd64': 'n'}>
 CONFIG_SLAB                                     policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_SLAB_DEPRECATED                          policy<{'amd64': '-', 'arm64': '-'}>
