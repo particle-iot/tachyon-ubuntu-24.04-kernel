@@ -15,6 +15,9 @@
 	compatible = "qcom,qcs8550-rb5gen2-hdk", "qcom,qcs8550-rb5gen2",
 			"qcom,qcs8550", "qcom,qcm8550", "qcom,sm8550";
 
+	qcom,msm-id = <603 0x20000>;
+	qcom,board-id = <0x1001f 2>;
+
 	aliases {
 		serial0 = &uart7;
 	};
