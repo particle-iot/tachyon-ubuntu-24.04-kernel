@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2018-2023, Linaro Limited.
 // Copyright (c) 2018, The Linux Foundation. All rights reserved.
+// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <dt-bindings/sound/qcom,q6afe.h>
 #include <linux/module.h>
@@ -64,6 +65,7 @@ int qcom_snd_sdw_prepare(struct snd_pcm_substream *substream,
 	switch (cpu_dai->id) {
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_RX_1:
+	case WSA_CODEC_DMA_TX_0:
 	case RX_CODEC_DMA_RX_0:
 	case RX_CODEC_DMA_RX_1:
 	case TX_CODEC_DMA_TX_0:
@@ -113,6 +115,7 @@ int qcom_snd_sdw_hw_params(struct snd_pcm_substream *substream,
 
 	switch (cpu_dai->id) {
 	case WSA_CODEC_DMA_RX_0:
+	case WSA_CODEC_DMA_TX_0:
 	case RX_CODEC_DMA_RX_0:
 	case RX_CODEC_DMA_RX_1:
 	case TX_CODEC_DMA_TX_0:
@@ -141,6 +144,7 @@ int qcom_snd_sdw_hw_free(struct snd_pcm_substream *substream,
 	switch (cpu_dai->id) {
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_RX_1:
+	case WSA_CODEC_DMA_TX_0:
 	case RX_CODEC_DMA_RX_0:
 	case RX_CODEC_DMA_RX_1:
 	case TX_CODEC_DMA_TX_0:
