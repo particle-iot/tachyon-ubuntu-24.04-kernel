@@ -1059,6 +1059,7 @@ int sdw_bus_exit_clk_stop(struct sdw_bus *bus);
 
 int sdw_compare_devid(struct sdw_slave *slave, struct sdw_slave_id id);
 void sdw_extract_slave_id(struct sdw_bus *bus, u64 addr, struct sdw_slave_id *id);
+void sdw_native_notify(bool native_rate_status);
 
 #if IS_ENABLED(CONFIG_SOUNDWIRE)
 
