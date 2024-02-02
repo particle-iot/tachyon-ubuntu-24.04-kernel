@@ -164,10 +164,14 @@
 	/delete-property/ power-domain-names;
 	clocks = <&q6prmcc LPASS_CLK_ID_TX_CORE_MCLK LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 		 <&q6prmcc LPASS_CLK_ID_TX_CORE_NPL_MCLK  LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6prmcc LPASS_CLK_ID_RX_CORE_MCLK  LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+		 <&q6prmcc LPASS_CLK_ID_RX_CORE_NPL_MCLK  LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 		 <&q6prmcc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 		 <&q6prmcc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 		 <&lpass_va_macro>;
-	clock-names = "mclk", "npl", "macro", "dcodec", "fsgen";
+	clock-names = "mclk", "npl", "rx-mclk", "rx-npl", "macro", "dcodec", "fsgen";
+
+	qcom,rx_mclk_mode_muxsel = <0x033240D8>;
 
 	status = "okay";
 };
