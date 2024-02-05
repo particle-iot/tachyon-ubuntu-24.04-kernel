@@ -32,3 +32,9 @@ export CONFIG_CNSS_GENL=m
 export CONFIG_CNSS_PLAT_IPC_QMI_SVC=m
 
 obj-y += platform/
+
+###
+
+export DISPLAY_ROOT := $(srctree)/$(src)/display
+
+obj-y += display/
