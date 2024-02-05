@@ -413,6 +413,13 @@
 #define WSA883X_NUM_REGISTERS           (WSA883X_EMEM_63 + 1)
 #define WSA883X_MAX_REGISTER            (WSA883X_NUM_REGISTERS - 1)
 
+#define T1_TEMP -10
+#define T2_TEMP 150
+#define LOW_TEMP_THRESHOLD 5
+#define HIGH_TEMP_THRESHOLD 45
+#define TEMP_INVALID	0xFFFF
+#define WSA883X_TEMP_RETRY 3
+
 #define WSA883X_VERSION_1_0 0
 #define WSA883X_VERSION_1_1 1
 
@@ -439,14 +446,26 @@ struct wsa883x_priv {
 	struct sdw_stream_config vi_sconfig;
 	struct sdw_stream_runtime *sruntime;
 	struct sdw_port_config port_config[WSA883X_MAX_SWR_PORTS];
+	struct mutex res_lock;
 	struct gpio_desc *sd_n;
 	bool port_prepared[WSA883X_MAX_SWR_PORTS];
 	bool port_enable[WSA883X_MAX_SWR_PORTS];
+	int curr_temp;
 	int version;
 	int variant;
 	int active_ports;
 	int dev_mode;
 	int comp_offset;
+	unsigned long status_mask;
+};
+
+struct wsa_temp_register {
+	u8 d1_msb;
+	u8 d1_lsb;
+	u8 d2_msb;
+	u8 d2_lsb;
+	u8 dmeas_msb;
+	u8 dmeas_lsb;
 };
 
 enum {
@@ -454,6 +473,12 @@ enum {
 	WSA8835,
 	WSA8832,
 	WSA8835_V2 = 5,
+};
+
+enum {
+	SPKR_STATUS = 0,
+	WSA_SUPPLIES_LPM_MODE,
+	SPKR_ADIE_LB,
 };
 
 enum {
@@ -889,6 +914,151 @@ static struct reg_default wsa883x_defaults[] = {
 	{ WSA883X_EMEM_63, 0x00 },
 };
 
+static int32_t wsa883x_temp_reg_read(struct snd_soc_component *component,
+				     struct wsa_temp_register *wsa_temp_reg)
+{
+	struct wsa883x_priv *wsa883x = snd_soc_component_get_drvdata(component);
+	int ret = 0;
+	unsigned int val = 0;
+
+	if (!wsa883x) {
+		dev_err(component->dev, "%s: wsa883x is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	pm_runtime_get_sync(wsa883x->dev);
+	mutex_lock(&wsa883x->res_lock);
+
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x01, 0x01);
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x04, 0x04);
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x02, 0x02);
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x80, 0x80);
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x20, 0x20);
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0x40, 0x40);
+
+	regmap_update_bits(component->regmap, WSA883X_TADC_VALUE_CTL, 0x01, 0x00);
+
+	regmap_read(component->regmap, WSA883X_TEMP_MSB, &val);
+	wsa_temp_reg->dmeas_msb = val;
+
+	regmap_read(component->regmap, WSA883X_TEMP_LSB, &val);
+	wsa_temp_reg->dmeas_lsb = val;
+
+	regmap_update_bits(component->regmap, WSA883X_TADC_VALUE_CTL, 0x01, 0x01);
+
+	regmap_read(component->regmap, WSA883X_OTP_REG_1, &val);
+	wsa_temp_reg->d1_msb = val;
+
+	regmap_read(component->regmap, WSA883X_OTP_REG_2, &val);
+	wsa_temp_reg->d1_lsb = val;
+
+	regmap_read(component->regmap, WSA883X_OTP_REG_3, &val);
+	wsa_temp_reg->d2_msb = val;
+
+	regmap_read(component->regmap, WSA883X_OTP_REG_4, &val);
+	wsa_temp_reg->d2_lsb = val;
+
+	regmap_update_bits(component->regmap, WSA883X_PA_FSM_BYP, 0xE7, 0x00);
+
+	mutex_unlock(&wsa883x->res_lock);
+	pm_runtime_mark_last_busy(wsa883x->dev);
+	pm_runtime_put_autosuspend(wsa883x->dev);
+
+	return 0;
+}
+
+
+static int wsa883x_get_temperature(struct snd_soc_component *component, int *temp)
+{
+
+	struct wsa_temp_register reg;
+	int dmeas, d1, d2;
+	int ret = 0;
+	int temp_val = 0;
+	int t1 = T1_TEMP;
+	int t2 = T2_TEMP;
+	u8 retry = WSA883X_TEMP_RETRY;
+	struct wsa883x_priv *wsa883x = snd_soc_component_get_drvdata(component);
+
+	if (!wsa883x)
+		return -EINVAL;
+
+	do {
+		ret = wsa883x_temp_reg_read(component, &reg);
+		if (ret) {
+			pr_err("%s: temp read failed: %d, current temp: %d\n",
+				__func__, ret, wsa883x->curr_temp);
+			if (temp)
+				*temp = wsa883x->curr_temp;
+			return 0;
+		}
+		/*
+		 * Temperature register values are expected to be in the
+		 * following range.
+		 * d1_msb  = 68 - 92 and d1_lsb  = 0, 64, 128, 192
+		 * d2_msb  = 185 -218 and  d2_lsb  = 0, 64, 128, 192
+		 */
+		if ((reg.d1_msb < 68 || reg.d1_msb > 92) ||
+		    (!(reg.d1_lsb == 0 || reg.d1_lsb == 64 || reg.d1_lsb == 128 ||
+			reg.d1_lsb == 192)) ||
+		    (reg.d2_msb < 185 || reg.d2_msb > 218) ||
+		    (!(reg.d2_lsb == 0 || reg.d2_lsb == 64 || reg.d2_lsb == 128 ||
+			reg.d2_lsb == 192))) {
+			printk_ratelimited("%s: Temperature registers[%d %d %d %d] are out of range\n",
+					   __func__, reg.d1_msb, reg.d1_lsb, reg.d2_msb,
+					   reg.d2_lsb);
+		}
+		dmeas = ((reg.dmeas_msb << 0x8) | reg.dmeas_lsb) >> 0x6;
+		d1 = ((reg.d1_msb << 0x8) | reg.d1_lsb) >> 0x6;
+		d2 = ((reg.d2_msb << 0x8) | reg.d2_lsb) >> 0x6;
+
+		if (d1 == d2)
+			temp_val = TEMP_INVALID;
+		else
+			temp_val = t1 + (((dmeas - d1) * (t2 - t1))/(d2 - d1));
+
+		pr_err("%s: Calculated temperature value = %d\n", __func__, temp_val);
+		/* temp_val = 25; */
+
+		if (temp_val <= LOW_TEMP_THRESHOLD ||
+			temp_val >= HIGH_TEMP_THRESHOLD) {
+			pr_debug("%s: T0: %d is out of range[%d, %d]\n", __func__,
+				 temp_val, LOW_TEMP_THRESHOLD, HIGH_TEMP_THRESHOLD);
+			if (retry--)
+				usleep_range(10000, 15000);
+		} else {
+			break;
+		}
+	} while (retry);
+
+	wsa883x->curr_temp = temp_val;
+	if (temp)
+		*temp = temp_val;
+	pr_debug("%s: t0 measured: %d dmeas = %d, d1 = %d, d2 = %d\n",
+		  __func__, temp_val, dmeas, d1, d2);
+
+	return ret;
+}
+
+static int wsa_get_temp(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component =
+			snd_soc_kcontrol_component(kcontrol);
+	struct wsa883x_priv *wsa883x = snd_soc_component_get_drvdata(component);
+	int temp = 0;
+
+	if (test_bit(SPKR_STATUS, &wsa883x->status_mask))
+		temp = wsa883x->curr_temp;
+	else
+		wsa883x_get_temperature(component, &temp);
+
+	ucontrol->value.integer.value[0] = temp;
+
+	return 0;
+}
+
+
 static bool wsa883x_readonly_register(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -1011,6 +1181,9 @@ static const struct wsa_reg_mask_val reg_init[] = {
 	{WSA883X_CKWD_CTL_1, 0x1F, 0x1B},
 	{WSA883X_GMAMP_SUP1, 0x60, 0x60},
 };
+
+static int wsa883x_get_temperature(struct snd_soc_component *component,
+	int *temp);
 
 static void wsa883x_init(struct wsa883x_priv *wsa883x)
 {
@@ -1289,6 +1462,8 @@ static const struct snd_soc_dapm_widget wsa883x_dapm_widgets[] = {
 static const struct snd_kcontrol_new wsa883x_snd_controls[] = {
 	SOC_SINGLE_RANGE_TLV("PA Volume", WSA883X_DRE_CTL_1, 1,
 			     0x0, 0x1f, 1, pa_gain),
+	SOC_SINGLE_EXT("WSA Temp", SND_SOC_NOPM, 0, UINT_MAX, 0,
+		       wsa_get_temp, NULL),
 	SOC_ENUM_EXT("WSA MODE", wsa_dev_mode_enum,
 		     wsa_dev_mode_get, wsa_dev_mode_put),
 	SOC_SINGLE_EXT("COMP Offset", SND_SOC_NOPM, 0, 4, 0,
