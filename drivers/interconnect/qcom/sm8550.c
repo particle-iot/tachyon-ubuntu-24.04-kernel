@@ -1788,6 +1788,7 @@ static struct qcom_icc_node qns_mem_noc_sf_cam_ife_2 = {
 static struct qcom_icc_bcm bcm_acv = {
 	.name = "ACV",
 	.enable_mask = 0x8,
+	.perf_mode_mask = 0x2,
 	.num_nodes = 1,
 	.nodes = { &ebi },
 };
@@ -1954,6 +1955,7 @@ static struct qcom_icc_bcm bcm_sn7 = {
 static struct qcom_icc_bcm bcm_acv_disp = {
 	.name = "ACV",
 	.enable_mask = 0x1,
+	.perf_mode_mask = 0x2,
 	.num_nodes = 1,
 	.nodes = { &ebi_disp },
 };
