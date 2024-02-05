@@ -17,4 +17,10 @@ obj-$(CONFIG_UBUNTU_HOST)      += ubuntu-host/
 ##
 ##
 
-obj-y += qcacld/
+##
+##
+##
+obj-$(CONFIG_ARCH_QCOM)		+= qcom/
+##
+##
+##
