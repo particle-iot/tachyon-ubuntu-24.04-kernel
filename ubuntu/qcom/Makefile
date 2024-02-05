@@ -38,3 +38,9 @@ obj-y += platform/
 export DISPLAY_ROOT := $(srctree)/$(src)/display
 
 obj-y += display/
+
+###
+
+export KGSL_PATH := $(srctree)/$(src)/graphics
+export KERNEL_SRC := $(srctree)
+obj-y += graphics/
