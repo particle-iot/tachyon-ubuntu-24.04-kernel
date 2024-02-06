@@ -16,7 +16,6 @@
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/firmware/qcom/qcom_scm.h>
-#include <linux/firmware/qcom/qcom_scm_addon.h>
 #include <linux/dma-mapping.h>
 #include <linux/qtee_shmbridge.h>
 #include <linux/of_platform.h>
