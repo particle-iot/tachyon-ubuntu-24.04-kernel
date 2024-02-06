@@ -501,6 +501,9 @@ CONFIG_DRM_DW_HDMI_CEC                          policy<{'arm64': '-'}>
 CONFIG_DRM_DW_HDMI_GP_AUDIO                     policy<{'arm64': '-'}>
 CONFIG_DRM_DW_HDMI_I2S_AUDIO                    policy<{'arm64': '-'}>
 CONFIG_DRM_DW_MIPI_DSI                          policy<{'arm64': '-'}>
+CONFIG_DRM_FBDEV_EMULATION                      policy<{'arm64': 'n'}>
+CONFIG_DRM_FBDEV_LEAK_PHYS_SMEM                 policy<{'arm64': '-'}>
+CONFIG_DRM_FBDEV_OVERALLOC                      policy<{'arm64': '-'}>
 CONFIG_DRM_FSL_LDB                              policy<{'arm64': '-'}>
 CONFIG_DRM_IMX8QM_LDB                           policy<{'arm64': '-'}>
 CONFIG_DRM_IMX8QXP_LDB                          policy<{'arm64': '-'}>
@@ -519,6 +522,11 @@ CONFIG_DRM_MEDIATEK_HDMI                        policy<{'arm64': '-'}>
 CONFIG_DRM_MESON                                policy<{'arm64': '-'}>
 CONFIG_DRM_MESON_DW_HDMI                        policy<{'arm64': '-'}>
 CONFIG_DRM_MESON_DW_MIPI_DSI                    policy<{'arm64': '-'}>
+CONFIG_DRM_MSM_DP                               policy<{'arm64': 'n'}>
+CONFIG_DRM_MSM_HDMI                             policy<{'arm64': 'n'}>
+CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': '-'}>
+CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'n'}>
+CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': '-'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': '-'}>
 CONFIG_DRM_RADEON                               policy<{'arm64': 'n'}>
@@ -579,6 +587,7 @@ CONFIG_EDAC_ZYNQMP                              policy<{'arm64': '-'}>
 CONFIG_EINT_MTK                                 policy<{'arm64': '-'}>
 CONFIG_EMAC_ROCKCHIP                            policy<{'arm64': '-'}>
 CONFIG_EXTCON_RTK_TYPE_C                        policy<{'arm64': '-'}>
+CONFIG_FB_DMAMEM_HELPERS                        policy<{'arm64': '-'}>
 CONFIG_FB_IMX                                   policy<{'arm64': '-'}>
 CONFIG_FB_PROVIDE_GET_FB_UNMAPPED_AREA          policy<{'arm64': '-'}>
 CONFIG_FB_SH_MOBILE_LCDC                        policy<{'arm64': '-'}>
