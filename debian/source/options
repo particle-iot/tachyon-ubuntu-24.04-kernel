@@ -2,7 +2,7 @@
 ## autoreconstruct -- begin
 # Ignore any symlinks created since the orig which are rebuilt by reconstruct.
 extend-diff-ignore=^include/dt-bindings/arm/qcom_dma_heap_dt_constants.h$
-extend-diff-ignore=^ubuntu/qcacld/qcacld-3.0/cmn$
+extend-diff-ignore=^ubuntu/qcom/qcacld-3.0/cmn$
 ## autoreconstruct -- end
 
 # force "dpkg-source -I -i" behavior
