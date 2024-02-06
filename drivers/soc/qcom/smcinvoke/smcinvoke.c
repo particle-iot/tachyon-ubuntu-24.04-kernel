@@ -24,7 +24,6 @@
 #include <linux/of_platform.h>
 #include <linux/firmware.h>
 #include <linux/firmware/qcom/qcom_scm.h>
-#include <linux/firmware/qcom/qcom_scm_addon.h>
 #include <linux/freezer.h>
 #include <linux/ratelimit.h>
 #include <linux/qtee_shmbridge.h>
