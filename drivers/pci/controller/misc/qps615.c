@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-/* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/firmware.h>
 #include <linux/i2c.h>
@@ -151,6 +151,36 @@ err:
 	return ret;
 }
 
+static void qps615_power_on(struct i2c_client *client)
+{
+	struct qps615_switch_i2c *qps615 = i2c_get_clientdata(client);
+	int ret;
+
+	ret = regulator_enable(qps615->vdda);
+	if (ret)
+		dev_err(&client->dev, "cannot enable vdda regulator\n");
+
+	qps615_switch_init(client);
+}
+
+static int qps615_suspend_noirq(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct qps615_switch_i2c *qps615 = i2c_get_clientdata(client);
+
+	/* disable power of qps615 switch */
+	regulator_disable(qps615->vdda);
+
+	return 0;
+}
+
+static int qps615_resume_noirq(struct device *dev)
+{
+	qps615_power_on(to_i2c_client(dev));
+
+	return 0;
+}
+
 static int qps615_switch_probe(struct i2c_client *client)
 {
 	struct qps615_switch_i2c *qps615;
@@ -180,9 +210,13 @@ static const struct i2c_device_id qps615_switch_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, qps615_switch_id);
 
+static const struct dev_pm_ops qps615_pm_ops = {
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(qps615_suspend_noirq, qps615_resume_noirq)
+};
 static struct i2c_driver qps615_switch_driver = {
 	.driver = {
 		.name = DRV_NAME,
+		.pm = &qps615_pm_ops,
 		.of_match_table = qps615_switch_of_match,
 	},
 	.probe = qps615_switch_probe,
