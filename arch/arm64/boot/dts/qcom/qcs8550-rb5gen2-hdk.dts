@@ -117,6 +117,30 @@
 	};
 };
 
+&pm8550_flash {
+	status = "okay";
+
+	led-0 {
+		function = LED_FUNCTION_FLASH;
+		color = <LED_COLOR_ID_YELLOW>;
+		flash-max-microamp = <2000000>;
+		flash-max-timeout-us = <1280000>;
+		function-enumerator = <0>;
+		led-sources = <1>, <4>;
+		led-max-microamp = <500000>;
+	};
+
+	led-1 {
+		function = LED_FUNCTION_FLASH;
+		color = <LED_COLOR_ID_WHITE>;
+		flash-max-microamp = <2000000>;
+		flash-max-timeout-us = <1280000>;
+		function-enumerator = <1>;
+		led-sources = <2>, <3>;
+		led-max-microamp = <500000>;
+	};
+};
+
 &pm8550_gpios {
 	volume_up_n: volume-up-n-state {
 		pins = "gpio6";
