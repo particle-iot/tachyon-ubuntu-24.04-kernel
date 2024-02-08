@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -17,6 +17,7 @@
 #include <linux/termios.h>
 #include <linux/soc/qcom/apr.h>
 #include <dt-bindings/soc/qcom,gpr.h>
+#include "q6apm.h"
 
 #include "msm_audio_mem.h"
 
@@ -162,6 +163,8 @@ int audio_pkt_release(struct inode *inode, struct file *file)
 
 	put_device(dev);
 	file->private_data = NULL;
+	q6apm_close_all();
+	msm_audio_mem_crash_handler();
 
 	return 0;
 }
