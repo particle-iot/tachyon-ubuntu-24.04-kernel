@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "hfi_defines.h"
@@ -283,6 +283,7 @@ int iris_hfi_queue_init(struct iris_core *core)
 		dev_err(core->dev, "%s: sfr alloc and map failed\n", __func__);
 		return -ENOMEM;
 	}
+	core->sfr.size = ALIGNED_SFR_SIZE;
 	 /* Write sfr size in first word to be used by firmware */
 	*((u32 *)core->sfr.kernel_vaddr) = core->sfr.size;
 
