@@ -1,3 +1,9 @@
+linux-qcom (6.7.0-1010.10) jammy; urgency=medium
+
+  * Add camera driver
+
+ -- Masahiro Yamada <masahiro.yamada@canonical.com>  Thu, 08 Feb 2024 10:48:07 +0900
+
 linux-qcom (6.7.0-1009.9) jammy; urgency=medium
 
   * Enable display driver
