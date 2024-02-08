@@ -5,12 +5,12 @@
 
 /dts-v1/;
 
-#include "qcm6490-rb3gen2-vision-mezz.dts"
+#include "qcs6490-rb3gen2.dts"
 #include "qcm6490-addons.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. qcm6490-addons rb3gen2 vision mezz platform";
-	compatible = "qcom,qcm6490-addons-rb3gen2-vision-mezz", "qcom,qcm6490";
+	model = "Qualcomm Technologies, Inc. Robotics RB3gen2 addons vision mezz platform";
+	compatible = "qcom,qcs6490-addons-rb3gen2-vision-mezz", "qcom,qcm6490";
 };
 
 &q6apmbedai {
