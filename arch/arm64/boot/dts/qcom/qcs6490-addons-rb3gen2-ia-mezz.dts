@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "qcs6490-rb3gen2.dts"
+#include "qcm6490-addons.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Robotics RB3gen2 addons ia mezz platform";
+	compatible = "qcom,qcs6490-addons-rb3gen2-ia-mezz", "qcom,qcm6490";
+};
