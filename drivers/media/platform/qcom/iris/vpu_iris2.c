@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -153,7 +153,6 @@ static int setup_ucregion_memory_map_iris2(struct iris_core *core)
 static int switch_vcodec_gdsc_mode(struct iris_core *core, bool sw_mode)
 {
 	void __iomem *base_addr;
-	u32 mask = 0;
 	u32 val = 0;
 	int ret;
 
@@ -162,13 +161,13 @@ static int switch_vcodec_gdsc_mode(struct iris_core *core, bool sw_mode)
 	if (sw_mode) {
 		writel_relaxed(0, base_addr + WRAPPER_CORE_POWER_CONTROL);
 		ret = readl_relaxed_poll_timeout(base_addr + WRAPPER_CORE_POWER_STATUS, val,
-						 ((val & mask) == (val & BIT(1))), 1, 20000);
+						 val & BIT(1), 1, 200);
 		if (ret)
 			return ret;
 	} else {
 		writel_relaxed(1, base_addr + WRAPPER_CORE_POWER_CONTROL);
 		ret = readl_relaxed_poll_timeout(base_addr + WRAPPER_CORE_POWER_STATUS, val,
-						 ((val & mask) != (val & BIT(1))), 1, 20000);
+						 !(val & BIT(1)), 1, 200);
 		if (ret)
 			return ret;
 	}
@@ -458,9 +457,13 @@ static int power_on_iris2_hardware(struct iris_core *core)
 		goto err_disable_bus;
 
 	ret = switch_vcodec_gdsc_mode(core, false);
+	if (ret)
+		goto err_disable_clock;
 
 	return ret;
 
+err_disable_clock:
+	disable_unprepare_clock(core, "vcodec_core");
 err_disable_bus:
 	disable_unprepare_clock(core, "vcodec_bus");
 err_gdsc_switch:
