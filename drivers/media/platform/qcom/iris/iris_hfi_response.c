@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "hfi_defines.h"
@@ -49,6 +49,8 @@ static void print_sfr_message(struct iris_core *core)
 	/* SFR isn't guaranteed to be NULL terminated */
 		if (!p)
 			vsfr->rg_data[vsfr_size - 1] = '\0';
+
+		dev_err(core->dev, "SFR Message from FW: %s\n", vsfr->rg_data);
 	}
 }
 
