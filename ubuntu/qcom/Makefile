@@ -44,3 +44,10 @@ obj-y += display/
 export KGSL_PATH := $(srctree)/$(src)/graphics
 export KERNEL_SRC := $(srctree)
 obj-y += graphics/
+
+###
+
+export CAMERA_ARCH=qcm6490
+export CAMERA_KERNEL_ROOT := $(srctree)/$(src)/camera
+
+obj-y += camera/
