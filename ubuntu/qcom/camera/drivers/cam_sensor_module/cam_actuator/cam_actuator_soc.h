@@ -16,4 +16,11 @@
 int cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl,
 	struct device *dev);
 
+/**
+ * @a_ctrl: Actuator ctrl structure
+ *
+ * This API serves for releasing power domain
+ */
+void cam_actuator_release_power_domain(struct cam_actuator_ctrl_t *a_ctrl);
+
 #endif /* _CAM_ACTUATOR_SOC_H_ */

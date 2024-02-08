@@ -179,7 +179,7 @@ int32_t cam_create_device_hdl(struct cam_create_dev_hdl *hdl_data)
 	int32_t handle;
 	bool crm_active;
 
-	crm_active = cam_req_mgr_is_open(CAM_CRM);
+	crm_active = cam_req_mgr_is_open();
 	if (!crm_active) {
 		CAM_ERR(CAM_CRM, "CRM is not ACTIVE");
 		spin_unlock_bh(&hdl_tbl_lock);

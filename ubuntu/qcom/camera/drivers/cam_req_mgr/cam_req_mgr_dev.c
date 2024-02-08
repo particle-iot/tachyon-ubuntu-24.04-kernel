@@ -144,7 +144,6 @@ static int cam_req_mgr_open(struct file *filep)
 	spin_unlock_bh(&g_dev.cam_eventq_lock);
 
 	g_dev.open_cnt++;
-	g_dev.read_active_dev_id_hdls = 0;
 	rc = cam_mem_mgr_init();
 	if (rc) {
 		g_dev.open_cnt--;
@@ -218,7 +217,6 @@ static int cam_req_mgr_close(struct file *filep)
 
 	g_dev.open_cnt--;
 	g_dev.shutdown_state = false;
-	g_dev.read_active_dev_id_hdls = 0;
 	v4l2_fh_release(filep);
 
 	spin_lock_bh(&g_dev.cam_eventq_lock);
@@ -761,21 +759,12 @@ void cam_subdev_notify_message(u32 subdev_type,
 }
 EXPORT_SYMBOL(cam_subdev_notify_message);
 
-bool cam_req_mgr_is_open(uint64_t dev_id)
+bool cam_req_mgr_is_open(void)
 {
-	bool crm_status;
-	bool dev_id_status;
+	bool crm_status = false;
 
 	mutex_lock(&g_dev.cam_lock);
 	crm_status = g_dev.open_cnt ? true : false;
-
-	if (!g_dev.read_active_dev_id_hdls) {
-		g_dev.active_dev_id_hdls = cam_get_dev_handle_status();
-		g_dev.read_active_dev_id_hdls++;
-	}
-
-	dev_id_status = (g_dev.active_dev_id_hdls & dev_id) ? true : false;
-	crm_status &=  dev_id_status;
 	mutex_unlock(&g_dev.cam_lock);
 
 	return crm_status;
@@ -808,7 +797,7 @@ int cam_register_subdev(struct cam_subdev *csd)
 	sd = &csd->sd;
 	v4l2_subdev_init(sd, csd->ops);
 	sd->internal_ops = csd->internal_ops;
-	snprintf(sd->name, sizeof(sd->name), "%s", csd->name);
+	snprintf(sd->name, V4L2_SUBDEV_NAME_SIZE, "%s", csd->name);
 	v4l2_set_subdevdata(sd, csd->token);
 
 	sd->flags = csd->sd_flags;

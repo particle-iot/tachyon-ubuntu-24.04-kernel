@@ -33,7 +33,7 @@ static int cam_eeprom_subdev_close_internal(struct v4l2_subdev *sd,
 static int cam_eeprom_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_EEPROM);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_EEPROM, "CRM is ACTIVE, close should be from CRM");
@@ -547,6 +547,7 @@ static void cam_eeprom_component_unbind(struct device *dev,
 	mutex_lock(&(e_ctrl->eeprom_mutex));
 	cam_eeprom_shutdown(e_ctrl);
 	mutex_unlock(&(e_ctrl->eeprom_mutex));
+	cam_eeprom_release_power_domain(e_ctrl);
 	mutex_destroy(&(e_ctrl->eeprom_mutex));
 	cam_unregister_subdev(&(e_ctrl->v4l2_dev_str));
 	kfree(soc_info->soc_private);

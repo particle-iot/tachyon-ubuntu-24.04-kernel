@@ -7,6 +7,8 @@
 #include <linux/kernel.h>
 #include <linux/pinctrl/consumer.h>
 #include <clocksource/arm_arch_timer.h>
+#include <linux/pm_domain.h>
+#include <linux/pm_runtime.h>
 #include "cam_sensor_util.h"
 #include "cam_mem_mgr.h"
 #include "cam_res_mgr_api.h"
@@ -2002,6 +2004,39 @@ static int cam_config_mclk_reg(struct cam_sensor_power_ctrl_t *ctrl,
 	return rc;
 }
 
+int cam_sensor_util_request_power_domain(struct cam_hw_soc_info *soc_info)
+{
+	int i, rc = 0;
+
+	rc = cam_soc_util_configure_pd(soc_info);
+	if (rc) {
+		CAM_ERR(CAM_SENSOR, "Failed to configure Genpd");
+		return rc;
+	}
+
+	pm_runtime_enable(soc_info->dev);
+
+	/*
+	 * Doing a pm_runtime_get_sync() and pm_runtime_put_sync() after pm_runtime_enable
+	 * makes sure that the GDSC is off and only enabled later by the usecase when there
+	 * is such a requirement.
+	 */
+	cam_soc_util_power_domain_enable_default(soc_info);
+	cam_soc_util_power_domain_disable_default(soc_info);
+
+	return rc;
+}
+
+void cam_sensor_util_release_power_domain(struct cam_hw_soc_info *soc_info)
+{
+	int i;
+
+	pm_runtime_disable(soc_info->dev);
+
+	for (i = 0; i < soc_info->num_genpd; i++)
+		dev_pm_domain_detach(soc_info->genpd[i], true);
+}
+
 int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 		struct cam_hw_soc_info *soc_info)
 {
@@ -2201,6 +2236,12 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 					power_setting->seq_val, num_vreg);
 			}
 
+			rc = cam_soc_util_power_domain_enable_default(soc_info);
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"Power domain enable failed with rc = %d", rc);
+				goto power_up_failed;
+			}
 			rc = msm_cam_sensor_handle_reg_gpio(
 				power_setting->seq_type,
 				gpio_num_info, 1);
@@ -2294,6 +2335,8 @@ power_up_failed:
 				CAM_ERR(CAM_SENSOR, "seq_val:%d > num_vreg: %d",
 					power_setting->seq_val, num_vreg);
 			}
+
+			cam_soc_util_power_domain_disable_default(soc_info);
 
 			msm_cam_sensor_handle_reg_gpio(power_setting->seq_type,
 				gpio_num_info, GPIOF_OUT_INIT_LOW);
@@ -2469,6 +2512,8 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 			} else
 				CAM_ERR(CAM_SENSOR,
 					"error in power up/down seq");
+
+			cam_soc_util_power_domain_disable_default(soc_info);
 
 			ret = msm_cam_sensor_handle_reg_gpio(pd->seq_type,
 				gpio_num_info, GPIOF_OUT_INIT_LOW);

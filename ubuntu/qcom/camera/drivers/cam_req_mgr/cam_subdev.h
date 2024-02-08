@@ -149,9 +149,8 @@ void cam_req_mgr_rwsem_read_op(enum cam_subdev_rwsem lock);
  *
  * @brief:    This common utility function returns the crm active status
  *
- * @dev_id: device id type
  */
-bool  cam_req_mgr_is_open(uint64_t dev_id);
+bool  cam_req_mgr_is_open(void);
 
 /**
  * cam_req_mgr_is_shutdown()

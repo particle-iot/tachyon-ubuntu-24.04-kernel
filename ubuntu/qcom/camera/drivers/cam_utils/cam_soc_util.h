@@ -571,6 +571,41 @@ int cam_soc_util_regulator_disable(struct regulator *rgltr,
 	uint32_t rgltr_min_volt, uint32_t rgltr_max_volt,
 	uint32_t rgltr_op_mode, uint32_t rgltr_delay);
 
+/**
+ * cam_soc_util_configure_pd()
+ *
+ * @brief:              Configure power domain
+ *
+ * @soc_info:           Device soc information
+ *
+ * @return:             Success or failure
+ */
+int cam_soc_util_configure_pd(struct cam_hw_soc_info *soc_info);
+
+/**
+ * cam_soc_util_power_domain_enable_default()
+ *
+ * @brief:              Enable power domain
+ *
+ * @soc_info:           Device soc information
+ *
+ * @return:             Success or failure
+ */
+int cam_soc_util_power_domain_enable_default(
+	struct cam_hw_soc_info *soc_info);
+
+/**
+ * cam_soc_util_power_domain_disable_default()
+ *
+ * @brief:              Disable power domain
+ *
+ * @soc_info:           Device soc information
+ *
+ * @return:             Null
+ */
+void cam_soc_util_power_domain_disable_default(
+	struct cam_hw_soc_info *soc_info);
+
 
 /**
  * cam_soc_util_w()

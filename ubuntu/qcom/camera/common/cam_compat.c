@@ -221,6 +221,48 @@ void cam_smmu_util_iommu_custom(struct device *dev,
 	return;
 }
 
+int cam_get_ddr_type(void)
+{
+	int ret;
+	u64 ddr_type;
+	struct device_node *root_node;
+	struct device_node *mem_node = NULL;
+
+	root_node = of_find_node_by_path("/");
+
+	if (root_node == NULL) {
+		CAM_ERR(CAM_UTIL, "Unable to find root node");
+		return -ENOENT;
+	}
+
+	do {
+		mem_node = of_get_next_child(root_node, mem_node);
+		if (of_node_name_prefix(mem_node, "memory")) {
+			CAM_DBG(CAM_UTIL,
+					"memory node found with full name %s",
+					mem_node->full_name);
+			break;
+		}
+	} while (mem_node != NULL);
+
+	of_node_put(root_node);
+	if (mem_node == NULL) {
+		CAM_ERR(CAM_UTIL, "memory node not found");
+		return -ENOENT;
+	}
+
+	ret = of_property_read_u64(mem_node, "ddr_device_type", &ddr_type);
+
+	of_node_put(mem_node);
+	if (ret < 0) {
+		CAM_ERR(CAM_UTIL, "ddr_device_type read failed");
+		return ret;
+	}
+
+	CAM_DBG(CAM_UTIL, "DDR Type %lld", ddr_type);
+	return ddr_type;
+}
+
 int cam_req_mgr_ordered_list_cmp(void *priv,
 	const struct list_head *head_1, const struct list_head *head_2)
 {

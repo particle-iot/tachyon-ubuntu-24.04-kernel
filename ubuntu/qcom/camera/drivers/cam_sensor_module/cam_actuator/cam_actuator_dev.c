@@ -71,7 +71,7 @@ static int cam_actuator_subdev_close_internal(struct v4l2_subdev *sd,
 static int cam_actuator_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
-	bool crm_active = cam_req_mgr_is_open(CAM_ACTUATOR);
+	bool crm_active = cam_req_mgr_is_open();
 
 	if (crm_active) {
 		CAM_DBG(CAM_ACTUATOR,
@@ -402,6 +402,8 @@ static void cam_actuator_component_unbind(struct device *dev,
 	cam_actuator_shutdown(a_ctrl);
 	mutex_unlock(&(a_ctrl->actuator_mutex));
 	cam_unregister_subdev(&(a_ctrl->v4l2_dev_str));
+
+	cam_actuator_release_power_domain(a_ctrl);
 
 	soc_private =
 		(struct cam_actuator_soc_private *)a_ctrl->soc_info.soc_private;

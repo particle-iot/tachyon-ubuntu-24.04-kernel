@@ -1332,6 +1332,7 @@ int cam_smmu_alloc_firmware(int32_t smmu_hdl,
 	size_t *len)
 {
 	int rc;
+	int prot = 0;
 	int32_t idx;
 	size_t firmware_len = 0;
 	size_t firmware_start = 0;
@@ -1385,11 +1386,14 @@ int cam_smmu_alloc_firmware(int32_t smmu_hdl,
 	 * But on chipsets which use dma-coherent - all the buffers that are
 	 * being mapped to this CB must be CACHED
 	 */
+	prot |= IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV;
+	if (iommu_cb_set.force_cache_allocs)
+		prot |= IOMMU_CACHE;
+
 	rc = iommu_map(domain,
 		firmware_start,
 		(phys_addr_t) icp_fw.fw_hdl,
-		firmware_len,
-		IOMMU_READ|IOMMU_WRITE|IOMMU_PRIV, GFP_KERNEL);
+		firmware_len, prot, GFP_KERNEL);
 
 	if (rc) {
 		CAM_ERR(CAM_SMMU, "Failed to map FW into IOMMU rc:%d", rc);
@@ -1484,7 +1488,7 @@ int cam_smmu_alloc_qdss(int32_t smmu_hdl,
 	dma_addr_t *iova,
 	size_t *len)
 {
-	int rc;
+	int rc, prot = 0;
 	int32_t idx;
 	size_t qdss_len = 0;
 	size_t qdss_start = 0;
@@ -1533,11 +1537,12 @@ int cam_smmu_alloc_qdss(int32_t smmu_hdl,
 	 * But on chipsets which use dma-coherent - all the buffers that are
 	 * being mapped to this CB must be CACHED
 	 */
-	rc = iommu_map(domain,
-		qdss_start,
-		qdss_phy_addr,
-		qdss_len,
-		IOMMU_READ|IOMMU_WRITE, GFP_KERNEL);
+	if (iommu_cb_set.force_cache_allocs)
+		prot |= IOMMU_CACHE;
+
+	prot |= IOMMU_READ | IOMMU_WRITE;
+	rc = iommu_map(domain, qdss_start, qdss_phy_addr,
+		qdss_len, prot, GFP_KERNEL);
 
 	if (rc) {
 		CAM_ERR(CAM_SMMU, "Failed to map QDSS into IOMMU rc %d", rc);
@@ -1753,7 +1758,7 @@ EXPORT_SYMBOL(cam_smmu_get_region_info);
 
 static int cam_smmu_map_to_pool(struct iommu_domain *domain,
 				struct gen_pool *pool, struct sg_table *table,
-				dma_addr_t *iova, size_t *size)
+				int prot, dma_addr_t *iova, size_t *size)
 {
 	struct scatterlist *sg;
 	size_t buffer_size;
@@ -1789,8 +1794,7 @@ static int cam_smmu_map_to_pool(struct iommu_domain *domain,
 	if (!*iova)
 		return -ENOMEM;
 
-	mapped_size = iommu_map_sgtable(domain, *iova, table,
-					IOMMU_READ | IOMMU_WRITE);
+	mapped_size = iommu_map_sgtable(domain, *iova, table, prot);
 	if (mapped_size < *size) {
 		CAM_ERR(CAM_SMMU, "iommu_map_sgtable() failed");
 		goto err_free_iova;
@@ -1993,7 +1997,7 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	struct sg_table *table = NULL;
 	struct gen_pool *pool;
 	uint32_t iova = 0;
-	int rc = 0;
+	int rc = 0, prot = 0;
 	struct timespec64 ts1, ts2;
 	long microsec = 0;
 
@@ -2033,7 +2037,12 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 		rc = -EINVAL;
 		goto err_buf_unmap_attach;
 	}
-	rc = cam_smmu_map_to_pool(cb->domain, pool, table, paddr_ptr, len_ptr);
+
+	if (iommu_cb_set.force_cache_allocs)
+		prot |= IOMMU_CACHE;
+
+	prot |= IOMMU_READ | IOMMU_WRITE;
+	rc = cam_smmu_map_to_pool(cb->domain, pool, table, prot, paddr_ptr, len_ptr);
 	if (rc < 0) {
 		CAM_ERR(CAM_SMMU,
 			"Buffer map failed, region_id=%u, size=%zu, idx=%d, handle=%d",

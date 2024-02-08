@@ -1706,7 +1706,7 @@ int cam_soc_util_power_domain_enable_default(
 
 		dev_pm_genpd_set_performance_state(soc_info->genpd[i], INT_MAX);
 		ret = pm_runtime_get_sync(soc_info->genpd[i]);
-		if (ret) {
+		if (ret < 0) {
 			CAM_ERR(CAM_UTIL,
 				"power-domain enable failed for dev %s ret %d i %d",
 				soc_info->dev_name, ret, i);
@@ -2022,7 +2022,7 @@ int cam_soc_util_enable_platform_resource(struct cam_hw_soc_info *soc_info,
 	}
 
 	rc = cam_soc_util_power_domain_enable_default(soc_info);
-	if (rc) {
+	if (rc < 0) {
 		CAM_ERR(CAM_UTIL, "Power domains enable failed");
 		goto disable_regulator;
 	}
