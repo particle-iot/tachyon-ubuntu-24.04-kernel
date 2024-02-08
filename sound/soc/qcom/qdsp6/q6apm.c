@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2020, Linaro Limited
+// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <dt-bindings/soc/qcom,gpr.h>
 #include <linux/delay.h>
@@ -26,6 +27,7 @@ struct apm_graph_mgmt_cmd {
 } __packed;
 
 #define APM_GRAPH_MGMT_PSIZE(p, n) ALIGN(struct_size(p, sub_graph_id_list, n), 8)
+#define APM_CMD_CLOSE_ALL 0x01001013
 
 static struct q6apm *g_apm;
 
@@ -169,6 +171,20 @@ bool q6apm_is_adsp_ready(void)
 	return false;
 }
 EXPORT_SYMBOL_GPL(q6apm_is_adsp_ready);
+
+void q6apm_close_all(void)
+{
+	struct gpr_pkt *pkt;
+
+	pkt = audioreach_alloc_apm_cmd_pkt(0, APM_CMD_CLOSE_ALL, 0);
+	if (IS_ERR(pkt))
+		return;
+
+	q6apm_send_cmd_sync(g_apm, pkt, GPR_BASIC_RSP_RESULT);
+
+	kfree(pkt);
+}
+EXPORT_SYMBOL_GPL(q6apm_close_all);
 
 static struct audioreach_module *__q6apm_find_module_by_mid(struct q6apm *apm,
 						    struct audioreach_graph_info *info,
@@ -792,6 +808,7 @@ static int apm_callback(struct gpr_resp_pkt *data, void *priv, int op)
 		case APM_CMD_GRAPH_FLUSH:
 		case APM_CMD_GRAPH_STOP:
 		case APM_CMD_SET_CFG:
+		case APM_CMD_CLOSE_ALL:
 			apm->result.opcode = result->opcode;
 			apm->result.status = result->status;
 			if (result->status)
