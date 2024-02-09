@@ -1,25 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QTEE_SHMBRIDGE_H__
 #define __QTEE_SHMBRIDGE_H__
-
-#ifndef __QCOM_SECURE_BUFFER_H__
-#define __QCOM_SECURE_BUFFER_H__
-
-/* VMID and permission definitions */
-enum vmid {
-	VMID_TZ		= 0x0,
-	VMID_HLOS	= 0x3
-};
-
-#define PERM_READ					0x4
-#define PERM_WRITE					0x2
-#define PERM_EXEC					0x1
-
-#endif /* __QCOM_SECURE_BUFFER_H__ */
 
 /**
  * struct qtee_shm - info of shared memory allocated from the default bridge
