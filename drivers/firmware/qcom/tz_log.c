@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s:[%s][%d]: " fmt, KBUILD_MODNAME, __func__, __LINE__
@@ -1431,8 +1431,8 @@ static int tzdbg_register_qsee_log_buf(struct platform_device *pdev)
 {
 	int ret = 0;
 	void *buf = NULL;
-	uint32_t ns_vmids[] = {VMID_HLOS};
-	uint32_t ns_vm_perms[] = {PERM_READ | PERM_WRITE};
+	uint32_t ns_vmids[] = {QCOM_SCM_VMID_HLOS};
+	uint32_t ns_vm_perms[] = {QCOM_SCM_PERM_RW};
 	uint32_t ns_vm_nums = 1;
 
 	if (tzdbg.is_enlarged_buf) {
@@ -1454,7 +1454,7 @@ static int tzdbg_register_qsee_log_buf(struct platform_device *pdev)
 	if (!tzdbg.is_encrypted_log_enabled) {
 		ret = qtee_shmbridge_register(coh_pmem,
 			qseelog_buf_size, ns_vmids, ns_vm_perms, ns_vm_nums,
-			PERM_READ | PERM_WRITE,
+			QCOM_SCM_PERM_RW,
 			&qseelog_shmbridge_handle);
 		if (ret) {
 			pr_err("failed to create bridge for qsee_log buf\n");
@@ -1498,8 +1498,8 @@ static void tzdbg_free_qsee_log_buf(struct platform_device *pdev)
 static int tzdbg_allocate_encrypted_log_buf(struct platform_device *pdev)
 {
 	int ret = 0;
-	uint32_t ns_vmids[] = {VMID_HLOS};
-	uint32_t ns_vm_perms[] = {PERM_READ | PERM_WRITE};
+	uint32_t ns_vmids[] = {QCOM_SCM_VMID_HLOS};
+	uint32_t ns_vm_perms[] = {QCOM_SCM_PERM_RW};
 	uint32_t ns_vm_nums = 1;
 
 	if (!tzdbg.is_encrypted_log_enabled)
@@ -1517,7 +1517,7 @@ static int tzdbg_allocate_encrypted_log_buf(struct platform_device *pdev)
 	ret = qtee_shmbridge_register(enc_qseelog_info.paddr,
 			enc_qseelog_info.size, ns_vmids,
 			ns_vm_perms, ns_vm_nums,
-			PERM_READ | PERM_WRITE, &enc_qseelog_info.shmb_handle);
+			QCOM_SCM_PERM_RW, &enc_qseelog_info.shmb_handle);
 	if (ret) {
 		pr_err("failed to create encr_qsee_log bridge, ret %d\n", ret);
 		goto exit_free_qseelog;
@@ -1534,7 +1534,7 @@ static int tzdbg_allocate_encrypted_log_buf(struct platform_device *pdev)
 
 	ret = qtee_shmbridge_register(enc_tzlog_info.paddr,
 			enc_tzlog_info.size, ns_vmids, ns_vm_perms, ns_vm_nums,
-			PERM_READ | PERM_WRITE, &enc_tzlog_info.shmb_handle);
+			QCOM_SCM_PERM_RW, &enc_tzlog_info.shmb_handle);
 	if (ret) {
 		pr_err("failed to create encr_tz_log bridge, ret = %d\n", ret);
 		goto exit_free_tzlog;
