@@ -49,7 +49,7 @@ static int ucsi_read_message_in(struct ucsi *ucsi, void *buf,
 	return ucsi->ops->read(ucsi, UCSI_MESSAGE_IN, buf, buf_size);
 }
 
-static int ucsi_acknowledge(struct ucsi *ucsi, bool conn_ack)
+static int ucsi_acknowledge_command(struct ucsi *ucsi)
 {
 	u64 ctrl;
 
