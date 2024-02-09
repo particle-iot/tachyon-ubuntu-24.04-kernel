@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "smcinvoke: %s: " fmt, __func__
@@ -23,6 +23,7 @@
 #include <linux/mem-buf.h>
 #include <linux/of_platform.h>
 #include <linux/firmware.h>
+#include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/firmware/qcom/qcom_scm_addon.h>
 #include <linux/freezer.h>
 #include <linux/ratelimit.h>
@@ -1134,7 +1135,7 @@ static bool is_remote_obj(int32_t uhandle, struct smcinvoke_file_data **tzobj,
 static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 {
 	int ret = 0;
-	int tz_perm = PERM_READ|PERM_WRITE;
+	int tz_perm = QCOM_SCM_PERM_RW;
 	uint32_t *vmid_list;
 	uint32_t *perms_list;
 	uint32_t nelems = 0;
@@ -1153,7 +1154,7 @@ static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 	}
 
 	if (mem_buf_dma_buf_exclusive_owner(dmabuf))
-		perms_list[0] = PERM_READ | PERM_WRITE;
+		perms_list[0] = QCOM_SCM_PERM_RW;
 
 	ret = qtee_shmbridge_register(phys, size, vmid_list, perms_list, nelems,
 			tz_perm, &mem_obj->shmbridge_handle);
