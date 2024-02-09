@@ -713,6 +713,7 @@ static struct arm_smmu_device *qcom_smmu_create(struct arm_smmu_device *smmu,
 	qsmmu = devm_krealloc(smmu->dev, smmu, sizeof(*qsmmu), GFP_KERNEL);
 	if (!qsmmu)
 		return ERR_PTR(-ENOMEM);
+	smmu = &qsmmu->smmu;
 
 	qsmmu->smmu.impl = impl;
 	qsmmu->data = data;
@@ -722,7 +723,7 @@ static struct arm_smmu_device *qcom_smmu_create(struct arm_smmu_device *smmu,
 	if (ret)
 		return ERR_PTR(ret);
 
-	return &qsmmu->smmu;
+	return smmu;
 }
 
 /* Implementation Defined Register Space 0 register offsets */
