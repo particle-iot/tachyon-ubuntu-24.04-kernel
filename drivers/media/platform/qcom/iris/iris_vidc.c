@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/videodev2.h>
@@ -585,10 +585,11 @@ static int vidc_enum_frameintervals(struct file *filp, void *fh,
 
 	fival->type = V4L2_FRMIVAL_TYPE_STEPWISE;
 	fival->stepwise.min.numerator = 1;
-	fival->stepwise.min.denominator =
-			min_t(u32, fps, inst->cap[FRAME_RATE].max);
+	fival->stepwise.min.denominator = 1;
+
 	fival->stepwise.max.numerator = 1;
-	fival->stepwise.max.denominator = 1;
+	fival->stepwise.max.denominator =
+			min_t(u32, fps, inst->cap[FRAME_RATE].max);
 	fival->stepwise.step.numerator = 1;
 	fival->stepwise.step.denominator = inst->cap[FRAME_RATE].max;
 
