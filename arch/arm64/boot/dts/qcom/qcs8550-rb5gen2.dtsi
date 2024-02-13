@@ -412,6 +412,18 @@
 	status = "okay";
 };
 
+&remoteproc_adsp {
+	firmware-name = "qcom/qcs8550/adsp.mdt",
+			"qcom/qcs8550/adsp_dtb.mdt";
+	status = "okay";
+};
+
+&remoteproc_cdsp {
+	firmware-name = "qcom/qcs8550/cdsp.mdt",
+			"qcom/qcs8550/cdsp_dtb.mdt";
+	status = "okay";
+};
+
 &qupv3_id_0 {
 	status = "okay";
 };
