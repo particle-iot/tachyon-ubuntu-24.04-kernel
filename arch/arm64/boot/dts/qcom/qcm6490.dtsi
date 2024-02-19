@@ -20,11 +20,6 @@
 
 /{
 	reserved-memory {
-		cdsp_secure_heap_mem: cdsp-secure-heap@81800000 {
-			reg = <0x0 0x81800000 0x0 0x1e00000>;
-			no-map;
-		};
-
 		camera_mem: camera@84300000 {
 			reg = <0x0 0x84300000 0x0 0x500000>;
 			no-map;
@@ -96,6 +91,14 @@
 			reusable;
 			alignment = <0x0 0x400000>;
 			size = <0x0 0xc00000>;
+		};
+
+		cdsp_secure_heap: secure-cdsp-region { /* Secure DSP */
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+			reusable;
+			alignment = <0x0 0x400000>;
+			size = <0x0 0x1e00000>;
 		};
 	};
 };
