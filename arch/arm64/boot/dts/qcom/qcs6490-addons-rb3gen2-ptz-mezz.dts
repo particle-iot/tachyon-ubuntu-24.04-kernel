@@ -6,7 +6,7 @@
 /dts-v1/;
 
 #include "qcs6490-rb3gen2.dts"
-#include "qcm6490-addons.dtsi"
+#include "qcs6490-addons-rb3gen2.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. Robotics RB3gen2 addons ptz mezz platform";
