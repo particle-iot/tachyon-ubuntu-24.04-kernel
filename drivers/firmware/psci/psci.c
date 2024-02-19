@@ -525,18 +525,26 @@ static void __init psci_init_system_reset2(void)
 		psci_system_reset2_supported = true;
 }
 
-static void __init psci_init_system_suspend(void)
+static int __init psci_init_system_suspend(void)
 {
 	int ret;
+	u32 ver;
 
 	if (!IS_ENABLED(CONFIG_SUSPEND))
-		return;
+		return 0;
+
+	ver = psci_0_2_get_version();
+	if (PSCI_VERSION_MAJOR(ver) < 1)
+		return 0;
 
 	ret = psci_features(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND));
 
 	if (ret != PSCI_RET_NOT_SUPPORTED)
 		suspend_set_ops(&psci_suspend_ops);
+
+	return ret;
 }
+late_initcall(psci_init_system_suspend)
 
 static void __init psci_init_cpu_suspend(void)
 {
@@ -653,7 +661,6 @@ static int __init psci_probe(void)
 	if (PSCI_VERSION_MAJOR(ver) >= 1) {
 		psci_init_smccc();
 		psci_init_cpu_suspend();
-		psci_init_system_suspend();
 		psci_init_system_reset2();
 		kvm_init_hyp_services();
 	}
