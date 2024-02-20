@@ -621,6 +621,26 @@
 		compatible = "qcom,secure-buffer";
 		qcom,vmid-cp-camera-preview-ro;
 	};
+
+	csr: csr@6001000 {
+		compatible = "qcom,coresight-csr";
+		reg = <0x0 0x06001000 0x0 0x1000>;
+		reg-names = "csr-base";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		device-name = "csr";
+		qcom,set-byte-cntr-support;
+
+		qcom,blk-size = <1>;
+	};
+
+	etr@6048000 {
+		coresight-csr = <&csr>;
+		interrupts = <GIC_SPI 270 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "byte-cntr-irq";
+	};
 };
 
 #include "qcm6490-dma-heaps.dtsi"
