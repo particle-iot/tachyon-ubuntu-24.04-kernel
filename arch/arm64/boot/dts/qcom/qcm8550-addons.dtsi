@@ -4,6 +4,24 @@
  */
 
 /{
+	reserved-memory {
+		qseecom_mem: qcom,qseecom {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+			reusable;
+			alignment = <0x0 0x400000>;
+			size = <0x0 0x1400000>; /* 20M */
+		};
+
+		qseecom_ta_mem: qcom,qseecom-ta {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+			reusable;
+			alignment = <0x0 0x400000>;
+			size = <0x0 0x1000000>; /* 16M */
+		};
+	};
+
 	/* Add overlay for firmware node containing qcom_scm in sm8550.dtsi */
 	firmware {
 		qtee_shmbridge {
