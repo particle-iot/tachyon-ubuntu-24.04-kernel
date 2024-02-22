@@ -3,6 +3,15 @@
  * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+/{
+	/* Add overlay for firmware node containing qcom_scm in sm8550.dtsi */
+	firmware {
+		qcom_smcinvoke {
+			compatible = "qcom,smcinvoke";
+		};
+	};
+};
+
 &soc {
 	wdog_gh: qcom,wdt_gh {
 		compatible = "qcom,gh-watchdog";
