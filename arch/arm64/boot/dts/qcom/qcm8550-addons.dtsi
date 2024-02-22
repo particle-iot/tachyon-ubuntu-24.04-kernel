@@ -6,6 +6,10 @@
 /{
 	/* Add overlay for firmware node containing qcom_scm in sm8550.dtsi */
 	firmware {
+		qtee_shmbridge {
+			compatible = "qcom,tee-shared-memory-bridge";
+		};
+
 		qcom_smcinvoke {
 			compatible = "qcom,smcinvoke";
 		};
