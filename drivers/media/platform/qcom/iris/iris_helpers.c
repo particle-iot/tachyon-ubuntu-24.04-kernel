@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/pm_runtime.h>
@@ -129,7 +129,7 @@ int get_mbpf(struct iris_inst *inst)
 
 inline bool is_linear_colorformat(u32 colorformat)
 {
-	return colorformat == V4L2_PIX_FMT_NV12 || colorformat == V4L2_PIX_FMT_NV21;
+	return colorformat == V4L2_PIX_FMT_NV12;
 }
 
 bool is_split_mode_enabled(struct iris_inst *inst)
@@ -151,8 +151,7 @@ inline bool is_10bit_colorformat(enum colorformat_type colorformat)
 inline bool is_8bit_colorformat(enum colorformat_type colorformat)
 {
 	return colorformat == FMT_NV12 ||
-		colorformat == FMT_NV12C ||
-		colorformat == FMT_NV21;
+		colorformat == FMT_NV12C;
 }
 
 inline bool is_scaling_enabled(struct iris_inst *inst)

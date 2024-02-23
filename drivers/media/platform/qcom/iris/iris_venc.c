@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "hfi_defines.h"
@@ -622,8 +622,7 @@ static int venc_set_stride_scanline(struct iris_inst *inst)
 		ALIGN(inst->fmt_src->fmt.pix_mp.height, 16) :
 		ALIGN(inst->fmt_src->fmt.pix_mp.height, 32);
 
-	if (color_format == FMT_NV12 ||
-	    color_format == FMT_NV21) {
+	if (color_format == FMT_NV12) {
 		stride_uv = stride_y;
 		scanline_uv = scanline_y / 2;
 	}
