@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "iris_buffer.h"
@@ -52,7 +52,6 @@ static u32 video_buffer_size(u32 colorformat,
 
 	switch (colorformat) {
 	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_NV21:
 		y_stride = ALIGN(pix_width, 128);
 		uv_stride = ALIGN(pix_width, 128);
 		y_sclines = ALIGN(pix_height, 32);
