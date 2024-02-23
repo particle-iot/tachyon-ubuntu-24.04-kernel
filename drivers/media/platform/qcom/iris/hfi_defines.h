@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _HFI_DEFINES_H_
@@ -77,7 +77,6 @@ enum hfi_color_format {
 	HFI_COLOR_FMT_TP10_UBWC		= 4,
 	HFI_COLOR_FMT_RGBA8888		= 5,
 	HFI_COLOR_FMT_RGBA8888_UBWC	= 6,
-	HFI_COLOR_FMT_NV21		= 7,
 };
 
 #define HFI_PROP_COLOR_FORMAT			0x03000101

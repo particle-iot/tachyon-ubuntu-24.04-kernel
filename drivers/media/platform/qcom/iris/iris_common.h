@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef _IRIS_COMMON_H_
 #define _IRIS_COMMON_H_
@@ -51,8 +51,7 @@ enum colorformat_type {
 	FMT_NONE	= 0,
 	FMT_NV12C	= BIT(0),
 	FMT_NV12	= BIT(1),
-	FMT_NV21	= BIT(2),
-	FMT_TP10C	= BIT(3),
+	FMT_TP10C	= BIT(2),
 };
 
 struct rect_desc {
