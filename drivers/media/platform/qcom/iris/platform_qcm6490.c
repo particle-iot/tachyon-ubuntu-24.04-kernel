@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/clock/qcom,gcc-sc7280.h>
@@ -48,10 +48,6 @@ static struct color_format_info color_format_data_qcm6490[] = {
 		.color_format = FMT_NV12,
 	},
 	{
-		.v4l2_color_format = V4L2_PIX_FMT_NV21,
-		.color_format = FMT_NV21,
-	},
-	{
 		.v4l2_color_format = V4L2_PIX_FMT_QC08C,
 		.color_format = FMT_NV12C,
 	},
@@ -90,13 +86,13 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 	{PIX_FMTS, DEC, H264,
 		FMT_NV12,
 		FMT_NV12C,
-		FMT_NV12 | FMT_NV21 | FMT_NV12C,
+		FMT_NV12 | FMT_NV12C,
 		FMT_NV12C},
 
 	{PIX_FMTS, ENC, H264,
 		FMT_NV12,
 		FMT_NV12C,
-		FMT_NV12 | FMT_NV21 | FMT_NV12C,
+		FMT_NV12 | FMT_NV12C,
 		FMT_NV12C,
 		0, 0,
 		CAP_FLAG_NONE},
@@ -104,7 +100,7 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 	{PIX_FMTS, DEC, HEVC,
 		FMT_NV12,
 		FMT_TP10C,
-		FMT_NV12 | FMT_NV21 | FMT_NV12C | FMT_TP10C,
+		FMT_NV12 | FMT_NV12C | FMT_TP10C,
 		FMT_NV12C,
 		0, 0,
 		CAP_FLAG_NONE,
@@ -113,7 +109,7 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 	{PIX_FMTS, ENC, HEVC,
 		FMT_NV12,
 		FMT_TP10C,
-		FMT_NV12 | FMT_NV21 | FMT_NV12C | FMT_TP10C,
+		FMT_NV12 | FMT_NV12C | FMT_TP10C,
 		FMT_NV12C,
 		0, 0,
 		CAP_FLAG_NONE,
@@ -122,7 +118,7 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 	{PIX_FMTS, DEC, VP9,
 		FMT_NV12,
 		FMT_TP10C,
-		FMT_NV12 | FMT_NV21 | FMT_NV12C | FMT_TP10C,
+		FMT_NV12 | FMT_NV12C | FMT_TP10C,
 		FMT_NV12C},
 
 	/* (4096 * 2176) / 256 */
