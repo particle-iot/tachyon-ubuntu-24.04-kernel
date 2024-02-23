@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "iris_common.h"
@@ -187,9 +187,6 @@ u32 get_hfi_colorformat(u32 colorformat)
 		break;
 	case V4L2_PIX_FMT_QC10C:
 		hfi_colorformat = HFI_COLOR_FMT_TP10_UBWC;
-		break;
-	case V4L2_PIX_FMT_NV21:
-		hfi_colorformat = HFI_COLOR_FMT_NV21;
 		break;
 	default:
 		break;
