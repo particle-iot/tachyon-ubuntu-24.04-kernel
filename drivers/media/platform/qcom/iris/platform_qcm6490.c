@@ -470,7 +470,7 @@ static struct plat_inst_cap instance_cap_data_qcm6490[] = {
 		set_gop_size},
 
 	{B_FRAME, ENC, H264 | HEVC,
-		0, 7, 1, 0,
+		0, 1, 1, 0,
 		V4L2_CID_MPEG_VIDEO_B_FRAMES,
 		HFI_PROP_MAX_B_FRAMES,
 		CAP_FLAG_OUTPUT_PORT,
