@@ -1459,7 +1459,7 @@ exit:
 int adjust_b_frame(struct iris_inst *inst, struct v4l2_ctrl *ctrl)
 {
 	s32 adjusted_value, enh_layer_count = -1;
-	const u32 max_bframe_size = 7;
+	const u32 max_bframe_size = inst->cap[B_FRAME].max;
 
 	adjusted_value = ctrl ? ctrl->val : inst->cap[B_FRAME].value;
 
