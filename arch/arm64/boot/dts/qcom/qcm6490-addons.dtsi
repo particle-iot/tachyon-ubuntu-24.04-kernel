@@ -592,6 +592,12 @@
 		#sound-dai-cells = <1>;
 	};
 
+	qcom,devfreq-cdev {
+		compatible = "qcom,devfreq-cdev";
+		qcom,devfreq = <&msm_gpu>;
+		#cooling-cells = <2>;
+	};
+
 	/* smp2p information */
 	qcom,smp2p_interrupt_rdbg_2_in {
 		compatible = "qcom,smp2p-interrupt-rdbg-2-in";
@@ -776,6 +782,11 @@
 			map1 {
 				trip = <&camera0_alert1>;
 				cooling-device = <&modem_pa 3 3>;
+			};
+
+			map2 {
+				trip = <&camera0_alert1>;
+				cooling-device = <&msm_gpu 5 5>;
 			};
 		};
 	};
@@ -1169,6 +1180,14 @@
 				type = "critical";
 			};
 		};
+
+		cooling-maps {
+			map0 {
+				trip = <&gpuss0_alert1>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+
+			};
+		};
 	};
 
 	gpuss1-thermal {
@@ -1188,6 +1207,13 @@
 			gpuss1-crit {
 				temperature = <118000>;
 				hysteresis = <2000>;
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&gpuss1_alert1>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1427,6 +1453,11 @@
 				trip = <&nspss0_alert1>;
 				cooling-device = <&modem_pa 3 3>;
 			};
+
+			map2 {
+				trip = <&nspss0_alert1>;
+				cooling-device = <&msm_gpu 5 5>;
+			};
 		};
 	};
 
@@ -1460,6 +1491,11 @@
 			map1 {
 				trip = <&nspss1_alert1>;
 				cooling-device = <&modem_pa 3 3>;
+			};
+
+			map2 {
+				trip = <&nspss1_alert1>;
+				cooling-device = <&msm_gpu 5 5>;
 			};
 		};
 	};
@@ -1529,6 +1565,11 @@
 		};
 
 		cooling-maps {
+			map0 {
+				trip = <&c_bcl_lvl1>;
+				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
+			};
+
 			map1 {
 				trip = <&c_bcl_lvl1>;
 				cooling-device = <&cdsp_sw 4 4>;
@@ -1592,6 +1633,11 @@
 			map1 {
 				trip = <&video_alert1>;
 				cooling-device = <&modem_pa 3 3>;
+			};
+
+			map2 {
+				trip = <&video_alert1>;
+				cooling-device = <&msm_gpu 5 5>;
 			};
 		};
 	};
