@@ -919,3 +919,97 @@
 	regulator-allow-set-load;
 	regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
 };
+
+/*     USB2 Related Start        */
+/*==============================*/
+
+&pm7250b_gpios {
+	usb2_vbus_det_default: usb2_vbus_det_state {
+		pins = "gpio9";
+		function = "normal";
+		bias-pull-down;
+		input-enable;
+		power-source = <0>;
+	};
+};
+
+&tlmm {
+	usb2_id_det_default: usb2_id_det_default {
+		pins = "gpio61";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+
+	usb2_vbus_boost_default: usb2_vbus_boost_default {
+		pins = "gpio63";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-pull-down;
+		output-low;
+	};
+};
+
+&soc {
+	vbus_supply_regulator: vbus_supply_regulator {
+	       compatible = "regulator-fixed";
+	       regulator-name = "vbus_supply";
+	       enable-active-high;
+	       gpio = <&tlmm 63 GPIO_ACTIVE_HIGH>;
+	       regulator-min-microvolt = <5000000>;
+	       regulator-max-microvolt = <5000000>;
+	       pinctrl-names = "default";
+	       pinctrl-0 = <&usb2_vbus_boost_default>;
+	};
+
+	connector_usb2: connector_usb2 {
+		compatible = "gpio-usb-b-connector";
+		vbus-gpio = <&pm7250b_gpios 9 GPIO_ACTIVE_HIGH>;
+		id-gpio = <&tlmm 61 GPIO_ACTIVE_HIGH>;
+		vbus-supply = <&vbus_supply_regulator>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb2_vbus_det_default>,
+			     <&usb2_id_det_default>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				usb2_port_connector: endpoint {
+					remote-endpoint = <&usb2_port>;
+				};
+			};
+		};
+	};
+};
+
+&usb_2_dwc3 {
+	/delete-property/ port;
+	usb-role-switch;
+	dr_mode = "otg";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			usb2_port: endpoint {
+				remote-endpoint = <&usb2_port_connector>;
+			};
+		};
+	};
+};
+
+&usb_2_hsphy {
+	vdda-pll-supply = <&vreg_l10c_0p88>;
+	vdda18-supply = <&vreg_l1c_1p8>;
+	vdda33-supply = <&vreg_l2b_3p072>;
+
+	status = "okay";
+};
+
+&usb_2 {
+	status = "okay";
+};
