@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _PLATFORM_COMMON_H_
@@ -36,7 +36,7 @@ struct iris_inst;
 #define MIN_HEVC_SLICE_WIDTH				384
 #define MIN_AVC_SLICE_WIDTH				192
 #define MIN_SLICE_HEIGHT				128
-#define MAX_SLICES_PER_FRAME				10
+#define MAX_SLICES_PER_FRAME				128
 #define MIN_QP_8BIT					1
 #define MIN_SLICE_BYTE_SIZE				512
 #define MAX_SLICE_BYTE_SIZE				((MAX_BITRATE) >> 3)
