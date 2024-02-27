@@ -220,6 +220,8 @@ struct va_macro {
 	u8 dmic_2_3_clk_div;
 	u8 dmic_4_5_clk_div;
 	u8 dmic_6_7_clk_div;
+	bool is_lpi_on;
+	int lpi_clk_en;
 };
 
 #define to_va_macro(_hw) container_of(_hw, struct va_macro, hw)
@@ -707,11 +709,23 @@ static int va_macro_enable_dmic(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_component *comp = snd_soc_dapm_to_component(w->dapm);
+	struct va_macro *va = snd_soc_component_get_drvdata(comp);
 	unsigned int dmic = w->shift;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		va_dmic_clk_enable(comp, dmic, true);
+
+		va->is_lpi_on = lpass_macro_get_lpi_state();
+		/*
+		 * Unvote the HW dcodec and macro clks to set
+		 * the device in LPI mode.
+		 */
+		if ((va->is_lpi_on) && (!va->lpi_clk_en)) {
+			clk_disable_unprepare(va->dcodec);
+			clk_disable_unprepare(va->macro);
+			va->lpi_clk_en++;
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		va_dmic_clk_enable(comp, dmic, false);
@@ -830,6 +844,25 @@ static int va_macro_dec_mode_put(struct snd_kcontrol *kcontrol,
 
 	va->dec_mode[path] = value;
 
+	return 0;
+}
+
+static int va_macro_get_lpi_state(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+
+	ucontrol->value.integer.value[0] = lpass_macro_get_lpi_state();
+	return 0;
+}
+
+static int va_macro_set_lpi_state(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	int value = ucontrol->value.integer.value[0];
+
+	lpass_macro_set_lpi_state(value);
 	return 0;
 }
 
@@ -1316,6 +1349,9 @@ static const struct snd_kcontrol_new va_macro_snd_controls[] = {
 		     va_macro_dec_mode_get, va_macro_dec_mode_put),
 	SOC_ENUM_EXT("VA_DEC3 MODE", dec_mode_mux_enum[3],
 		     va_macro_dec_mode_get, va_macro_dec_mode_put),
+
+	SOC_SINGLE_EXT("LPI Enable", SND_SOC_NOPM, 0, 1, 0,
+		       va_macro_get_lpi_state, va_macro_set_lpi_state),
 };
 
 static int va_macro_component_probe(struct snd_soc_component *component)
@@ -1606,8 +1642,17 @@ static int __maybe_unused va_macro_runtime_suspend(struct device *dev)
 	regcache_mark_dirty(va->regmap);
 
 	clk_disable_unprepare(va->mclk);
-	clk_disable_unprepare(va->dcodec);
-	clk_disable_unprepare(va->macro);
+
+	/*
+	 * Skip the unvoting of HW dcodec and macro
+	 * if it's already disabled during LPI mode.
+	 */
+	if (!va->lpi_clk_en) {
+		clk_disable_unprepare(va->dcodec);
+		clk_disable_unprepare(va->macro);
+	} else {
+		va->lpi_clk_en = 0;
+	}
 
 	return 0;
 }
