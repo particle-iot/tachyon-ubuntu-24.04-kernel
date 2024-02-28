@@ -371,6 +371,15 @@ config QCOM_SECURE_BUFFER
 	 use this memory and no unauthorized access is made to the
 	 buffer.
 
+config QCOM_KVM_ENABLED
+       bool "ENABLE KVM support"
+       help
+	 During the build process difference between Gunyah and KVM hypervisors
+	 isn't necessary, but exception like watchdog and PIL loading demand
+	 device tree adjustments based on the hypervisor.
+	 To address this, the QCOM_KVM_ENABLED config is introduced since the
+	 device tree cannot detect Kbuild configurations.
+
 source "drivers/soc/qcom/mem_buf/Kconfig"
 source "drivers/soc/qcom/smcinvoke/Kconfig"
 
