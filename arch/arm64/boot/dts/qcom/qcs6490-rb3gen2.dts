@@ -665,17 +665,22 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/qcm6490/adsp.mdt";
+	firmware-name = "qcom/qcs6490/adsp.mdt";
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/qcm6490/cdsp.mdt";
+	firmware-name = "qcom/qcs6490/cdsp.mdt";
+	status = "okay";
+};
+
+&remoteproc_mpss {
+	firmware-name = "qcom/qcs6490/modem.mdt";
 	status = "okay";
 };
 
 &remoteproc_wpss {
-	firmware-name = "qcom/qcm6490/wpss.mdt";
+	firmware-name = "qcom/qcs6490/wpss.mdt";
 	status = "okay";
 };
 
