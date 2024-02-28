@@ -1027,9 +1027,11 @@
 		};
 	};
 
+#ifndef QCOM_KVM_ENABLED
 	watchdog@17c10000 {
 		status = "disabled";
 	};
+#endif
 
 	wpss-etm0 {
 		compatible = "qcom,coresight-remote-etm";
