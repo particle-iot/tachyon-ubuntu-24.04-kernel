@@ -248,6 +248,10 @@ dtc_cpp_flags  = -Wp,-MMD,$(depfile).pre.tmp -nostdinc                    \
 		 $(addprefix -I,$(DTC_INCLUDE))                          \
 		 -undef -D__DTS__
 
+ifdef CONFIG_QCOM_KVM_ENABLED
+dtc_cpp_flags += -DQCOM_KVM_ENABLED
+endif
+
 ifdef CONFIG_OBJTOOL
 
 objtool := $(objtree)/tools/objtool/objtool
