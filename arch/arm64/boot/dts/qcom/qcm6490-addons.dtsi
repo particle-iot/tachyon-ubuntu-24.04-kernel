@@ -1066,6 +1066,7 @@
 	};
 
 	etr@6048000 {
+		qcom,sw-usb;
 		coresight-csr = <&csr>;
 		interrupts = <GIC_SPI 270 IRQ_TYPE_EDGE_RISING>;
 		interrupt-names = "byte-cntr-irq";
