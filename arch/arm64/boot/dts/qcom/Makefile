@@ -257,6 +257,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-qrd.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= sm8650p-addons-aim500-aiot.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sm8650p-aim500-aiot.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-addons-crd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-crd.dtb
