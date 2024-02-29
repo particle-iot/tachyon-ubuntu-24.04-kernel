@@ -553,7 +553,7 @@ struct usb_qdss_ch *usb_qdss_open(const char *name, void *priv,
 	spin_lock_irqsave(&channel_lock, flags);
 
 	list_for_each_entry(tmp_ch, &usb_qdss_ch_list, list) {
-		if (!strcmp(name, ch->name)) {
+		if (!strcmp(name, tmp_ch->name)) {
 			ch = tmp_ch;
 			qdss = container_of(ch, struct f_qdss, ch);
 			break;
