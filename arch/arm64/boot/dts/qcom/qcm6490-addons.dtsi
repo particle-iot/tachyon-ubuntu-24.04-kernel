@@ -585,6 +585,300 @@
 };
 
 &soc {
+	audio-etm0 {
+		compatible = "qcom,coresight-remote-etm";
+
+		qcom,inst-id = <5>;
+		device-name = "audio_etm0";
+
+		out-ports {
+			port {
+				audio_etm0_out_funnel_lpass_lpi: endpoint {
+					remote-endpoint =
+					<&funnel_lpass_lpi_in_audio_etm0>;
+				};
+			};
+		};
+	};
+
+	funnel@6042000 {
+		in-ports {
+			port@5 {
+				reg = <5>;
+				funnel_in1_in_funnel_modem: endpoint {
+					remote-endpoint =
+					<&funnel_modem_out_funnel_in1>;
+				};
+			};
+		};
+	};
+
+	funnel@6804000 {
+		compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+
+		reg = <0x0 0x06804000 0x0 0x1000>;
+		reg-names = "funnel-base";
+
+		coresight-name = "coresight-funnel-modem";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		out-ports {
+			port {
+				funnel_modem_out_funnel_in1: endpoint {
+					remote-endpoint =
+						<&funnel_in1_in_funnel_modem>;
+				};
+			};
+		};
+
+		in-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@1 {
+				reg = <1>;
+				funnel_modem_in_modem2_etm0: endpoint {
+					remote-endpoint =
+						<&modem2_etm0_out_funnel_modem>;
+				};
+			};
+
+			port@3 {
+				reg = <3>;
+				funnel_modem_in_funnel_mq6_dup: endpoint {
+					remote-endpoint =
+					  <&funnel_mq6_dup_out_funnel_modem>;
+				};
+			};
+		};
+	};
+
+	funnel@680c000 {
+		compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+
+		reg = <0x0 0x0680c000 0x0 0x1000>;
+		reg-names = "funnel-base";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		out-ports {
+			port {
+				funnel_modem_q6_out_funnel_mq6_dup: endpoint {
+					remote-endpoint =
+					<&funnel_mq6_dup_in_funnel_modem_q6>;
+				};
+			};
+		};
+
+		in-ports {
+			port {
+				funnel_modem_q6_in_modem_etm0: endpoint {
+					remote-endpoint =
+					<&modem_etm0_out_funnel_modem_q6>;
+				};
+			};
+		};
+	};
+
+	funnel@680d000 {
+		compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+		arm,primecell-periphid = <0x000bb908>;
+
+		reg = <0x0 0x0680d000 0x0 0x1000>,
+			<0x0 0x0680c000 0x0 0x1000>;
+
+		reg-names = "funnel-base-dummy", "funnel-base-real";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+		qcom,duplicate-funnel;
+
+		out-ports {
+			port {
+				funnel_mq6_dup_out_funnel_modem: endpoint {
+					remote-endpoint =
+					<&funnel_modem_in_funnel_mq6_dup>;
+				};
+			};
+		};
+
+		in-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@1 {
+				reg = <1>;
+				funnel_mq6_dup_in_funnel_modem_q6: endpoint {
+					remote-endpoint =
+					<&funnel_modem_q6_out_funnel_mq6_dup>;
+				};
+			};
+		};
+	};
+
+	funnel@6985000 {
+		compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+
+		reg = <0x0 0x06985000 0x0 0x1000>;
+		reg-names = "funnel-base";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		out-ports {
+			port {
+				funnel_dl_turing_out_funnel_dlct5: endpoint {
+					remote-endpoint =
+						<&funnel_dlct5_in_funnel_dl_turing>;
+				};
+			};
+		};
+
+		in-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@4 {
+				reg = <4>;
+				turing_in_turing_dup: endpoint {
+					remote-endpoint =
+					  <&turing_dup_out_turing>;
+				};
+			};
+		};
+	};
+
+	funnel@6986000 {
+		compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+		arm,primecell-periphid = <0x000bb908>;
+
+		reg = <0x0 0x06986000 0x0 0x1000>,
+			<0x0 0x06985000 0x0 0x1000>;
+		reg-names = "funnel-base-dummy", "funnel-base-real";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+		qcom,duplicate-funnel;
+
+		out-ports {
+			port {
+				turing_dup_out_turing: endpoint {
+					remote-endpoint =
+					<&turing_in_turing_dup>;
+				};
+			};
+		};
+
+		in-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@3 {
+				reg = <3>;
+				funnel_dup_turing_in_turing_etm: endpoint {
+					remote-endpoint =
+					<&turing_etm_out_funnel_dup_turing>;
+				};
+			};
+		};
+	};
+
+	funnel@6b04000 {
+		in-ports {
+			port@5 {
+				reg = <5>;
+				funnel_swao_in_funnel_lpass_lpi: endpoint {
+					remote-endpoint =
+					<&funnel_lpass_lpi_out_funnel_swao>;
+				};
+			};
+		};
+	};
+
+	funnel@6b44000 {
+		compatible = "arm,coresight-static-funnel";
+		coresight-name = "coresight-funnel-lpass_lpi";
+
+		out-ports {
+			port {
+				funnel_lpass_lpi_out_funnel_swao: endpoint {
+					remote-endpoint =
+					<&funnel_swao_in_funnel_lpass_lpi>;
+				};
+			};
+		};
+
+		in-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				funnel_lpass_lpi_in_audio_etm0: endpoint {
+					remote-endpoint =
+					<&audio_etm0_out_funnel_lpass_lpi>;
+				};
+			};
+		};
+	};
+
+	funnel@6c38000 {
+		in-ports {
+			port@6 {
+				reg = <6>;
+				funnel_dlct5_in_funnel_dl_turing: endpoint {
+					remote-endpoint =
+					<&funnel_dl_turing_out_funnel_dlct5>;
+				};
+			};
+		};
+	};
+
+	funnel@6c73000 {
+		in-ports {
+			port@2 {
+				reg = <2>;
+				funnel_wpss_in_wpss_etm0: endpoint {
+					remote-endpoint =
+						<&wpss_etm0_out_funnel_wpss>;
+				};
+			};
+		};
+	};
+
+	modem-etm0 {
+		compatible = "qcom,coresight-remote-etm";
+
+		device-name = "modem_etm0";
+		qcom,inst-id = <2>;
+
+		out-ports {
+			port {
+				modem_etm0_out_funnel_modem_q6: endpoint {
+					remote-endpoint =
+						<&funnel_modem_q6_in_modem_etm0>;
+				};
+			};
+		};
+	};
+
+	modem2-etm0 {
+		compatible = "qcom,coresight-remote-etm";
+
+		device-name = "modem2_etm0";
+		qcom,inst-id = <11>;
+
+		out-ports {
+			port {
+				modem2_etm0_out_funnel_modem: endpoint {
+					remote-endpoint =
+						<&funnel_modem_in_modem2_etm0>;
+				};
+			};
+		};
+	};
+
 	msm_gpu: qcom,kgsl-3d0@3d00000 { };
 
 	msm_stub_codec: msm-stub-codec {
@@ -661,8 +955,40 @@
 		};
 	};
 
+	turing-etm0 {
+		compatible = "qcom,coresight-remote-etm";
+
+		device-name = "turing_etm0";
+		qcom,inst-id = <13>;
+
+		out-ports {
+			port {
+				turing_etm_out_funnel_dup_turing: endpoint {
+					remote-endpoint =
+					<&funnel_dup_turing_in_turing_etm>;
+				};
+			};
+		};
+	};
+
 	watchdog@17c10000 {
 		status = "disabled";
+	};
+
+	wpss-etm0 {
+		compatible = "qcom,coresight-remote-etm";
+
+		device-name = "wpss_etm0";
+		qcom,inst-id = <3>;
+
+		out-ports {
+			port {
+				wpss_etm0_out_funnel_wpss: endpoint {
+					remote-endpoint =
+					<&funnel_wpss_in_wpss_etm0>;
+				};
+			};
+		};
 	};
 
 	sram@146a5000{
