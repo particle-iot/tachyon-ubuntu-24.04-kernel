@@ -715,6 +715,14 @@
 					<&funnel_modem_q6_out_funnel_mq6_dup>;
 				};
 			};
+
+			port@2 {
+				reg = <2>;
+				funnel_mq6_dup_in_modem_diag: endpoint {
+					remote-endpoint =
+					<&modem_diag_out_funnel_mq6_dup>;
+				};
+			};
 		};
 	};
 
@@ -952,6 +960,21 @@
 		msm_audio_mem_cma: msm-audio-mem-cma {
 			compatible = "qcom,msm-audio-mem";
 			memory-region = <&audio_cma_mem>;
+		};
+	};
+
+	source {
+		compatible = "arm,coresight-dummy-source";
+
+		device-name = "modem_diag";
+
+		out-ports {
+			port {
+				modem_diag_out_funnel_mq6_dup: endpoint {
+					remote-endpoint =
+						<&funnel_mq6_dup_in_modem_diag>;
+				};
+			};
 		};
 	};
 
