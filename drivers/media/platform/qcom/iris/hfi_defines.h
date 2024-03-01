@@ -130,6 +130,8 @@ enum hfi_rate_control {
 
 #define HFI_PROP_RATE_CONTROL			0x0300012a
 
+#define HFI_PROP_TIME_DELTA_BASED_RATE_CONTROL                  0x0300012b
+
 #define HFI_PROP_QP_PACKED			0x0300012e
 
 #define HFI_PROP_MIN_QP_PACKED			0x0300012f
