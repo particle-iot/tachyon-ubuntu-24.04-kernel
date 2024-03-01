@@ -1594,7 +1594,7 @@ static int  tzdbg_fs_init(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dent_dir);
 	return 0;
 err:
-	remove_proc_entry(TZDBG_DIR_NAME, NULL);
+	remove_proc_subtree(TZDBG_DIR_NAME, NULL);
 
 	return rc;
 }
@@ -1605,7 +1605,7 @@ static void tzdbg_fs_exit(struct platform_device *pdev)
 
 	dent_dir = platform_get_drvdata(pdev);
 	if (dent_dir)
-		remove_proc_entry(TZDBG_DIR_NAME, NULL);
+		remove_proc_subtree(TZDBG_DIR_NAME, NULL);
 }
 
 static int __update_hypdbg_base(struct platform_device *pdev,
