@@ -193,6 +193,7 @@ enum plat_inst_cap_type {
 	FRAME_RC_ENABLE,
 	GOP_SIZE,
 	MIN_QUALITY,
+	TIME_DELTA_BASED_RC,
 	IR_PERIOD,
 	LTR_COUNT,
 	USE_LTR,

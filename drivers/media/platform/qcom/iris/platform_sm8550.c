@@ -573,6 +573,15 @@ static struct plat_inst_cap instance_cap_data_sm8550[] = {
 		adjust_min_quality,
 		set_u32},
 
+	{TIME_DELTA_BASED_RC, ENC, H264 | HEVC,
+		0, 1, 1, 0,
+		0,
+		HFI_PROP_TIME_DELTA_BASED_RATE_CONTROL,
+		CAP_FLAG_OUTPUT_PORT,
+		{0},
+		NULL,
+		set_u32},
+
 	{MIN_FRAME_QP, ENC, H264,
 		MIN_QP_8BIT, MAX_QP, 1, MIN_QP_8BIT,
 		V4L2_CID_MPEG_VIDEO_H264_MIN_QP,
