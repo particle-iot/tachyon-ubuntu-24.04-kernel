@@ -163,6 +163,8 @@
 #define VA_MACRO_SWR_MIC_MUX_SEL_MASK 0xF
 #define VA_MACRO_ADC_MUX_CFG_OFFSET 0x8
 
+#define VA_MACRO_VA_DMIC_UNMUTE_DELAY_MS	40
+
 static const DECLARE_TLV_DB_SCALE(digital_gain, -8400, 100, -8400);
 
 enum {
@@ -196,13 +198,21 @@ enum {
 
 #define VA_NUM_CLKS_MAX		3
 
+struct va_mute_work {
+	struct va_macro *va;
+	u8 decimator;
+	struct delayed_work dwork;
+};
+
 struct va_macro {
 	struct device *dev;
+	struct snd_soc_component *component;
 	unsigned long active_ch_mask[VA_MACRO_MAX_DAIS];
 	unsigned long active_ch_cnt[VA_MACRO_MAX_DAIS];
 	u16 dmic_clk_div;
 	bool has_swr_master;
 
+	struct va_mute_work va_mute_dwork[VA_MACRO_NUM_DECIMATORS];
 	int dec_mode[VA_MACRO_NUM_DECIMATORS];
 	struct regmap *regmap;
 	struct clk *mclk;
@@ -594,6 +604,32 @@ static int va_macro_tx_mixer_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static void va_macro_mute_update_callback(struct work_struct *work)
+{
+	struct va_mute_work *va_mute_dwork;
+	struct snd_soc_component *component;
+	struct va_macro *va;
+	struct delayed_work *delayed_work;
+	u8 decimator;
+	u16 tx_vol_ctl_reg;
+
+	delayed_work = to_delayed_work(work);
+	va_mute_dwork = container_of(delayed_work, struct va_mute_work, dwork);
+	va = va_mute_dwork->va;
+	component = va->component;
+	decimator = va_mute_dwork->decimator;
+
+	dev_info(va->dev, "%s: unmute VA DMIC\n", __func__);
+
+	tx_vol_ctl_reg = CDC_VA_TX0_TX_PATH_CTL +
+					VA_MACRO_TX_PATH_OFFSET * decimator;
+
+	snd_soc_component_update_bits(component, tx_vol_ctl_reg,
+				      CDC_VA_TX_PATH_PGA_MUTE_EN_MASK,
+				      CDC_VA_TX_PATH_PGA_MUTE_DISABLE);
+	usleep_range(2000, 2010);
+}
+
 static int va_dmic_clk_enable(struct snd_soc_component *component,
 			      u32 dmic, bool enable)
 {
@@ -809,8 +845,14 @@ static int va_macro_enable_dec(struct snd_soc_dapm_widget *w,
 		/* apply gain after decimator is enabled */
 		snd_soc_component_write(comp, tx_gain_ctl_reg,
 			snd_soc_component_read(comp, tx_gain_ctl_reg));
+
+		/* schedule work queue to Remove Mute */
+		queue_delayed_work(system_freezable_wq,
+				   &va->va_mute_dwork[decimator].dwork,
+				   msecs_to_jiffies(VA_MACRO_VA_DMIC_UNMUTE_DELAY_MS));
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		cancel_delayed_work_sync(&va->va_mute_dwork[decimator].dwork);
 		/* Disable TX CLK */
 		snd_soc_component_update_bits(comp, tx_vol_ctl_reg,
 						CDC_VA_TX_PATH_CLK_EN_MASK,
@@ -952,11 +994,6 @@ static int va_macro_digital_mute(struct snd_soc_dai *dai, int mute, int stream)
 			snd_soc_component_update_bits(component, tx_vol_ctl_reg,
 					CDC_VA_TX_PATH_PGA_MUTE_EN_MASK,
 					CDC_VA_TX_PATH_PGA_MUTE_EN);
-		} else {
-			snd_soc_component_update_bits(component, tx_vol_ctl_reg,
-					CDC_VA_TX_PATH_PGA_MUTE_EN_MASK,
-					CDC_VA_TX_PATH_PGA_MUTE_DISABLE);
-			usleep_range(2000, 2010);
 		}
 	}
 
@@ -1357,9 +1394,18 @@ static const struct snd_kcontrol_new va_macro_snd_controls[] = {
 static int va_macro_component_probe(struct snd_soc_component *component)
 {
 	struct va_macro *va = snd_soc_component_get_drvdata(component);
+	int i;
 
 	snd_soc_component_init_regmap(component, va->regmap);
 
+	for (i = 0; i < VA_MACRO_NUM_DECIMATORS; i++) {
+		va->va_mute_dwork[i].va = va;
+		va->va_mute_dwork[i].decimator = i;
+		INIT_DELAYED_WORK(&va->va_mute_dwork[i].dwork,
+				  va_macro_mute_update_callback);
+	}
+
+	va->component = component;
 	return 0;
 }
 
