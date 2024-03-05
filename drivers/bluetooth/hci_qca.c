@@ -7,6 +7,7 @@
  *
  *  Copyright (C) 2007 Texas Instruments, Inc.
  *  Copyright (c) 2010, 2012, 2018 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2023, 2024  Qualcomm Innovation Center, Inc. All rights reserved.
  *
  *  Acknowledgements:
  *  This file is based on hci_ll.c, which was...
@@ -1924,6 +1925,7 @@ retry:
 		qca_set_speed(hu, QCA_INIT_SPEED);
 	}
 
+	usleep_range(1000, 20000);
 	/* Setup user speed if needed */
 	speed = qca_get_speed(hu, QCA_OPER_SPEED);
 	if (speed) {
@@ -1933,7 +1935,6 @@ retry:
 
 		qca_baudrate = qca_get_baudrate_value(speed);
 	}
-
 	switch (soc_type) {
 	case QCA_WCN3988:
 	case QCA_WCN3990:
