@@ -4155,7 +4155,7 @@
 			compatible = "qcom,coresight-tpdm", "arm,primecell";
 			reg = <0x0 0x6b0d000 0x0 0x1000>;
 
-			qcom,dsb-element-size = <32>;
+			qcom,dsb-element-bits = <32>;
 			device-name = "tpdm_swao_1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
@@ -4198,7 +4198,7 @@
 			clock-names = "apb_pclk";
 
 			device-name = "tpdm_mdss";
-			qcom,dsb-element-bits = <32>;
+			qcom,cmb-element-bits = <32>;
 
 			out-ports {
 				port {
