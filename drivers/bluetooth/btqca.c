@@ -745,8 +745,10 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 	else
 		rom_ver = ((soc_ver & 0x00000f00) >> 0x04) | (soc_ver & 0x0000000f);
 
-	if (soc_type == QCA_WCN6750)
+	if (soc_type == QCA_WCN6750) {
+		msleep(100);
 		qca_send_patch_config_cmd(hdev);
+	}
 
 	/* Download rampatch file */
 	config.type = TLV_TYPE_PATCH;
