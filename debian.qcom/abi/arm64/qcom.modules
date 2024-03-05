@@ -2114,7 +2114,6 @@ i2c-cbus-gpio
 i2c-ccgx-ucsi
 i2c-cp2615
 i2c-cros-ec-tunnel
-i2c-demux-pinctrl
 i2c-designware-pci
 i2c-diolan-u2c
 i2c-dln2
@@ -3840,6 +3839,7 @@ panel-visionox-rm69299
 panel-visionox-vtdr6130
 panel-widechips-ws2401
 panel-xinpeng-xpp055c272
+panel_event_notifier
 panfrost
 parade-ps8622
 parade-ps8640
@@ -4190,7 +4190,6 @@ qcom-emac
 qcom-labibb-regulator
 qcom-pm8008
 qcom-pon
-qcom-refgen-regulator
 qcom-rng
 qcom-spmi-adc-tm5
 qcom-spmi-adc5
@@ -5012,6 +5011,7 @@ smb347-charger
 smc
 smc_diag
 smipcie
+smp2p_sleepstate
 smpro-core
 smpro-errmon
 smpro-hwmon
