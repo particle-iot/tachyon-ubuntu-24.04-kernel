@@ -715,6 +715,7 @@ camcc-sm8250
 camcc-sm8450
 camcc-sm8550
 camellia_generic
+camera
 can
 can-bcm
 can-dev
@@ -872,6 +873,10 @@ cmdlinepart
 cmtp
 cn10k-rng
 cnic
+cnss_nl
+cnss_plat_ipc_qmi_svc
+cnss_prealloc
+cnss_utils
 cobra
 coda
 colibri-vf50-ts
@@ -1442,7 +1447,6 @@ f81232
 f81534
 f81601
 f81604
-failover
 fakelb
 fan53555
 fan53880
@@ -2191,6 +2195,7 @@ icc-osm-l3
 icc-smd-rpm
 ice
 ice40-spi
+icnss2
 icp10100
 icp_multi
 icplus
@@ -2807,6 +2812,7 @@ lru_cache
 lrw
 lt3651-charger
 lt7182s
+lt9611uxc
 ltc1660
 ltc2309
 ltc2471
@@ -3251,6 +3257,8 @@ msi001
 msi2500
 msm
 msm_audio_mem
+msm_drm
+msm_kgsl
 msp3400
 mspro_block
 mss-sc7180
@@ -3401,7 +3409,6 @@ neofb
 net1080
 net2272
 net2280
-net_failover
 netconsole
 netdevsim
 netfs
@@ -4193,7 +4200,6 @@ qcom-spmi-temp-alarm
 qcom-spmi-vadc
 qcom-vadc-common
 qcom-wdt
-qcom-wled
 qcom_bam_dmux
 qcom_battmgr
 qcom_common
@@ -4214,6 +4220,7 @@ qcom_q6v5_wcss
 qcom_rpm
 qcom_rpm-regulator
 qcom_smbb
+qcom_smcinvoke
 qcom_stats
 qcom_sysmon
 qcom_tsens
@@ -4923,8 +4930,6 @@ sha1-ce
 sha2-ce
 sha256-arm64
 sha3-ce
-sha512-arm64
-sha512-ce
 shark2
 sht15
 sht21
@@ -5311,6 +5316,7 @@ snd-soc-max9860
 snd-soc-max9867
 snd-soc-max98927
 snd-soc-mikroe-proto
+snd-soc-msm-stub
 snd-soc-msm8916-analog
 snd-soc-msm8916-digital
 snd-soc-mt6351
@@ -5593,6 +5599,7 @@ spi-zynqmp-gqspi
 spi_ks8995
 spidev
 spinand
+spl
 sprd_serial
 sps30
 sps30_i2c
@@ -5669,6 +5676,7 @@ stm_core
 stm_ftrace
 stm_heartbeat
 stm_p_basic
+stm_p_ost
 stm_p_sys-t
 stmfts
 stmfx
@@ -6060,6 +6068,7 @@ typec_displayport
 typec_nvidia
 typec_ucsi
 typhoon
+tz_log
 uPD60620
 u_audio
 u_ether
@@ -6271,7 +6280,6 @@ virtio_crypto
 virtio_dma_buf
 virtio_input
 virtio_mem
-virtio_net
 virtio_pmem
 virtio_rpmsg_bus
 virtio_snd
@@ -6388,6 +6396,8 @@ wl1251_spi
 wl1273-core
 wl12xx
 wl18xx
+wlan
+wlan_firmware_service
 wlcore
 wlcore_sdio
 wlcore_spi
@@ -6414,6 +6424,7 @@ wm97xx-ts
 wp512
 wpcm450-soc
 wusb3801
+wwan
 wwan_hwsim
 x25
 x9250
@@ -6577,6 +6588,7 @@ zd1301
 zd1301_demod
 zet6223
 zforce_ts
+zfs
 zhenhua
 ziirave_wdt
 zinitix
