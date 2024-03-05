@@ -161,6 +161,7 @@ gcc-sm8250
 gcc-sm8350
 gcc-sm8450
 gcc-sm8550
+gcc-x1e80100
 gcm
 geniv
 gf128mul
@@ -243,6 +244,7 @@ mdio-bitbang
 mdio_devres
 mem_buf
 mem_buf_dev
+memory_dump_v2
 mfd-core
 mii
 mmc_block
@@ -316,6 +318,7 @@ pinctrl-sm8450
 pinctrl-sm8550
 pinctrl-spmi-gpio
 pinctrl-spmi-mpp
+pinctrl-x1e80100
 pkcs7_message
 ppp_generic
 pps_core
@@ -328,10 +331,12 @@ public_key
 pwm-regulator
 qcom-apcs-ipc-mailbox
 qcom-cpufreq-hw
+qcom-dcc
 qcom-geni-se
 qcom-i2c-pmic
 qcom-ipcc
 qcom-pdc
+qcom-refgen-regulator
 qcom-rpmh-regulator
 qcom-scm
 qcom-spmi-pmic
@@ -348,6 +353,7 @@ qcom_qseecom_uefisecapp
 qcom_rpmh
 qcom_smd
 qcom_smd-regulator
+qcom_soc_debug
 qcom_spmi-regulator
 qmi_helpers
 qnoc-sa8775p
@@ -358,7 +364,9 @@ qnoc-sc8280xp
 qnoc-sdm845
 qnoc-sm8450
 qnoc-sm8550
+qnoc-x1e80100
 qpnp-lcdb-regulator
+qps615
 qtee_shmbridge
 rapidio
 rational
@@ -400,6 +408,7 @@ sdhci_am654
 sdhci_f_sdh30
 sec-core
 sec-irq
+secure_buffer
 selftests
 seqiv
 serdev
