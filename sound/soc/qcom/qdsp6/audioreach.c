@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2020, Linaro Limited
+// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -573,9 +574,9 @@ int audioreach_send_cmd_sync(struct device *dev, gpr_device_t *gdev,
 
 	if (rsp_opcode)
 		rc = wait_event_timeout(*cmd_wait, (result->opcode == hdr->opcode) ||
-					(result->opcode == rsp_opcode),	5 * HZ);
+					(result->opcode == rsp_opcode),	2 * HZ);
 	else
-		rc = wait_event_timeout(*cmd_wait, (result->opcode == hdr->opcode), 5 * HZ);
+		rc = wait_event_timeout(*cmd_wait, (result->opcode == hdr->opcode), 2 * HZ);
 
 	if (!rc) {
 		dev_err(dev, "CMD timeout for [%x] opcode\n", hdr->opcode);
