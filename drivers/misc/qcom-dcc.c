@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /*
@@ -1363,7 +1363,7 @@ static void dcc_create_debug_dir(struct dcc_drvdata *drvdata)
 	drvdata->dbg_dir = debugfs_create_dir(KBUILD_MODNAME, NULL);
 	dcc_dev = debugfs_create_dir(dev_name(dev), drvdata->dbg_dir);
 
-	for (i = 0; i <= drvdata->max_link_list; i++) {
+	for (i = 0; i < drvdata->max_link_list; i++) {
 		snprintf(list_num, sizeof(list_num), "%d", i);
 		list = debugfs_create_dir(list_num, dcc_dev);
 		debugfs_create_file("enable", 0600, list, drvdata, &enable_fops);
