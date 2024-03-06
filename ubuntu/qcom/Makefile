@@ -1,3 +1,5 @@
+subdir-ccflags-y += -Wno-packed-bitfield-compat
+
 export MACHINE='qcm6490'
 export CONFIG_QCA_CLD_WLAN=m
 export CONFIG_CNSS_OUT_OF_TREE=y

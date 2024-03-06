@@ -167,7 +167,7 @@ QDF_STATUS wlan_hdd_get_channel_for_sap_restart(
  *
  * Return: QDF_STATUS_SUCCESS if successful
  */
-uint32_t
+QDF_STATUS
 wlan_get_sap_acs_band(struct wlan_objmgr_psoc *psoc, uint8_t vdev_id,
 		      uint32_t *acs_band);
 
@@ -360,7 +360,7 @@ int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 
 int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 				    struct net_device *dev,
-				    struct cfg80211_beacon_data *params);
+				    struct cfg80211_ap_update *info);
 
 /**
  * hdd_is_peer_associated - is peer connected to softap
