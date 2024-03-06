@@ -8,6 +8,8 @@
 #include <linux/panic_notifier.h>
 #include <soc/qcom/wdt_core.h>
 
+#include <asm/virt.h>
+
 #define KASLR_IMEM_ADDR_NAME	"qcom,msm-imem-kaslr_offset"
 #define KASLR_IMEM_MAGIC	0xdead4ead
 #define KASLR_OFFSET_MASK	0x00000000FFFFFFFF
@@ -56,9 +58,59 @@ static void store_kaslr_offset(void)
 	iounmap(imem_kaslr_addr);
 }
 
+static void disable_soc_wdt_if_required(void)
+{
+	struct device_node *soc_wdt;
+	struct property *newprop;
+	int ret;
+
+	if (is_hyp_mode_available())
+		return;
+
+	/*
+	 * Linux is not booted in hyp mode, assume that Gunyah is active
+	 * and removed SoC watchdog I/O access to Linux. Disable SoC
+	 * watchdog device node.
+	 */
+	soc_wdt = of_find_compatible_node(NULL, NULL, "qcom,kpss-wdt");
+	if (!soc_wdt)
+		return;
+
+	/* Disable the node by flipping the status to disabled */
+	newprop = kzalloc(sizeof(*newprop), GFP_KERNEL);
+	if (!newprop)
+		goto put_node;
+
+	newprop->name = kstrdup("status", GFP_KERNEL);
+	if (!newprop->name)
+		goto free_prop;
+
+	newprop->value = kstrdup("disabled", GFP_KERNEL);
+	if (!newprop->value)
+		goto free_prop;
+
+	newprop->length = sizeof("disabled");
+	ret = of_update_property(soc_wdt, newprop);
+	if (ret) {
+		pr_err("Failed to disable SoC watchdog with err %d\n", ret);
+		goto free_prop;
+	}
+
+	/* newprop has references in dt structures, so don't free it */
+	of_node_put(soc_wdt);
+	return;
+free_prop:
+	kfree(newprop->value);
+	kfree(newprop->name);
+	kfree(newprop);
+put_node:
+	of_node_put(soc_wdt);
+}
+
 static int __init qcom_soc_debug_init(void)
 {
 	store_kaslr_offset();
+	disable_soc_wdt_if_required();
 
 	panic_notifier.priority = INT_MAX - 1;
 	panic_notifier.notifier_call = panic_handler;
