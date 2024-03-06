@@ -3145,7 +3145,7 @@ int wlfw_host_cap_send_sync(struct icnss_priv *priv)
 	struct wlfw_host_cap_req_msg_v01 *req;
 	struct wlfw_host_cap_resp_msg_v01 *resp;
 	struct qmi_txn txn;
-	int ddr_type;
+	//int ddr_type;
 	u32 gpio;
 	int ret = 0;
 	u64 iova_start = 0, iova_size = 0,
