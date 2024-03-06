@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -109,8 +109,12 @@
 #define DP_TRAN_DRVR_EMP_EN			0x00C0
 #define DP_TX_INTERFACE_MODE			0x00C4
 
+#define DP_TRAN_DRVR_EMP_EN_7NM			0x00B8
+#define DP_TX_INTERFACE_MODE_7NM		0x00BC
+
 /* Tx VMODE offsets */
 #define DP_VMODE_CTRL1				0x00C8
+#define DP_VMODE_CTRL1_7NM			0x00E8
 
 #define DP_PHY_PLL_POLL_SLEEP_US		500
 #define DP_PHY_PLL_POLL_TIMEOUT_US		10000
@@ -316,7 +320,7 @@ static int dp_config_vco_rate_5nm(struct dp_pll *pll,
 		dp_pll_write(dp_pll, QSERDES_COM_SSC_EN_CENTER, 0x01);
 		dp_pll_write(dp_pll, QSERDES_COM_SSC_ADJ_PER1, 0x00);
 		dp_pll_write(dp_pll, QSERDES_COM_SSC_PER1, params->ssc_per1);
-		dp_pll_write(dp_pll, QSERDES_COM_SSC_PER2, params->ssc_per1);
+		dp_pll_write(dp_pll, QSERDES_COM_SSC_PER2, params->ssc_per2);
 		dp_pll_write(dp_pll, QSERDES_COM_SSC_STEP_SIZE1_MODE0,
 				params->ssc_step_size1_mode0);
 		dp_pll_write(dp_pll, QSERDES_COM_SSC_STEP_SIZE2_MODE0,
@@ -335,33 +339,52 @@ static int dp_config_vco_rate_5nm(struct dp_pll *pll,
 
 	/* TX-0 register configuration */
 	dp_pll_write(dp_phy, DP_PHY_TX0_TX1_LANE_CTL, 0x05);
-	dp_pll_write(dp_ln_tx0, DP_VMODE_CTRL1, 0x40);
 	dp_pll_write(dp_ln_tx0, TXn_PRE_STALL_LDO_BOOST_EN, 0x30);
 	dp_pll_write(dp_ln_tx0, TXn_INTERFACE_SELECT, 0x3b);
 	dp_pll_write(dp_ln_tx0, TXn_CLKBUF_ENABLE, 0x0f);
 	dp_pll_write(dp_ln_tx0, TXn_RESET_TSYNC_EN, 0x03);
-	dp_pll_write(dp_ln_tx0, DP_TRAN_DRVR_EMP_EN, 0xf);
 	dp_pll_write(dp_ln_tx0, TXn_PARRATE_REC_DETECT_IDLE_EN, 0x00);
-	dp_pll_write(dp_ln_tx0, DP_TX_INTERFACE_MODE, 0x00);
-	dp_pll_write(dp_ln_tx0, TXn_RES_CODE_LANE_OFFSET_TX, params->lane_offset_tx);
 	dp_pll_write(dp_ln_tx0, TXn_RES_CODE_LANE_OFFSET_RX, params->lane_offset_rx);
 	dp_pll_write(dp_ln_tx0, TXn_TX_BAND, 0x04);
+
+	if(pll->revision == DP_PLL_7NM) {
+		dp_pll_write(dp_ln_tx0, DP_TRAN_DRVR_EMP_EN_7NM, 0xf);
+		dp_pll_write(dp_ln_tx0, DP_TX_INTERFACE_MODE_7NM, 0x00);
+		dp_pll_write(dp_ln_tx0, DP_VMODE_CTRL1_7NM, 0x40);
+		dp_pll_write(dp_ln_tx0, TXn_RES_CODE_LANE_OFFSET_TX, 0x11);
+	}
+
+	else {
+		dp_pll_write(dp_ln_tx0, DP_TRAN_DRVR_EMP_EN, 0xf);
+		dp_pll_write(dp_ln_tx0, DP_TX_INTERFACE_MODE, 0x00);
+		dp_pll_write(dp_ln_tx0, DP_VMODE_CTRL1, 0x40);
+		dp_pll_write(dp_ln_tx0, TXn_RES_CODE_LANE_OFFSET_TX, params->lane_offset_tx);
+	}
 	/* Make sure the PLL register writes are done */
 	wmb();
 
 	/* TX-1 register configuration */
 	dp_pll_write(dp_phy, DP_PHY_TX2_TX3_LANE_CTL, 0x05);
-	dp_pll_write(dp_ln_tx1, DP_VMODE_CTRL1, 0x40);
 	dp_pll_write(dp_ln_tx1, TXn_PRE_STALL_LDO_BOOST_EN, 0x30);
 	dp_pll_write(dp_ln_tx1, TXn_INTERFACE_SELECT, 0x3b);
 	dp_pll_write(dp_ln_tx1, TXn_CLKBUF_ENABLE, 0x0f);
 	dp_pll_write(dp_ln_tx1, TXn_RESET_TSYNC_EN, 0x03);
-	dp_pll_write(dp_ln_tx1, DP_TRAN_DRVR_EMP_EN, 0xf);
 	dp_pll_write(dp_ln_tx1, TXn_PARRATE_REC_DETECT_IDLE_EN, 0x00);
-	dp_pll_write(dp_ln_tx1, DP_TX_INTERFACE_MODE, 0x00);
-	dp_pll_write(dp_ln_tx1, TXn_RES_CODE_LANE_OFFSET_TX, params->lane_offset_tx);
 	dp_pll_write(dp_ln_tx1, TXn_RES_CODE_LANE_OFFSET_RX, params->lane_offset_rx);
 	dp_pll_write(dp_ln_tx1, TXn_TX_BAND, 0x04);
+	if(pll->revision == DP_PLL_7NM) {
+		dp_pll_write(dp_ln_tx1, DP_TRAN_DRVR_EMP_EN_7NM, 0xf);
+		dp_pll_write(dp_ln_tx1, DP_TX_INTERFACE_MODE_7NM, 0x00);
+		dp_pll_write(dp_ln_tx1, DP_VMODE_CTRL1_7NM, 0x40);
+		dp_pll_write(dp_ln_tx1, TXn_RES_CODE_LANE_OFFSET_TX, 0x11);
+	}
+
+	else {
+		dp_pll_write(dp_ln_tx1, DP_TRAN_DRVR_EMP_EN, 0xf);
+		dp_pll_write(dp_ln_tx1, DP_TX_INTERFACE_MODE, 0x00);
+		dp_pll_write(dp_ln_tx1, DP_VMODE_CTRL1, 0x40);
+		dp_pll_write(dp_ln_tx1, TXn_RES_CODE_LANE_OFFSET_TX, params->lane_offset_tx);
+	}
 	/* Make sure the PHY register writes are done */
 	wmb();
 
@@ -745,11 +768,11 @@ static long dp_pll_link_clk_round(struct clk_hw *hw, unsigned long rate,
 static unsigned long dp_pll_vco_div_clk_get_rate(struct dp_pll *pll)
 {
 	if (pll->vco_rate == DP_VCO_HSCLK_RATE_8100MHZDIV1000)
-		return (pll->vco_rate / (6 * pll->clk_factor));
+		return ((pll->vco_rate / 6) * pll->clk_factor);
 	else if (pll->vco_rate == DP_VCO_HSCLK_RATE_5400MHZDIV1000)
-		return (pll->vco_rate / (4 * pll->clk_factor));
+		return ((pll->vco_rate / 4) * pll->clk_factor);
 	else
-		return (pll->vco_rate / (2 * pll->clk_factor));
+		return ((pll->vco_rate / 2) * pll->clk_factor);
 }
 
 static unsigned long dp_pll_vco_div_clk_recalc_rate(struct clk_hw *hw,
@@ -849,7 +872,7 @@ int dp_pll_clock_register_5nm(struct dp_pll *pll)
 	pll->pll_prepare = dp_pll_prepare;
 	pll->pll_unprepare = dp_pll_unprepare;
 
-	if (pll->dp_core_revision >= 0x10040000)
+	if (pll->dp_core_revision > 0x10040000)
 		pll_clks = dp0_phy_pll_clks;
 	else
 		pll_clks = dp_phy_pll_clks;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/err.h>
@@ -51,6 +51,7 @@ static int dp_pll_clock_register(struct dp_pll *pll)
 	int rc;
 
 	switch (pll->revision) {
+	case DP_PLL_7NM:
 	case DP_PLL_5NM_V1:
 	case DP_PLL_5NM_V2:
 		rc = dp_pll_clock_register_5nm(pll);
@@ -70,6 +71,7 @@ static int dp_pll_clock_register(struct dp_pll *pll)
 static void dp_pll_clock_unregister(struct dp_pll *pll)
 {
 	switch (pll->revision) {
+	case DP_PLL_7NM:
 	case DP_PLL_5NM_V1:
 	case DP_PLL_5NM_V2:
 		dp_pll_clock_unregister_5nm(pll);
@@ -136,7 +138,9 @@ struct dp_pll *dp_pll_get(struct dp_pll_in *in)
 
 	label = of_get_property(pdev->dev.of_node, "qcom,pll-revision", NULL);
 	if (label) {
-		if (!strcmp(label, "5nm-v1")) {
+		if(!strcmp(label, "7nm")) {
+			pll->revision = DP_PLL_7NM;
+		} else if (!strcmp(label, "5nm-v1")) {
 			pll->revision = DP_PLL_5NM_V1;
 		} else if (!strcmp(label, "5nm-v2")) {
 			pll->revision = DP_PLL_5NM_V2;

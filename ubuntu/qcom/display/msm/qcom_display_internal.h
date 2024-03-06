@@ -48,6 +48,10 @@ enum mmrm_client_type {
 enum mmrm_cb_type {
 	MMRM_CLIENT_RESOURCE_VALUE_CHANGE = 0x1,
 };
+enum altmode_send_msg_type {
+	ALTMODE_PAN_EN = 0x10,
+	ALTMODE_PAN_ACK,
+};
 struct mmrm_client {
 	enum mmrm_client_type client_type;
 	u32 client_uid;
@@ -86,6 +90,7 @@ struct mmrm_client_desc {
 	int (*notifier_callback_fn)(
 		void *notifier_data);
 };
+struct altmode_client;
 
 /**
  * Enum describing the various staling modes available for clients to use.
@@ -122,6 +127,11 @@ struct qtee_shm {
 	phys_addr_t paddr;
  	void *vaddr;
  	size_t size;
+};
+
+struct altmode_pan_ack_msg {
+	u32 cmd_type;
+	u8 port_index;
 };
 
 static inline int qcom_iommu_sid_switch(struct device *dev, enum sid_switch_direction dir)
@@ -204,5 +214,22 @@ static inline int llcc_configure_staling_mode(struct llcc_slice_desc *desc,
 static inline int llcc_notif_staling_inc_counter(struct llcc_slice_desc *desc)
 {
 	return -EINVAL;
+}
+static inline void *ipc_log_context_create(int max_num_pages, const char *modname,
+		uint32_t feature_version)
+{
+	return NULL;
+}
+static inline void *ipc_log_context_destroy(void *ctxt)
+{
+        return NULL;
+}
+static inline void ipc_log_string(void *ilctxt, const char *fmt, ...)
+{
+
+}
+static inline int altmode_send_data(int client, void *data, size_t len)
+{
+	return 0;
 }
 #endif

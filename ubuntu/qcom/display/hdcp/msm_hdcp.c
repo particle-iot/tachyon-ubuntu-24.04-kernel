@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  */
 
@@ -54,7 +54,7 @@ void msm_hdcp_register_cb(struct device *dev, void *ctx,
 	hdcp->cb = cb;
 	hdcp->client_ctx = ctx;
 }
-EXPORT_SYMBOL(msm_hdcp_register_cb);
+EXPORT_SYMBOL_GPL(msm_hdcp_register_cb);
 
 void msm_hdcp_notify_topology(struct device *dev)
 {
@@ -84,7 +84,7 @@ void msm_hdcp_notify_topology(struct device *dev)
 
 	kobject_uevent_env(&hdcp->device->kobj, KOBJ_CHANGE, envp);
 }
-EXPORT_SYMBOL(msm_hdcp_notify_topology);
+EXPORT_SYMBOL_GPL(msm_hdcp_notify_topology);
 
 void msm_hdcp_cache_repeater_topology(struct device *dev,
 			struct HDCP_V2V1_MSG_TOPOLOGY *tp)
@@ -105,7 +105,7 @@ void msm_hdcp_cache_repeater_topology(struct device *dev,
 	memcpy(&hdcp->cached_tp, tp,
 		   sizeof(struct HDCP_V2V1_MSG_TOPOLOGY));
 }
-EXPORT_SYMBOL(msm_hdcp_cache_repeater_topology);
+EXPORT_SYMBOL_GPL(msm_hdcp_cache_repeater_topology);
 
 static ssize_t tp_show(struct device *dev, struct device_attribute *attr,
 		char *buf)

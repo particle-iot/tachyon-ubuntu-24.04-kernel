@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -77,6 +77,8 @@ static DEFINE_MUTEX(smmu_list_lock);
 
 /* List of all smmu devices installed */
 static LIST_HEAD(sde_smmu_list);
+
+static int msm_smmu_remove(struct platform_device *pdev);
 
 static int msm_smmu_attach(struct msm_mmu *mmu, const char * const *names,
 		int cnt)
@@ -578,8 +580,10 @@ static int msm_smmu_probe(struct platform_device *pdev)
 	mutex_unlock(&smmu_list_lock);
 
 	ret = component_add(&pdev->dev, &msm_smmu_comp_ops);
-	if (ret)
-		pr_err("component add failed\n");
+	if (ret) {
+		DISP_DEV_ERR(&pdev->dev, "component add failed = %d\n", ret);
+		msm_smmu_remove(pdev);
+	}
 
 	return ret;
 }

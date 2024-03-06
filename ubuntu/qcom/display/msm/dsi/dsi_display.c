@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -2122,7 +2122,7 @@ static void adjust_timing_by_ctrl_count(const struct dsi_display *display,
 		mode->timing.h_skew /= sublinks_count;
 		mode->pixel_clk_khz /= sublinks_count;
 	} else {
-		if (mode->priv_info->dsc_enabled)
+		if (mode->priv_info && mode->priv_info->dsc_enabled)
 			mode->priv_info->dsc.config.pic_width =
 				mode->timing.h_active;
 		mode->timing.h_active /= display->ctrl_count;
@@ -6408,22 +6408,31 @@ static int dsi_display_ext_get_mode_info(struct drm_connector *connector,
 	void *display, const struct msm_resource_caps_info *avail_res)
 {
 	struct msm_display_topology *topology;
+	struct dsi_display *ext_display = (struct dsi_display *)display;
 
 	if (!drm_mode || !mode_info ||
 			!avail_res || !avail_res->max_mixer_width)
 		return -EINVAL;
 
+	if (ext_display->panel->num_timing_nodes)
+		return dsi_conn_get_mode_info(connector, drm_mode, sub_mode,
+			mode_info, display, avail_res);
+
 	memset(mode_info, 0, sizeof(*mode_info));
 	mode_info->frame_rate = drm_mode_vrefresh(drm_mode);
 	mode_info->vtotal = drm_mode->vtotal;
+	mode_info->no_panel_timing_node = true;
 
 	topology = &mode_info->topology;
-	topology->num_lm = (avail_res->max_mixer_width
-			<= drm_mode->hdisplay) ? 2 : 1;
+	topology->num_lm = ext_display->ctrl_count;
 	topology->num_enc = 0;
 	topology->num_intf = topology->num_lm;
 
 	mode_info->comp_info.comp_type = MSM_DISPLAY_COMPRESSION_NONE;
+
+	DSI_DEBUG("Topology: %dx%d : %d %d %d\n",
+			drm_mode->hdisplay, drm_mode->vdisplay,
+			topology->num_lm, topology->num_enc, topology->num_intf);
 
 	return 0;
 }

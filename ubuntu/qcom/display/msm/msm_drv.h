@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -845,6 +845,7 @@ struct msm_display_wd_jitter_config {
  * @avr_step_fps: AVR step fps rate
  * @wd_jitter:         Info for WD jitter.
  * @vpadding:        panel stacking height
+ * @no_panel_timing_node: bool flag indicating the presence of timing information in panel's devicetree.
  */
 struct msm_mode_info {
 	uint32_t frame_rate;
@@ -871,6 +872,7 @@ struct msm_mode_info {
 	u32 avr_step_fps;
 	struct msm_display_wd_jitter_config wd_jitter;
 	u32 vpadding;
+	bool no_panel_timing_node;
 };
 
 /**

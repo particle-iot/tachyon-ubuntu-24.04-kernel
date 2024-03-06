@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -1541,6 +1541,10 @@ static int _sde_crtc_check_panel_stacking(struct drm_crtc *crtc, struct drm_crtc
 	}
 
 	conn = sde_crtc_state->connectors[0];
+	sub_mode.dsc_mode = sde_connector_get_property(conn->state, CONNECTOR_PROP_DSC_MODE);
+	sub_mode.pixel_format_mode = sde_connector_get_property(conn->state,
+		CONNECTOR_PROP_BPP_MODE);
+
 	rc = sde_connector_get_mode_info(conn, adj_mode, &sub_mode, &mode_info);
 	if (rc) {
 		SDE_ERROR("failed to get mode info %d\n", rc);

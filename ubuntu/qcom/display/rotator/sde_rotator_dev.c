@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 #define pr_fmt(fmt)	"%s:%d: " fmt, __func__, __LINE__
@@ -1304,7 +1304,7 @@ slice_getd_error:
 rotator_open_error:
 	return ERR_PTR(rc);
 }
-EXPORT_SYMBOL(sde_rotator_inline_open);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_open);
 
 int sde_rotator_inline_release(void *handle)
 {
@@ -1335,7 +1335,7 @@ int sde_rotator_inline_release(void *handle)
 
 	return sde_rotator_ctx_release(ctx, NULL);
 }
-EXPORT_SYMBOL(sde_rotator_inline_release);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_release);
 
 /*
  * sde_rotator_inline_get_dst_pixfmt - determine output pixel format
@@ -1365,7 +1365,7 @@ int sde_rotator_inline_get_dst_pixfmt(struct platform_device *pdev,
 
 	return 0;
 }
-EXPORT_SYMBOL(sde_rotator_inline_get_dst_pixfmt);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_get_dst_pixfmt);
 
 /*
  * sde_rotator_inline_get_downscale_caps - get scaling capability
@@ -1397,7 +1397,7 @@ int sde_rotator_inline_get_downscale_caps(struct platform_device *pdev,
 
 	return rc;
 }
-EXPORT_SYMBOL(sde_rotator_inline_get_downscale_caps);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_get_downscale_caps);
 
 /*
  * sde_rotator_inline_get_maxlinewidth - get maximum line width of rotator
@@ -1426,7 +1426,7 @@ int sde_rotator_inline_get_maxlinewidth(struct platform_device *pdev)
 
 	return maxlinewidth;
 }
-EXPORT_SYMBOL(sde_rotator_inline_get_maxlinewidth);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_get_maxlinewidth);
 
 /*
  * sde_rotator_inline_get_pixfmt_caps - get pixel format capability
@@ -1465,7 +1465,7 @@ int sde_rotator_inline_get_pixfmt_caps(struct platform_device *pdev,
 
 	return i;
 }
-EXPORT_SYMBOL(sde_rotator_inline_get_pixfmt_caps);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_get_pixfmt_caps);
 
 /*
  * _sde_rotator_inline_cleanup - perform inline related request cleanup
@@ -1831,7 +1831,7 @@ error_init_request:
 	mutex_unlock(&rot_dev->lock);
 	return ret;
 }
-EXPORT_SYMBOL(sde_rotator_inline_commit);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_commit);
 
 void sde_rotator_inline_reg_dump(struct platform_device *pdev)
 {
@@ -1852,7 +1852,7 @@ void sde_rotator_inline_reg_dump(struct platform_device *pdev)
 	sde_rotator_core_dump(rot_dev->mgr);
 	sde_rot_mgr_unlock(rot_dev->mgr);
 }
-EXPORT_SYMBOL(sde_rotator_inline_reg_dump);
+EXPORT_SYMBOL_GPL(sde_rotator_inline_reg_dump);
 
 /*
  * sde_rotator_open - Rotator device open method.

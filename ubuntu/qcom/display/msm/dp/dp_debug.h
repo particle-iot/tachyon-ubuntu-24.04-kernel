@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -13,7 +13,11 @@
 #include "dp_aux.h"
 #include "dp_display.h"
 #include "dp_pll.h"
+#if __has_include(<linux/ipc_logging.h>)
 #include <linux/ipc_logging.h>
+#else
+#include "qcom_display_internal.h"
+#endif
 
 #define DP_IPC_LOG(fmt, ...) \
 	do {  \

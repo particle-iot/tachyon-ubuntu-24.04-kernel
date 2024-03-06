@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -14,7 +14,12 @@
 #include <linux/usb/phy.h>
 #include <linux/jiffies.h>
 #include <linux/pm_qos.h>
+#include <linux/soc/qcom/pmic_glink_altmode.h>
+#if __has_include(<linux/ipc_logging.h>)
 #include <linux/ipc_logging.h>
+#else
+#include "qcom_display_internal.h"
+#endif
 
 #include "sde_connector.h"
 
@@ -3298,6 +3303,31 @@ static int dp_display_bridge_internal_hpd(void *dev, bool hpd, bool hpd_irq)
 	return 0;
 }
 
+static int dp_display_init_hpd_bridge(struct dp_display_private *dp)
+{
+	int rc = 0;
+	const char *phandle = "qcom,altmode-dev";
+	struct device_node *altmode_dev;
+
+	if (!dp->pdev->dev.of_node) {
+		pr_err("cannot find dev.of_node\n");
+		rc = -ENODEV;
+		goto end;
+	}
+
+	altmode_dev = of_parse_phandle(dp->pdev->dev.of_node,
+			phandle, 0);
+	if (!altmode_dev)
+		goto end;
+
+	rc = pmic_glink_altmode_register_client(NULL, NULL);
+	if (rc)
+		rc = -EPROBE_DEFER;
+
+end:
+	return rc;
+}
+
 static int dp_display_init_aux_bridge(struct dp_display_private *dp)
 {
 	int rc = 0;
@@ -3699,6 +3729,10 @@ static int dp_display_probe(struct platform_device *pdev)
 	dp->name = "drm_dp";
 
 	memset(&dp->mst, 0, sizeof(dp->mst));
+
+	rc = dp_display_init_hpd_bridge(dp);
+	if (rc)
+		goto error;
 
 	rc = dp_display_init_aux_bridge(dp);
 	if (rc)

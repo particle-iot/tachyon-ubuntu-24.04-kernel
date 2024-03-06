@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -8,10 +9,11 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/kthread.h>
-#include <linux/soc/qcom/altmode-glink.h>
-#include <linux/usb/dwc3-msm.h>
+#include <linux/soc/qcom/pmic_glink_altmode.h>
 #include <linux/usb/pd_vdo.h>
+#include <linux/usb/typec_dp.h>
 
+#include "qcom_display_internal.h"
 #include "dp_altmode.h"
 #include "dp_debug.h"
 #include "sde_dbg.h"
@@ -208,23 +210,86 @@ ack:
 	return rc;
 }
 
-static void dp_altmode_register(void *priv)
+static int dp_altmode_pmic_notify(void *priv, struct typec_displayport_data data, int orientation)
 {
-	struct dp_altmode_private *altmode = priv;
-	struct altmode_client_data cd = {
-		.callback	= &dp_altmode_notify,
-	};
+	int rc = 0;
+	struct dp_altmode_private *altmode =
+			(struct dp_altmode_private *) priv;
+	u8 hpd_state, hpd_irq;
+	bool force_multi_func = altmode->dp_altmode.base.force_multi_func;
 
-	cd.name = "displayport";
-	cd.svid = USB_SID_DISPLAYPORT;
-	cd.priv = altmode;
+	hpd_state = (data.status & DP_STATUS_HPD_STATE) >> 7;
+	hpd_irq = (data.status & DP_STATUS_IRQ_HPD) >> 8;
 
-	altmode->amclient = altmode_register_client(altmode->dev, &cd);
-	if (IS_ERR_OR_NULL(altmode->amclient))
-		DP_ERR("failed to register as client: %ld\n",
-				PTR_ERR(altmode->amclient));
-	else
-		DP_DEBUG("success\n");
+	altmode->dp_altmode.base.hpd_high = !!hpd_state;
+	altmode->dp_altmode.base.hpd_irq = !!hpd_irq;
+	/* Multi func is enabled by default here to support USB3 and DP concurrency */
+	altmode->dp_altmode.base.multi_func = true;
+
+	DP_DEBUG("orientation=%d, hpd_state=%d\n", orientation, hpd_state);
+	DP_DEBUG("multi_func=%d, hpd_high=%d, hpd_irq=%d\n",
+			altmode->dp_altmode.base.multi_func,
+			altmode->dp_altmode.base.hpd_high,
+			altmode->dp_altmode.base.hpd_irq);
+	DP_DEBUG("connected=%d\n", altmode->connected);
+	SDE_EVT32_EXTERNAL(data, orientation, hpd_state,
+			altmode->dp_altmode.base.multi_func,
+			altmode->dp_altmode.base.hpd_high,
+			altmode->dp_altmode.base.hpd_irq, altmode->connected);
+
+	if (!orientation) {
+		/* Cable detach */
+		if (altmode->connected) {
+			altmode->connected = false;
+			altmode->dp_altmode.base.alt_mode_cfg_done = false;
+			altmode->dp_altmode.base.orientation = ORIENTATION_NONE;
+			if (altmode->dp_cb && altmode->dp_cb->disconnect)
+				altmode->dp_cb->disconnect(altmode->dev);
+		}
+		goto ack;
+	}
+
+	/* Configure */
+	if (!altmode->connected) {
+		altmode->connected = true;
+		altmode->dp_altmode.base.alt_mode_cfg_done = true;
+		altmode->forced_disconnect = false;
+		altmode->lanes = 4;
+
+		if (altmode->dp_altmode.base.multi_func)
+			altmode->lanes = 2;
+
+		DP_DEBUG("Connected=%d, lanes=%d\n",altmode->connected,altmode->lanes);
+
+		switch (orientation) {
+		case 1:
+			orientation = ORIENTATION_CC1;
+			break;
+		case 2:
+			orientation = ORIENTATION_CC2;
+			break;
+		default:
+			orientation = ORIENTATION_NONE;
+			break;
+		}
+
+		altmode->dp_altmode.base.orientation = orientation;
+
+		DP_DEBUG("orientation = %d\n", altmode->dp_altmode.base.orientation);
+
+		if (altmode->dp_cb && altmode->dp_cb->configure)
+			altmode->dp_cb->configure(altmode->dev);
+		goto ack;
+	}
+
+	/* Attention */
+	if (altmode->forced_disconnect)
+		goto ack;
+
+	if (altmode->dp_cb && altmode->dp_cb->attention)
+		altmode->dp_cb->attention(altmode->dev);
+ack:
+	return rc;
 }
 
 static int dp_altmode_simulate_connect(struct dp_hpd *dp_hpd, bool hpd)
@@ -292,7 +357,7 @@ struct dp_hpd *dp_altmode_get(struct device *dev, struct dp_hpd_cb *cb)
 	dp_altmode->base.simulate_connect = dp_altmode_simulate_connect;
 	dp_altmode->base.simulate_attention = dp_altmode_simulate_attention;
 
-	rc = altmode_register_notifier(dev, dp_altmode_register, altmode);
+	rc = pmic_glink_altmode_register_client((void *) dp_altmode_pmic_notify, altmode);
 	if (rc < 0) {
 		DP_ERR("altmode probe notifier registration failed: %d\n", rc);
 		goto error;
@@ -317,9 +382,6 @@ void dp_altmode_put(struct dp_hpd *dp_hpd)
 
 	altmode = container_of(dp_altmode, struct dp_altmode_private,
 			dp_altmode);
-
-	altmode_deregister_client(altmode->amclient);
-	altmode_deregister_notifier(altmode->dev, altmode);
 
 	kfree(altmode);
 }

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -427,6 +427,7 @@ enum {
 	SDE_DISP_DCWB_PREF,
 	SDE_MIXER_COMBINED_ALPHA,
 	SDE_MIXER_NOISE_LAYER,
+	SDE_MIXER_IS_VIRTUAL,
 	SDE_MIXER_MAX
 };
 
@@ -1894,6 +1895,7 @@ struct sde_perf_cfg {
  * @sspp_count          number of valid SSPP blocks available
  * @sspp                array of pointers to SSPP blocks
  * @mixer_count         number of valid LM blocks available
+ * @cwb_virtual_mixers_mask	mask to represent dummy mixer
  * @mixer               array of pointers to LM blocks
  * @dspp_top            pointer to common DSPP_TOP block
  * @dspp_count          number of valid DSPP blocks available
@@ -2007,6 +2009,7 @@ struct sde_mdss_cfg {
 	u32 sspp_count;
 	struct sde_sspp_cfg sspp[MAX_BLOCKS];
 	u32 mixer_count;
+	u32 cwb_virtual_mixers_mask;
 	struct sde_lm_cfg mixer[MAX_BLOCKS];
 	struct sde_dspp_top_cfg dspp_top;
 	u32 dspp_count;

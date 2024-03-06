@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -201,7 +201,7 @@ done:
 
 static int sde_backlight_device_get_brightness(struct backlight_device *bd)
 {
-	return 0;
+	return  bd->props.brightness;
 }
 
 static const struct backlight_ops sde_backlight_device_ops = {
@@ -2976,7 +2976,7 @@ static int sde_connector_populate_mode_info(struct drm_connector *conn,
 		sde_kms_info_add_keyint(info, "bit_clk_rate",
 					mode_info.clk_rate);
 
-		if (c_conn->ops.set_submode_info) {
+		if (c_conn->ops.set_submode_info && !mode_info.no_panel_timing_node) {
 			c_conn->ops.set_submode_info(conn, info, c_conn->display, mode);
 		} else {
 			topo_name = sde_conn_get_topology_name(conn, mode_info.topology);

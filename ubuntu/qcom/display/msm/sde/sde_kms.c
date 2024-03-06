@@ -27,7 +27,11 @@
 #include <linux/of_irq.h>
 #include <linux/dma-buf.h>
 #include <linux/memblock.h>
+#if __has_include(<linux/soc/qcom/panel_event_notifier.h>)
 #include <linux/soc/qcom/panel_event_notifier.h>
+#else
+#include "panel_event_notifier_internal.h"
+#endif
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_probe_helper.h>
 

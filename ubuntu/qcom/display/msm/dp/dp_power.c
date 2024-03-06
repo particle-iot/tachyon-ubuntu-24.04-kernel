@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -624,7 +624,7 @@ static int dp_power_mmrm_init(struct dp_power *dp_power, struct sde_power_handle
 		if (!pm->num_clk)
 			continue;
 
-		rc = msm_dss_mmrm_register(dev, pm, dp_display_mmrm_callback,
+		rc = msm_dss_mmrm_register(dev, pm, (void*)dp_display_mmrm_callback,
 					dp, &phandle->mmrm_enable);
 		if (rc)
 			DP_ERR("mmrm register failed rc=%d\n", rc);

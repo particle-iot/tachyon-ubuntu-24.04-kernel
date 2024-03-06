@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -781,7 +781,7 @@ int dp_connector_install_properties(void *display, struct drm_connector *conn)
 	 */
 	if (!base_conn->colorspace_property) {
 		/* This is the base connector. create the drm property */
-		rc = drm_mode_create_dp_colorspace_property(base_conn);
+		rc = drm_mode_create_dp_colorspace_property(base_conn, 0);
 		if (rc)
 			return rc;
 	} else {

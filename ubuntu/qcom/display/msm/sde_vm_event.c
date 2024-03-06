@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
  */
 
@@ -33,7 +34,7 @@ int msm_register_vm_event(struct device *dev, struct device *client_dev,
 
 	return 0;
 }
-EXPORT_SYMBOL(msm_register_vm_event);
+EXPORT_SYMBOL_GPL(msm_register_vm_event);
 
 void msm_unregister_vm_event(struct device *dev, struct device *client_dev)
 {
@@ -55,4 +56,4 @@ void msm_unregister_vm_event(struct device *dev, struct device *client_dev)
 
 	mutex_unlock(&priv->vm_client_lock);
 }
-EXPORT_SYMBOL(msm_unregister_vm_event);
+EXPORT_SYMBOL_GPL(msm_unregister_vm_event);

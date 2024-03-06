@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -2349,6 +2349,9 @@ static int sde_mixer_parse_dt(struct device_node *np, struct sde_mdss_cfg *sde_c
 				mixer->dummy_mixer = true;
 			}
 		}
+
+		if (BIT(mixer->id - LM_0) & sde_cfg->cwb_virtual_mixers_mask)
+			set_bit(SDE_MIXER_IS_VIRTUAL, &mixer->features);
 
 		mixer->pingpong = pp_count > 0 ? pp_idx + PINGPONG_0
 							: PINGPONG_MAX;
@@ -5340,6 +5343,7 @@ static int _sde_hardware_pre_caps(struct sde_mdss_cfg *sde_cfg, uint32_t hw_rev)
 		set_bit(SDE_FEATURE_DITHER_LUMA_MODE, sde_cfg->features);
 		sde_cfg->mdss_hw_block_size = 0x158;
 		set_bit(SDE_FEATURE_RC_LM_FLUSH_OVERRIDE, sde_cfg->features);
+		sde_cfg->cwb_virtual_mixers_mask = 0x2;
 	} else if (IS_DIWALI_TARGET(hw_rev)) {
 		sde_cfg->allowed_dsc_reservation_switch = SDE_DP_DSC_RESERVATION_SWITCH;
 		set_bit(SDE_FEATURE_DEDICATED_CWB, sde_cfg->features);
