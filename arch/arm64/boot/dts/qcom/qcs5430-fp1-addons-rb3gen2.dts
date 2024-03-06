@@ -28,3 +28,8 @@
 &CPU7 {
 	enable-method = "none";
 };
+
+&pcie1 {
+	status = "disabled";
+};
+
