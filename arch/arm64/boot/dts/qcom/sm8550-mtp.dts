@@ -56,6 +56,10 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	iris {
+		status = "okay";
+	};
+
 	pmic-glink {
 		compatible = "qcom,sm8550-pmic-glink", "qcom,pmic-glink";
 		#address-cells = <1>;
