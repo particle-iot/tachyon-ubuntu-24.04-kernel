@@ -333,7 +333,7 @@ static void psci_vendor_sys_reset2(unsigned long action, void *data)
 static int psci_sys_reset(struct notifier_block *nb, unsigned long action,
 			  void *data)
 {
-	if (psci_system_reset2_supported && num_psci_reset_params)
+	if (data && psci_system_reset2_supported && num_psci_reset_params)
 		psci_vendor_sys_reset2(action, data);
 
 	if ((reboot_mode == REBOOT_WARM || reboot_mode == REBOOT_SOFT) &&
