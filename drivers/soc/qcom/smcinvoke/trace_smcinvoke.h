@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #undef TRACE_SYSTEM
@@ -489,9 +489,7 @@ TRACE_EVENT(smcinvoke_release,
 #endif /* _TRACE_SMCINVOKE_H */
 
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
-#undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_FILE trace_smcinvoke
+#define TRACE_INCLUDE_PATH ../../drivers/soc/qcom/smcinvoke
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
