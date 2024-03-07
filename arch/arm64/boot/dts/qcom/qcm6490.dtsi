@@ -19,6 +19,12 @@
 /delete-node/ &remoteproc_adsp;
 
 /{
+
+	psci {
+		mode-bootloader = <0x10001 0x2>;
+		mode-edl = <0 0x1>;
+	};
+
 	reserved-memory {
 		camera_mem: camera@84300000 {
 			reg = <0x0 0x84300000 0x0 0x500000>;
