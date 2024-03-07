@@ -887,7 +887,9 @@
 		};
 	};
 
-	msm_gpu: qcom,kgsl-3d0@3d00000 { };
+	msm_gpu: qcom,kgsl-3d0@3d00000 {
+		#cooling-cells = <2>;
+	};
 
 	msm_stub_codec: msm-stub-codec {
 		compatible = "qcom,msm-stub-codec";
