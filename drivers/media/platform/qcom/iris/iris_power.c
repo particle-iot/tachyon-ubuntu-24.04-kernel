@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "iris_power.h"
@@ -108,7 +108,12 @@ static int iris_scale_clocks(struct iris_inst *inst)
 
 	inst->max_input_data_size = data_size;
 
-	inst->max_rate = inst->cap[QUEUED_RATE].value >> 16;
+	if (inst->domain == ENCODER) {
+		inst->max_rate = max((inst->cap[OPERATING_RATE].value >> 16),
+			(inst->cap[FRAME_RATE].value >> 16));
+	} else if (inst->domain == DECODER) {
+		inst->max_rate = inst->cap[QUEUED_RATE].value >> 16;
+	}
 
 	if (!inst->max_input_data_size)
 		return 0;
