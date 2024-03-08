@@ -40,7 +40,7 @@
 	/delete-property/ ibb-supply;
 
 	vddio-supply = <&vreg_l8c_1p62>;
-	qcom,dsi-default-panel = <&dsi_ext_bridge_1080p>;
+	qcom,dsi-default-panel = <&dsi_ext_bridge_4k30p>;
 	boot-panel-param = "disabled";
 
 	ports {
