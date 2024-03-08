@@ -26,8 +26,8 @@ CONFIG_OSNOISE_TRACER                           note<'LP: #1961588'>
 CONFIG_PREEMPT_RT                               policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_PREEMPT_RT                               note<'must be enabled in the real-time kernel'>
 
-CONFIG_RUST                                     policy<{'amd64': 'n'}>
-CONFIG_RUST                                     note<'TODO: update note'>
+CONFIG_RUST                                     policy<{'amd64': '-'}>
+CONFIG_RUST                                     note<'Disable Rust in linux-realtime'>
 
 CONFIG_TIMERLAT_TRACER                          policy<{'amd64': 'y', 'arm64': 'y'}>
 CONFIG_TIMERLAT_TRACER                          note<'LP: #1961588'>
@@ -170,6 +170,7 @@ CONFIG_RCU_NOCB_CPU_DEFAULT_ALL                 policy<{'amd64': 'n', 'arm64': '
 CONFIG_READ_ONLY_THP_FOR_FS                     policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_RING_BUFFER_ALLOW_SWAP                   policy<{'amd64': 'y'}>
 CONFIG_RUSTC_VERSION_TEXT                       policy<{'amd64': '-'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'amd64': '-', 'arm64': '-'}>
 CONFIG_RUST_BUILD_ASSERT_ALLOW                  policy<{'amd64': '-'}>
 CONFIG_RUST_DEBUG_ASSERTIONS                    policy<{'amd64': '-'}>
 CONFIG_RUST_OVERFLOW_CHECKS                     policy<{'amd64': '-'}>
