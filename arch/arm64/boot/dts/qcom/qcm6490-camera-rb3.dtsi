@@ -912,6 +912,7 @@
 	qcom,cam_smmu {
 		compatible = "qcom,msm-cam-smmu", "simple-bus";
 		status = "ok";
+		force_cache_allocs;
 
 		msm_cam_smmu_ife {
 			compatible = "qcom,msm-cam-smmu-cb";
@@ -933,6 +934,7 @@
 				<&apps_smmu 0xCE0 0x4E0>;
 			cam-smmu-label = "ife";
 			multiple-client-devices;
+			dma-coherent;
 			ife_iova_mem_map: iova-mem-map {
 				/* IO region is approximately 4 GB */
 				iova-mem-region-io {
@@ -950,6 +952,7 @@
 			iommus = <&apps_smmu 0x20C0 0x20>,
 				<&apps_smmu 0x20E0 0x20>;
 			cam-smmu-label = "jpeg";
+			dma-coherent;
 			jpeg_iova_mem_map: iova-mem-map {
 				/* IO region is approximately 3.4 GB */
 				iova-mem-region-io {
@@ -977,6 +980,7 @@
 				<&apps_smmu 0x20A0 0x20>,
 				<&apps_smmu 0x2140 0x0>;
 			cam-smmu-label = "icp";
+			dma-coherent;
 			icp_iova_mem_map: iova-mem-map {
 				iova-mem-region-firmware {
 					/* Firmware region is 5MB */
@@ -1030,6 +1034,7 @@
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x2040 0x0>;
 			cam-smmu-label = "cpas-cdm";
+			dma-coherent;
 			cpas_cdm_iova_mem_map: iova-mem-map {
 				iova-mem-region-io {
 					/* IO region is approximately 3.4 GB */
@@ -1047,6 +1052,7 @@
 			iommus = <&apps_smmu 0x2100 0x20>,
 				<&apps_smmu 0x2120 0x20>;
 			cam-smmu-label = "lrme";
+			dma-coherent;
 			lrme_iova_mem_map: iova-mem-map {
 				iova-mem-region-shared {
 					/* Shared region is 100MB long */
