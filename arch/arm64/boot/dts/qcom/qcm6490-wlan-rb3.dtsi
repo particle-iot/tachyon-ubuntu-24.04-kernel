@@ -43,8 +43,8 @@ icnss2: qcom,wcn6750 {
 			   <GIC_SPI 798 IRQ_TYPE_EDGE_RISING>,
 			   <GIC_SPI 799 IRQ_TYPE_EDGE_RISING>;
 
+		memory-region = <&wlan_iommu_resv_region>;
 		qcom,iommu-faults = "stall-disable", "HUPCF", "non-fatal";
-		qcom,iommu-dma-addr-pool = <0xa0000000 0x10000000>;
 		qcom,iommu-geometry = <0xa0000000 0x10010000>;
 		dma-coherent;
 		qcom,fw-prefix;
@@ -62,17 +62,22 @@ icnss2: qcom,wcn6750 {
 
 		icnss_cdev_apss: qcom,icnss_cdev1 {
 				#cooling-cells = <2>;
-		 };
+		};
 
 		icnss_cdev_wpss: qcom,icnss_cdev2 {
 				#cooling-cells = <2>;
-		 };
+		};
 
-		 qcom,smp2p_map_wlan_1_in {
-			 interrupts-extended = <&wlan_smp2p_in 0 0>,
-				 <&wlan_smp2p_in 1 0>;
-			 interrupt-names = "qcom,smp2p-force-fatal-error",
-				 "qcom,smp2p-early-crash-ind";
-		 };
+		qcom,smp2p_map_wlan_1_in {
+			interrupts-extended = <&wlan_smp2p_in 0 0>,
+				<&wlan_smp2p_in 1 0>;
+			interrupt-names = "qcom,smp2p-force-fatal-error",
+				"qcom,smp2p-early-crash-ind";
+		};
+
+		wlan_iommu_resv_region: wlan_iommu_resv_region {
+			iommu-addresses = <&icnss2 0x0 0x00000000 0x0 0xa0000000>,
+					  <&icnss2 0x0 0xb0000000 0xff 0xffffffff>;
+		};
 	};
 };
