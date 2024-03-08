@@ -667,9 +667,7 @@ static void qdss_cleanup(void)
 }
 
 static void qdss_free_func(struct usb_function *f)
-{
-	kfree(func_to_qdss(f));
-}
+{ }
 
 static inline struct usb_qdss_opts *to_f_qdss_opts(struct config_item *item)
 {
