@@ -17,6 +17,7 @@
 #include <linux/termios.h>
 #include <linux/soc/qcom/apr.h>
 #include <dt-bindings/soc/qcom,gpr.h>
+#include "msm_audio_mem.h"
 #include "q6apm.h"
 
 #include "msm_audio_mem.h"
