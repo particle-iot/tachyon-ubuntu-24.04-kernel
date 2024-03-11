@@ -40,37 +40,6 @@
 		regulator-enable-ramp-delay = <10000>;
 	};
 
-	usb_hub_1p05_vreg: usb-hub-1p05-vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "usb_hub_1p05_vreg";
-		gpio = <&pm7250b_gpios 4 0>;
-		vin-supply = <&qps615_rsex_vreg>;
-		regulator-min-microvolt = <1000000>;
-		regulator-max-microvolt = <1000000>;
-		enable-active-high;
-		regulator-enable-ramp-delay = <5000>;
-	};
-
-	usb_hub_3p3_vreg: usb-hub-3p3-vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "usb_hub_3p3_vreg";
-		gpio = <&pm7250b_gpios 1 0>;
-		vin-supply = <&usb_hub_1p05_vreg>;
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		enable-active-high;
-		regulator-enable-ramp-delay = <10000>;
-	};
-
-	usb_hub_rest_vreg: usb-hub-rest-vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "usb_hub_rest_vreg";
-		gpio = <&pm8350c_gpios 4 0>;
-		vin-supply = <&usb_hub_3p3_vreg>;
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		enable-active-high;
-	};
 };
 
 &i2c0 {
@@ -80,7 +49,7 @@
 	qps615_switch: pcie-switch@77 {
 		compatible = "qcom,switch-i2c";
 		reg = <0x77>;
-		vdda-supply = <&usb_hub_rest_vreg>;
+		vdda-supply = <&qps615_rsex_vreg>;
 		status = "okay";
 	};
 };
