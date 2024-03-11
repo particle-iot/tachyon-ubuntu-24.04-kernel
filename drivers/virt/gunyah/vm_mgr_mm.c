@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "gh_vm_mgr: " fmt
@@ -194,15 +194,17 @@ int gh_vm_mem_alloc(struct gh_vm *ghvm, struct gh_userspace_memory_region *regio
 	if (region->flags & GH_MEM_ALLOW_EXEC)
 		parcel->acl_entries[0].perms |= GH_RM_ACL_X;
 
-	ret = gh_rm_get_vmid(ghvm->rm, &vmid);
-	if (ret)
-		goto free_acl;
+	if (!lend) {
+		ret = gh_rm_get_vmid(ghvm->rm, &vmid);
+		if (ret)
+			goto free_acl;
 
-	parcel->acl_entries[1].vmid = cpu_to_le16(vmid);
-	/* Host assumed to have all these permissions. Gunyah will not
-	 * grant new permissions if host actually had less than RWX
-	 */
-	parcel->acl_entries[1].perms = GH_RM_ACL_R | GH_RM_ACL_W | GH_RM_ACL_X;
+		parcel->acl_entries[1].vmid = cpu_to_le16(vmid);
+		/* Host assumed to have all these permissions. Gunyah will not
+		 * grant new permissions if host actually had less than RWX
+		 */
+		parcel->acl_entries[1].perms = GH_RM_ACL_R | GH_RM_ACL_W | GH_RM_ACL_X;
+	}
 
 	parcel->n_mem_entries = 1;
 	for (i = 1; i < mapping->npages; i++) {
