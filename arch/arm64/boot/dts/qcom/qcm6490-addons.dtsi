@@ -804,6 +804,37 @@
 		};
 	};
 
+	tgu@6b0e000 {
+		compatible = "arm,primecell", "qcom,coresight-tgu";
+		arm,primecell-periphid = <0x000bb999>;
+		reg = <0x0 0x06b0e000 0x0 0x1000>;
+		device-name = "tgu_ipcb";
+
+		tgu-steps = <3>;
+		tgu-conditions = <4>;
+		tgu-regs = <4>;
+		tgu-timer-counters = <8>;
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+	};
+
+	swao_csr: csr@6b0f000 {
+		compatible = "qcom,coresight-csr";
+		reg = <0x0 0x06b0f000 0x0 0x1000>,
+		      <0x0 0x06b0f0f8 0x0 0x50>;
+		reg-names = "csr-base", "msr-base";
+
+		device-name = "swao_csr";
+		qcom,timestamp-support;
+		qcom,msr-support;
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		qcom,blk-size = <1>;
+	};
+
 	funnel@6b44000 {
 		compatible = "arm,coresight-static-funnel";
 		coresight-name = "coresight-funnel-lpass_lpi";
