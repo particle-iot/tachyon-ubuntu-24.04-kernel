@@ -1002,13 +1002,22 @@ int process_streamon_output(struct iris_inst *inst)
 {
 	enum iris_inst_sub_state clear_sub_state = IRIS_INST_SUB_NONE;
 	bool drain_pending = false;
+	bool drc_pending = false;
 	int ret;
 
 	iris_scale_power(inst);
 
-	if (inst->sub_state & IRIS_INST_SUB_DRC &&
-	    inst->sub_state & IRIS_INST_SUB_DRC_LAST)
+	drc_pending = inst->sub_state & IRIS_INST_SUB_DRC &&
+	    inst->sub_state & IRIS_INST_SUB_DRC_LAST;
+
+	drain_pending = inst->sub_state & IRIS_INST_SUB_DRAIN &&
+		inst->sub_state & IRIS_INST_SUB_DRAIN_LAST;
+
+	if (drc_pending) {
 		clear_sub_state = IRIS_INST_SUB_DRC | IRIS_INST_SUB_DRC_LAST;
+	} else if (drain_pending) {
+		clear_sub_state = IRIS_INST_SUB_DRAIN_LAST | IRIS_INST_SUB_DRAIN;
+	}
 
 	if (inst->domain == DECODER && inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
 		ret = iris_alloc_and_queue_input_int_bufs(inst);
@@ -1022,16 +1031,18 @@ int process_streamon_output(struct iris_inst *inst)
 			return ret;
 	}
 
-	drain_pending = inst->sub_state & IRIS_INST_SUB_DRAIN &&
-		inst->sub_state & IRIS_INST_SUB_DRAIN_LAST;
-
-	if (!drain_pending && inst->state == IRIS_INST_INPUT_STREAMING) {
-		if (inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) {
+	if ((inst->sub_state & IRIS_INST_SUB_INPUT_PAUSE) &&
+		(inst->state == IRIS_INST_INPUT_STREAMING)) {
+		if (!drain_pending) {
 			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_SETTINGS_CHANGE);
 			if (ret)
 				return ret;
-			clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
+		} else {
+			ret = iris_hfi_resume(inst, INPUT_MPLANE, HFI_CMD_DRAIN);
+			if (ret)
+				return ret;
 		}
+		clear_sub_state |= IRIS_INST_SUB_INPUT_PAUSE;
 	}
 
 	ret = iris_hfi_start(inst, OUTPUT_MPLANE);
