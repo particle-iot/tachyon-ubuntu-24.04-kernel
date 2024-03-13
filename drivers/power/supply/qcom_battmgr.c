@@ -1497,7 +1497,7 @@ static int qcom_battmgr_parse_dt(struct qcom_battmgr *battmgr)
 
 	rc = of_property_count_elems_of_size(node, "qcom,thermal-mitigation", sizeof(u32));
 	if (rc <= 0)
-		return rc;
+		return 0;
 
 	len = rc;
 
