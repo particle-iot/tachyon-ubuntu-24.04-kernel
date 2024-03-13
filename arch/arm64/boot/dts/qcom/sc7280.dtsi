@@ -3849,6 +3849,7 @@
 			clock-names = "apb_pclk";
 			device-name = "tpdm_dcc";
 			qcom,cmb-element-bits = <32>;
+			status = "disabled";
 
 			out-ports {
 				port {
