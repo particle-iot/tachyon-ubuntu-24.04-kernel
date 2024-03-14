@@ -2340,8 +2340,12 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	 * will cause the boot stages to enter download mode, unless
 	 * disabled below by a clean shutdown/reboot.
 	 */
-	if (download_mode)
+	if (download_mode) {
 		qcom_scm_set_download_mode(true);
+	} else {
+		qcom_scm_set_download_mode(false);
+		qcom_scm_disable_sdi();
+	}
 
 
 	/*
