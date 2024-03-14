@@ -78,7 +78,9 @@ u64 iris_calc_freq_iris2(struct iris_inst *inst, u32 data_size)
 		if (inst->cap[PIPE].value > 1)
 			vpp_cycles += div_u64(vpp_cycles * 59, 1000);
 
-		base_cycles = inst->cap[MB_CYCLES_VSP].value;
+		base_cycles = inst->has_bframe ?
+			80 : inst->cap[MB_CYCLES_VSP].value;
+
 		bitrate = fps * data_size * 8;
 		vsp_cycles = bitrate;
 
