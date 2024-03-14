@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IRIS_INSTANCE_H_
@@ -59,6 +59,8 @@
  * @ir_enabled: boolean for intra refresh
  * @hfi_rc_type: rate control type
  * @hfi_layer_type: type of HFI layer encoding
+ * @has_bframe: boolean to set if bitstream contains B frame
+ * @iframe: boolean to set if bitstream contains I frame
  */
 
 struct iris_inst {
@@ -103,6 +105,8 @@ struct iris_inst {
 	bool				ir_enabled;
 	u32				hfi_rc_type;
 	u32				hfi_layer_type;
+	bool				has_bframe;
+	bool				iframe;
 };
 
 #endif
