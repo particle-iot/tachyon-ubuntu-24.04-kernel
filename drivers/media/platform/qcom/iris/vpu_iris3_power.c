@@ -78,7 +78,8 @@ u64 iris_calc_freq_iris3(struct iris_inst *inst, u32 data_size)
 		if (inst->cap[PIPE].value > 1)
 			vpp_cycles += div_u64(vpp_cycles * 59, 1000);
 
-		base_cycles = inst->cap[MB_CYCLES_VSP].value;
+		base_cycles = inst->has_bframe ?
+			80 : inst->cap[MB_CYCLES_VSP].value;
 		bitrate = fps * data_size * 8;
 		vsp_cycles = bitrate;
 
@@ -97,6 +98,11 @@ u64 iris_calc_freq_iris3(struct iris_inst *inst, u32 data_size)
 			vsp_cycles = vsp_cycles * 3;
 
 		vsp_cycles += mbs_per_second * base_cycles;
+
+		/* Add 25 percent extra for HEVC 10bit all intra use case */
+		if (inst->iframe && inst->codec == HEVC &&
+			is_10bit_colorformat(inst->fmt_dst->fmt.pix_mp.pixelformat))
+			vsp_cycles += div_u64(vsp_cycles * 25, 100);
 	}
 
 	freq = max3(vpp_cycles, vsp_cycles, fw_cycles);
