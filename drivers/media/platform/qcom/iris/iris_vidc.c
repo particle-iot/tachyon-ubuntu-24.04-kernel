@@ -203,6 +203,8 @@ int vidc_open(struct file *filp)
 	inst->session_id = hash32_ptr(inst);
 	inst->ipsc_properties_set = false;
 	inst->opsc_properties_set = false;
+	inst->has_bframe = false;
+	inst->iframe = false;
 	iris_inst_change_state(inst, IRIS_INST_OPEN);
 	mutex_init(&inst->lock);
 	mutex_init(&inst->ctx_q_lock);
