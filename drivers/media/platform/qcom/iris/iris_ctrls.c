@@ -747,6 +747,8 @@ int set_stage(struct iris_inst *inst,
 			work_mode = STAGE_2;
 	}
 
+	inst->cap[cap_id].value = work_mode;
+
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
 				     HFI_PAYLOAD_U32,
@@ -766,6 +768,8 @@ int set_pipe(struct iris_inst *inst,
 		    V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_MAX_BYTES)
 			work_route = PIPE_1;
 	}
+
+	inst->cap[cap_id].value = work_route;
 
 	return iris_hfi_set_property(inst, hfi_id, HFI_HOST_FLAGS_NONE,
 				     get_port_info(inst, cap_id),
