@@ -791,9 +791,6 @@ static int handle_session_property(struct iris_inst *inst,
 	u32 *payload_ptr = NULL;
 	int ret = 0;
 
-	if (pkt->port != HFI_PORT_BITSTREAM)
-		return 0;
-
 	if (pkt->flags & HFI_FW_FLAGS_INFORMATION)
 		return 0;
 
@@ -835,6 +832,12 @@ static int handle_session_property(struct iris_inst *inst,
 		break;
 	case HFI_PROP_PICTURE_TYPE:
 		inst->hfi_frame_info.picture_type = payload_ptr[0];
+		if (inst->hfi_frame_info.picture_type & HFI_PICTURE_B)
+			inst->has_bframe = true;
+		if (inst->hfi_frame_info.picture_type & HFI_PICTURE_IDR)
+			inst->iframe = true;
+		else
+			inst->iframe = false;
 		break;
 	case HFI_PROP_CABAC_SESSION:
 		if (payload_ptr[0] == 1)
