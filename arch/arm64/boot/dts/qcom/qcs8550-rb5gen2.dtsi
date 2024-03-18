@@ -424,6 +424,12 @@
 	status = "okay";
 };
 
+&remoteproc_mpss {
+	firmware-name = "qcom/qcs8550/modem.mdt",
+			"qcom/qcs8550/modem_dtb.mdt";
+	status = "okay";
+};
+
 &qupv3_id_0 {
 	status = "okay";
 };
