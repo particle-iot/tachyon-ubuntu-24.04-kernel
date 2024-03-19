@@ -1725,9 +1725,6 @@ revert_icc_tag:
 static int qcom_pcie_suspend_noirq(struct device *dev)
 {
 	struct qcom_pcie *pcie = dev_get_drvdata(dev);
-	struct dw_pcie_rp *pp = &pcie->pci->pp;
-	struct pci_bus *child, *root_bus = NULL;
-	struct pci_dev *pdev;
 	int ret;
 
 	if (pcie->suspended)
@@ -1735,32 +1732,6 @@ static int qcom_pcie_suspend_noirq(struct device *dev)
 
 	if (!dw_pcie_link_up(pcie->pci))
 		goto suspend;
-
-	/* Get the root bus */
-	list_for_each_entry(child, &pp->bridge->bus->children, node) {
-		if (child->parent == pp->bridge->bus) {
-			root_bus = child;
-			break;
-		}
-	}
-
-	if (!root_bus) {
-		dev_err(dev, "Failed to find downstream devices\n");
-		return 0;
-	}
-
-	/*
-	 * From the root bus go through all the devices and check if the current
-	 * state is in D3hot or above. If any of the device is less than D3hot
-	 * then don't keep link in D3cold.
-	 */
-	list_for_each_entry(pdev, &root_bus->devices, bus_list) {
-		if (pdev->current_state < PCI_D3hot) {
-			dev_err(dev, "Device %s is in D-state %d\n",
-				pci_name(pdev), pci_power_name(pdev->current_state));
-			return 0;
-		}
-	}
 
 	if (pcie->soc_is_rpmh) {
 		/*
