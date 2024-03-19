@@ -1154,6 +1154,40 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 
 }
 
+static int fastrpc_get_spd_session(struct fastrpc_channel_ctx *cctx,
+				char *servloc_name)
+{
+	int i, session = -1;
+
+	for (i = 0; i < FASTRPC_MAX_SPD ; i++) {
+		if (!cctx->spd[i].servloc_name)
+			continue;
+		if (!strcmp(servloc_name, cctx->spd[i].servloc_name)) {
+			session = i;
+			break;
+		}
+	}
+
+	return session;
+}
+
+static int fastrpc_check_pd_status(struct fastrpc_user *fl,
+				char *servloc_name)
+{
+	int session = -1;
+
+	if (fl->servloc_name && servloc_name
+		&& !strcmp(fl->servloc_name, servloc_name)) {
+		session = fastrpc_get_spd_session(fl->cctx, servloc_name);
+		if (session < 0)
+			return -EUSERS;
+		if (atomic_read(&fl->cctx->spd[session].ispdup) == 0)
+			return -ENOTCONN;
+	}
+
+	return 0;
+}
+
 static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 				   u32 handle, u32 sc,
 				   struct fastrpc_invoke_args *args)
@@ -1176,6 +1210,17 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
 	if (IS_ERR(ctx))
 		return PTR_ERR(ctx);
+
+	if (fl->servloc_name) {
+		err = fastrpc_check_pd_status(fl,
+			AUDIO_PDR_SERVICE_LOCATION_CLIENT_NAME);
+		err |= fastrpc_check_pd_status(fl,
+			SENSORS_PDR_ADSP_SERVICE_LOCATION_CLIENT_NAME);
+		err |= fastrpc_check_pd_status(fl,
+			SENSORS_PDR_SLPI_SERVICE_LOCATION_CLIENT_NAME);
+		if (err)
+			goto bail;
+	}
 
 	err = fastrpc_get_args(kernel, ctx);
 	if (err)
@@ -1281,21 +1326,13 @@ static int fastrpc_mmap_remove_ssr(struct fastrpc_channel_ctx *cctx)
 
 static int fastrpc_mmap_remove_pdr(struct fastrpc_user *fl)
 {
-	int i, err = 0, session = -1;
+	int err = 0, session = -1;
 
 	if (!fl)
 		return -EBADF;
 
-	for (i = 0; i < FASTRPC_MAX_SPD ; i++) {
-		if (!fl->cctx->spd[i].servloc_name)
-			continue;
-		if (!strcmp(fl->servloc_name, fl->cctx->spd[i].servloc_name)) {
-			session = i;
-			break;
-		}
-	}
-
-	if (i >= FASTRPC_MAX_SPD)
+	session = fastrpc_get_spd_session(fl->cctx, fl->servloc_name);
+	if (session < 0)
 		return -EUSERS;
 
 	if (atomic_read(&fl->cctx->spd[session].ispdup) == 0)
