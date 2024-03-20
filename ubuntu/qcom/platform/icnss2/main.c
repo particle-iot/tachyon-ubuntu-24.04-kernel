@@ -502,7 +502,8 @@ static int icnss_send_smp2p(struct icnss_priv *priv,
 	value <<= ICNSS_SMEM_SEQ_NO_POS;
 	value |= msg_id;
 
-	icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
+	if (msg_id == ICNSS_POWER_SAVE_ENTER || msg_id == ICNSS_POWER_SAVE_EXIT)
+		icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
 
 	if (msg_id == ICNSS_SOC_WAKE_REQ || msg_id == ICNSS_SOC_WAKE_REL)
 		reinit_completion(&penv->smp2p_soc_wake_wait);
