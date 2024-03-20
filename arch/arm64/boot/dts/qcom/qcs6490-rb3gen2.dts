@@ -956,7 +956,8 @@
 	phys = <&usb_1_hsphy>, <&usb_1_qmpphy QMP_USB43DP_USB3_PHY>;
 	phy-names = "usb2-phy", "usb3-phy";
 	maximum-speed = "super-speed";
-
+	snps,dis-u2-entry-quirk;
+	snps,dis-u1-entry-quirk;
 	dr_mode = "otg";
 	usb-role-switch;
 	qcom,enable-rt;
