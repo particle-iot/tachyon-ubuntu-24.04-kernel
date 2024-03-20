@@ -118,12 +118,7 @@ static int __init qcom_soc_debug_init(void)
 				       &panic_notifier);
 	return 0;
 }
-
-#if IS_MODULE(CONFIG_QCOM_SOC_DEBUG)
-module_init(qcom_soc_debug_init);
-#else
 pure_initcall(qcom_soc_debug_init);
-#endif
 
 MODULE_DESCRIPTION("QCOM SOC Debug Driver");
 MODULE_LICENSE("GPL");
