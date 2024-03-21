@@ -11,3 +11,7 @@
 	model = "Qualcomm Technologies, Inc. qcs5430 fp1p5 addons rb3gen2 platform";
 	compatible = "qcom,qcs5430-fp1p5-addons-rb3gen2","qcom,qcs5430";
 };
+
+&pcie1 {
+        status = "ok";
+};
