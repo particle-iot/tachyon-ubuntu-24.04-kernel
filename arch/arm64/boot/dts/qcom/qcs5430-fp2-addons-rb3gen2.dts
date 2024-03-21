@@ -33,3 +33,7 @@
 &CPU7 {
 	enable-method = "psci";
 };
+
+&pcie1 {
+        status = "ok";
+};
