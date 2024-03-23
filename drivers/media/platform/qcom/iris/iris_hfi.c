@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "firmware.h"
@@ -583,6 +583,7 @@ irqreturn_t iris_hfi_isr_handler(int irq, void *data)
 	if (!core)
 		return IRQ_NONE;
 
+	iris_pm_touch(core);
 	ret = iris_pm_get(core);
 	if (ret)
 		goto exit;
@@ -819,7 +820,7 @@ int iris_hfi_pm_suspend(struct iris_core *core)
 	ret = call_vpu_op(core, prepare_pc, core);
 	if (ret) {
 		core->skip_pc_count++;
-		iris_pm_touch(core);
+		iris_pm_touch_unlocked(core);
 		return -EAGAIN;
 	}
 
