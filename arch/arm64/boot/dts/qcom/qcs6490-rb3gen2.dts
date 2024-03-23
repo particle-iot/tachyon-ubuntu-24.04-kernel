@@ -522,6 +522,10 @@
 	};
 };
 
+&ipa {
+	status = "disabled";
+};
+
 &lpasscc {
 	status = "disabled";
 };
