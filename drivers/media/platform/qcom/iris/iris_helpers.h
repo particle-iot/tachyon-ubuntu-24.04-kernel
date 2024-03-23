@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IRIS_HELPERS_H_
@@ -65,5 +65,6 @@ int iris_pm_get(struct iris_core *core);
 int iris_pm_put(struct iris_core *core, bool autosuspend);
 int iris_pm_get_put(struct iris_core *core);
 void iris_pm_touch(struct iris_core *core);
+void iris_pm_touch_unlocked(struct iris_core *core);
 
 #endif
