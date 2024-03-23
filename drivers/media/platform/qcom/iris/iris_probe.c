@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -106,7 +106,6 @@ static void iris_remove(struct platform_device *pdev)
 	iris_pm_put(core, false);
 
 	mutex_destroy(&core->lock);
-	mutex_destroy(&core->pm_lock);
 	core->state = IRIS_CORE_DEINIT;
 }
 
@@ -124,7 +123,6 @@ static int iris_probe(struct platform_device *pdev)
 
 	core->state = IRIS_CORE_DEINIT;
 	mutex_init(&core->lock);
-	mutex_init(&core->pm_lock);
 
 	core->packet_size = IFACEQ_CORE_PKT_SIZE;
 	core->packet = devm_kzalloc(core->dev, core->packet_size, GFP_KERNEL);
@@ -281,6 +279,12 @@ static int iris_pm_suspend(struct device *dev)
 	core = dev_get_drvdata(dev);
 
 	mutex_lock(&core->lock);
+
+	if (core->num_pending_requests > 0) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
 	if (!core_in_valid_state(core)) {
 		ret = 0;
 		goto unlock;
@@ -309,21 +313,21 @@ static int iris_pm_resume(struct device *dev)
 
 	core = dev_get_drvdata(dev);
 
-	mutex_lock(&core->lock);
 	if (!core_in_valid_state(core)) {
 		ret = 0;
-		goto unlock;
+		goto exit;
 	}
 
 	if (core->power_enabled) {
 		ret = 0;
-		goto unlock;
+		goto exit;
 	}
 
 	ret = iris_hfi_pm_resume(core);
 
-unlock:
-	mutex_unlock(&core->lock);
+	iris_pm_touch_unlocked(core);
+
+exit:
 
 	return ret;
 }

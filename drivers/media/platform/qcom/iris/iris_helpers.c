@@ -1083,29 +1083,34 @@ int vb2_buffer_to_driver(struct vb2_buffer *vb2, struct iris_buffer *buf)
 
 int iris_pm_get(struct iris_core *core)
 {
-	int ret;
+	int ret = 0;
 
-	mutex_lock(&core->pm_lock);
-	ret = pm_runtime_resume_and_get(core->dev);
-	mutex_unlock(&core->pm_lock);
+	mutex_lock(&core->lock);
+	if (core->num_pending_requests++ == 0)
+		ret = pm_runtime_resume_and_get(core->dev);
+	mutex_unlock(&core->lock);
 
 	return ret;
 }
 
 int iris_pm_put(struct iris_core *core, bool autosuspend)
 {
-	int ret;
+	int ret = 0;
 
-	mutex_lock(&core->pm_lock);
+	mutex_lock(&core->lock);
 
-	if (autosuspend)
-		ret = pm_runtime_put_autosuspend(core->dev);
-	else
-		ret = pm_runtime_put_sync(core->dev);
+	if (--core->num_pending_requests == 0) {
+		if (autosuspend) {
+			pm_runtime_mark_last_busy(core->dev);
+			ret = pm_runtime_put_autosuspend(core->dev);
+		} else {
+			ret = pm_runtime_put_sync(core->dev);
+		}
+	}
 	if (ret > 0)
 		ret = 0;
 
-	mutex_unlock(&core->pm_lock);
+	mutex_unlock(&core->lock);
 
 	return ret;
 }
@@ -1114,27 +1119,35 @@ int iris_pm_get_put(struct iris_core *core)
 {
 	int ret = 0;
 
-	mutex_lock(&core->pm_lock);
+	mutex_lock(&core->lock);
 
 	if (pm_runtime_suspended(core->dev)) {
-		ret = pm_runtime_resume_and_get(core->dev);
-		if (ret < 0)
-			goto error;
+		if (core->num_pending_requests++ == 0) {
+			ret = pm_runtime_resume_and_get(core->dev);
+			if (ret < 0)
+				goto error;
+		}
 
-		ret = pm_runtime_put_autosuspend(core->dev);
+		if (--core->num_pending_requests == 0)
+			ret = pm_runtime_put_autosuspend(core->dev);
 	}
 	if (ret > 0)
 		ret = 0;
 
 error:
-	mutex_unlock(&core->pm_lock);
+	mutex_unlock(&core->lock);
 
 	return ret;
 }
 
 void iris_pm_touch(struct iris_core *core)
 {
-	mutex_lock(&core->pm_lock);
+	mutex_lock(&core->lock);
+	iris_pm_touch_unlocked(core);
+	mutex_unlock(&core->lock);
+}
+
+void iris_pm_touch_unlocked(struct iris_core *core)
+{
 	pm_runtime_mark_last_busy(core->dev);
-	mutex_unlock(&core->pm_lock);
 }
