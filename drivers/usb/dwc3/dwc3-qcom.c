@@ -1143,6 +1143,11 @@ static int __maybe_unused dwc3_qcom_pm_resume(struct device *dev)
 	bool wakeup = device_may_wakeup(dev);
 	int ret;
 
+	if ((qcom->dwc) && (pm_runtime_suspended(qcom->dev))) {
+		qcom->pm_suspended = false;
+		return 0;
+	}
+
 	ret = dwc3_qcom_resume(qcom, wakeup);
 	if (ret)
 		return ret;
