@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IRIS_CORE_H_
@@ -62,6 +62,10 @@
  * @spur_count: counter for spurious interrupt
  * @reg_count: counter for interrupts
  * @fw_version: firmware version
+ * @skip_pc_count: a counter to retry power collapse
+ * @power_enabled: a boolean to check if power is on or off
+ * @power: a structure for clock and bw information
+ * @num_pending_requests: a reference counter for calling pm operations
  */
 
 struct iris_core {
@@ -109,10 +113,10 @@ struct iris_core {
 	u32					spur_count;
 	u32					reg_count;
 	char					fw_version[IRIS_VERSION_LENGTH];
-	struct mutex				pm_lock; /* lock for pm operations */
 	u32					skip_pc_count;
 	bool					power_enabled;
 	struct iris_core_power			power;
+	s32					num_pending_requests;
 };
 
 int iris_core_init(struct iris_core *core);
