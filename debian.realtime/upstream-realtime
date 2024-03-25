@@ -1,4 +1,4 @@
 # The following upstream releases have been ported:
 [upstream-realtime]
-        linux-6.7.y-rt = 6.7-rt6
+        linux-6.8.y-rt = 6.8-rt8
 
