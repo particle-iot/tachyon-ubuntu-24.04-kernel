@@ -30,6 +30,10 @@
 		mode-edl = <0 0x1>;
 	};
 
+	reboot-mode {
+		status = "disabled";
+	};
+
 	reserved-memory {
 		camera_mem: camera@84300000 {
 			reg = <0x0 0x84300000 0x0 0x500000>;
