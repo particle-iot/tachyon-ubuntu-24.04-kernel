@@ -100,6 +100,13 @@ DEFINE_EVENT(serial_transmit_data, serial_transmit_data_rx,
 	TP_ARGS(dev, string, size)
 );
 
+DEFINE_EVENT(buses_info, spi_info,
+
+	TP_PROTO(struct device *dev, const char *string1, char *string2),
+
+	TP_ARGS(dev, string1, string2)
+);
+
 #endif /* _TRACE_QUP_BUSES_TRACE_H */
 
 /* This part must be outside protection */
