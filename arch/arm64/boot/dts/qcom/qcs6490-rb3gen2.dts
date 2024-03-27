@@ -21,6 +21,8 @@
 #include "pm8350c.dtsi"
 #include "pmk8350.dtsi"
 
+/delete-node/ &usb_2_dwc3;
+
 / {
 	model = "Qualcomm Technologies, Inc. Robotics RB3gen2";
 	compatible = "qcom,qcm6490-rb3gen2", "qcom,qcm6490";
@@ -1022,7 +1024,7 @@
 /*     USB2 Related Start        */
 /*==============================*/
 
-&pm7250b_gpios {
+&pm7325_gpios {
 	usb2_vbus_det_default: usb2_vbus_det_state {
 		pins = "gpio9";
 		function = "normal";
@@ -1039,31 +1041,22 @@
 		drive-strength = <2>;
 		bias-pull-up;
 	};
-
-	usb2_vbus_boost_default: usb2_vbus_boost_default {
-		pins = "gpio63";
-		function = "gpio";
-		drive-strength = <8>;
-		bias-pull-down;
-		output-low;
-	};
 };
 
 &soc {
 	vbus_supply_regulator: vbus_supply_regulator {
 	       compatible = "regulator-fixed";
 	       regulator-name = "vbus_supply";
-	       enable-active-high;
 	       gpio = <&tlmm 63 GPIO_ACTIVE_HIGH>;
 	       regulator-min-microvolt = <5000000>;
 	       regulator-max-microvolt = <5000000>;
-	       pinctrl-names = "default";
-	       pinctrl-0 = <&usb2_vbus_boost_default>;
+	       regulator-boot-on;
+	       enable-active-high;
 	};
 
 	connector_usb2: connector_usb2 {
 		compatible = "gpio-usb-b-connector";
-		vbus-gpio = <&pm7250b_gpios 9 GPIO_ACTIVE_HIGH>;
+		vbus-gpio = <&pm7325_gpios 9 GPIO_ACTIVE_HIGH>;
 		id-gpio = <&tlmm 61 GPIO_ACTIVE_HIGH>;
 		vbus-supply = <&vbus_supply_regulator>;
 
@@ -1084,10 +1077,34 @@
 	};
 };
 
-&usb_2_dwc3 {
-	/delete-property/ port;
+&usb_2 {
+	reg = <0x0 0x08c00000 0x0 0x100000>;
+
+	interrupts-extended = <&intc GIC_SPI 242 IRQ_TYPE_LEVEL_HIGH>,
+				<&intc GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH>,
+				<&pdc 12 IRQ_TYPE_LEVEL_HIGH>,
+				<&pdc 13 IRQ_TYPE_EDGE_BOTH>;
+	interrupt-names = "dwc_usb2",
+			"hs_phy_irq",
+			"dp_hs_phy_irq",
+			"dm_hs_phy_irq";
+
+	iommus = <&apps_smmu 0xa0 0x0>;
+	snps,dis_u2_susphy_quirk;
+	snps,dis_enblslpm_quirk;
+	phys = <&usb_2_hsphy>;
+	phy-names = "usb2-phy";
+	maximum-speed = "high-speed";
+	snps,dis-u2-entry-quirk;
+	snps,dis-u1-entry-quirk;
+
 	usb-role-switch;
+	qcom,enable-rt;
+	wakeup-source;
 	dr_mode = "otg";
+
+	status = "okay";
+
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1098,6 +1115,12 @@
 				remote-endpoint = <&usb2_port_connector>;
 			};
 		};
+
+		port@1 {
+			usb2_role_switch: endpoint {
+				remote-endpoint = <&eud_ep>;
+			};
+		};
 	};
 };
 
@@ -1106,9 +1129,5 @@
 	vdda18-supply = <&vreg_l1c_1p8>;
 	vdda33-supply = <&vreg_l2b_3p072>;
 
-	status = "okay";
-};
-
-&usb_2 {
 	status = "okay";
 };
