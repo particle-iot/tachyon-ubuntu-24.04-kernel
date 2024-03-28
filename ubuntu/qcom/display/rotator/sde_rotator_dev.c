@@ -1926,8 +1926,8 @@ static int sde_rotator_querycap(struct file *file,
 	void *fh, struct v4l2_capability *cap)
 {
 	cap->bus_info[0] = 0;
-	strlcpy(cap->driver, SDE_ROTATOR_DRV_NAME, sizeof(cap->driver));
-	strlcpy(cap->card, SDE_ROTATOR_DRV_NAME, sizeof(cap->card));
+	strscpy(cap->driver, SDE_ROTATOR_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->card, SDE_ROTATOR_DRV_NAME, sizeof(cap->card));
 	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M |
 			V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_CAPTURE;
 	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
@@ -1975,7 +1975,7 @@ static int sde_rotator_enum_fmt_vid_cap(struct file *file,
 		return -EINVAL;
 
 	f->pixelformat = pixfmt;
-	strlcpy(f->description, fmt->description, sizeof(f->description));
+	strscpy(f->description, fmt->description, sizeof(f->description));
 
 	return 0;
 }
@@ -2020,7 +2020,7 @@ static int sde_rotator_enum_fmt_vid_out(struct file *file,
 		return -EINVAL;
 
 	f->pixelformat = pixfmt;
-	strlcpy(f->description, fmt->description, sizeof(f->description));
+	strscpy(f->description, fmt->description, sizeof(f->description));
 
 	return 0;
 }
@@ -3483,7 +3483,7 @@ static int sde_rotator_probe(struct platform_device *pdev)
 	vdev->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M |
 		V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_CAPTURE;
 
-	strlcpy(vdev->name, SDE_ROTATOR_DRV_NAME, sizeof(vdev->name));
+	strscpy(vdev->name, SDE_ROTATOR_DRV_NAME, sizeof(vdev->name));
 
 	ret = video_register_device(vdev, VFL_TYPE_GRABBER,
 			SDE_ROTATOR_BASE_DEVICE_NUMBER);
