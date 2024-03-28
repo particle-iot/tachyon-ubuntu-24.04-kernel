@@ -479,7 +479,7 @@ static int cam_cci_component_bind(struct device *dev,
 		&cci_subdev_intern_ops;
 	new_cci_dev->v4l2_dev_str.ops =
 		&cci_subdev_ops;
-	strlcpy(new_cci_dev->device_name, CAMX_CCI_DEV_NAME,
+	strscpy(new_cci_dev->device_name, CAMX_CCI_DEV_NAME,
 		sizeof(new_cci_dev->device_name));
 	new_cci_dev->v4l2_dev_str.name =
 		new_cci_dev->device_name;
@@ -511,7 +511,7 @@ static int cam_cci_component_bind(struct device *dev,
 	cpas_parms.cell_index = soc_info->index;
 	cpas_parms.dev = &pdev->dev;
 	cpas_parms.userdata = new_cci_dev;
-	strlcpy(cpas_parms.identifier, "cci", CAM_HW_IDENTIFIER_LENGTH);
+	strscpy(cpas_parms.identifier, "cci", CAM_HW_IDENTIFIER_LENGTH);
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {
 		CAM_ERR(CAM_CCI, "CPAS registration failed rc:%d", rc);
