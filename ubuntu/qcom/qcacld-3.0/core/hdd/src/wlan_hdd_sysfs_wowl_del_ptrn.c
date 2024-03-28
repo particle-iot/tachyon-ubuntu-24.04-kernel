@@ -55,7 +55,7 @@ __hdd_sysfs_wowl_del_ptrn_store(struct net_device *net_dev,
 	if (!buf_local)
 		return -EINVAL;
 
-	strlcpy(buf_local, buf, count);
+	strscpy(buf_local, buf, count);
 
 	buf_local[count - 1] = '\0';
 
