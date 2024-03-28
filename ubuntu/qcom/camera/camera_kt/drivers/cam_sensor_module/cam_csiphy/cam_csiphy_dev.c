@@ -240,7 +240,7 @@ static int cam_csiphy_component_bind(struct device *dev,
 		&csiphy_subdev_intern_ops;
 	new_csiphy_dev->v4l2_dev_str.ops =
 		&csiphy_subdev_ops;
-	strlcpy(new_csiphy_dev->device_name, CAMX_CSIPHY_DEV_NAME,
+	strscpy(new_csiphy_dev->device_name, CAMX_CSIPHY_DEV_NAME,
 		sizeof(new_csiphy_dev->device_name));
 	new_csiphy_dev->v4l2_dev_str.name =
 		new_csiphy_dev->device_name;
@@ -290,7 +290,7 @@ static int cam_csiphy_component_bind(struct device *dev,
 	cpas_parms.dev = &pdev->dev;
 	cpas_parms.userdata = new_csiphy_dev;
 
-	strlcpy(cpas_parms.identifier, "csiphy", CAM_HW_IDENTIFIER_LENGTH);
+	strscpy(cpas_parms.identifier, "csiphy", CAM_HW_IDENTIFIER_LENGTH);
 
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {
