@@ -1875,7 +1875,7 @@ int cam_flash_pmic_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 int cam_flash_publish_dev_info(struct cam_req_mgr_device_info *info)
 {
 	info->dev_id = CAM_REQ_MGR_DEVICE_FLASH;
-	strlcpy(info->name, CAM_FLASH_NAME, sizeof(info->name));
+	strscpy(info->name, CAM_FLASH_NAME, sizeof(info->name));
 	info->p_delay = CAM_FLASH_PIPELINE_DELAY;
 	info->trigger = CAM_TRIGGER_POINT_SOF;
 	return 0;

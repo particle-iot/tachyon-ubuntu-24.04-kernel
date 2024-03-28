@@ -256,7 +256,7 @@ struct dp_hpd *dp_gpio_hpd_get(struct device *dev,
 	}
 
 	gpio_hpd->gpio_cfg.gpio = gpio;
-	strlcpy(gpio_hpd->gpio_cfg.gpio_name, hpd_gpio_name,
+	strscpy(gpio_hpd->gpio_cfg.gpio_name, hpd_gpio_name,
 		sizeof(gpio_hpd->gpio_cfg.gpio_name));
 	gpio_hpd->gpio_cfg.value = 0;
 
