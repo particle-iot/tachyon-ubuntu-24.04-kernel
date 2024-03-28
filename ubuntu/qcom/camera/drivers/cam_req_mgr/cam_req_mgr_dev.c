@@ -52,7 +52,7 @@ static int cam_media_device_setup(struct device *dev)
 
 	media_device_init(g_dev.v4l2_dev->mdev);
 	g_dev.v4l2_dev->mdev->dev = dev;
-	strlcpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
+	strscpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
 		sizeof(g_dev.v4l2_dev->mdev->model));
 
 	rc = media_device_register(g_dev.v4l2_dev->mdev);
@@ -679,8 +679,7 @@ static int cam_video_device_setup(void)
 
 	g_dev.video->v4l2_dev = g_dev.v4l2_dev;
 
-	strlcpy(g_dev.video->name, "cam-req-mgr",
-		sizeof(g_dev.video->name));
+	strscpy(g_dev.video->name, "cam-req-mgr", sizeof(g_dev.video->name));
 	g_dev.video->release = video_device_release_empty;
 	g_dev.video->fops = &g_cam_fops;
 	g_dev.video->ioctl_ops = &g_cam_ioctl_ops;
