@@ -1317,8 +1317,7 @@ QDF_STATUS wifi_pos_populate_caps(struct wlan_objmgr_psoc *psoc,
 	if (!ch_list)
 		return QDF_STATUS_E_NOMEM;
 
-	strlcpy(caps->oem_target_signature,
-		OEM_TARGET_SIGNATURE,
+	strscpy(caps->oem_target_signature, OEM_TARGET_SIGNATURE,
 		OEM_TARGET_SIGNATURE_LEN);
 	caps->oem_target_type = wifi_pos_obj->oem_target_type;
 	caps->oem_fw_version = wifi_pos_obj->oem_fw_version;

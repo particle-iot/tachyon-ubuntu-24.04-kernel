@@ -28,7 +28,7 @@
 
 #define __qdf_is_space(c) isspace(c)
 #define __qdf_str_cmp(left, right) strcmp(left, right)
-#define __qdf_str_lcopy(dest, src, dest_size) strlcpy(dest, src, dest_size)
+#define __qdf_str_lcopy(dest, src, dest_size) strscpy(dest, src, dest_size)
 #define __qdf_str_left_trim(str) skip_spaces(str)
 #define __qdf_str_len(str) strlen(str)
 #define __qdf_str_trim(str) strim(str)
