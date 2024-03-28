@@ -1886,7 +1886,7 @@ static ssize_t dp_debug_write_dump(struct file *file,
 
 	/* qfprom register dump not supported */
 	if (!strcmp(debug->reg_dump, "qfprom_physical"))
-		strlcpy(debug->reg_dump, "clear", sizeof(debug->reg_dump));
+		strscpy(debug->reg_dump, "clear", sizeof(debug->reg_dump));
 end:
 	return len;
 }

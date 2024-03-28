@@ -599,7 +599,7 @@ int msm_dss_mmrm_register(struct device *dev, struct dss_module_power *mp,
 			MMRM_CLIENT_DOMAIN_DISPLAY;
 		desc.client_info.desc.client_id =
 			clk_array[i].mmrm.clk_id;
-		strlcpy(name, clk_array[i].clk_name,
+		strscpy(name, clk_array[i].clk_name,
 			sizeof(desc.client_info.desc.name));
 		desc.client_info.desc.clk = clk_array[i].clk;
 		desc.priority = MMRM_CLIENT_PRIOR_LOW;
