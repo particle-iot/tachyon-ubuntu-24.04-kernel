@@ -139,8 +139,8 @@ static int sde_power_parse_dt_supply(struct platform_device *pdev,
 			goto error;
 		}
 
-		strlcpy(mp->vreg_config[i].vreg_name, st,
-					sizeof(mp->vreg_config[i].vreg_name));
+		strscpy(mp->vreg_config[i].vreg_name, st,
+			sizeof(mp->vreg_config[i].vreg_name));
 
 		rc = of_property_read_u32(supply_node,
 					"qcom,supply-min-voltage", &tmp);
@@ -268,8 +268,8 @@ static int sde_power_parse_dt_clock(struct platform_device *pdev,
 	for (i = 0; i < num_clk; i++) {
 		of_property_read_string_index(pdev->dev.of_node, "clock-names",
 							i, &clock_name);
-		strlcpy(mp->clk_config[i].clk_name, clock_name,
-				sizeof(mp->clk_config[i].clk_name));
+		strscpy(mp->clk_config[i].clk_name, clock_name,
+			sizeof(mp->clk_config[i].clk_name));
 
 		of_property_read_u32_index(pdev->dev.of_node, "clock-rate",
 							i, &clock_rate);
@@ -976,8 +976,8 @@ int sde_power_clk_reserve_rate(struct sde_power_handle *phandle, char *clock_nam
 
 	mutex_lock(&phandle->phandle_lock);
 	phandle->mmrm_reserve.clk_rate = rate;
-	strlcpy(phandle->mmrm_reserve.clk_name, clock_name,
-			sizeof(phandle->mmrm_reserve.clk_name));
+	strscpy(phandle->mmrm_reserve.clk_name, clock_name,
+		sizeof(phandle->mmrm_reserve.clk_name));
 	mutex_unlock(&phandle->phandle_lock);
 
 	return 0;
@@ -1128,7 +1128,7 @@ struct sde_power_event *sde_power_handle_register_event(
 	event->event_type = event_type;
 	event->cb_fnc = cb_fnc;
 	event->usr = usr;
-	strlcpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
+	strscpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
 	event->active = true;
 
 	mutex_lock(&phandle->phandle_lock);

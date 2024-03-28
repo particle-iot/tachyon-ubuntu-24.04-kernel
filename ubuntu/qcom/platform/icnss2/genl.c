@@ -96,9 +96,9 @@ static int icnss_genl_send_data(u8 type, char *file_name, u32 total_size,
 		     type, file_name, total_size, seg_id, end, data_len);
 
 	if (!file_name)
-		strlcpy(filename, "default", sizeof(filename));
+		strscpy(filename, "default", sizeof(filename));
 	else
-		strlcpy(filename, file_name, sizeof(filename));
+		strscpy(filename, file_name, sizeof(filename));
 
 	skb = genlmsg_new(NLMSG_HDRLEN +
 			  nla_total_size(sizeof(type)) +
