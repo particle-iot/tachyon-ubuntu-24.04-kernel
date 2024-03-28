@@ -489,7 +489,7 @@ size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
 
 			model = of_get_property(root, "model", NULL);
 			if (model) {
-				model_len = strlcpy(buf, model, buf_len);
+				model_len = strscpy(buf, model, buf_len);
 				cnss_pr_dbg("Platform name: %s (%zu)\n",
 					    buf, model_len);
 
@@ -3461,7 +3461,7 @@ static int cnss_init_dump_entry(struct cnss_plat_data *plat_priv)
 	ramdump_info->dump_data.len = ramdump_info->ramdump_size;
 	ramdump_info->dump_data.version = CNSS_DUMP_FORMAT_VER;
 	ramdump_info->dump_data.magic = CNSS_DUMP_MAGIC_VER_V2;
-	strlcpy(ramdump_info->dump_data.name, CNSS_DUMP_NAME,
+	strscpy(ramdump_info->dump_data.name, CNSS_DUMP_NAME,
 		sizeof(ramdump_info->dump_data.name));
 	dump_entry.id = MSM_DUMP_DATA_CNSS_WLAN;
 	dump_entry.addr = virt_to_phys(&ramdump_info->dump_data);
@@ -3596,8 +3596,7 @@ static int cnss_register_ramdump_v2(struct cnss_plat_data *plat_priv)
 	dump_data->version = CNSS_DUMP_FORMAT_VER_V2;
 	dump_data->magic = CNSS_DUMP_MAGIC_VER_V2;
 	dump_data->seg_version = CNSS_DUMP_SEG_VER;
-	strlcpy(dump_data->name, CNSS_DUMP_NAME,
-		sizeof(dump_data->name));
+	strscpy(dump_data->name, CNSS_DUMP_NAME, sizeof(dump_data->name));
 	dump_entry.id = MSM_DUMP_DATA_CNSS_WLAN;
 	dump_entry.addr = virt_to_phys(dump_data);
 
@@ -3723,8 +3722,7 @@ static int cnss_register_full_ramdump(struct cnss_plat_data *plat_priv)
 	dump_data->version = CNSS_DUMP_FORMAT_VER_V2;
 	dump_data->magic = CNSS_DUMP_MAGIC_VER_V2;
 	dump_data->seg_version = CNSS_DUMP_SEG_VER;
-	strlcpy(dump_data->name, CNSS_DUMP_NAME,
-		sizeof(dump_data->name));
+	strscpy(dump_data->name, CNSS_DUMP_NAME, sizeof(dump_data->name));
 
 	info_v2->ramdump_dev = dev;
 

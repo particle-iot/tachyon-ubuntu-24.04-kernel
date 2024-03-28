@@ -773,9 +773,9 @@ int wlfw_cap_send_sync_msg(struct icnss_priv *priv)
 	if (resp->fw_version_info_valid) {
 		priv->fw_version_info.fw_version =
 			resp->fw_version_info.fw_version;
-		strlcpy(priv->fw_version_info.fw_build_timestamp,
-				resp->fw_version_info.fw_build_timestamp,
-				WLFW_MAX_TIMESTAMP_LEN + 1);
+		strscpy(priv->fw_version_info.fw_build_timestamp,
+			resp->fw_version_info.fw_build_timestamp,
+			WLFW_MAX_TIMESTAMP_LEN + 1);
 	}
 
 	if (resp->voltage_mv_valid) {
@@ -786,7 +786,7 @@ int wlfw_cap_send_sync_msg(struct icnss_priv *priv)
 	}
 
 	if (resp->fw_build_id_valid)
-		strlcpy(priv->fw_build_id, resp->fw_build_id,
+		strscpy(priv->fw_build_id, resp->fw_build_id,
 			QMI_WLFW_MAX_BUILD_ID_LEN_V01 + 1);
 
 	if (resp->rd_card_chain_cap_valid) {
@@ -1060,13 +1060,15 @@ static int icnss_get_bdf_file_name(struct icnss_priv *priv,
 				 BIN_BDF_FILE_NAME_PREFIX "b%02x",
 				 priv->board_id);
 		if (priv->foundry_name) {
-			strlcpy(foundry_specific_filename, filename_tmp, ICNSS_MAX_FILE_NAME);
+			strscpy(foundry_specific_filename, filename_tmp,
+				ICNSS_MAX_FILE_NAME);
 			memmove(foundry_specific_filename + BDWLAN_SIZE + 1,
 				foundry_specific_filename + BDWLAN_SIZE,
 				BDWLAN_SIZE - 1);
 			foundry_specific_filename[BDWLAN_SIZE] = priv->foundry_name;
 			foundry_specific_filename[ICNSS_MAX_FILE_NAME - 1] = '\0';
-			strlcpy(filename_tmp, foundry_specific_filename, ICNSS_MAX_FILE_NAME);
+			strscpy(filename_tmp, foundry_specific_filename,
+				ICNSS_MAX_FILE_NAME);
 		}
 		break;
 	case ICNSS_BDF_REGDB:
@@ -2664,18 +2666,18 @@ static void wlfw_qdss_trace_save_ind_cb(struct qmi_handle *qmi,
 	event_data->total_size = ind_msg->total_size;
 
 	if (ind_msg->file_name_valid)
-		strlcpy(event_data->file_name, ind_msg->file_name,
+		strscpy(event_data->file_name, ind_msg->file_name,
 			QDSS_TRACE_FILE_NAME_MAX + 1);
 
 	if (ind_msg->source == 1) {
 		if (!ind_msg->file_name_valid)
-			strlcpy(event_data->file_name, "qdss_trace_wcss_etb",
+			strscpy(event_data->file_name, "qdss_trace_wcss_etb",
 				QDSS_TRACE_FILE_NAME_MAX + 1);
 	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA,
 				0, event_data);
 	} else {
 		if (!ind_msg->file_name_valid)
-			strlcpy(event_data->file_name, "qdss_trace_ddr",
+			strscpy(event_data->file_name, "qdss_trace_ddr",
 				QDSS_TRACE_FILE_NAME_MAX + 1);
 	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_QDSS_TRACE_SAVE,
 				0, event_data);
@@ -2775,9 +2777,8 @@ static void icnss_wlfw_m3_dump_upload_segs_req_ind_cb(struct qmi_handle *qmi,
 		event_data->m3_segment[i].addr = segment_addr;
 		event_data->m3_segment[i].size = ind_msg->m3_segment[i].size;
 		event_data->m3_segment[i].type = ind_msg->m3_segment[i].type;
-		strlcpy(event_data->m3_segment[i].name,
-			ind_msg->m3_segment[i].name,
-			WLFW_MAX_STR_LEN + 1);
+		strscpy(event_data->m3_segment[i].name,
+			ind_msg->m3_segment[i].name, WLFW_MAX_STR_LEN + 1);
 
 		icnss_pr_dbg("Received Segment %d Addr: 0x%llx Size: 0x%x, Name: %s, type: %d\n",
 			     (i + 1), segment_addr,
@@ -3046,8 +3047,7 @@ int icnss_send_wlan_enable_to_fw(struct icnss_priv *priv,
 	}
 
 	req.host_version_valid = 1;
-	strlcpy(req.host_version, host_version,
-		WLFW_MAX_STR_LEN + 1);
+	strscpy(req.host_version, host_version, WLFW_MAX_STR_LEN + 1);
 
 	req.tgt_cfg_valid = 1;
 	if (config->num_ce_tgt_cfg > WLFW_MAX_NUM_CE)
