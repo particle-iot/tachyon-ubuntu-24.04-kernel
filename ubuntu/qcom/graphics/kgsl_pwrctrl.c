@@ -8,6 +8,7 @@
 #include <linux/interconnect.h>
 #include <linux/iopoll.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
