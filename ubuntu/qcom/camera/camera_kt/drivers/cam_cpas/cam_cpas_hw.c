@@ -1997,7 +1997,7 @@ static void cam_cpas_update_monitor_array(struct cam_hw_info *cpas_hw,
 	entry = &cpas_core->monitor_entries[iterator];
 
 	ktime_get_real_ts64(&entry->timestamp);
-	strlcpy(entry->identifier_string, identifier_string,
+	strscpy(entry->identifier_string, identifier_string,
 		sizeof(entry->identifier_string));
 
 	entry->identifier_value = identifier_value;
