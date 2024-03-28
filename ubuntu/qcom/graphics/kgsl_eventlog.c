@@ -192,7 +192,7 @@ void log_kgsl_syncpoint_fence_event(u32 id, char *fence_name)
 
 	entry->id = id;
 	memset(entry->name, 0, sizeof(entry->name));
-	strlcpy(entry->name, fence_name, sizeof(entry->name));
+	strscpy(entry->name, fence_name, sizeof(entry->name));
 }
 
 void log_kgsl_syncpoint_fence_expire_event(u32 id, char *fence_name)
@@ -208,7 +208,7 @@ void log_kgsl_syncpoint_fence_expire_event(u32 id, char *fence_name)
 
 	entry->id = id;
 	memset(entry->name, 0, sizeof(entry->name));
-	strlcpy(entry->name, fence_name, sizeof(entry->name));
+	strscpy(entry->name, fence_name, sizeof(entry->name));
 }
 
 void log_kgsl_timeline_fence_alloc_event(u32 id, u64 seqno)

@@ -571,13 +571,13 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 			resp->fw_version_info.fw_version;
 		fw_build_timestamp = resp->fw_version_info.fw_build_timestamp;
 		fw_build_timestamp[QMI_WLFW_MAX_TIMESTAMP_LEN] = '\0';
-		strlcpy(plat_priv->fw_version_info.fw_build_timestamp,
+		strscpy(plat_priv->fw_version_info.fw_build_timestamp,
 			resp->fw_version_info.fw_build_timestamp,
 			QMI_WLFW_MAX_TIMESTAMP_LEN + 1);
 	}
 	if (resp->fw_build_id_valid) {
 		resp->fw_build_id[QMI_WLFW_MAX_BUILD_ID_LEN] = '\0';
-		strlcpy(plat_priv->fw_build_id, resp->fw_build_id,
+		strscpy(plat_priv->fw_build_id, resp->fw_build_id,
 			QMI_WLFW_MAX_BUILD_ID_LEN + 1);
 	}
 	/* FW will send aop retention volatage for qca6490 */
@@ -1807,8 +1807,7 @@ int cnss_wlfw_wlan_cfg_send_sync(struct cnss_plat_data *plat_priv,
 	}
 
 	req->host_version_valid = 1;
-	strlcpy(req->host_version, host_version,
-		QMI_WLFW_MAX_STR_LEN_V01 + 1);
+	strscpy(req->host_version, host_version, QMI_WLFW_MAX_STR_LEN_V01 + 1);
 
 	req->tgt_cfg_valid = 1;
 	if (config->num_ce_tgt_cfg > QMI_WLFW_MAX_NUM_CE_V01)
@@ -3074,22 +3073,23 @@ static void cnss_wlfw_fw_mem_file_save_ind_cb(struct qmi_handle *qmi_wlfw,
 	}
 
 	if (ind_msg->file_name_valid)
-		strlcpy(event_data->file_name, ind_msg->file_name,
+		strscpy(event_data->file_name, ind_msg->file_name,
 			QMI_WLFW_MAX_STR_LEN_V01 + 1);
 	if (ind_msg->source == 1) {
 		if (!ind_msg->file_name_valid)
-			strlcpy(event_data->file_name, "qdss_trace_wcss_etb",
+			strscpy(event_data->file_name, "qdss_trace_wcss_etb",
 				QMI_WLFW_MAX_STR_LEN_V01 + 1);
 		cnss_driver_event_post(plat_priv, CNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA,
 				       0, event_data);
 	} else {
 		if (event_data->mem_type == QMI_WLFW_MEM_QDSS_V01) {
 			if (!ind_msg->file_name_valid)
-				strlcpy(event_data->file_name, "qdss_trace_ddr",
+				strscpy(event_data->file_name,
+					"qdss_trace_ddr",
 					QMI_WLFW_MAX_STR_LEN_V01 + 1);
 		} else {
 			if (!ind_msg->file_name_valid)
-				strlcpy(event_data->file_name, "fw_mem_dump",
+				strscpy(event_data->file_name, "fw_mem_dump",
 					QMI_WLFW_MAX_STR_LEN_V01 + 1);
 		}
 
