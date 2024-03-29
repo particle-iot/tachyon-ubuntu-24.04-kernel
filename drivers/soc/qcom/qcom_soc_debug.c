@@ -48,9 +48,9 @@ static void store_kaslr_offset(void)
 		return;
 
 	__raw_writel(KASLR_IMEM_MAGIC, imem_kaslr_addr);
-	__raw_writel((kimage_vaddr - KIMAGE_VADDR) & KASLR_OFFSET_MASK,
+	__raw_writel(kaslr_offset() & KASLR_OFFSET_MASK,
 		     imem_kaslr_addr + 4);
-	__raw_writel(((kimage_vaddr - KIMAGE_VADDR) >> 32) & KASLR_OFFSET_MASK,
+	__raw_writel((kaslr_offset() >> 32) & KASLR_OFFSET_MASK,
 		     imem_kaslr_addr + 8);
 
 	iounmap(imem_kaslr_addr);
