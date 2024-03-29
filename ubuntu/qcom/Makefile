@@ -1,4 +1,6 @@
+subdir-ccflags-y += -Wno-missing-prototypes -Wno-missing-declarations
 subdir-ccflags-y += -Wno-packed-bitfield-compat
+subdir-ccflags-y += -Wno-unused-variable -Wno-unused-functions
 
 export MACHINE='qcm6490'
 export CONFIG_QCA_CLD_WLAN=m
