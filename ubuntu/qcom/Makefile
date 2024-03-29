@@ -1,4 +1,5 @@
 subdir-ccflags-y += -Wno-packed-bitfield-compat
+subdir-ccflags-y += -Wno-enum-int-mismatch
 
 export MACHINE = qcm6490
 export KERNEL_ROOT=/
