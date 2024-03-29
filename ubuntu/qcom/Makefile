@@ -1,3 +1,4 @@
+subdir-ccflags-y += -Wno-missing-prototypes -Wno-missing-declarations
 subdir-ccflags-y += -Wno-packed-bitfield-compat
 
 export MACHINE='qcm6490'
