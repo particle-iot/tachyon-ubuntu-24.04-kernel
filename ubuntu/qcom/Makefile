@@ -1,4 +1,7 @@
+subdir-ccflags-y += -Wno-missing-prototypes -Wno-missing-declarations
 subdir-ccflags-y += -Wno-packed-bitfield-compat
+subdir-ccflags-y += -Wno-unused-variable -Wno-unused-functions
+subdir-ccflags-y += -Wno-enum-int-mismatch
 
 export MACHINE = qcm6490
 export KERNEL_ROOT=/
