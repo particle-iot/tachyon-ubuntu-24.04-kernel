@@ -58,20 +58,24 @@ static void store_kaslr_offset(void)
 	iounmap(imem_kaslr_addr);
 }
 
-static void disable_soc_wdt_if_required(void)
+static void update_soc_wdt_node(void)
 {
 	struct device_node *soc_wdt;
 	struct property *newprop;
+	const char *status_string;
 	int ret;
 
-	if (is_hyp_mode_available())
-		return;
-
 	/*
-	 * Linux is not booted in hyp mode, assume that Gunyah is active
+	 * If Linux is not booted in hyp mode, assume that Gunyah is active
 	 * and removed SoC watchdog I/O access to Linux. Disable SoC
-	 * watchdog device node.
+	 * watchdog device node by marking it "reserved", otherwise enable it.
 	 */
+
+	if (is_hyp_mode_available())
+		status_string = "okay";
+	else
+		status_string = "reserved";
+
 	soc_wdt = of_find_compatible_node(NULL, NULL, "qcom,kpss-wdt");
 	if (!soc_wdt)
 		return;
@@ -85,14 +89,14 @@ static void disable_soc_wdt_if_required(void)
 	if (!newprop->name)
 		goto free_prop;
 
-	newprop->value = kstrdup("disabled", GFP_KERNEL);
+	newprop->value = kstrdup(status_string, GFP_KERNEL);
 	if (!newprop->value)
 		goto free_prop;
 
-	newprop->length = sizeof("disabled");
+	newprop->length = strlen(status_string) + 1;
 	ret = of_update_property(soc_wdt, newprop);
 	if (ret) {
-		pr_err("Failed to disable SoC watchdog with err %d\n", ret);
+		pr_err("Failed to update SoC watchdog node with err %d\n", ret);
 		goto free_prop;
 	}
 
@@ -110,7 +114,7 @@ put_node:
 static int __init qcom_soc_debug_init(void)
 {
 	store_kaslr_offset();
-	disable_soc_wdt_if_required();
+	update_soc_wdt_node();
 
 	panic_notifier.priority = INT_MAX - 1;
 	panic_notifier.notifier_call = panic_handler;
