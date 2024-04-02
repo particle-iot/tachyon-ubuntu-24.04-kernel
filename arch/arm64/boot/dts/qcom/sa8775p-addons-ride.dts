@@ -12,3 +12,8 @@
 	model = "Qualcomm SA8775P Ride";
 	compatible = "qcom,sa8775p-addons-ride", "qcom,sa8775p";
 };
+
+&remoteproc_cdsp0 {
+	firmware-name = "qcom/sa8775p/cdsp0.mdt";
+	status = "okay";
+};
