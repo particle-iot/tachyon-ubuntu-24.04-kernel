@@ -17,3 +17,8 @@
 	firmware-name = "qcom/sa8775p/cdsp0.mdt";
 	status = "okay";
 };
+
+&remoteproc_cdsp1 {
+	firmware-name = "qcom/sa8775p/cdsp1.mdt";
+	status = "okay";
+};
