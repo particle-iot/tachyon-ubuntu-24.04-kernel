@@ -482,6 +482,50 @@
 		};
 	};
 
+	remoteproc_cdsp1: remoteproc@2a300000 {
+		compatible = "qcom,sa8775p-cdsp1-pas";
+		reg = <0x0 0x2A300000 0x0 0x10000>;
+
+		interrupts-extended = <&intc GIC_SPI 798 IRQ_TYPE_EDGE_RISING>,
+				      <&smp2p_cdsp1_in 0 IRQ_TYPE_EDGE_RISING>,
+				      <&smp2p_cdsp1_in 1 IRQ_TYPE_EDGE_RISING>,
+				      <&smp2p_cdsp1_in 2 IRQ_TYPE_EDGE_RISING>,
+				      <&smp2p_cdsp1_in 3 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "wdog", "fatal", "handover",
+				  "ready", "stop-ack";
+
+		clocks = <&rpmhcc RPMH_CXO_CLK>;
+		clock-names = "xo";
+
+		 power-domains = <&rpmhpd RPMHPD_CX>,
+				 <&rpmhpd RPMHPD_MXC>,
+				 <&rpmhpd RPMHPD_NSP1>;
+
+		power-domain-names = "cx", "mxc", "nsp0";
+
+		interconnects = <&nspb_noc MASTER_CDSP_PROC 0 &mc_virt SLAVE_EBI1 0>;
+
+		memory-region = <&pil_cdsp1_mem>;
+
+		qcom,qmp = <&aoss_qmp>;
+
+		qcom,smem-states = <&smp2p_cdsp1_out 0>;
+		qcom,smem-state-names = "stop";
+
+		status = "disabled";
+
+		 glink-edge {
+			interrupts-extended = <&ipcc IPCC_CLIENT_NSP1
+						     IPCC_MPROC_SIGNAL_GLINK_QMP
+						     IRQ_TYPE_EDGE_RISING>;
+			mboxes = <&ipcc IPCC_CLIENT_NSP1
+					IPCC_MPROC_SIGNAL_GLINK_QMP>;
+
+			label = "cdsp1";
+			qcom,remote-pid = <12>;
+		 };
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -663,6 +707,30 @@
 		};
 
 		smp2p_cdsp_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
+
+	smp2p-cdsp1 {
+		compatible = "qcom,smp2p";
+		qcom,smem = <617>, <616>;
+		interrupts-extended = <&ipcc IPCC_CLIENT_NSP1
+					     IPCC_MPROC_SIGNAL_SMP2P
+					     IRQ_TYPE_EDGE_RISING>;
+		mboxes = <&ipcc IPCC_CLIENT_NSP1
+				IPCC_MPROC_SIGNAL_SMP2P>;
+
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <12>;
+
+		smp2p_cdsp1_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		smp2p_cdsp1_in: slave-kernel {
 			qcom,entry-name = "slave-kernel";
 			interrupt-controller;
 			#interrupt-cells = <2>;
