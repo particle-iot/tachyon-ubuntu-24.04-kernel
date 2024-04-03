@@ -34,3 +34,15 @@
 		status = "disabled";
 	};
 };
+
+&sram {
+	mem_dump_table@10 {
+		compatible = "qcom,msm-imem-mem-dump-table";
+		reg = <0x10 0x8>;
+	};
+
+	kaslr_offset@6d0 {
+		compatible = "qcom,msm-imem-kaslr_offset";
+		reg = <0x6d0 0xc>;
+	};
+};
