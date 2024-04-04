@@ -1,5 +1,5 @@
 /* Copyright (c) 2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,8 +43,7 @@ int cam_ir_led_get_dt_data(struct cam_ir_led_ctrl *ictrl,
 	}
 
 	if (of_property_read_bool(soc_info->dev->of_node, "pwms")) {
-		ictrl->pwm_dev = of_pwm_get(soc_info->dev,
-			ictrl->pdev->dev.of_node, NULL);
+		ictrl->pwm_dev = pwm_get(soc_info->dev, NULL);
 		if (ictrl->pwm_dev == NULL)
 			CAM_ERR(CAM_IR_LED, "Cannot get PWM device");
 		ictrl->ir_led_driver_type = IR_LED_DRIVER_PMIC;
