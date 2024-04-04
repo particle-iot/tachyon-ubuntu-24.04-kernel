@@ -502,8 +502,7 @@ static int icnss_send_smp2p(struct icnss_priv *priv,
 	value <<= ICNSS_SMEM_SEQ_NO_POS;
 	value |= msg_id;
 
-	if (msg_id == ICNSS_POWER_SAVE_ENTER || msg_id == ICNSS_POWER_SAVE_EXIT)
-		icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
+	icnss_pr_smp2p("Sending SMP2P value: 0x%X\n", value);
 
 	if (msg_id == ICNSS_SOC_WAKE_REQ || msg_id == ICNSS_SOC_WAKE_REL)
 		reinit_completion(&penv->smp2p_soc_wake_wait);
@@ -3492,11 +3491,11 @@ int icnss_get_soc_info(struct device *dev, struct icnss_soc_info *info)
 	info->fw_version = priv->fw_version_info.fw_version;
 	fw_build_timestamp = priv->fw_version_info.fw_build_timestamp;
 	fw_build_timestamp[WLFW_MAX_TIMESTAMP_LEN] = '\0';
-	strscpy(info->fw_build_timestamp,
+	strlcpy(info->fw_build_timestamp,
 		priv->fw_version_info.fw_build_timestamp,
 		WLFW_MAX_TIMESTAMP_LEN + 1);
-	strscpy(info->fw_build_id, priv->fw_build_id,
-		ICNSS_WLFW_MAX_BUILD_ID_LEN + 1);
+	strlcpy(info->fw_build_id, priv->fw_build_id,
+	        ICNSS_WLFW_MAX_BUILD_ID_LEN + 1);
 	info->rd_card_chain_cap = priv->rd_card_chain_cap;
 	info->phy_he_channel_width_cap = priv->phy_he_channel_width_cap;
 	info->phy_qam_cap = priv->phy_qam_cap;

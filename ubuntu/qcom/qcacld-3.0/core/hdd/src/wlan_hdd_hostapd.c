@@ -1089,7 +1089,7 @@ static void hdd_chan_change_notify_update(struct wlan_hdd_link_info *link_info)
 		dev = assoc_adapter->dev;
 	}
 
-	wiphy_lock(dev->ieee80211_ptr->wiphy);
+	mutex_lock(&dev->ieee80211_ptr->mtx);
 	if (wlan_vdev_mlme_is_active(vdev) != QDF_STATUS_SUCCESS) {
 		hdd_debug("Vdev %d mode %d not UP", vdev_id,
 			  adapter->device_mode);
@@ -1127,7 +1127,7 @@ static void hdd_chan_change_notify_update(struct wlan_hdd_link_info *link_info)
 	wlan_cfg80211_ch_switch_notify(dev, &chandef, link_id, puncture_bitmap);
 
 exit:
-	wiphy_unlock(dev->ieee80211_ptr->wiphy);
+	mutex_unlock(&dev->ieee80211_ptr->mtx);
 	hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 }
 
@@ -1788,11 +1788,13 @@ static void hdd_hostapd_set_sap_key(struct hdd_adapter *adapter)
 	struct wlan_crypto_key *crypto_key;
 	uint8_t key_index;
 
-	for (key_index = 0; key_index < WLAN_CRYPTO_MAXKEYIDX; ++key_index) {
+	for (key_index = 0; key_index < WLAN_CRYPTO_TOTAL_KEYIDX; ++key_index) {
 		crypto_key = wlan_crypto_get_key(adapter->deflink->vdev,
 						 key_index);
 		if (!crypto_key)
 			continue;
+
+		hdd_debug("key idx %d", key_index);
 		ucfg_crypto_set_key_req(adapter->deflink->vdev, crypto_key,
 					WLAN_CRYPTO_KEY_TYPE_GROUP);
 		wma_update_set_key(adapter->deflink->vdev_id, false, key_index,
@@ -4589,7 +4591,7 @@ struct hdd_adapter *hdd_wlan_create_ap_dev(struct hdd_context *hdd_ctx,
 		(int)policy_mgr_get_concurrency_mode(hdd_ctx->psoc));
 
 	/* Init the net_device structure */
-	strscpy(dev->name, (const char *)iface_name, IFNAMSIZ);
+	strlcpy(dev->name, (const char *)iface_name, IFNAMSIZ);
 
 	hdd_set_ap_ops(dev);
 
@@ -6406,7 +6408,6 @@ int wlan_hdd_cfg80211_start_bss(struct wlan_hdd_link_info *link_info,
 	bool bval = false;
 	bool enable_dfs_scan = true;
 	bool deliver_start_evt = true;
-	struct s_ext_cap p_ext_cap = {0};
 	enum reg_phymode reg_phy_mode, updated_phy_mode;
 	struct sap_context *sap_ctx;
 	struct wlan_objmgr_vdev *vdev;
@@ -6541,29 +6542,7 @@ int wlan_hdd_cfg80211_start_bss(struct wlan_hdd_link_info *link_info,
 
 	ucfg_policy_mgr_get_mcc_scc_switch(hdd_ctx->psoc, &mcc_to_scc_switch);
 
-	ie = wlan_get_ie_ptr_from_eid(DOT11F_EID_EXTCAP, beacon->tail,
-				      beacon->tail_len);
-	if (ie && (ie[0] != DOT11F_EID_EXTCAP ||
-		   ie[1] > DOT11F_IE_EXTCAP_MAX_LEN)) {
-		hdd_err("Invalid IEs eid: %d elem_len: %d", ie[0], ie[1]);
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (ie) {
-		bool target_bigtk_support = false;
-
-		memcpy(&p_ext_cap, &ie[2], (ie[1] > sizeof(p_ext_cap)) ?
-		       sizeof(p_ext_cap) : ie[1]);
-
-		hdd_debug("beacon protection %d",
-			  p_ext_cap.beacon_protection_enable);
-
-		ucfg_mlme_get_bigtk_support(hdd_ctx->psoc,
-					    &target_bigtk_support);
-		if (target_bigtk_support && p_ext_cap.beacon_protection_enable)
-			mlme_set_bigtk_support(vdev, true);
-	}
+	wlan_hdd_set_sap_beacon_protection(hdd_ctx, link_info, beacon);
 
 	/* Overwrite second AP's channel with first only when:
 	 * 1. If operating mode is single mac
@@ -8336,7 +8315,7 @@ static int __wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
  */
 int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 				struct net_device *dev,
-				struct cfg80211_ap_update *info)
+				struct cfg80211_beacon_data *params)
 {
 	int errno;
 	struct osif_vdev_sync *vdev_sync;
@@ -8345,7 +8324,7 @@ int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 	if (errno)
 		return errno;
 
-	errno = __wlan_hdd_cfg80211_change_beacon(wiphy, dev, &info->beacon);
+	errno = __wlan_hdd_cfg80211_change_beacon(wiphy, dev, params);
 
 	osif_vdev_sync_op_stop(vdev_sync);
 

@@ -148,6 +148,7 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 	tDot11fIEeht_cap *eht_cap = NULL;
 	struct bss_description *bss_desc = NULL;
 	tDot11fIEVHTOperation *vht_oper = NULL;
+	enum phy_ch_width omn_ie_ch_width;
 
 	lim_get_phy_mode(mac_ctx, &phy_mode, session_entry);
 	sta_ds->staType = STA_ENTRY_SELF;
@@ -314,8 +315,13 @@ void lim_update_assoc_sta_datas(struct mac_context *mac_ctx,
 		 * OMN IE is present in the Assoc response, but the channel
 		 * width/Rx NSS update will happen through the peer_assoc cmd.
 		 */
-		pe_debug("OMN IE is present in the assoc rsp, update NSS/Ch width");
+		omn_ie_ch_width = assoc_rsp->oper_mode_ntf.chanWidth;
+		pe_debug("OMN IE present in re/assoc rsp, omn_ie_ch_width: %d",
+			 omn_ie_ch_width);
+		lim_update_omn_ie_ch_width(session_entry->vdev,
+					   omn_ie_ch_width);
 	}
+
 	if (lim_process_srp_ie(assoc_rsp, sta_ds) == QDF_STATUS_SUCCESS)
 		lim_update_vdev_sr_elements(session_entry, sta_ds);
 }
@@ -1092,7 +1098,8 @@ void lim_send_join_fail_on_vdev(struct mac_context *mac_ctx,
 
 #ifdef WLAN_FEATURE_11BE_MLO
 static QDF_STATUS
-lim_gen_link_specific_probe_resp_from_assoc_resp(uint8_t *rx_pkt_info,
+lim_gen_link_specific_probe_resp_from_assoc_resp(struct mac_context *mac_ctx,
+						 uint8_t *rx_pkt_info,
 						 uint32_t frame_len,
 						 struct pe_session *session)
 {
@@ -1186,6 +1193,17 @@ lim_gen_link_specific_probe_resp_from_assoc_resp(uint8_t *rx_pkt_info,
 				goto mem_free;
 			}
 		}
+
+		status = lim_update_mlo_mgr_info(mac_ctx,
+						 session->vdev,
+						 &link_info->link_addr,
+						 link_info->link_id,
+						 link_info->chan_freq);
+		if (QDF_IS_STATUS_ERROR(status)) {
+			pe_debug("failed to update mlo_mgr %d for link_id: %d",
+				 status, link_info->link_id);
+			goto mem_free;
+		}
 	}
 
 mem_free:
@@ -1196,7 +1214,8 @@ mem_free:
 }
 #else /* WLAN_FEATURE_11BE_MLO */
 static inline QDF_STATUS
-lim_gen_link_specific_probe_resp_from_assoc_resp(uint8_t *rx_pkt_info,
+lim_gen_link_specific_probe_resp_from_assoc_resp(struct mac_context *mac_ctx,
+						 uint8_t *rx_pkt_info,
 						 uint32_t frame_len,
 						 struct pe_session *session)
 {
@@ -1867,7 +1886,8 @@ lim_process_assoc_rsp_frame(struct mac_context *mac_ctx, uint8_t *rx_pkt_info,
 	 * Any failure during partner link probe resp generation, treat
 	 * it as connect failure and send deauth to AP.
 	 */
-	status = lim_gen_link_specific_probe_resp_from_assoc_resp(rx_pkt_info,
+	status = lim_gen_link_specific_probe_resp_from_assoc_resp(mac_ctx,
+								  rx_pkt_info,
 								  frame_body_len,
 								  session_entry);
 	if (QDF_IS_STATUS_ERROR(status)) {

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -36,6 +36,16 @@
 
 /* Preprocessor definitions and constants */
 #define QDF_MAX_SGLIST 4
+
+/* Define a QDF macro for declaring flexible arrays */
+#define QDF_FLEX_ARRAY(type, name) \
+	union { \
+		type name ## _first_element; \
+		struct { \
+			struct {} dummy_struct; \
+			type name[]; \
+		}; \
+	}
 
 /*
  * Add more levels here based on the number of perf clusters in SoC
@@ -1614,6 +1624,7 @@ enum qdf_suspend_type {
  * timed out.
  * @QDF_VDEV_ACTIVE_SER_LINK_SWITCH_TIMEOUT: Active link switch cmd in
  * serialization timed out.
+ * @QDF_ENABLE_IRQ_FAILURE: Failed to enable IRQs
  */
 enum qdf_hang_reason {
 	QDF_REASON_UNSPECIFIED,
@@ -1658,6 +1669,7 @@ enum qdf_hang_reason {
 	QDF_VDEV_ACTIVE_SER_DISCONNECT_TIMEOUT,
 	QDF_VDEV_ACTIVE_SER_REASSOC_TIMEOUT,
 	QDF_VDEV_ACTIVE_SER_LINK_SWITCH_TIMEOUT,
+	QDF_ENABLE_IRQ_FAILURE,
 };
 
 /**
