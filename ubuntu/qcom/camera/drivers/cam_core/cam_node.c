@@ -704,7 +704,7 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 
 	memset(node, 0, sizeof(*node));
 
-	strscpy(node->name, name, sizeof(node->name));
+	strlcpy(node->name, name, sizeof(node->name));
 
 	memcpy(&node->hw_mgr_intf, hw_mgr_intf, sizeof(node->hw_mgr_intf));
 	node->crm_node_intf.apply_req = __cam_node_crm_apply_req;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef CAMERA_MAIN_H
@@ -44,6 +44,7 @@ extern struct platform_driver dp_bdg_irq_handler_driver;
 	IS_REACHABLE(CONFIG_LEDS_QTI_FLASH)
 extern struct platform_driver cam_flash_platform_driver;
 #endif
+extern struct platform_driver cam_ir_led_platform_driver;
 #endif
 #ifdef CONFIG_SPECTRA_ICP
 extern struct platform_driver cam_a5_driver;
@@ -114,6 +115,7 @@ static struct platform_driver *const cam_component_drivers[] = {
 	IS_REACHABLE(CONFIG_LEDS_QTI_FLASH)
 	&cam_flash_platform_driver,
 #endif
+	&cam_ir_led_platform_driver,
 #endif
 #ifdef CONFIG_SPECTRA_ICP
 	&cam_a5_driver,

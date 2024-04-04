@@ -2453,8 +2453,15 @@ static int cam_vfe_bus_acquire_vfe_out(void *bus_priv, void *acquire_args,
 	rsrc_node->cdm_ops = out_acquire_args->cdm_ops;
 	rsrc_data->cdm_util_ops = out_acquire_args->cdm_ops;
 
+	if (out_acquire_args->out_port_info->comp_grp_id >
+		CAM_ISP_RES_COMP_GROUP_ID_MAX)
+		CAM_ERR(CAM_ISP, "VFE%d Invalid composite group id %d res_id %x",
+			rsrc_data->common_data->core_index,
+			out_acquire_args->out_port_info->comp_grp_id,
+			vfe_out_res_id);
+
 	/* Reserve Composite Group */
-	if (num_wm > 1 || (out_acquire_args->is_dual) ||
+	if ((num_wm > 1 || (out_acquire_args->is_dual)) &&
 		(out_acquire_args->out_port_info->comp_grp_id >
 		CAM_ISP_RES_COMP_GROUP_NONE &&
 		out_acquire_args->out_port_info->comp_grp_id <

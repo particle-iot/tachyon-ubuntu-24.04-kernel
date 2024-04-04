@@ -52,7 +52,7 @@ static int cam_media_device_setup(struct device *dev)
 
 	media_device_init(g_dev.v4l2_dev->mdev);
 	g_dev.v4l2_dev->mdev->dev = dev;
-	strscpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
+	strlcpy(g_dev.v4l2_dev->mdev->model, CAM_REQ_MGR_VNODE_NAME,
 		sizeof(g_dev.v4l2_dev->mdev->model));
 
 	rc = media_device_register(g_dev.v4l2_dev->mdev);
@@ -679,7 +679,8 @@ static int cam_video_device_setup(void)
 
 	g_dev.video->v4l2_dev = g_dev.v4l2_dev;
 
-	strscpy(g_dev.video->name, "cam-req-mgr", sizeof(g_dev.video->name));
+	strlcpy(g_dev.video->name, "cam-req-mgr",
+		sizeof(g_dev.video->name));
 	g_dev.video->release = video_device_release_empty;
 	g_dev.video->fops = &g_cam_fops;
 	g_dev.video->ioctl_ops = &g_cam_ioctl_ops;
@@ -796,7 +797,7 @@ int cam_register_subdev(struct cam_subdev *csd)
 	sd = &csd->sd;
 	v4l2_subdev_init(sd, csd->ops);
 	sd->internal_ops = csd->internal_ops;
-	snprintf(sd->name, sizeof(sd->name), "%s", csd->name);
+	snprintf(sd->name, V4L2_SUBDEV_NAME_SIZE, "%s", csd->name);
 	v4l2_set_subdevdata(sd, csd->token);
 
 	sd->flags = csd->sd_flags;

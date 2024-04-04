@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/build_bug.h>
@@ -62,6 +62,11 @@
 #include "cam_csid_ppi100.h"
 #include "camera_main.h"
 
+#include "cam_generated_h"
+
+const char camera_banner[] = "Camera-Banner: (" CAMERA_COMPILE_HOST
+	") (" CAMERA_COMPILE_TIME ") (" CAMERA_CC_VERSION ")";
+
 struct camera_submodule_component {
 	int (*init)(void);
 	void (*exit)(void);
@@ -118,6 +123,7 @@ static const struct camera_submodule_component camera_sensor[] = {
 	IS_REACHABLE(CONFIG_LEDS_QTI_FLASH)
 	{&cam_flash_init_module, &cam_flash_exit_module},
 #endif
+	{&cam_ir_led_init_module, &cam_ir_led_exit_module},
 #endif
 };
 

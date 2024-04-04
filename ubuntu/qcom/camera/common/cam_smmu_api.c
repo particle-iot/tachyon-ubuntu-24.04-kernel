@@ -1778,17 +1778,8 @@ static int cam_smmu_map_to_pool(struct iommu_domain *domain,
 	 * prevent out of bounds access, which instead will result in IOMMU
 	 * page faults.
 	 */
-	if (WARN_ON_ONCE(buffer_size < *size))
+	if (buffer_size < *size)
 		buffer_size = *size;
-
-	/*
-	 * iommu_map_sgtable() will map the entire sgtable, even if
-	 * the assumed buffer size is smaller. Use the real buffer size
-	 * for IOVA space allocation to take care of this.
-	 */
-	WARN_ONCE(*size && buffer_size > *size,
-		"size zero or greater then buffer_size %zd > %zd",
-		buffer_size,  *size);
 
 	*iova = gen_pool_alloc(pool, buffer_size);
 	if (!*iova)
