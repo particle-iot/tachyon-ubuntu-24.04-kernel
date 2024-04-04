@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/cacheflush.h>
@@ -621,12 +621,6 @@ kgsl_pool_shrink_count_objects(struct shrinker *shrinker,
 	return kgsl_pool_size_nonreserved();
 }
 
-#if (KERNEL_VERSION(6, 7, 0) <= LINUX_VERSION_CODE)
-
-static struct shrinker *kgsl_pool_shrinker;
-
-#else
-
 /* Shrinker callback data*/
 static struct shrinker kgsl_pool_shrinker = {
 	.count_objects = kgsl_pool_shrink_count_objects,
@@ -634,8 +628,6 @@ static struct shrinker kgsl_pool_shrinker = {
 	.seeks = DEFAULT_SEEKS,
 	.batch = 0,
 };
-
-#endif
 
 int kgsl_pool_reserved_get(void *data, u64 *val)
 {
@@ -721,7 +713,6 @@ static int kgsl_of_parse_mempool(struct kgsl_page_pool *pool,
 void kgsl_probe_page_pools(void)
 {
 	struct device_node *node, *child;
-	int index = 0;
 
 	node = of_find_compatible_node(NULL, NULL, "qcom,gpu-mempools");
 	if (!node)
@@ -734,31 +725,22 @@ void kgsl_probe_page_pools(void)
 	kgsl_pool_cache_init();
 
 	for_each_child_of_node(node, child) {
-		if (!kgsl_of_parse_mempool(&kgsl_pools[index], child))
-			index++;
+		u32 index;
 
-		if (index == ARRAY_SIZE(kgsl_pools)) {
-			of_node_put(child);
-			break;
+		if (of_property_read_u32(child, "reg", &index) ||
+				index >= ARRAY_SIZE(kgsl_pools)) {
+			pr_err("kgsl: %pOF: pool index error\n", child);
+			continue;
 		}
+
+		if (!kgsl_of_parse_mempool(&kgsl_pools[index], child))
+			kgsl_num_pools++;
 	}
 
-	kgsl_num_pools = index;
 	of_node_put(node);
 
 	/* Initialize shrinker */
-#if (KERNEL_VERSION(6, 7, 0) <= LINUX_VERSION_CODE)
-	{
-		kgsl_pool_shrinker = shrinker_alloc(0, "kgsl_pool_shrinker");
-		if (WARN_ON(!kgsl_pool_shrinker))
-			return;
-
-		kgsl_pool_shrinker->count_objects = kgsl_pool_shrink_count_objects;
-		kgsl_pool_shrinker->scan_objects = kgsl_pool_shrink_scan_objects;
-
-		shrinker_register(kgsl_pool_shrinker);
-	}
-#elif (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
+#if (KERNEL_VERSION(6, 0, 0) <= LINUX_VERSION_CODE)
 	register_shrinker(&kgsl_pool_shrinker, "kgsl_pool_shrinker");
 #else
 	register_shrinker(&kgsl_pool_shrinker);
@@ -773,11 +755,7 @@ void kgsl_exit_page_pools(void)
 	kgsl_pool_reduce(INT_MAX, true);
 
 	/* Unregister shrinker */
-#if (KERNEL_VERSION(6, 7, 0) <= LINUX_VERSION_CODE)
-	shrinker_free(kgsl_pool_shrinker);
-#else
 	unregister_shrinker(&kgsl_pool_shrinker);
-#endif
 
 	/* Destroy helper structures */
 	for (i = 0; i < kgsl_num_pools; i++)
