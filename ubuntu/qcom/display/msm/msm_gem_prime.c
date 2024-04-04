@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -121,7 +121,7 @@ struct drm_gem_object *msm_gem_prime_import(struct drm_device *dev,
 	bool lazy_unmap = true;
 	bool is_vmid_tvm = false, is_vmid_cp_pixel = false;
 	bool is_vmid_sec_display = false, is_vmid_cam_preview = false;
-	int *vmid_list, *perms_list;
+	int *vmid_list = NULL, *perms_list = NULL;
 	int nelems = 0, i, ret;
 	unsigned long dma_map_attrs = 0;
 

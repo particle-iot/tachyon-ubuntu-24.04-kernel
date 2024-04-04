@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
@@ -34,6 +34,7 @@
 #endif
 #include <drm/drm_atomic_uapi.h>
 #include <drm/drm_probe_helper.h>
+#include <linux/pm_opp.h>
 
 #include "msm_drv.h"
 #include "msm_mmu.h"
@@ -1677,7 +1678,7 @@ static void sde_kms_wait_for_commit_done(struct msm_kms *kms,
 	struct drm_encoder *encoder, *cwb_enc = NULL;
 	struct drm_device *dev;
 	int ret;
-	bool cwb_disabling;
+	bool cwb_disabling = false;
 
 	if (!kms || !crtc || !crtc->state) {
 		SDE_ERROR("invalid params\n");
@@ -2457,7 +2458,8 @@ static void _sde_kms_hw_destroy(struct sde_kms *sde_kms,
 	_sde_kms_unmap_all_splash_regions(sde_kms);
 
 	if (sde_kms->catalog) {
-		for (i = 0; i < sde_kms->catalog->vbif_count; i++) {
+		for (i = 0; i < sde_kms->catalog->vbif_count &&
+			i < MAX_BLOCKS; i++) {
 			u32 vbif_idx = sde_kms->catalog->vbif[i].id;
 
 			if ((vbif_idx < VBIF_MAX) && sde_kms->hw_vbif[vbif_idx])
@@ -5283,6 +5285,9 @@ struct msm_kms *sde_kms_init(struct drm_device *dev)
 {
 	struct msm_drm_private *priv;
 	struct sde_kms *sde_kms;
+	int ret = 0;
+	struct dev_pm_opp *opp;
+	unsigned long max_freq = ULONG_MAX;
 
 	if (!dev || !dev->dev_private) {
 		SDE_ERROR("drm device node invalid\n");
@@ -5296,6 +5301,22 @@ struct msm_kms *sde_kms_init(struct drm_device *dev)
 		SDE_ERROR("failed to allocate sde kms\n");
 		return ERR_PTR(-ENOMEM);
 	}
+
+	ret = devm_pm_opp_set_clkname(dev->dev, "core_clk");
+	if (ret)
+		return ret;
+	/* OPP table is optional */
+	ret = devm_pm_opp_of_add_table(dev->dev);
+	if (ret && ret != -ENODEV) {
+		dev_err(dev->dev, "invalid OPP table in device tree\n");
+		return ret;
+	}
+
+	opp = dev_pm_opp_find_freq_floor(dev->dev, &max_freq);
+	if (!IS_ERR(opp))
+		dev_pm_opp_put(opp);
+
+	dev_pm_opp_set_rate(dev->dev, max_freq);
 
 	msm_kms_init(&sde_kms->base, &kms_funcs);
 	sde_kms->dev = dev;

@@ -1980,7 +1980,7 @@ static int dsi_display_debugfs_init(struct dsi_display *display)
 	char secondary_panel_str[] = "_secondary";
 	int i;
 
-	strscpy(panel_name, display->name, SEC_PANEL_NAME_MAX_LEN);
+	strlcpy(panel_name, display->name, SEC_PANEL_NAME_MAX_LEN);
 	if (strcmp(display->display_type, "secondary") == 0)
 		strlcat(panel_name, secondary_panel_str, SEC_PANEL_NAME_MAX_LEN);
 
@@ -2642,7 +2642,7 @@ static int dsi_display_parse_boot_display_selection(void)
 	int i, j;
 
 	for (i = 0; i < MAX_DSI_ACTIVE_DISPLAY; i++) {
-		strscpy(disp_buf, boot_displays[i].boot_param,
+		strlcpy(disp_buf, boot_displays[i].boot_param,
 			MAX_CMDLINE_PARAM_LEN);
 
 		pos = strnstr(disp_buf, ":", strlen(disp_buf));
@@ -6327,6 +6327,9 @@ static int dsi_display_drm_ext_get_modes(
 	}
 
 	connector->display_info = display->ext_conn->display_info;
+	/* dsi_display copy of vics is not being used.*/
+	connector->display_info.vics = NULL;
+	connector->display_info.vics_len = 0;
 
 	return count;
 }

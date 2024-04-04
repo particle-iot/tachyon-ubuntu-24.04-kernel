@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2012, 2017-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -129,8 +129,9 @@ int msm_dss_mmrm_register(struct device *dev, struct dss_module_power *mp,
 	bool *mmrm_enable);
 void msm_dss_mmrm_deregister(struct device *dev, struct dss_module_power *mp);
 void msm_dss_put_clk(struct dss_clk *clk_arry, int num_clk);
-int msm_dss_clk_set_rate(struct dss_clk *clk_arry, int num_clk);
-int msm_dss_single_clk_set_rate(struct dss_clk *clk);
+int msm_dss_clk_set_rate(struct dss_clk *clk_arry, int num_clk,
+			struct device *dev);
+int msm_dss_single_clk_set_rate(struct dss_clk *clk, struct device *dev);
 int msm_dss_enable_clk(struct dss_clk *clk_arry, int num_clk, int enable);
 
 int sde_i2c_byte_read(struct i2c_client *client, uint8_t slave_addr,

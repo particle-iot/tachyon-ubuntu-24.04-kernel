@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1416,6 +1416,11 @@ static int dp_sim_debug_init(struct dp_sim_device *sim_dev)
 	for (i = 0; i < sim_dev->port_num; i++) {
 		edid_entry = devm_kzalloc(sim_dev->dev,
 				sizeof(*edid_entry), GFP_KERNEL);
+		if(!edid_entry) {
+			rc = -ENOMEM;
+			goto error_remove_dir;
+		}
+
 		edid_entry->index = i;
 		edid_entry->sim_dev = sim_dev;
 		scnprintf(name, sizeof(name), "edid-%d", i);
