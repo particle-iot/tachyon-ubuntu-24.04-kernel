@@ -16,3 +16,11 @@ obj-$(CONFIG_UBUNTU_HOST)      += ubuntu-host/
 ##
 ##
 ##
+
+##
+##
+##
+obj-$(CONFIG_ARCH_QCOM)		+= qcom/
+##
+##
+##
