@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitfield.h>
 #include <linux/compat.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
-#include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/scatterlist.h>
 #include <linux/qcom-iommu-util.h>
@@ -305,19 +304,17 @@ static size_t _iopgtbl_map_pages(struct kgsl_iommu_pt *pt, u64 gpuaddr,
 		struct page **pages, int npages, int prot)
 {
 	struct io_pgtable_ops *ops = pt->pgtbl_ops;
-	size_t mapped = 0, size = 0;
+	size_t mapped = 0;
 	u64 addr = gpuaddr;
 	int ret, i;
 
 	for (i = 0; i < npages; i++) {
 		ret = ops->map_pages(ops, addr, page_to_phys(pages[i]), PAGE_SIZE, 1,
-			prot, GFP_KERNEL, &size);
+			prot, GFP_KERNEL, &mapped);
 		if (ret) {
 			_iopgtbl_unmap(pt, gpuaddr, mapped);
 			return 0;
 		}
-
-		mapped += PAGE_SIZE;
 		addr += PAGE_SIZE;
 	}
 
@@ -334,17 +331,29 @@ static size_t _iopgtbl_map_sg(struct kgsl_iommu_pt *pt, u64 gpuaddr,
 	int ret, i;
 
 	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
-		size_t size = sg->length, map_size = 0;
+		size_t size = sg->length;
 		phys_addr_t phys = sg_phys(sg);
 
-		ret = ops->map_pages(ops, addr, phys, PAGE_SIZE, size >> PAGE_SHIFT,
-				     prot, GFP_KERNEL, &map_size);
-		if (ret) {
-			_iopgtbl_unmap(pt, gpuaddr, mapped);
-			return 0;
+		while (size) {
+			size_t count, map_size = 0;
+			size_t pgsize = iommu_pgsize(pt->cfg.pgsize_bitmap,
+					addr, phys, size, &count);
+
+			ret = ops->map_pages(ops, addr, phys, pgsize, count,
+					     prot, GFP_KERNEL, &map_size);
+
+			mapped += map_size;
+
+			if (ret) {
+				_iopgtbl_unmap(pt, gpuaddr, mapped);
+				return 0;
+			}
+
+			addr += map_size;
+			phys += map_size;
+			size -= map_size;
 		}
-		addr += size;
-		mapped += map_size;
+
 	}
 
 	return mapped;
@@ -414,19 +423,18 @@ static size_t _iopgtbl_map_page_to_range(struct kgsl_iommu_pt *pt,
 		struct page *page, u64 gpuaddr, size_t range, int prot)
 {
 	struct io_pgtable_ops *ops = pt->pgtbl_ops;
-	size_t mapped = 0, map_size = 0;
+	size_t mapped = 0;
 	u64 addr = gpuaddr;
 	int ret;
 
 	while (range) {
 		ret = ops->map_pages(ops, addr, page_to_phys(page), PAGE_SIZE,
-				     1, prot, GFP_KERNEL, &map_size);
+				     1, prot, GFP_KERNEL, &mapped);
 		if (ret) {
 			_iopgtbl_unmap(pt, gpuaddr, mapped);
 			return 0;
 		}
 
-		mapped += map_size;
 		addr += PAGE_SIZE;
 		range -= PAGE_SIZE;
 	}
@@ -2467,15 +2475,20 @@ static int iommu_probe_secure_context(struct kgsl_device *device,
 		return -EPERM;
 
 	node = of_find_node_by_name(parent, "gfx3d_secure");
-	if (!node)
-		return -ENOENT;
+	if (!node) {
+		ret = -ENOENT;
+		goto err;
+	}
 
 	pdev = of_find_device_by_node(node);
-	ret = of_dma_configure(&pdev->dev, node, true);
-	of_node_put(node);
+	if (!pdev) {
+		ret = -ENODEV;
+		goto err_node_put;
+	}
 
+	ret = of_dma_configure(&pdev->dev, node, true);
 	if (ret)
-		return ret;
+		goto err_device_put;
 
 	context->cb_num = -1;
 	context->name = "gfx3d_secure";
@@ -2485,29 +2498,21 @@ static int iommu_probe_secure_context(struct kgsl_device *device,
 
 	context->domain = iommu_domain_alloc(&platform_bus_type);
 	if (!context->domain) {
-		/* FIXME: put away the device */
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_device_put;
 	}
 
 	ret = qcom_iommu_set_secure_vmid(context->domain, secure_vmid);
 	if (ret) {
 		dev_err(&device->pdev->dev, "Unable to set the secure VMID: %d\n", ret);
-		iommu_domain_free(context->domain);
-		context->domain = NULL;
-
-		/* FIXME: put away the device */
-		return ret;
+		goto err_domain_free;
 	}
 
 	_enable_gpuhtw_llc(mmu, context->domain);
 
 	ret = iommu_attach_device(context->domain, &context->pdev->dev);
-	if (ret) {
-		iommu_domain_free(context->domain);
-		/* FIXME: Put way the device */
-		context->domain = NULL;
-		return ret;
-	}
+	if (ret)
+		goto err_domain_free;
 
 	iommu_set_fault_handler(context->domain,
 		kgsl_iommu_secure_fault_handler, mmu);
@@ -2515,18 +2520,29 @@ static int iommu_probe_secure_context(struct kgsl_device *device,
 	context->cb_num = qcom_iommu_get_context_bank_nr(context->domain);
 
 	if (context->cb_num < 0) {
-		iommu_detach_device(context->domain, &context->pdev->dev);
-		iommu_domain_free(context->domain);
-		context->domain = NULL;
-		return context->cb_num;
+		ret = context->cb_num;
+		goto err_detach_device;
 	}
 
 	mmu->securepagetable = kgsl_iommu_secure_pagetable(mmu);
 
-	if (IS_ERR(mmu->securepagetable))
-		mmu->secured = false;
+	if (!IS_ERR(mmu->securepagetable))
+		return 0;
 
-	return 0;
+err_detach_device:
+	iommu_detach_device(context->domain, &context->pdev->dev);
+err_domain_free:
+	iommu_domain_free(context->domain);
+	context->domain = NULL;
+err_device_put:
+	platform_device_put(pdev);
+	context->pdev = NULL;
+err_node_put:
+	of_node_put(node);
+err:
+	mmu->secured = false;
+
+	return ret;
 }
 
 static const char * const kgsl_iommu_clocks[] = {

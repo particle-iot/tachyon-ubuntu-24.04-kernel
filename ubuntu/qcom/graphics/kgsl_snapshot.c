@@ -867,7 +867,7 @@ static ssize_t force_panic_show(struct kgsl_device *device, char *buf)
 static ssize_t force_panic_store(struct kgsl_device *device, const char *buf,
 	size_t count)
 {
-	if (kstrtobool(buf, &device->force_panic))
+	if (strtobool(buf, &device->force_panic))
 		return -EINVAL;
 	return count;
 }
@@ -900,7 +900,7 @@ static ssize_t prioritize_unrecoverable_show(
 static ssize_t prioritize_unrecoverable_store(
 		struct kgsl_device *device, const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->prioritize_unrecoverable))
+	if (strtobool(buf, &device->prioritize_unrecoverable))
 		return -EINVAL;
 
 	return count;
@@ -917,7 +917,7 @@ static ssize_t snapshot_crashdumper_show(struct kgsl_device *device, char *buf)
 static ssize_t snapshot_crashdumper_store(struct kgsl_device *device,
 	const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->snapshot_crashdumper))
+	if (strtobool(buf, &device->snapshot_crashdumper))
 		return -EINVAL;
 	return count;
 }
@@ -941,7 +941,7 @@ static ssize_t snapshot_legacy_show(struct kgsl_device *device, char *buf)
 static ssize_t snapshot_legacy_store(struct kgsl_device *device,
 	const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->snapshot_legacy))
+	if (strtobool(buf, &device->snapshot_legacy))
 		return -EINVAL;
 
 	return count;
