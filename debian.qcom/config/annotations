@@ -533,7 +533,6 @@ CONFIG_DRM_MEDIATEK_HDMI                        policy<{'arm64': '-'}>
 CONFIG_DRM_MESON                                policy<{'arm64': '-'}>
 CONFIG_DRM_MESON_DW_HDMI                        policy<{'arm64': '-'}>
 CONFIG_DRM_MESON_DW_MIPI_DSI                    policy<{'arm64': '-'}>
-CONFIG_DRM_MSM_DP                               policy<{'arm64': 'n'}>
 CONFIG_DRM_MSM_HDMI                             policy<{'arm64': 'n'}>
 CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': '-'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'n'}>
@@ -785,7 +784,14 @@ CONFIG_IR_SUNXI                                 policy<{'arm64': '-'}>
 CONFIG_K3_DMA                                   policy<{'arm64': '-'}>
 CONFIG_K3_RTI_WATCHDOG                          policy<{'arm64': '-'}>
 CONFIG_K3_THERMAL                               policy<{'arm64': '-'}>
+CONFIG_KASAN                                    policy<{'arm64': 'y'}>
+CONFIG_KASAN_EXTRA_INFO                         policy<{'arm64': 'n'}>
+CONFIG_KASAN_GENERIC                            policy<{'arm64': 'n'}>
+CONFIG_KASAN_HW_TAGS                            policy<{'arm64': 'y'}>
+CONFIG_KASAN_SW_TAGS                            policy<{'arm64': 'n'}>
+CONFIG_KASAN_VMALLOC                            policy<{'arm64': 'y'}>
 CONFIG_KCOV                                     policy<{'arm64': '-'}>
+CONFIG_KCSAN                                    policy<{'arm64': '-'}>
 CONFIG_KEEMBAY_WATCHDOG                         policy<{'arm64': '-'}>
 CONFIG_KERNEL_GZIP                              policy<{'arm64': '-'}>
 CONFIG_KERNEL_LZ4                               policy<{'arm64': '-'}>
@@ -1271,6 +1277,8 @@ CONFIG_PINCTRL_TMPV7700                         policy<{'arm64': '-'}>
 CONFIG_PINCTRL_VISCONTI                         policy<{'arm64': '-'}>
 CONFIG_PINCTRL_X1E80100                         policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_ZYNQMP                           policy<{'arm64': '-'}>
+CONFIG_PM_AUTOSLEEP                             policy<{'arm64': 'y'}>
+CONFIG_PM_WAKELOCKS_LIMIT                       policy<{'arm64': '0'}>
 CONFIG_POWER_RESET_HISI                         policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_LINKSTATION                  policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_OCELOT_RESET                 policy<{'arm64': '-'}>
@@ -1327,6 +1335,7 @@ CONFIG_QCOM_HFPLL                               policy<{'arm64': 'y'}>
 CONFIG_QCOM_HIDMA                               policy<{'arm64': 'y'}>
 CONFIG_QCOM_HIDMA_MGMT                          policy<{'arm64': 'y'}>
 CONFIG_QCOM_INLINE_CRYPTO_ENGINE                policy<{'arm64': 'y'}>
+CONFIG_QCOM_KVM_ENABLED                         policy<{'arm64': 'n'}>
 CONFIG_QCOM_MEMORY_DUMP_V2                      policy<{'arm64': 'y'}>
 CONFIG_QCOM_MEM_BUF                             policy<{'arm64': 'y'}>
 CONFIG_QCOM_MEM_BUF_DEV                         policy<{'arm64': 'y'}>
@@ -1334,6 +1343,7 @@ CONFIG_QCOM_MPM                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_PANEL_EVENT_NOTIFIER                policy<{'arm64': 'm'}>
 CONFIG_QCOM_PDR_HELPERS                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_PMIC_PDCHARGER_ULOG                 policy<{'arm64': 'n'}>
+CONFIG_QCOM_QMI_COOLING                         policy<{'arm64': 'n'}>
 CONFIG_QCOM_QMI_HELPERS                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_QPS615_PCIE_SWITCH                  policy<{'arm64': 'y'}>
 CONFIG_QCOM_RPMPD                               policy<{'arm64': 'y'}>
@@ -1355,6 +1365,8 @@ CONFIG_QCS_GCC_404                              policy<{'arm64': 'y'}>
 CONFIG_QORIQ_CPUFREQ                            policy<{'arm64': '-'}>
 CONFIG_QORIQ_THERMAL                            policy<{'arm64': '-'}>
 CONFIG_QTEE_SHM_BRIDGE                          policy<{'arm64': 'y'}>
+CONFIG_QTI_BCL_PMIC5                            policy<{'arm64': 'n'}>
+CONFIG_QTI_DEVFREQ_CDEV                         policy<{'arm64': 'n'}>
 CONFIG_QTI_TZ_LOG                               policy<{'arm64': 'm'}>
 CONFIG_RAVB                                     policy<{'arm64': '-'}>
 CONFIG_RCAR_DMAC                                policy<{'arm64': '-'}>
@@ -1760,6 +1772,7 @@ CONFIG_SPRD_THERMAL                             policy<{'arm64': '-'}>
 CONFIG_SPRD_TIMER                               policy<{'arm64': '-'}>
 CONFIG_SPRD_UMS512_CLK                          policy<{'arm64': '-'}>
 CONFIG_SPRD_WATCHDOG                            policy<{'arm64': '-'}>
+CONFIG_STACKDEPOT_ALWAYS_INIT                   policy<{'arm64': 'y'}>
 CONFIG_STM32_ADC                                policy<{'arm64': '-'}>
 CONFIG_STM32_ADC_CORE                           policy<{'arm64': '-'}>
 CONFIG_STM32_DAC                                policy<{'arm64': '-'}>
@@ -1850,6 +1863,7 @@ CONFIG_TEGRA_MC                                 policy<{'arm64': '-'}>
 CONFIG_TEGRA_SOCTHERM                           policy<{'arm64': '-'}>
 CONFIG_TEGRA_TIMER                              policy<{'arm64': '-'}>
 CONFIG_TEGRA_WATCHDOG                           policy<{'arm64': '-'}>
+CONFIG_THERMAL_EMERGENCY_POWEROFF_DELAY_MS      policy<{'arm64': '10000'}>
 CONFIG_THUNDERX2_PMU                            policy<{'arm64': '-'}>
 CONFIG_TIMER_IMX_SYS_CTR                        policy<{'arm64': '-'}>
 CONFIG_TI_AM335X_ADC                            policy<{'arm64': '-'}>
@@ -1882,6 +1896,8 @@ CONFIG_TI_SCI_PM_DOMAINS                        policy<{'arm64': '-'}>
 CONFIG_TI_SCI_PROTOCOL                          policy<{'arm64': '-'}>
 CONFIG_TI_SYSC                                  policy<{'arm64': '-'}>
 CONFIG_TI_SYSCON_CLK                            policy<{'arm64': '-'}>
+CONFIG_TOUCHSCREEN_GOODIX_BERLIN_I2C            policy<{'arm64': 'n'}>
+CONFIG_TOUCHSCREEN_GOODIX_BERLIN_SPI            policy<{'arm64': 'n'}>
 CONFIG_TOUCHSCREEN_SUN4I                        policy<{'arm64': '-'}>
 CONFIG_TOUCHSCREEN_TI_AM335X_TSC                policy<{'arm64': '-'}>
 CONFIG_TURRIS_MOX_RWTM                          policy<{'arm64': '-'}>
@@ -1898,6 +1914,7 @@ CONFIG_USB_EHCI_HCD_NPCM7XX                     policy<{'arm64': '-'}>
 CONFIG_USB_EHCI_HCD_ORION                       policy<{'arm64': '-'}>
 CONFIG_USB_EHCI_TEGRA                           policy<{'arm64': '-'}>
 CONFIG_USB_EMXX                                 policy<{'arm64': '-'}>
+CONFIG_USB_F_QDSS                               policy<{'arm64': 'n'}>
 CONFIG_USB_MTU3                                 policy<{'arm64': '-'}>
 CONFIG_USB_MTU3_DEBUG                           policy<{'arm64': '-'}>
 CONFIG_USB_MTU3_DUAL_ROLE                       policy<{'arm64': '-'}>
