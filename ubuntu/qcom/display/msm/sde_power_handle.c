@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"[drm:%s:%d]: " fmt, __func__, __LINE__
@@ -139,8 +139,8 @@ static int sde_power_parse_dt_supply(struct platform_device *pdev,
 			goto error;
 		}
 
-		strscpy(mp->vreg_config[i].vreg_name, st,
-			sizeof(mp->vreg_config[i].vreg_name));
+		strlcpy(mp->vreg_config[i].vreg_name, st,
+					sizeof(mp->vreg_config[i].vreg_name));
 
 		rc = of_property_read_u32(supply_node,
 					"qcom,supply-min-voltage", &tmp);
@@ -268,8 +268,8 @@ static int sde_power_parse_dt_clock(struct platform_device *pdev,
 	for (i = 0; i < num_clk; i++) {
 		of_property_read_string_index(pdev->dev.of_node, "clock-names",
 							i, &clock_name);
-		strscpy(mp->clk_config[i].clk_name, clock_name,
-			sizeof(mp->clk_config[i].clk_name));
+		strlcpy(mp->clk_config[i].clk_name, clock_name,
+				sizeof(mp->clk_config[i].clk_name));
 
 		of_property_read_u32_index(pdev->dev.of_node, "clock-rate",
 							i, &clock_rate);
@@ -718,7 +718,7 @@ int sde_power_resource_init(struct platform_device *pdev,
 		goto clkmmrm_err;
 	}
 
-	rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk);
+	rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk, &pdev->dev);
 	if (rc) {
 		pr_err("clock set rate failed rc=%d\n", rc);
 		goto clkset_err;
@@ -820,7 +820,7 @@ static void sde_power_mmrm_reserve(struct sde_power_handle *phandle)
 				MMRM_CLIENT_DATA_FLAG_RESERVE_ONLY;
 
 			SDE_ATRACE_BEGIN("sde_clk_set_rate");
-			msm_dss_single_clk_set_rate(&mp->clk_config[i]);
+			msm_dss_single_clk_set_rate(&mp->clk_config[i], phandle->dev);
 			SDE_ATRACE_END("sde_clk_set_rate");
 			break;
 		}
@@ -976,8 +976,8 @@ int sde_power_clk_reserve_rate(struct sde_power_handle *phandle, char *clock_nam
 
 	mutex_lock(&phandle->phandle_lock);
 	phandle->mmrm_reserve.clk_rate = rate;
-	strscpy(phandle->mmrm_reserve.clk_name, clock_name,
-		sizeof(phandle->mmrm_reserve.clk_name));
+	strlcpy(phandle->mmrm_reserve.clk_name, clock_name,
+			sizeof(phandle->mmrm_reserve.clk_name));
 	mutex_unlock(&phandle->phandle_lock);
 
 	return 0;
@@ -1027,7 +1027,8 @@ int sde_power_clk_set_rate(struct sde_power_handle *phandle, char *clock_name,
 				clock_name, rate, flags);
 
 			SDE_ATRACE_BEGIN("sde_clk_set_rate");
-			rc = msm_dss_single_clk_set_rate(&mp->clk_config[i]);
+			rc = msm_dss_single_clk_set_rate(&mp->clk_config[i],
+							phandle->dev);
 			SDE_ATRACE_END("sde_clk_set_rate");
 			break;
 		}
@@ -1127,7 +1128,7 @@ struct sde_power_event *sde_power_handle_register_event(
 	event->event_type = event_type;
 	event->cb_fnc = cb_fnc;
 	event->usr = usr;
-	strscpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
+	strlcpy(event->client_name, client_name, MAX_CLIENT_NAME_LEN);
 	event->active = true;
 
 	mutex_lock(&phandle->phandle_lock);

@@ -260,7 +260,7 @@ static int dp_parser_gpio(struct dp_parser *parser)
 			continue;
 		}
 
-		strscpy(mp->gpio_config[i].gpio_name, dp_gpios[i],
+		strlcpy(mp->gpio_config[i].gpio_name, dp_gpios[i],
 			sizeof(mp->gpio_config[i].gpio_name));
 
 		mp->gpio_config[i].value = 0;
@@ -626,16 +626,14 @@ static int dp_parser_clock(struct dp_parser *parser)
 				core_clk_index < core_clk_count) {
 			struct dss_clk *clk =
 				&core_power->clk_config[core_clk_index];
-			strscpy(clk->clk_name, clk_name,
-				sizeof(clk->clk_name));
+			strlcpy(clk->clk_name, clk_name, sizeof(clk->clk_name));
 			clk->type = DSS_CLK_AHB;
 			core_clk_index++;
 		} else if (dp_parser_check_prefix(link_clk, clk_name) &&
 			   link_clk_index < link_clk_count) {
 			struct dss_clk *clk =
 				&link_power->clk_config[link_clk_index];
-			strscpy(clk->clk_name, clk_name,
-				sizeof(clk->clk_name));
+			strlcpy(clk->clk_name, clk_name, sizeof(clk->clk_name));
 			link_clk_index++;
 			clock_mmrm = 0;
 			of_property_read_u32_index(dev->of_node, "clock-mmrm", i, &clock_mmrm);
@@ -651,8 +649,7 @@ static int dp_parser_clock(struct dp_parser *parser)
 			   strm0_clk_index < strm0_clk_count) {
 			struct dss_clk *clk =
 				&strm0_power->clk_config[strm0_clk_index];
-			strscpy(clk->clk_name, clk_name,
-				sizeof(clk->clk_name));
+			strlcpy(clk->clk_name, clk_name, sizeof(clk->clk_name));
 			strm0_clk_index++;
 
 			clk->type = DSS_CLK_PCLK;
@@ -660,8 +657,7 @@ static int dp_parser_clock(struct dp_parser *parser)
 			   strm1_clk_index < strm1_clk_count) {
 			struct dss_clk *clk =
 				&strm1_power->clk_config[strm1_clk_index];
-			strscpy(clk->clk_name, clk_name,
-				sizeof(clk->clk_name));
+			strlcpy(clk->clk_name, clk_name, sizeof(clk->clk_name));
 			strm1_clk_index++;
 
 			clk->type = DSS_CLK_PCLK;

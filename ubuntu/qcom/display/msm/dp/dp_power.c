@@ -307,6 +307,7 @@ static int dp_power_park_module(struct dp_power_private *power, enum dp_pm_type 
 	struct clk *clk = NULL;
 	int rc = 0;
 	bool *parked;
+	struct device *dev = &power->pdev->dev;
 
 	mp = &power->parser->mp[module];
 
@@ -341,7 +342,7 @@ static int dp_power_park_module(struct dp_power_private *power, enum dp_pm_type 
 	}
 
 	mp->clk_config->rate = XO_CLK_KHZ;
-	rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk);
+	rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk, dev);
 	if (rc) {
 		DP_ERR("failed to set clk rate.\n");
 		goto exit;
@@ -359,6 +360,7 @@ static int dp_power_clk_set_rate(struct dp_power_private *power,
 {
 	int rc = 0;
 	struct dss_module_power *mp;
+	struct device *dev;
 
 	if (!power) {
 		DP_ERR("invalid power data\n");
@@ -367,9 +369,9 @@ static int dp_power_clk_set_rate(struct dp_power_private *power,
 	}
 
 	mp = &power->parser->mp[module];
-
+	dev = &power->pdev->dev;
 	if (enable) {
-		rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk);
+		rc = msm_dss_clk_set_rate(mp->clk_config, mp->num_clk, dev);
 		if (rc) {
 			DP_ERR("failed to set clks rate.\n");
 			goto exit;

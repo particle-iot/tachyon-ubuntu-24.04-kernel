@@ -1371,44 +1371,27 @@ int msm_framebuffer_set_cache_hint(struct drm_framebuffer *fb,
 int msm_framebuffer_get_cache_hint(struct drm_framebuffer *fb,
 		u32 *flags, u32 *rd_type, u32 *wr_type);
 
-struct drm_fb_helper *msm_fbdev_init(struct drm_device *dev);
-void msm_fbdev_free(struct drm_device *dev);
+static inline struct drm_fb_helper *msm_fbdev_init(struct drm_device *dev)
+{
+	return NULL;
+}
+static inline void msm_fbdev_free(struct drm_device *dev)
+{
+}
 
-struct hdmi;
-#if IS_ENABLED(CONFIG_DRM_MSM_HDMI)
-int msm_hdmi_modeset_init(struct hdmi *hdmi, struct drm_device *dev,
-		struct drm_encoder *encoder);
-void __init msm_hdmi_register(void);
-void __exit msm_hdmi_unregister(void);
-#else
 static inline void __init msm_hdmi_register(void)
 {
 }
 static inline void __exit msm_hdmi_unregister(void)
 {
 }
-#endif /* CONFIG_DRM_MSM_HDMI */
 
-struct msm_edp;
-#if IS_ENABLED(CONFIG_DRM_MSM_EDP)
-void __init msm_edp_register(void);
-void __exit msm_edp_unregister(void);
-int msm_edp_modeset_init(struct msm_edp *edp, struct drm_device *dev,
-		struct drm_encoder *encoder);
-#else
 static inline void __init msm_edp_register(void)
 {
 }
 static inline void __exit msm_edp_unregister(void)
 {
 }
-
-static inline int msm_edp_modeset_init(struct msm_edp *edp,
-		struct drm_device *dev, struct drm_encoder *encoder)
-{
-	return -EINVAL;
-}
-#endif /* CONFIG_DRM_MSM_EDP */
 
 struct msm_dsi;
 
@@ -1441,17 +1424,12 @@ int msm_dsi_modeset_init(struct msm_dsi *msm_dsi, struct drm_device *dev,
 			 struct drm_encoder *encoder);
 #endif /* CONFIG_DRM_MSM_DSI */
 
-#if IS_ENABLED(CONFIG_DRM_MSM_MDP5)
-void __init msm_mdp_register(void);
-void __exit msm_mdp_unregister(void);
-#else
 static inline void __init msm_mdp_register(void)
 {
 }
 static inline void __exit msm_mdp_unregister(void)
 {
 }
-#endif /* CONFIG_DRM_MSM_MDP5 */
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 int msm_debugfs_late_init(struct drm_device *dev);

@@ -5344,6 +5344,7 @@ static int _sde_hardware_pre_caps(struct sde_mdss_cfg *sde_cfg, uint32_t hw_rev)
 		sde_cfg->mdss_hw_block_size = 0x158;
 		set_bit(SDE_FEATURE_RC_LM_FLUSH_OVERRIDE, sde_cfg->features);
 		sde_cfg->cwb_virtual_mixers_mask = 0x2;
+		set_bit(SDE_FEATURE_HW_VSYNC_TS, sde_cfg->features);
 	} else if (IS_DIWALI_TARGET(hw_rev)) {
 		sde_cfg->allowed_dsc_reservation_switch = SDE_DP_DSC_RESERVATION_SWITCH;
 		set_bit(SDE_FEATURE_DEDICATED_CWB, sde_cfg->features);
