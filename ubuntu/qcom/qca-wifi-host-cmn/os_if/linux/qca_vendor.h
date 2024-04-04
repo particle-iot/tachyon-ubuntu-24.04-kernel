@@ -5903,6 +5903,14 @@ enum qca_wlan_vendor_attr_config {
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_COEX_TRAFFIC_SHAPING_MODE = 105,
 
+	/* 8-bit unsigned value to configure BTM support.
+	 *
+	 * The attribute is applicable only for STA interface. Uses enum
+	 * qca_wlan_btm_support values. This configuration is not allowed in
+	 * connected state.
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_BTM_SUPPORT = 107,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
@@ -15740,12 +15748,25 @@ enum qca_wlan_vendor_attr_scs_rule_config {
  * CTL group but user can choose up to 3 SAR set index only, as the top half
  * of the SAR index (0 to 2) is used for non DBS purpose and the bottom half of
  * the SAR index (3 to 5) is used for DBS mode.
+ *
+ * @QCA_WLAN_VENDOR_SAR_VERSION_4: The firmware supports SAR version 4,
+ * known as SAR Smart Transmit (STX) mode. STX is time averaging algorithmic
+ * for power limit computation in collaboration with WWAN.
+ * In STX mode, firmware has 41 indexes and there is no ctl grouping uses.
+ *
+ * @QCA_WLAN_VENDOR_SAR_VERSION_5: The firmware supports SAR version 5,
+ * known as TAS (Time Averaging SAR) mode. In TAS mode, as name implies
+ * instead of fixed static SAR power limit firmware uses time averaging
+ * to adjust the SAR limit dynamically. It is wlan soc standalone mechanism.
+ * In this mode firmware has up to 43 indexes.
  */
 enum qca_wlan_vendor_sar_version {
 	QCA_WLAN_VENDOR_SAR_VERSION_INVALID = 0,
 	QCA_WLAN_VENDOR_SAR_VERSION_1 = 1,
 	QCA_WLAN_VENDOR_SAR_VERSION_2 = 2,
 	QCA_WLAN_VENDOR_SAR_VERSION_3 = 3,
+	QCA_WLAN_VENDOR_SAR_VERSION_4 = 4,
+	QCA_WLAN_VENDOR_SAR_VERSION_5 = 5,
 };
 
 /**
@@ -17498,5 +17519,25 @@ enum qca_wlan_vendor_attr_tpc_links {
 	QCA_WLAN_VENDOR_ATTR_TPC_LINKS_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_TPC_LINKS_MAX =
 	QCA_WLAN_VENDOR_ATTR_TPC_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_btm_support: BTM support configuration
+ *
+ * @QCA_WLAN_BTM_SUPPORT_DEFAULT: Restore default BTM support policy. The driver
+ * follows the BSS Transition bit in the Extended Capabilities element from the
+ * connect request IEs with the default BTM support policy.
+ *
+ * @QCA_WLAN_BTM_SUPPORT_DISABLE: Disable BTM support for the subsequent
+ * (re)association attempts. The driver shall restore the default BTM support
+ * policy during the first disconnection after successful association. When this
+ * configuration is enabled, the driver shall overwrite the BSS Transition bit
+ * as zero in the Extended Capabilities element while sending (Re)Association
+ * Request frames. Also, the driver shall drop the BTM frames from userspace and
+ * the connected AP when this configuration is enabled.
+ */
+enum qca_wlan_btm_support {
+	QCA_WLAN_BTM_SUPPORT_DEFAULT = 0,
+	QCA_WLAN_BTM_SUPPORT_DISABLE = 1,
 };
 #endif

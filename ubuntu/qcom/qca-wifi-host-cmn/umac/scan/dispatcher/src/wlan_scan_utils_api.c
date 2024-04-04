@@ -126,6 +126,25 @@ util_get_last_scan_time(struct wlan_objmgr_vdev *vdev)
 		return 0;
 }
 
+#ifdef WLAN_FEATURE_11BE_MLO
+uint32_t util_scan_entry_t2lm_len(struct scan_cache_entry *scan_entry)
+{
+	int i = 0;
+	uint32_t len = 0;
+
+	if (!scan_entry || !scan_entry->ie_list.t2lm[0])
+		return 0;
+
+	for (i = 0; i < WLAN_MAX_T2LM_IE; i++) {
+		if (scan_entry->ie_list.t2lm[i])
+			len += scan_entry->ie_list.t2lm[i][TAG_LEN_POS] +
+				sizeof(struct ie_header);
+	}
+
+	return len;
+}
+#endif
+
 bool util_is_rsnxe_h2e_capable(const uint8_t *rsnxe)
 {
 	const uint8_t *rsnxe_caps;
@@ -709,13 +728,13 @@ util_scan_get_phymode_6g(struct wlan_objmgr_pdev *pdev,
 #endif
 
 static inline
-uint32_t util_scan_sec_chan_freq_from_htinfo(struct wlan_ie_htinfo_cmn *htinfo,
-					     uint32_t primary_chan_freq)
+uint32_t util_scan_ccfs0_from_htinfo(struct wlan_ie_htinfo_cmn *htinfo,
+				     uint32_t primary_chan_freq)
 {
 	if (htinfo->hi_extchoff == WLAN_HTINFO_EXTOFFSET_ABOVE)
-		return primary_chan_freq + WLAN_CHAN_SPACING_20MHZ;
+		return primary_chan_freq + WLAN_CHAN_SPACING_20MHZ / 2;
 	else if (htinfo->hi_extchoff == WLAN_HTINFO_EXTOFFSET_BELOW)
-		return primary_chan_freq - WLAN_CHAN_SPACING_20MHZ;
+		return primary_chan_freq - WLAN_CHAN_SPACING_20MHZ / 2;
 
 	return 0;
 }
@@ -752,8 +771,8 @@ util_scan_get_phymode_5g(struct wlan_objmgr_pdev *pdev,
 		phymode = WLAN_PHYMODE_11NA_HT20;
 
 	scan_params->channel.cfreq0 =
-		util_scan_sec_chan_freq_from_htinfo(htinfo,
-						scan_params->channel.chan_freq);
+		util_scan_ccfs0_from_htinfo(htinfo,
+					    scan_params->channel.chan_freq);
 
 	if (util_scan_entry_vhtcap(scan_params) && vhtop) {
 		switch (vhtop->vht_op_chwidth) {
@@ -904,8 +923,8 @@ util_scan_get_phymode_2g(struct scan_cache_entry *scan_params)
 		return phymode;
 
 	scan_params->channel.cfreq0 =
-		util_scan_sec_chan_freq_from_htinfo(htinfo,
-						scan_params->channel.chan_freq);
+		util_scan_ccfs0_from_htinfo(htinfo,
+					    scan_params->channel.chan_freq);
 
 	if (util_scan_entry_vhtcap(scan_params) && vhtop) {
 		switch (vhtop->vht_op_chwidth) {
@@ -2274,8 +2293,11 @@ util_get_ml_bv_partner_link_info(struct wlan_objmgr_pdev *pdev,
 	}
 
 	scan_entry->ml_info.num_links = link_idx;
-	if (!offset)
+	if (!offset ||
+	    (offset + sizeof(struct wlan_ml_bv_linfo_perstaprof) >= ml_ie_len)) {
+		scm_err_rl("incorrect offset value %d", offset);
 		return;
+	}
 
 	/* TODO: loop through all the STA info fields */
 
@@ -2319,6 +2341,10 @@ util_get_ml_bv_partner_link_info(struct wlan_objmgr_pdev *pdev,
 
 		/* Skip STA Info Length field */
 		offset += perstaprof_stainfo_len;
+		if (offset >= ml_ie_len) {
+			scm_err_rl("incorrect offset value %d", offset);
+			return;
+		}
 
 		/*
 		 * To point to the ie_list offset move past the STA Info
@@ -3321,6 +3347,9 @@ static bool util_scan_is_split_prof_found(uint8_t *next_elem,
 {
 	uint8_t *next_mbssid_elem;
 
+	if ((next_elem + MIN_IE_LEN + VALID_ELEM_LEAST_LEN) > (ie + ielen))
+		return false;
+
 	if (next_elem[0] == WLAN_ELEMID_MULTIPLE_BSSID) {
 		if ((next_elem[TAG_LEN_POS] >= VALID_ELEM_LEAST_LEN) &&
 		    (next_elem[SUBELEM_DATA_POS_FROM_MBSSID] !=
@@ -3394,6 +3423,15 @@ static QDF_STATUS util_scan_parse_mbssid(struct wlan_objmgr_pdev *pdev,
 					  ielen - (pos - ie));
 		if (!mbssid_elem)
 			break;
+
+		/*
+		 * The max_bssid_indicator field is mandatory, therefore the
+		 * length of the MBSSID element should atleast be 1.
+		 */
+		if (!mbssid_elem[TAG_LEN_POS]) {
+			scm_debug_rl("MBSSID IE is of length zero");
+			break;
+		}
 
 		mbssid_info.profile_count =
 			(1 << mbssid_elem[MBSSID_INDICATOR_POS]);
@@ -3959,7 +3997,8 @@ util_scan_parse_beacon_frame(struct wlan_objmgr_pdev *pdev,
 		mbssid_ie = util_scan_find_ie(WLAN_ELEMID_MULTIPLE_BSSID,
 					      (uint8_t *)&bcn->ie, ie_len);
 		if (mbssid_ie) {
-			if (mbssid_ie[TAG_LEN_POS] < VALID_ELEM_LEAST_LEN) {
+			/* some APs announce the MBSSID ie_len as 1 */
+			if (mbssid_ie[TAG_LEN_POS] < 1) {
 				scm_debug("MBSSID IE length is wrong %d",
 					  mbssid_ie[TAG_LEN_POS]);
 				return status;
