@@ -964,7 +964,7 @@ void kgsl_get_memory_usage(char *name, size_t name_size, uint64_t memflags)
 	for (i = 0; memtype_attrs[i]; i++) {
 		memtype = container_of(memtype_attrs[i], struct kgsl_memtype, attr);
 		if (memtype->type == type) {
-			strscpy(name, memtype->attr.name, name_size);
+			strlcpy(name, memtype->attr.name, name_size);
 			return;
 		}
 	}
