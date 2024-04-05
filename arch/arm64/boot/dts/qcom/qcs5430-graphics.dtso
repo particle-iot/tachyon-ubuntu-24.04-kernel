@@ -15,10 +15,16 @@
 #include <dt-bindings/soc/qcom,rpmh-rsc.h>
 #include <dt-bindings/thermal/thermal.h>
 
-#include "qcm6490-graphics.dtsi"
-#include "qcm6490-graphics-pwrlevels.dtsi"
+#include "qcs5430-graphics.dtsi"
+#include "qcs5430-graphics-pwrlevels.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. QCM6490 IDP";
-	compatible = "qcom,qcm6490-idp", "qcom,qcm6490";
+	model = "Qualcomm Technologies, Inc. qcs5430 rb3gen2 platform";
+	compatible = "qcom,qcs5430-fp1-addons-rb3gen2",
+			"qcom,qcs5430-fp1-addons-rb3gen2-vision-mezz",
+			"qcom,qcs5430-fp1p5-addons-rb3gen2",
+			"qcom,qcs5430-fp1p5-addons-rb3gen2-vision-mezz",
+			"qcom,qcs5430-fp2-addons-rb3gen2",
+			"qcom,qcs5430-fp2-addons-rb3gen2-vision-mezz",
+			"qcom,qcs5430";
 };

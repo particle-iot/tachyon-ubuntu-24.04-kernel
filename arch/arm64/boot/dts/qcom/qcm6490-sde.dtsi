@@ -21,6 +21,35 @@
 		clock-names = "mdp_core_clk";
 	};
 
+	mdp_opp_table: opp-table {
+		compatible = "operating-points-v2";
+
+		opp-200000000 {
+			opp-hz = /bits/ 64 <200000000>;
+			required-opps = <&rpmhpd_opp_low_svs>;
+		};
+
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			required-opps = <&rpmhpd_opp_svs>;
+		};
+
+		opp-380000000 {
+			opp-hz = /bits/ 64 <380000000>;
+			required-opps = <&rpmhpd_opp_svs_l1>;
+		};
+
+		opp-506666667 {
+			opp-hz = /bits/ 64 <506666667>;
+			required-opps = <&rpmhpd_opp_nom>;
+		};
+
+		opp-608000000 {
+			opp-hz = /bits/ 64 <608000000>;
+			required-opps = <&rpmhpd_opp_turbo>;
+		};
+	};
+
 	mdss_mdp0: qcom,mdss_mdp0@ae00000 {
 		compatible = "qcom,sde-kms";
 		reg = <0 0x0ae00000 0 0x84000>,
@@ -49,6 +78,7 @@
 				<&gem_noc MASTER_APPSS_PROC 0 &cnoc2 SLAVE_DISPLAY_CFG 0>;
 		interconnect-names = "qcom,sde-data-bus0", "qcom,sde-ebi-bus", "qcom,sde-reg-bus";
 		qcom,sde-ib-bw-vote = <2500000 0 800000>;
+		operating-points-v2 = <&mdp_opp_table>;
 
 		/* interrupt config */
 		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;

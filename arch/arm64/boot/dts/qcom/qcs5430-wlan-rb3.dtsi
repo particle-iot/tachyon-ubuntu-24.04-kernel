@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 &soc {
 icnss2: qcom,wcn6750 {
@@ -52,22 +52,22 @@ icnss2: qcom,wcn6750 {
 		qcom,capin=<0x20>;
 		tsens = "quiet-therm";
 		qcom,wlan-msa-fixed-region = <&wlan_fw_mem>;
-		vdd-cx-mx-supply = <&vreg_s7b_0p9>;
+		vdd-cx-mx-supply = <&vreg_s7b_0p972>;
 		qcom,vdd-cx-mx-config = <824000 1120000 0 0 1>;
-		vdd-1.8-xo-supply = <&vreg_s1b_1p8>;
+		vdd-1.8-xo-supply = <&vreg_s1b_1p872>;
 		qcom,vdd-1.8-xo-config = <1872000 2040000 0 0 0>;
-		vdd-1.3-rfa-supply = <&vreg_s8b_1p2>;
+		vdd-1.3-rfa-supply = <&vreg_s8b_1p272>;
 		qcom,vdd-1.3-rfa-config = <1256000 1500000 0 0 0>;
 		qcom,smem-states = <&wlan_smp2p_out 0>;
 		qcom,smem-state-names = "wlan-smp2p-out";
 
 		icnss_cdev_apss: qcom,icnss_cdev1 {
 				#cooling-cells = <2>;
-		 };
+		};
 
 		icnss_cdev_wpss: qcom,icnss_cdev2 {
 				#cooling-cells = <2>;
-		 };
+		};
 
 		qcom,smp2p_map_wlan_1_in {
 			interrupts-extended = <&wlan_smp2p_in 0 0>,
