@@ -1207,7 +1207,15 @@ static int qca_recv_event(struct hci_dev *hdev, struct sk_buff *skb)
 		 * vendor command).
 		 */
 
-		if (hdr->evt == HCI_EV_VENDOR)
+		/* For the WCN6750/WCN6855/WCN7850, like the WCN3990, the
+		 * vendor command for a baudrate change command isn't sent as
+		 * synchronous HCI command, the controller sends the corresponding
+		 * command complete event with the new baudrate. The event is
+		 * received and properly decoded after changing the baudrate of
+		 * the host port. It needs to be dropped.
+		 */
+
+		if (hdr->evt == HCI_EV_VENDOR || hdr->evt == HCI_EV_CMD_COMPLETE)
 			complete(&qca->drop_ev_comp);
 
 		kfree_skb(skb);
@@ -1359,10 +1367,10 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
 	case QCA_WCN3991:
 	case QCA_WCN3998:
 	case QCA_WCN6855:
-	case QCA_WCN7850:
 		usleep_range(1000, 10000);
 		break;
 	case QCA_WCN6750:
+	case QCA_WCN7850:
 		msleep(30);
 		break;
 
@@ -1500,6 +1508,9 @@ static int qca_set_speed(struct hci_uart *hu, enum qca_speed_type speed_type)
 
 		switch (soc_type) {
 		case QCA_WCN3990:
+		case QCA_WCN6750:
+		case QCA_WCN6855:
+		case QCA_WCN7850:
 			reinit_completion(&qca->drop_ev_comp);
 			set_bit(QCA_DROP_VENDOR_EVENT, &qca->flags);
 			break;
@@ -1534,6 +1545,9 @@ error:
 
 		switch (soc_type) {
 		case QCA_WCN3990:
+		case QCA_WCN6750:
+		case QCA_WCN6855:
+		case QCA_WCN7850:
 			/* Wait for the controller to send the vendor event
 			 * for the baudrate change command.
 			 */
@@ -2163,6 +2177,7 @@ static void qca_power_shutdown(struct hci_uart *hu)
 
 	case QCA_WCN6750:
 	case QCA_WCN6855:
+	case QCA_WCN7850:
 		gpiod_set_value_cansleep(qcadev->bt_en, 0);
 		msleep(100);
 		qca_regulator_disable(qcadev);
