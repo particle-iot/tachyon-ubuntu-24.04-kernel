@@ -526,6 +526,90 @@
 		 };
 	};
 
+	remoteproc_gpdsp0: remoteproc@20c00000 {
+		compatible = "qcom,sa8775p-gpdsp0-pas";
+		reg = <0x0 0x20c00000 0x0 0x10000>;
+
+		interrupts-extended = <&intc GIC_SPI 768 IRQ_TYPE_EDGE_RISING>,
+				      <&smp2p_gpdsp0_in 0 0>,
+				      <&smp2p_gpdsp0_in 2 0>,
+				      <&smp2p_gpdsp0_in 1 0>,
+				      <&smp2p_gpdsp0_in 3 0>;
+		interrupt-names = "wdog", "fatal", "handover",
+				  "ready", "stop-ack";
+
+		clocks = <&rpmhcc RPMH_CXO_CLK>;
+		clock-names = "xo";
+
+		power-domains = <&rpmhpd RPMHPD_CX>,
+				<&rpmhpd RPMHPD_MXC>;
+		power-domain-names = "cx", "mxc";
+
+		interconnects = <&gpdsp_anoc MASTER_DSP0 0 &config_noc SLAVE_CLK_CTL 0>;
+
+		memory-region = <&pil_gdsp0_mem>;
+
+		qcom,qmp = <&aoss_qmp>;
+
+		qcom,smem-states = <&smp2p_gpdsp0_out 0>;
+		qcom,smem-state-names = "stop";
+
+		status = "disabled";
+
+		glink-edge {
+			interrupts-extended = <&ipcc IPCC_CLIENT_GPDSP0
+						     IPCC_MPROC_SIGNAL_GLINK_QMP
+						     IRQ_TYPE_EDGE_RISING>;
+			mboxes = <&ipcc IPCC_CLIENT_GPDSP0
+					IPCC_MPROC_SIGNAL_GLINK_QMP>;
+
+			label = "gpdsp0";
+			qcom,remote-pid = <17>;
+		};
+	};
+
+	remoteproc_gpdsp1: remoteproc@21c00000 {
+		compatible = "qcom,sa8775p-gpdsp1-pas";
+		reg = <0x0 0x21c00000 0x0 0x10000>;
+
+		interrupts-extended = <&intc GIC_SPI 624 IRQ_TYPE_EDGE_RISING>,
+				       <&smp2p_gpdsp1_in 0 0>,
+				       <&smp2p_gpdsp1_in 2 0>,
+				       <&smp2p_gpdsp1_in 1 0>,
+				       <&smp2p_gpdsp1_in 3 0>;
+		interrupt-names = "wdog", "fatal", "handover",
+				  "ready", "stop-ack";
+
+		clocks = <&rpmhcc RPMH_CXO_CLK>;
+		clock-names = "xo";
+
+		power-domains = <&rpmhpd RPMHPD_CX>,
+				<&rpmhpd RPMHPD_MXC>;
+		power-domain-names = "cx", "mxc";
+
+		interconnects = <&gpdsp_anoc MASTER_DSP1 0 &config_noc SLAVE_CLK_CTL 0>;
+
+		memory-region = <&pil_gdsp1_mem>;
+
+		qcom,qmp = <&aoss_qmp>;
+
+		qcom,smem-states = <&smp2p_gpdsp1_out 0>;
+		qcom,smem-state-names = "stop";
+
+		status = "disabled";
+
+		glink-edge {
+			interrupts-extended = <&ipcc IPCC_CLIENT_GPDSP1
+						     IPCC_MPROC_SIGNAL_GLINK_QMP
+						     IRQ_TYPE_EDGE_RISING>;
+			mboxes = <&ipcc IPCC_CLIENT_GPDSP1
+					IPCC_MPROC_SIGNAL_GLINK_QMP>;
+
+			label = "gpdsp1";
+			qcom,remote-pid = <18>;
+		};
+	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -731,6 +815,54 @@
 		};
 
 		smp2p_cdsp1_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
+
+	smp2p-gpdsp0 {
+		compatible = "qcom,smp2p";
+		qcom,smem = <617>, <616>;
+		interrupts-extended = <&ipcc IPCC_CLIENT_GPDSP0
+					     IPCC_MPROC_SIGNAL_SMP2P
+					     IRQ_TYPE_EDGE_RISING>;
+		mboxes = <&ipcc IPCC_CLIENT_GPDSP0
+				IPCC_MPROC_SIGNAL_SMP2P>;
+
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <17>;
+
+		smp2p_gpdsp0_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		smp2p_gpdsp0_in: slave-kernel {
+			qcom,entry-name = "slave-kernel";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+	};
+
+	smp2p-gpdsp1 {
+		compatible = "qcom,smp2p";
+		qcom,smem = <617>, <616>;
+		interrupts-extended = <&ipcc IPCC_CLIENT_GPDSP1
+					     IPCC_MPROC_SIGNAL_SMP2P
+					     IRQ_TYPE_EDGE_RISING>;
+		mboxes = <&ipcc IPCC_CLIENT_GPDSP1
+				IPCC_MPROC_SIGNAL_SMP2P>;
+
+		qcom,local-pid = <0>;
+		qcom,remote-pid = <18>;
+
+		smp2p_gpdsp1_out: master-kernel {
+			qcom,entry-name = "master-kernel";
+			#qcom,smem-state-cells = <1>;
+		};
+
+		smp2p_gpdsp1_in: slave-kernel {
 			qcom,entry-name = "slave-kernel";
 			interrupt-controller;
 			#interrupt-cells = <2>;
