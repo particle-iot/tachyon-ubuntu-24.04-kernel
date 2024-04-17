@@ -802,6 +802,19 @@ static void qca_get_nvm_name_by_board(char *fwname, size_t max_size,
 	}
 }
 
+static inline void qca_get_nvm_name_generic(struct qca_fw_config *cfg,
+					    const char *stem, u8 rom_ver, u16 bid)
+{
+	if (bid == 0x0)
+		snprintf(cfg->fwname, sizeof(cfg->fwname), "qca/%snv%02x.bin", stem, rom_ver);
+	else if (bid & 0xff00)
+		snprintf(cfg->fwname, sizeof(cfg->fwname),
+			 "qca/%snv%02x.b%x", stem, rom_ver, bid);
+	else
+		snprintf(cfg->fwname, sizeof(cfg->fwname),
+			 "qca/%snv%02x.b%02x", stem, rom_ver, bid);
+}
+
 int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 		   enum qca_btsoc_type soc_type, struct qca_btsoc_version ver,
 		   const char *firmware_name)
@@ -932,8 +945,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 						  "hpnv", soc_type, ver, rom_ver, boardid);
 			break;
 		case QCA_WCN7850:
-			qca_get_nvm_name_by_board(config.fwname, sizeof(config.fwname),
-				 "hmtnv", soc_type, ver, rom_ver, boardid);
+			qca_get_nvm_name_generic(&config, "hmt", rom_ver, boardid);
 			break;
 		default:
 			snprintf(config.fwname, sizeof(config.fwname),
