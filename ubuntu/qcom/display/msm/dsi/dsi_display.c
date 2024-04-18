@@ -5988,7 +5988,8 @@ static int dsi_display_init(struct dsi_display *display)
 
 	rc = component_add(&pdev->dev, &dsi_display_comp_ops);
 	if (rc) {
-		DSI_ERR("component add failed, rc=%d\n", rc);
+		if (rc != -EPROBE_DEFER)
+			DSI_ERR("component add failed, rc=%d\n", rc);
 		goto comp_add_fail;
 	}
 
