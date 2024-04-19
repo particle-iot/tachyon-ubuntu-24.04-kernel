@@ -6,6 +6,15 @@
 #include "sa8775p-dma-heaps.dtsi"
 
 / {
+	firmware {
+		qtee_shmbridge {
+			compatible = "qcom,tee-shared-memory-bridge";
+		};
+
+		qcom_smcinvoke {
+			compatible = "qcom,smcinvoke";
+		};
+	};
 
 };
 
