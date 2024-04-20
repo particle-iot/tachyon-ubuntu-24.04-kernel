@@ -573,6 +573,9 @@ int dwc3_event_buffers_setup(struct dwc3 *dwc)
 	if (!dwc->ev_buf)
 		return 0;
 
+	if (!dwc->ev_buf)
+		return 0;
+
 	evt = dwc->ev_buf;
 	evt->lpos = 0;
 	dwc3_writel(dwc->regs, DWC3_GEVNTADRLO(0),
@@ -601,6 +604,9 @@ void dwc3_event_buffers_cleanup(struct dwc3 *dwc)
 	 */
 	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
 	if (!(reg & DWC3_DSTS_DEVCTRLHLT))
+		return;
+
+	if (!dwc->ev_buf)
 		return;
 
 	evt = dwc->ev_buf;
