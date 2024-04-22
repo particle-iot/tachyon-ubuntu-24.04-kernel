@@ -64,4 +64,4 @@
 	};
 };
 
-#include "qcm8550-dma-heaps.dtsi"
+#include "qcs8550-dma-heaps.dtsi"
