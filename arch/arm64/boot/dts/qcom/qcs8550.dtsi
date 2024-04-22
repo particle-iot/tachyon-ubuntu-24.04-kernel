@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "sm8550.dtsi"
@@ -13,20 +13,24 @@
 		#size-cells = <2>;
 		ranges;
 
-		/*
-		 * There are 3 types of reserved memory regions here:
-		 * 1. Firmware related regions.
-		 *     This will be described as: reserved-region@address. Current
-		 * reserved-region may have reserved area which was not yet used,
-		 * release note of the firmware can have such kind of information.
-		 * 2. Firmware related which shared with kernel access.
-		 *     Each region will have a specific node with specific label
-		 * name for later phandle reference from other driver dt node. May
-		 * overlapping with above type regions.
+
+		/* These are 3 types of reserved memory regions here:
+		 * 1. Firmware related regions which aren't shared with kernel.
+		 *     The device tree source in kernel doesn't need to have node to
+		 * indicate the firmware related reserved information. OS bootloader
+		 * conveys the information by update device tree in runtime.
+		 *     This will be described as: UEFI saves the physical address of
+		 * the UEFI System Table to dts file's chosen node. Kernel read this
+		 * table and add reserved memory regions to efi config table. Current
+		 * reserved memory region may have reserved region which was not yet
+		 * used, release note of the firmware have such kind of information.
+		 * 2. Firmware related memory regions which are shared with Kernel.
+		 *     Each region has a specific node with specific label name for
+		 * later phandle reference from other driver dt node.
 		 * 3. PIL regions.
-		 *     PIL regions are allocated by kernel and assigned to subsystem
+		 *     PIL regions will be reserved and then assigned to subsystem
 		 * firmware later.
-		 * Here is a map for this platform:
+		 * Here is a reserved memory map for this platform:
 		 * 0x100000000 +------------------+
 		 *             |                  |
 		 *             | Firmware Related |
@@ -35,27 +39,25 @@
 		 *             |                  |
 		 *             | Kernel Available |
 		 *             |                  |
-		 *  0xA7000000 +------------------+
+		 *  0xa7000000 +------------------+
 		 *             |                  |
 		 *             |    PIL Region    |
 		 *             |                  |
-		 *  0x8A800000 +------------------+
+		 *  0x8a800000 +------------------+
 		 *             |                  |
 		 *             | Firmware Related |
 		 *             |                  |
 		 *  0x80000000 +------------------+
 		 * Note that:
-		 * 1. 0xA7000000 to 0xA8000000 was used by bootloader as well, not
-		 * suggest for other usage.
-		 * 2. Kernel start address was start at 0xA8000000.
+		 * 0xa7000000..0xA8000000 is used by bootloader, when kernel boot up,
+		 * it is available for kernel usage. This region is not suggested to
+		 * be used by kernel features like ramoops, suspend resume etc.
 		 */
 
-		/* Firmware related regions */
-		reserved-region@80000000 {
-			reg = <0x0 0x80000000 0x0 0xa800000>;
-			no-map;
-		};
-
+		/*
+		 * Firmware related regions, bootlader will possible reserve parts of
+		 * region from 0x80000000..0x8a800000.
+		 */
 		aop_image_mem: aop-image-region@81c00000 {
 			reg = <0x0 0x81c00000 0x0 0x60000>;
 			no-map;
@@ -155,14 +157,12 @@
 			no-map;
 		};
 
-		/* Firmware related regions */
+		/*
+		 * Firmware related regions, bootlader will possible reserve parts of
+		 * region from 0xd8000000..0x100000000.
+		 */
 		mpss_dsm_mem: mpss_dsm_region@d4d00000 {
 			reg = <0x0 0xd4d00000 0x0 0x3300000>;
-			no-map;
-		};
-
-		reserved-region@d8000000 {
-			reg = <0x0 0xd8000000 0x0 0x28000000>;
 			no-map;
 		};
 	};
