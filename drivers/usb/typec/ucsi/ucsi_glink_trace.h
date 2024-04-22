@@ -32,7 +32,7 @@ TRACE_EVENT(ucsi_glink,
 /* This part must be outside protection */
 
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../../drivers/usb/typec/ucsi
 
 #undef TRACE_INCLUDE_FILE
 #define TRACE_INCLUDE_FILE ucsi_glink_trace
