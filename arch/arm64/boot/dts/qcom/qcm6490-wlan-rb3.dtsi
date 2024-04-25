@@ -50,7 +50,7 @@ icnss2: qcom,wcn6750 {
 		qcom,fw-prefix;
 		qcom,wlan;
 		qcom,capin=<0x20>;
-		tsens = "quiet-therm";
+		tsens = "quiet-thermal";
 		qcom,wlan-msa-fixed-region = <&wlan_fw_mem>;
 		vdd-cx-mx-supply = <&vreg_s7b_0p972>;
 		qcom,vdd-cx-mx-config = <824000 1120000 0 0 1>;
