@@ -1708,6 +1708,28 @@
 			status = "disabled";
 		};
 
+		eud: eud@88e1000 {
+			compatible = "qcom,secure-eud";
+			reg = <0x0 0x088E1000 0x0 0x2000>,
+			      <0x0 0x088E3000 0x0 0x1000>;
+			interrupts-extended = <&pdc 11 IRQ_TYPE_LEVEL_HIGH>;
+
+			status = "disabled";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					eud_ep: endpoint {
+						remote-endpoint = <&usb0_role_switch>;
+					};
+				};
+			};
+
+		};
+
 		qupv3_id_0: geniqup@9c0000 {
 			compatible = "qcom,geni-se-qup";
 			reg = <0x0 0x9c0000 0x0 0x6000>;
@@ -5843,6 +5865,13 @@
 				iommus = <&apps_smmu 0x080 0x0>;
 				phys = <&usb_0_hsphy>, <&usb_0_qmpphy>;
 				phy-names = "usb2-phy", "usb3-phy";
+				role-switch;
+
+				port {
+					usb0_role_switch: endpoint {
+						remote-endpoint = <&eud_ep>;
+					};
+				};
 			};
 		};
 
