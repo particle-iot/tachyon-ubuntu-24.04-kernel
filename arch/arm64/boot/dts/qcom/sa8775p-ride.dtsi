@@ -484,6 +484,10 @@
 	};
 };
 
+&eud {
+	status = "okay";
+};
+
 &i2c11 {
 	clock-frequency = <400000>;
 	pinctrl-0 = <&qup_i2c11_default>;
