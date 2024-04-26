@@ -551,6 +551,10 @@
 	status = "okay";
 };
 
+&llcc {
+	status = "okay";
+};
+
 &tlmm {
 	ethernet0_default: ethernet0-default-state {
 		ethernet0_mdc: ethernet0-mdc-pins {
