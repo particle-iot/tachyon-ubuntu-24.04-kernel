@@ -438,7 +438,7 @@ static struct gdsc video_cc_mvs0_gdsc = {
 	},
 	.pwrsts = PWRSTS_OFF_ON,
 	.parent = &video_cc_mvs0c_gdsc.pd,
-	.flags = RETAIN_FF_ENABLE | POLL_CFG_GDSCR | HW_CTRL_TRIGGER,
+	.flags = RETAIN_FF_ENABLE | POLL_CFG_GDSCR | HW_CTRL,
 };
 
 static struct gdsc video_cc_mvs1c_gdsc = {
@@ -463,7 +463,7 @@ static struct gdsc video_cc_mvs1_gdsc = {
 	},
 	.pwrsts = PWRSTS_OFF_ON,
 	.parent = &video_cc_mvs1c_gdsc.pd,
-	.flags = RETAIN_FF_ENABLE | POLL_CFG_GDSCR | HW_CTRL_TRIGGER,
+	.flags = RETAIN_FF_ENABLE | POLL_CFG_GDSCR | HW_CTRL,
 };
 
 static struct clk_regmap *video_cc_sa8775p_clocks[] = {
