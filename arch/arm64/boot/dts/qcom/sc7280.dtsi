@@ -2400,6 +2400,7 @@
 				 <&apps_smmu 0x4e4 0x0011>;
 			interconnects = <&aggre2_noc MASTER_CRYPTO 0 &mc_virt SLAVE_EBI1 0>;
 			interconnect-names = "memory";
+			qcom,icc_bw = <12473>;
 		};
 
 		ipa: ipa@1e40000 {
