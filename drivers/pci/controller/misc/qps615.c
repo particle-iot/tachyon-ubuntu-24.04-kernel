@@ -238,3 +238,4 @@ module_init(qps615_i2c_init);
 MODULE_AUTHOR("Krishna Chaitanya Chundru <quic_krichai@quicinc.com>");
 MODULE_DESCRIPTION("QPS615 PCIE Switch driver");
 MODULE_LICENSE("GPL");
+MODULE_FIRMWARE("qcom/qps615.bin");
