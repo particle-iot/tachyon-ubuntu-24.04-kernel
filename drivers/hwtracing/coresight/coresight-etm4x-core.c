@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/acpi.h>
@@ -45,6 +46,7 @@
 #include "coresight-self-hosted-trace.h"
 #include "coresight-syscfg.h"
 #include "coresight-trace-id.h"
+#include "coresight-common.h"
 
 static int boot_enable;
 module_param(boot_enable, int, 0444);
@@ -784,8 +786,12 @@ static int etm4_enable_perf(struct coresight_device *csdev,
 	}
 	drvdata->trcid = (u8)trace_id;
 
+	coresight_csr_set_etr_atid(csdev, drvdata->trcid, true);
+
 	/* And enable it */
 	ret = etm4_enable_hw(drvdata);
+	if (ret)
+		coresight_csr_set_etr_atid(csdev, drvdata->trcid, false);
 
 out:
 	return ret;
@@ -813,6 +819,8 @@ static int etm4_enable_sysfs(struct coresight_device *csdev)
 	if (ret < 0)
 		goto unlock_sysfs_enable;
 
+	coresight_csr_set_etr_atid(csdev, drvdata->trcid, true);
+
 	/*
 	 * Executing etm4_enable_hw on the cpu whose ETM is being enabled
 	 * ensures that register writes occur when cpu is powered.
@@ -825,8 +833,10 @@ static int etm4_enable_sysfs(struct coresight_device *csdev)
 	if (!ret)
 		drvdata->sticky_enable = true;
 
-	if (ret)
+	if (ret) {
+		coresight_csr_set_etr_atid(csdev, drvdata->trcid, false);
 		etm4_release_trace_id(drvdata);
+	}
 
 unlock_sysfs_enable:
 	spin_unlock(&drvdata->spinlock);
@@ -1023,6 +1033,8 @@ static void etm4_disable(struct coresight_device *csdev,
 		etm4_disable_perf(csdev, event);
 		break;
 	}
+
+	coresight_csr_set_etr_atid(csdev, drvdata->trcid, false);
 
 	if (mode)
 		local_set(&drvdata->mode, CS_MODE_DISABLED);
