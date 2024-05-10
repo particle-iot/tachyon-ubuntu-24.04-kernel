@@ -3518,9 +3518,6 @@
 
 	thermal-zones {
 		aoss-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens0 0>;
 
 			trips {
@@ -3540,7 +3537,6 @@
 
 		cpu-0-0-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 1>;
 
@@ -3561,7 +3557,6 @@
 
 		cpu-0-1-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 2>;
 
@@ -3582,7 +3577,6 @@
 
 		cpu-0-2-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 3>;
 
@@ -3603,7 +3597,6 @@
 
 		cpu-0-3-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 4>;
 
@@ -3624,7 +3617,6 @@
 
 		gpuss-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 5>;
 
@@ -3645,7 +3637,6 @@
 
 		gpuss-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 6>;
 
@@ -3666,7 +3657,6 @@
 
 		gpuss-2-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens0 7>;
 
@@ -3686,9 +3676,6 @@
 		};
 
 		audio-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens0 8>;
 
 			trips {
@@ -3707,9 +3694,6 @@
 		};
 
 		camss-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens0 9>;
 
 			trips {
@@ -3728,9 +3712,6 @@
 		};
 
 		pcie-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens0 10>;
 
 			trips {
@@ -3749,9 +3730,6 @@
 		};
 
 		cpuss-0-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens0 11>;
 
 			trips {
@@ -3770,9 +3748,6 @@
 		};
 
 		aoss-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens1 0>;
 
 			trips {
@@ -3792,7 +3767,6 @@
 
 		cpu-0-0-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 1>;
 
@@ -3813,7 +3787,6 @@
 
 		cpu-0-1-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 2>;
 
@@ -3834,7 +3807,6 @@
 
 		cpu-0-2-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 3>;
 
@@ -3855,7 +3827,6 @@
 
 		cpu-0-3-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 4>;
 
@@ -3876,7 +3847,6 @@
 
 		gpuss-3-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 5>;
 
@@ -3897,7 +3867,6 @@
 
 		gpuss-4-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 6>;
 
@@ -3918,7 +3887,6 @@
 
 		gpuss-5-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens1 7>;
 
@@ -3938,9 +3906,6 @@
 		};
 
 		video-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens1 8>;
 
 			trips {
@@ -3959,9 +3924,6 @@
 		};
 
 		camss-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens1 9>;
 
 			trips {
@@ -3980,9 +3942,6 @@
 		};
 
 		pcie-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens1 10>;
 
 			trips {
@@ -4001,9 +3960,6 @@
 		};
 
 		cpuss-0-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens1 11>;
 
 			trips {
@@ -4022,9 +3978,6 @@
 		};
 
 		aoss-2-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens2 0>;
 
 			trips {
@@ -4044,7 +3997,6 @@
 
 		cpu-1-0-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 1>;
 
@@ -4065,7 +4017,6 @@
 
 		cpu-1-1-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 2>;
 
@@ -4086,7 +4037,6 @@
 
 		cpu-1-2-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 3>;
 
@@ -4107,7 +4057,6 @@
 
 		cpu-1-3-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 4>;
 
@@ -4128,7 +4077,6 @@
 
 		nsp-0-0-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 5>;
 
@@ -4149,7 +4097,6 @@
 
 		nsp-0-1-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 6>;
 
@@ -4170,7 +4117,6 @@
 
 		nsp-0-2-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 7>;
 
@@ -4191,7 +4137,6 @@
 
 		nsp-1-0-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 8>;
 
@@ -4212,7 +4157,6 @@
 
 		nsp-1-1-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 9>;
 
@@ -4233,7 +4177,6 @@
 
 		nsp-1-2-0-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens2 10>;
 
@@ -4253,9 +4196,6 @@
 		};
 
 		ddrss-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens2 11>;
 
 			trips {
@@ -4274,9 +4214,6 @@
 		};
 
 		cpuss-1-0-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens2 12>;
 
 			trips {
@@ -4295,9 +4232,6 @@
 		};
 
 		aoss-3-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens3 0>;
 
 			trips {
@@ -4317,7 +4251,6 @@
 
 		cpu-1-0-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 1>;
 
@@ -4338,7 +4271,6 @@
 
 		cpu-1-1-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 2>;
 
@@ -4359,7 +4291,6 @@
 
 		cpu-1-2-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 3>;
 
@@ -4380,7 +4311,6 @@
 
 		cpu-1-3-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 4>;
 
@@ -4401,7 +4331,6 @@
 
 		nsp-0-0-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 5>;
 
@@ -4422,7 +4351,6 @@
 
 		nsp-0-1-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 6>;
 
@@ -4443,7 +4371,6 @@
 
 		nsp-0-2-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 7>;
 
@@ -4464,7 +4391,6 @@
 
 		nsp-1-0-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 8>;
 
@@ -4485,7 +4411,6 @@
 
 		nsp-1-1-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 9>;
 
@@ -4506,7 +4431,6 @@
 
 		nsp-1-2-1-thermal {
 			polling-delay-passive = <10>;
-			polling-delay = <0>;
 
 			thermal-sensors = <&tsens3 10>;
 
@@ -4526,9 +4450,6 @@
 		};
 
 		ddrss-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens3 11>;
 
 			trips {
@@ -4547,9 +4468,6 @@
 		};
 
 		cpuss-1-1-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&tsens3 12>;
 
 			trips {
