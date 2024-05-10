@@ -13,6 +13,11 @@
 	compatible = "qcom,sa8775p-addons-ride", "qcom,sa8775p";
 };
 
+&remoteproc_adsp {
+	firmware-name = "qcom/sa8775p/adsp.mdt";
+	status = "okay";
+};
+
 &remoteproc_cdsp0 {
 	firmware-name = "qcom/sa8775p/cdsp0.mdt";
 	status = "okay";
@@ -20,5 +25,15 @@
 
 &remoteproc_cdsp1 {
 	firmware-name = "qcom/sa8775p/cdsp1.mdt";
+	status = "okay";
+};
+
+&remoteproc_gpdsp0 {
+	firmware-name = "qcom/sa8775p/gpdsp0.mdt";
+	status = "okay";
+};
+
+&remoteproc_gpdsp1 {
+	firmware-name = "qcom/sa8775p/gpdsp1.mdt";
 	status = "okay";
 };
