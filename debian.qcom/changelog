@@ -1,3 +1,12 @@
+linux-qcom (6.8.0-1003.3) jammy; urgency=medium
+
+  * Miscellaneous Ubuntu changes
+    - Fix PCIe bus error
+    - Fix GPU regression
+    - Fix qps615 firmware load
+
+ -- Masahiro Yamada <masahiro.yamada@canonical.com>  Fri, 10 May 2024 14:41:07 +0900
+
 linux-qcom (6.8.0-1002.2) jammy; urgency=medium
 
   [ Ubuntu: 6.8.0-31.31 ]
