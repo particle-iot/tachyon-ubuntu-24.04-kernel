@@ -14,6 +14,89 @@
 
 	qcom,msm-id = <497 0x10000>, <498 0x10000>, <475 0x10000>, <515 0x10000>;
 	qcom,board-id = <32 0x9>, <32 0x609>;
+
+	wcd9375: audio-codec-0 {
+		compatible = "qcom,wcd9370-codec";
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&wcd_reset_n>;
+		pinctrl-1 = <&wcd_reset_n_sleep>;
+		reset-gpios = <&tlmm 83 GPIO_ACTIVE_HIGH>;
+		qcom,micbias1-microvolt = <1800000>;
+		qcom,micbias2-microvolt = <1800000>;
+		qcom,micbias3-microvolt = <1800000>;
+		qcom,rx-device = <&wcd937x_rx>;
+		qcom,tx-device = <&wcd937x_tx>;
+		qcom,hphl-jack-type-normally-closed = <1>;
+		qcom,ground-jack-type-normally-closed = <1>;
+		qcom,always-on-supply;
+		#sound-dai-cells = <1>;
+	};
+};
+
+&lpass_rx_swr_clk {
+	drive-strength = <2>;
+	slew-rate = <1>;
+	bias-disable;
+};
+
+&lpass_rx_swr_data {
+	drive-strength = <2>;
+	slew-rate = <1>;
+	bias-bus-hold;
+};
+
+&lpass_tx_swr_clk {
+	drive-strength = <2>;
+	slew-rate = <1>;
+	bias-disable;
+};
+
+&lpass_tx_swr_data {
+	drive-strength = <2>;
+	slew-rate = <1>;
+	bias-bus-hold;
+};
+
+&sound {
+	compatible = "qcom,qcs6490-rb3gen2-ia-sndcard";
+	model = "qcm6490-rb3-ia-snd-card";
+	audio-routing =
+		"SpkrLeft IN", "WSA_SPK1 OUT",
+		"SpkrRight IN", "WSA_SPK2 OUT",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"AMIC2", "MIC BIAS2",
+		"TX SWR_ADC1", "ADC2_OUTPUT",
+		"VA DMIC0", "vdd-micb",
+		"VA DMIC1", "vdd-micb",
+		"VA DMIC2", "vdd-micb",
+		"VA DMIC3", "vdd-micb";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	wcd-playback-dai-link {
+		link-name = "CODEC_DMA-LPAIF_RXTX-RX-0";
+		cpu {
+			sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
+		};
+
+
+		codec {
+			sound-dai = <&wcd9375 0>, <&swr0 0>, <&lpass_rx_macro 0>;
+		};
+	};
+
+
+	wcd-capture-dai-link {
+		link-name = "CODEC_DMA-LPAIF_RXTX-TX-3";
+		cpu {
+			sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
+		};
+
+
+		codec {
+			sound-dai = <&wcd9375 1>, <&swr1 0>, <&lpass_tx_macro 0>;
+		};
+	};
 };
 
 &spmi_bus {
@@ -29,6 +112,22 @@
 						"bcl-lvl2";
 			#thermal-sensor-cells = <1>;
 		};
+	};
+};
+
+&swr0 {
+	wcd937x_rx: codec@0,4 {
+		compatible = "sdw20217010a00";
+		reg = <0 4>;
+		qcom,rx-port-mapping = <1 2 3 4 5>;
+	};
+};
+
+&swr1 {
+	wcd937x_tx: codec@0,3 {
+		compatible = "sdw20217010a00";
+		reg = <0 3>;
+		qcom,tx-port-mapping = <1 1 2 3>;
 	};
 };
 
@@ -162,5 +261,21 @@
 				cooling-device = <&cdsp_sw 5 5>;
 			};
 		};
+	};
+};
+
+&tlmm {
+	wcd_reset_n: wcd-reset-n-state {
+		pins = "gpio83";
+		function = "gpio";
+		drive-strength = <8>;
+	};
+
+
+	wcd_reset_n_sleep: wcd-reset-n-sleep-state {
+		pins = "gpio83";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
 	};
 };
