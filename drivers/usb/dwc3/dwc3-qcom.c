@@ -703,16 +703,21 @@ static int dwc3_xhci_event_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-static void dwc3_qcom_handle_cable_disconnect(void *data)
+static int dwc3_qcom_handle_cable_disconnect(void *data)
 {
 	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+	int ret = 0;
+
 	/*
 	 * If we are in device mode and get a cable disconnect,
 	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
 	 * The next set_mode to default role can be ignored.
 	 */
 	if (qcom->current_role == USB_ROLE_DEVICE) {
-		pm_runtime_get_sync(qcom->dev);
+		ret = pm_runtime_get_sync(qcom->dev);
+		if (ret < 0)
+			return ret;
+
 		dwc3_qcom_vbus_override_enable(qcom, false);
 		pm_runtime_put_autosuspend(qcom->dev);
 	} else if (qcom->current_role == USB_ROLE_HOST) {
@@ -721,6 +726,8 @@ static void dwc3_qcom_handle_cable_disconnect(void *data)
 
 	pm_runtime_mark_last_busy(qcom->dev);
 	qcom->current_role = USB_ROLE_NONE;
+
+	return 0;
 }
 
 static void dwc3_qcom_handle_set_mode(void *data, u32 desired_dr_role)
