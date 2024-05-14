@@ -988,7 +988,7 @@ struct dwc3_scratchpad_array {
  * @mode_changed: Notify glue that mode change was done successfully
  */
 struct dwc3_glue_ops {
-	void	(*notify_cable_disconnect)(void *glue_data);
+	int	(*notify_cable_disconnect)(void *glue_data);
 	void	(*set_mode)(void *glue_data, u32 desired_dr_role);
 	void	(*mode_changed)(void *glue_data, u32 current_dr_role);
 	void    (*notify_run_stop)(void *glue_data, bool enable);
@@ -1622,10 +1622,11 @@ int dwc3_suspend(struct dwc3 *dwc);
 int dwc3_resume(struct dwc3 *dwc);
 void dwc3_complete(struct dwc3 *dwc);
 
-static inline void dwc3_notify_cable_disconnect(struct dwc3 *dwc)
+static inline int dwc3_notify_cable_disconnect(struct dwc3 *dwc)
 {
 	if (dwc->glue_ops && dwc->glue_ops->notify_cable_disconnect)
-		dwc->glue_ops->notify_cable_disconnect(dwc->glue_data);
+		return dwc->glue_ops->notify_cable_disconnect(dwc->glue_data);
+	return 0;
 }
 
 static inline void dwc3_notify_set_mode(struct dwc3 *dwc,
