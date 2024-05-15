@@ -241,7 +241,7 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <32 8>;
+	gpio-reserved-ranges = <32 8>, <74 2>;
 
 	sde_dsi_active: sde-dsi-active-state {
 		pins = "gpio133";
