@@ -436,7 +436,7 @@ TRACE_EVENT(xchk_btree_op_error,
 
 		__entry->dev = sc->mp->m_super->s_dev;
 		__entry->type = sc->sm->sm_type;
-		__entry->btnum = cur->bc_btnum;
+		__assign_str(name);
 		__entry->level = level;
 		__entry->agno = XFS_FSB_TO_AGNO(cur->bc_mp, fsbno);
 		__entry->bno = XFS_FSB_TO_AGBNO(cur->bc_mp, fsbno);
@@ -479,7 +479,7 @@ TRACE_EVENT(xchk_ifork_btree_op_error,
 		__entry->ino = cur->bc_ino.ip->i_ino;
 		__entry->whichfork = cur->bc_ino.whichfork;
 		__entry->type = sc->sm->sm_type;
-		__entry->btnum = cur->bc_btnum;
+		__assign_str(name);
 		__entry->level = level;
 		__entry->ptr = cur->bc_levels[level].ptr;
 		__entry->agno = XFS_FSB_TO_AGNO(cur->bc_mp, fsbno);
@@ -519,7 +519,7 @@ TRACE_EVENT(xchk_btree_error,
 		xfs_fsblock_t fsbno = xchk_btree_cur_fsbno(cur, level);
 		__entry->dev = sc->mp->m_super->s_dev;
 		__entry->type = sc->sm->sm_type;
-		__entry->btnum = cur->bc_btnum;
+		__assign_str(name);
 		__entry->level = level;
 		__entry->agno = XFS_FSB_TO_AGNO(cur->bc_mp, fsbno);
 		__entry->bno = XFS_FSB_TO_AGBNO(cur->bc_mp, fsbno);
@@ -559,7 +559,7 @@ TRACE_EVENT(xchk_ifork_btree_error,
 		__entry->ino = sc->ip->i_ino;
 		__entry->whichfork = cur->bc_ino.whichfork;
 		__entry->type = sc->sm->sm_type;
-		__entry->btnum = cur->bc_btnum;
+		__assign_str(name);
 		__entry->level = level;
 		__entry->agno = XFS_FSB_TO_AGNO(cur->bc_mp, fsbno);
 		__entry->bno = XFS_FSB_TO_AGBNO(cur->bc_mp, fsbno);
@@ -598,7 +598,7 @@ DECLARE_EVENT_CLASS(xchk_sbtree_class,
 
 		__entry->dev = sc->mp->m_super->s_dev;
 		__entry->type = sc->sm->sm_type;
-		__entry->btnum = cur->bc_btnum;
+		__assign_str(name);
 		__entry->agno = XFS_FSB_TO_AGNO(cur->bc_mp, fsbno);
 		__entry->bno = XFS_FSB_TO_AGBNO(cur->bc_mp, fsbno);
 		__entry->level = level;
