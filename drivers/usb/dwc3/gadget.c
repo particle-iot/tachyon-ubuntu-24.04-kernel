@@ -4196,6 +4196,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		dwc3_gadget_dctl_write_safe(dwc, reg);
 	}
 
+	dwc3_notify_post_conndone(dwc);
+
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, DWC3_DEPCFG_ACTION_MODIFY);
 	if (ret) {
