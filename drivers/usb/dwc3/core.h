@@ -992,6 +992,7 @@ struct dwc3_glue_ops {
 	void	(*set_mode)(void *glue_data, u32 desired_dr_role);
 	void	(*mode_changed)(void *glue_data, u32 current_dr_role);
 	void    (*notify_run_stop)(void *glue_data, bool enable);
+	void    (*post_conndone)(void *glue_data);
 };
 
 struct dwc3_glue_data {
@@ -1647,6 +1648,12 @@ static inline void dwc3_notify_run_stop(struct dwc3 *dwc, bool enable)
 {
 	if (dwc->glue_ops && dwc->glue_ops->notify_run_stop)
 		dwc->glue_ops->notify_run_stop(dwc->glue_data, enable);
+}
+
+static inline void dwc3_notify_post_conndone(struct dwc3 *dwc)
+{
+	if (dwc->glue_ops && dwc->glue_ops->post_conndone)
+		dwc->glue_ops->post_conndone(dwc->glue_data);
 }
 
 #if IS_ENABLED(CONFIG_USB_DWC3_HOST) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
