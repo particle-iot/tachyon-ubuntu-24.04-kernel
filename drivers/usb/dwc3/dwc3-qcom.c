@@ -770,6 +770,14 @@ static void dwc3_qcom_handle_mode_changed(void *data, u32 current_dr_role)
 	}
 }
 
+static void dwc3_post_conndone_notification(void *data)
+{
+	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
+
+	qcom->dwc->cable_disconnected = false;
+	qcom->current_role = USB_ROLE_DEVICE;
+}
+
 static void dwc3_qcom_handle_run_stop_notification(void *data, bool enable)
 {
 	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
@@ -783,6 +791,7 @@ struct dwc3_glue_ops dwc3_qcom_glue_hooks = {
 	.set_mode = dwc3_qcom_handle_set_mode,
 	.mode_changed = dwc3_qcom_handle_mode_changed,
 	.notify_run_stop = dwc3_qcom_handle_run_stop_notification,
+	.post_conndone = dwc3_post_conndone_notification,
 };
 
 static int dwc3_qcom_probe_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
