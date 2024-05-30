@@ -63,12 +63,17 @@ static int pci_pwrctl_pwrseq_probe(struct platform_device *pdev)
 static const struct of_device_id pci_pwrctl_pwrseq_of_match[] = {
 	{
 		/* ATH11K in QCA6390 package. */
-		.compatible = "pci17cb,1101",
+		.compatible = "qcom,qca6390-wifi",
+		.data = "wlan",
+	},
+	{
+		/* ATH11K in WCN6855 package. */
+		.compatible = "qcom,wcn6855-wifi",
 		.data = "wlan",
 	},
 	{
 		/* ATH12K in WCN7850 package. */
-		.compatible = "pci17cb,1107",
+		.compatible = "qcom,wcn7850-wifi",
 		.data = "wlan",
 	},
 	{ }
