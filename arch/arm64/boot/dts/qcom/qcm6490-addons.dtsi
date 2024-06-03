@@ -456,6 +456,13 @@
 	};
 };
 
+/* Delete venus node properties to adapt with downstream video driver  */
+&venus {
+	/delete-property/ iommus;
+	/delete-node/ video-decoder;
+	/delete-node/ video-encoder;
+};
+
 &gmu {
 	status = "disabled";
 };
