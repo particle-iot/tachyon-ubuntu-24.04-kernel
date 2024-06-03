@@ -15,10 +15,7 @@
 #include <linux/soc/qcom/pmic_glink.h>
 #include "ucsi.h"
 
-#define CREATE_TRACE_POINTS
-#include "ucsi_glink_trace.h"
-
-#define PMIC_GLINK_MAX_PORTS	2
+#define PMIC_GLINK_MAX_PORTS		3
 
 #define UCSI_BUF_SIZE                   48
 
