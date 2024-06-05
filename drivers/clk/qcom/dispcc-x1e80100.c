@@ -1680,7 +1680,7 @@ static int disp_cc_x1e80100_probe(struct platform_device *pdev)
 	regmap_update_bits(regmap, 0xe074, BIT(0), BIT(0)); /* disp_cc_sleep_clk */
 	regmap_update_bits(regmap, 0xe054, BIT(0), BIT(0)); /* disp_cc_xo_clk */
 
-	ret = qcom_cc_really_probe(pdev, &disp_cc_x1e80100_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &disp_cc_x1e80100_desc, regmap);
 	if (ret)
 		goto err_put_rpm;
 
