@@ -721,3 +721,5 @@ static struct slim_driver btfm_slim_driver = {
 module_slim_driver(btfm_slim_driver);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("BTFM Slimbus Slave driver");
+MODULE_ALIAS("slim:217:221:*");
+MODULE_ALIAS("slim:217:220:*");
