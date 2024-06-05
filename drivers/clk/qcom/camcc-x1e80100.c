@@ -2465,7 +2465,7 @@ static int cam_cc_x1e80100_probe(struct platform_device *pdev)
 	regmap_update_bits(regmap, 0x13a9c, BIT(0), BIT(0)); /* cam_cc_gdsc_clk */
 	regmap_update_bits(regmap, 0x13ab8, BIT(0), BIT(0)); /* cam_cc_sleep_clk */
 
-	ret = qcom_cc_really_probe(pdev, &cam_cc_x1e80100_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &cam_cc_x1e80100_desc, regmap);
 
 	pm_runtime_put(&pdev->dev);
 
