@@ -1768,7 +1768,7 @@ static int disp_cc_sm8650_probe(struct platform_device *pdev)
 	/* Keep clocks always enabled */
 	regmap_update_bits(regmap, 0xe054, BIT(0), BIT(0)); /* disp_cc_xo_clk */
 
-	ret = qcom_cc_really_probe(pdev, &disp_cc_sm8650_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &disp_cc_sm8650_desc, regmap);
 	if (ret)
 		goto err_put_rpm;
 

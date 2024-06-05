@@ -3036,7 +3036,7 @@ static int camcc_sc8280xp_probe(struct platform_device *pdev)
 	 */
 	regmap_update_bits(regmap, 0xc1e4, BIT(0), 1);
 
-	ret = qcom_cc_really_probe(pdev, &camcc_sc8280xp_desc, regmap);
+	ret = qcom_cc_really_probe(&pdev->dev, &camcc_sc8280xp_desc, regmap);
 	if (ret)
 		goto err_disable;
 

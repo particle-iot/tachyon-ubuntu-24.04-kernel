@@ -640,7 +640,7 @@ static int gpu_cc_x1e80100_probe(struct platform_device *pdev)
 	/* Keep clocks always enabled */
 	regmap_update_bits(regmap, 0x93a4, BIT(0), BIT(0)); /* gpu_cc_cb_clk */
 
-	return qcom_cc_really_probe(pdev, &gpu_cc_x1e80100_desc, regmap);
+	return qcom_cc_really_probe(&pdev->dev, &gpu_cc_x1e80100_desc, regmap);
 }
 
 static struct platform_driver gpu_cc_x1e80100_driver = {
