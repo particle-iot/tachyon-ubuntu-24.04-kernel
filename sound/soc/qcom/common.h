@@ -21,5 +21,8 @@ int qcom_snd_parse_of(struct snd_soc_card *card);
 int qcom_snd_parse_of_v2(struct snd_soc_card *card, struct qcom_snd_common_data *priv);
 int qcom_snd_wcd_jack_setup(struct snd_soc_pcm_runtime *rtd,
 			    struct snd_soc_jack *jack, bool *jack_setup);
+int qcom_snd_dp_jack_setup(struct snd_soc_pcm_runtime *rtd,
+			   struct snd_soc_jack *dp_jack, int id);
+
 
 #endif
