@@ -63,6 +63,40 @@
 	watchdog@17c10000 {
 		status = "disabled";
 	};
+
+	csr: csr@4001000 {
+		compatible = "qcom,coresight-csr";
+		reg = <0x0 0x4001000 0x0 0x1000>;
+		reg-names = "csr-base";
+		device-name = "coresight-csr";
+
+		clocks = <&aoss_qmp>;
+		clock-names = "apb_pclk";
+
+		qcom,hwctrl-set-support;
+		qcom,set-byte-cntr-support;
+		qcom,blk-size = <1>;
+	};
+
+	tmc_etr: tmc@4048000 {
+		interrupts = <GIC_SPI 270 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "byte-cntr-irq";
+		qcom,sw-usb;
+		coresight-csr = <&csr>;
+		csr-atid-offset = <0xf8>;
+		csr-irqctrl-offset = <0x6c>;
+		byte-cntr-name = "byte-cntr";
+		byte-cntr-class-name = "coresight-tmc-etr-stream";
+	};
+
+	tmc_etr1: tmc@404f000 {
+		interrupts = <GIC_SPI 262 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "byte-cntr-irq";
+		coresight-csr = <&csr>;
+		csr-atid-offset = <0x108>;
+		byte-cntr-name = "byte-cntr1";
+		byte-cntr-class-name = "coresight-tmc-etr1-stream";
+	};
 };
 
 &sram {
