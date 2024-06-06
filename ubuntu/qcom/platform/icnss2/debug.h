@@ -94,19 +94,19 @@ extern void *icnss_ipc_soc_wake_context;
 	} while (0)
 
 #define icnss_pr_dbg(_fmt, ...) do {                                    \
-	printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__);            \
+	/* printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__); */      \
 	} while (0)
 
 #define icnss_pr_vdbg(_fmt, ...) do {                                   \
-	printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__);            \
+	/* printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__); */      \
 	} while (0)
 
 #define icnss_pr_smp2p(_fmt, ...) do {                                  \
-	printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__);            \
+	/* printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__); */      \
 	} while (0)
 
 #define icnss_pr_soc_wake(_fmt, ...) do {                               \
-	printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__);            \
+	/* printk("%s" pr_fmt(_fmt), KERN_INFO, ##__VA_ARGS__); */      \
 	} while (0)
 #endif
 
