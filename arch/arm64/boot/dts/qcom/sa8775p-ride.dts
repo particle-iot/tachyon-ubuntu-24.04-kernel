@@ -557,11 +557,25 @@
 			  "USB2_PWR_EN",
 			  "USB2_FAULT";
 
+	bt_en_state: bt-en-state {
+		pins = "gpio8";
+		function = "normal";
+		output-low;
+		bias-pull-down;
+	};
+
 	usb2_en_state: usb2-en-state {
 		pins = "gpio9";
 		function = "normal";
 		output-high;
 		power-source = <0>;
+	};
+
+	wlan_en_state: wlan-en-state {
+		pins = "gpio7";
+		function = "normal";
+		output-low;
+		bias-pull-down;
 	};
 };
 
@@ -775,13 +789,6 @@
 		};
 	};
 
-	wlan_en_state: wlan-default-state {
-		pins = "gpio7";
-		function = "gpio";
-		drive-strength = <16>;
-		output-high;
-		bias-pull-up;
-	};
 };
 
 &pcie0 {
@@ -946,29 +953,20 @@
 	clock-frequency = <38400000>;
 };
 
-&tlmm {
-	bt_en: bt-en-state {
-		pins = "gpio8";
-		function = "normal";
-		bias-pull-down;
-	};
-};
-
 /* HS UART Instance */
 &uart17 {
 	bluetooth: bluetooth {
 		compatible = "qcom,wcn6855-bt";
 		pinctrl-names = "default";
-		pinctrl-0 = <&bt_en>;
+		pinctrl-0 = <&bt_en_state>;
 		enable-gpios = <&pmm8654au_1_gpios 8 GPIO_ACTIVE_HIGH>; /* BT_EN */
-		swctrl-gpios = <&pmm8654au_1_gpios 7 GPIO_ACTIVE_HIGH>; /* SW_CTRL */
 
 		vddio-supply       = <&vreg_conn_pa>;         /* bt-vdd-ctrl1-supply */
 		vddbtcxmx-supply   = <&vreg_conn_1p8>;        /* bt-vdd-ctrl2-supply */
 		vddrfacmn-supply   = <&vreg_l2c>;             /* bt-vdd-aon-supply */
-		vddrfa0p8-supply   = <&vreg_l6e>;             /* bt-vdd-rfa1-supply */
+		vddrfa0p8-supply   = <&vreg_l2c>;             /* bt-vdd-rfa1-supply */
 		vddrfa1p7-supply   = <&vreg_s5a>;             /* bt-vdd-rfa2-supply */
-		vddrfa1p2-supply   = <&vreg_l2c>;             /* bt-vdd-rfa3-supply */
+		vddrfa1p2-supply   = <&vreg_l6e>;             /* bt-vdd-rfa3-supply */
 		max-speed = <3200000>;
 	};
 };
