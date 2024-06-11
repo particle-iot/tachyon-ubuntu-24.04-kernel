@@ -12,7 +12,6 @@
  * required by qcm6490
  */
 /delete-node/ &rmtfs_mem;
-/delete-node/ &wlan_ce_mem;
 /delete-node/ &wpss_mem;
 /delete-node/ &adsp_mem;
 /delete-node/ &cdsp_mem;
