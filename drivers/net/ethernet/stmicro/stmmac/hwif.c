@@ -302,6 +302,7 @@ static const struct stmmac_hwif_entry {
 
 int stmmac_hwif_init(struct stmmac_priv *priv)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	bool needs_xgmac = priv->plat->has_xgmac;
 	bool needs_gmac4 = priv->plat->has_gmac4;
 	bool needs_gmac = priv->plat->has_gmac;
@@ -375,7 +376,8 @@ int stmmac_hwif_init(struct stmmac_priv *priv)
 		mac->est = mac->est ? : entry->est;
 
 		priv->hw = mac;
-		priv->ptpaddr = priv->ioaddr + entry->regs.ptp_off;
+		priv->ptpaddr = priv->ioaddr +
+			(dwxgmac_addrs ? dwxgmac_addrs->timestamp_base : entry->regs.ptp_off);
 		priv->mmcaddr = priv->ioaddr + entry->regs.mmc_off;
 		if (entry->est)
 			priv->estaddr = priv->ioaddr + entry->regs.est_off;
