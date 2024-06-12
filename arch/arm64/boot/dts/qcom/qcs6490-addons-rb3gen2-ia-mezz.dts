@@ -287,3 +287,19 @@
 &uart4 {
 	status = "okay";
 };
+
+&soc {
+	leds {
+		compatible = "gpio-leds";
+
+		led-0 {
+			label = "blue:user1";
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pm8350c_gpios 9 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+			panic-indicator;
+			status = "okay";
+		};
+	};
+};
