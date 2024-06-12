@@ -715,7 +715,7 @@ static int dwc3_qcom_handle_cable_disconnect(void *data)
 	 */
 	if (qcom->current_role == USB_ROLE_DEVICE) {
 		ret = pm_runtime_get_sync(qcom->dev);
-		if (ret < 0)
+		if ((ret < 0) || (qcom->is_suspended))
 			return ret;
 
 		dwc3_qcom_vbus_override_enable(qcom, false);
