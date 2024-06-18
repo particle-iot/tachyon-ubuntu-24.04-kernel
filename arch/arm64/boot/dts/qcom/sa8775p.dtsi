@@ -5,6 +5,7 @@
  */
 
 #include <dt-bindings/interconnect/qcom,icc.h>
+#include <dt-bindings/interconnect/qcom,osm-l3.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/clock/qcom,sa8775p-camcc.h>
@@ -70,6 +71,10 @@
 			next-level-cache = <&L2_0>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl0 MASTER_EPSS_L3_APPS
+					&epss_l3_cl0 SLAVE_EPSS_L3_SHARED>;
 			L2_0: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -92,6 +97,10 @@
 			next-level-cache = <&L2_1>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl0 MASTER_EPSS_L3_APPS
+					&epss_l3_cl0 SLAVE_EPSS_L3_SHARED>;
 			L2_1: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -109,6 +118,10 @@
 			next-level-cache = <&L2_2>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl0 MASTER_EPSS_L3_APPS
+					&epss_l3_cl0 SLAVE_EPSS_L3_SHARED>;
 			L2_2: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -126,6 +139,10 @@
 			next-level-cache = <&L2_3>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl0 MASTER_EPSS_L3_APPS
+					&epss_l3_cl0 SLAVE_EPSS_L3_SHARED>;
 			L2_3: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -143,6 +160,10 @@
 			next-level-cache = <&L2_4>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl1 MASTER_EPSS_L3_APPS
+					&epss_l3_cl1 SLAVE_EPSS_L3_SHARED>;
 			L2_4: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -166,6 +187,10 @@
 			next-level-cache = <&L2_5>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl1 MASTER_EPSS_L3_APPS
+					&epss_l3_cl1 SLAVE_EPSS_L3_SHARED>;
 			L2_5: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -183,6 +208,10 @@
 			next-level-cache = <&L2_6>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl1 MASTER_EPSS_L3_APPS
+					&epss_l3_cl1 SLAVE_EPSS_L3_SHARED>;
 			L2_6: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
@@ -200,6 +229,10 @@
 			next-level-cache = <&L2_7>;
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+					&mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>,
+					<&epss_l3_cl1 MASTER_EPSS_L3_APPS
+					&epss_l3_cl1 SLAVE_EPSS_L3_SHARED>;
 			L2_7: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
