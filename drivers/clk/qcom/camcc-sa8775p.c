@@ -859,6 +859,24 @@ static struct clk_branch cam_cc_camnoc_dcd_xo_clk = {
 	},
 };
 
+static struct clk_branch cam_cc_qdss_debug_xo_clk = {
+	.halt_reg = 0x131b8,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x131b8,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "cam_cc_qdss_debug_xo_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&cam_cc_xo_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_branch cam_cc_cci_0_clk = {
 	.halt_reg = 0x130b8,
 	.halt_check = BRANCH_HALT,
@@ -1759,6 +1777,7 @@ static struct clk_regmap *cam_cc_sa8775p_clocks[] = {
 	[CAM_CC_SLOW_AHB_CLK_SRC] = &cam_cc_slow_ahb_clk_src.clkr,
 	[CAM_CC_SM_OBS_CLK] = &cam_cc_sm_obs_clk.clkr,
 	[CAM_CC_XO_CLK_SRC] = &cam_cc_xo_clk_src.clkr,
+	[CAM_CC_QDSS_DEBUG_XO_CLK] = &cam_cc_qdss_debug_xo_clk.clkr,
 };
 
 static struct gdsc *cam_cc_sa8775p_gdscs[] = {
