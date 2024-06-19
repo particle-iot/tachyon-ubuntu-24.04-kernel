@@ -6645,6 +6645,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
+			dma-coherent;
 
 			interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>,
@@ -6891,6 +6892,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
+			dma-coherent;
 
 			interrupts = <GIC_SPI 920 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 921 IRQ_TYPE_LEVEL_HIGH>,
