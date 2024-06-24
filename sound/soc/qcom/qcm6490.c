@@ -50,12 +50,14 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct qcm6490_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	int ret = 0;
 
 	switch (cpu_dai->id) {
 	case TX_CODEC_DMA_TX_3:
 	case LPASS_CDC_DMA_TX3:
 	case RX_CODEC_DMA_RX_0:
-		return qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
+		ret = qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
+		break;
 	case VA_CODEC_DMA_TX_0:
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_TX_0:
@@ -63,15 +65,15 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 	case PRIMARY_MI2S_TX:
 	case PRIMARY_TDM_RX_0:
 	case PRIMARY_TDM_TX_0:
-		return 0;
+		break;
 	case SLIMBUS_0_RX:
 	case SLIMBUS_0_TX:
-		return qcm6490_slim_dai_init(rtd);
+		ret = qcm6490_slim_dai_init(rtd);
 	default:
-		dev_err(rtd->dev, "%s: invalid dai id 0x%x\n", __func__, cpu_dai->id);
+		break;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static int qcm6490_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -192,6 +194,15 @@ static const struct snd_soc_dapm_route qcs6490_rb3gen2_vision_dapm_routes[] = {
 	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
 };
 
+static const struct snd_soc_dapm_widget qcs9100_dapm_widgets[] = {
+	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
+};
+
+static const struct snd_soc_dapm_route qcs9100_dapm_routes[] = {
+	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
+};
+
 static const struct snd_soc_ops qcm6490_be_ops = {
 	.hw_params = qcm6490_snd_hw_params,
 	.hw_free = qcm6490_snd_hw_free,
@@ -242,6 +253,14 @@ static struct snd_soc_card qcs6490_rb3gen2_vision_data = {
 	.num_dapm_widgets = ARRAY_SIZE(qcs6490_rb3gen2_vision_dapm_widgets),
 	.dapm_routes = qcs6490_rb3gen2_vision_dapm_routes,
 	.num_dapm_routes = ARRAY_SIZE(qcs6490_rb3gen2_vision_dapm_routes),
+};
+
+static struct snd_soc_card snd_soc_qcs9100_data = {
+	.name = "qcs9100",
+	.dapm_widgets = qcs9100_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+	.dapm_routes = qcs9100_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
 };
 
 static void qcm6490_add_be_ops(struct snd_soc_card *card)
@@ -296,6 +315,7 @@ static const struct of_device_id snd_qcm6490_dt_match[] = {
 	{.compatible = "qcom,qcs6490-rb3gen2-ptz-sndcard", .data = &qcs6490_rb3gen2_ptz_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-video-sndcard", .data = &qcs6490_rb3gen2_video_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-vision-sndcard", .data = &qcs6490_rb3gen2_vision_data},
+	{.compatible = "qcom,qcs9100-sndcard", .data = &snd_soc_qcs9100_data},
 	{}
 };
 
