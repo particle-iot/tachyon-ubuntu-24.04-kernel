@@ -899,6 +899,18 @@
 			#mbox-cells = <2>;
 		};
 
+		qfprom: efuse@784000 {
+			compatible = "qcom,qfprom";
+			reg = <0x0 0x00784000 0x0 0x11d0>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			gpu_speed_bin: gpu-speed-bin@15c {
+				reg = <0x15c 0x1>;
+				bits = <5 3>;
+			};
+		};
+
 		gpi_dma2: qcom,gpi-dma@800000  {
 			compatible = "qcom,sm6350-gpi-dma";
 			reg = <0x0 0x00800000 0x0 0x60000>;
