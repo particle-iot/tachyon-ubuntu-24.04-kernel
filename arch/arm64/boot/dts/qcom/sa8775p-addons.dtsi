@@ -395,7 +395,6 @@
 		compatible = "qcom,coresight-csr";
 		reg = <0x0 0x4001000 0x0 0x1000>;
 		reg-names = "csr-base";
-		device-name = "coresight-csr";
 
 		clocks = <&aoss_qmp>;
 		clock-names = "apb_pclk";
