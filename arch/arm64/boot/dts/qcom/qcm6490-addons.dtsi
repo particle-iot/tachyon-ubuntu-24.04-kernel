@@ -955,6 +955,7 @@
 
 		device-name = "modem_diag";
 
+		arm,trace-id = <50>;
 		out-ports {
 			port {
 				modem_diag_out_funnel_mq6_dup: endpoint {
