@@ -897,7 +897,7 @@ static int stm_probe(struct amba_device *adev, const struct amba_id *id)
 		goto stm_unregister;
 	}
 
-	trace_id = coresight_trace_id_get_system_id();
+	trace_id = coresight_trace_id_get_system_id(TRACE_ID_ANY);
 	if (trace_id < 0) {
 		ret = trace_id;
 		goto cs_unregister;
