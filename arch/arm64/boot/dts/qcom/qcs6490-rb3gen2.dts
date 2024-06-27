@@ -849,6 +849,22 @@
 	status = "okay";
 };
 
+&spi3 {
+	status = "okay";
+
+	mcp2518fd: can@0 {
+		compatible = "microchip,mcp2518fd";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <40000000>;
+		spi-max-frequency = <10000000>;
+		interrupt-names = "can_irq";
+		interrupts-extended = <&tlmm 7 IRQ_TYPE_LEVEL_LOW>;
+		status = "okay";
+	};
+};
+
 &swr2 {
 	qcom,din-ports = <0>;
 	qcom,dout-ports = <8>;
