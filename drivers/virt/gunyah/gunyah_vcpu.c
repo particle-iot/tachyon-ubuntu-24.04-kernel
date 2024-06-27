@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/anon_inodes.h>
@@ -197,6 +197,7 @@ static int gh_vcpu_run(struct gh_vcpu *vcpu)
 
 		gh_error = gh_hypercall_vcpu_run(vcpu->rsc->capid, state_data, &vcpu_run_resp);
 		if (gh_error == GH_ERROR_OK) {
+			memset(state_data, 0, sizeof(state_data));
 			switch (vcpu_run_resp.state) {
 			case GH_VCPU_STATE_READY:
 				if (need_resched())
