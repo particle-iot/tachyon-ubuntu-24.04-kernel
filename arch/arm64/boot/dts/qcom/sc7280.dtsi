@@ -3375,6 +3375,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06010000 0x0 0x1000>;
 
+			device-name = "cti0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3384,6 +3385,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06011000 0x0 0x1000>;
 
+			device-name = "cti1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3393,6 +3395,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06012000 0x0 0x1000>;
 
+			device-name = "cti2";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3401,6 +3404,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06013000 0x0 0x1000>;
 
+			device-name = "cti3";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3410,6 +3414,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06014000 0x0 0x1000>;
 
+			device-name = "cti4";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3419,6 +3424,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06015000 0x0 0x1000>;
 
+			device-name = "cti5";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3428,6 +3434,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06016000 0x0 0x1000>;
 
+			device-name = "cti6";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3437,6 +3444,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06017000 0x0 0x1000>;
 
+			device-name = "cti7";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3446,6 +3454,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06018000 0x0 0x1000>;
 
+			device-name = "cti8";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3455,6 +3464,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06019000 0x0 0x1000>;
 
+			device-name = "cti9";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3464,6 +3474,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601a000 0x0 0x1000>;
 
+			device-name = "cti10";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3473,6 +3484,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601b000 0x0 0x1000>;
 
+			device-name = "cti11";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3482,6 +3494,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601c000 0x0 0x1000>;
 
+			device-name = "cti12";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3491,6 +3504,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601d000 0x0 0x1000>;
 
+			device-name = "cti13";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3500,6 +3514,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601e000 0x0 0x1000>;
 
+			device-name = "cti14";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3509,6 +3524,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x0601f000 0x0 0x1000>;
 
+			device-name = "cti15";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -3783,6 +3799,7 @@
 
 			status = "disabled";
 
+			device-name = "cti_mss_q6";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3793,6 +3810,7 @@
 
 			status = "disabled";
 
+			device-name = "cti_mss_vq6";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3878,6 +3896,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06845000 0x0 0x1000>;
 
+			device-name = "cti_lpass_dl";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3975,6 +3994,7 @@
 
 			status = "disabled";
 
+			device-name = "cti_gpu_isdb";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3983,6 +4003,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06982000 0x0 0x1000>;
 
+			device-name = "cti_turing_dl";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -3993,6 +4014,7 @@
 
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
+			device-name = "cti_turing_q6";
 		};
 
 		tpdm@69d0000 {
@@ -4017,6 +4039,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06b00000 0x0 0x1000>;
 
+			device-name = "cti_swao_0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4025,6 +4048,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06b01000 0x0 0x1000>;
 
+			device-name = "cti_swao_1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4033,6 +4057,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06b03000 0x0 0x1000>;
 
+			device-name = "cti_swao_3";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4487,6 +4512,7 @@
 
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
+			device-name = "cti_mdss_dl";
 		};
 
 		tpdm@6c70000 {
@@ -4541,6 +4567,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06e02000 0x0 0x1000>;
 
+			device-name = "cti_ddr_dl_0_cti_0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4549,6 +4576,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06e0c000 0x0 0x1000>;
 
+			device-name = "cti_ddr_dl_1_cti_0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4557,6 +4585,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06e0d000 0x0 0x1000>;
 
+			device-name = "cti_ddr_dl_1_cti_1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4565,6 +4594,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06e0e000 0x0 0x1000>;
 
+			device-name = "cti_ddr_dl_1_cti_2";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4573,6 +4603,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x06e11000 0x0 0x1000>;
 
+			device-name = "cti_ddr_ch01_dl_cti_0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4583,6 +4614,7 @@
 			reg = <0x0 0x07020000 0x0 0x1000>;
 			cpu = <&CPU0>;
 
+			device-name = "cti_cpu0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 
@@ -4614,6 +4646,7 @@
 			reg = <0x0 0x07120000 0x0 0x1000>;
 			cpu = <&CPU1>;
 
+			device-name = "cti_cpu1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4644,6 +4677,7 @@
 			reg = <0x0 0x07220000 0x0 0x1000>;
 			cpu = <&CPU2>;
 
+			device-name = "cti_cpu2";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4674,6 +4708,7 @@
 			reg = <0x0 0x07320000 0x0 0x1000>;
 			cpu = <&CPU3>;
 
+			device-name = "cti_cpu3";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4704,6 +4739,7 @@
 			reg = <0x0 0x07420000 0x0 0x1000>;
 			cpu = <&CPU4>;
 
+			device-name = "cti_cpu4";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4734,6 +4770,7 @@
 			reg = <0x0 0x07520000 0x0 0x1000>;
 			cpu = <&CPU5>;
 
+			device-name = "cti_cpu5";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4764,6 +4801,7 @@
 			reg = <0x0 0x07620000 0x0 0x1000>;
 			cpu = <&CPU6>;
 
+			device-name = "cti_cpu6";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4794,6 +4832,7 @@
 			reg = <0x0 0x07720000 0x0 0x1000>;
 			cpu = <&CPU7>;
 
+			device-name = "cti_cpu7";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -4975,6 +5014,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x07862000 0x0 0x1000>;
 
+			device-name = "cti_apss_dl_cti0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -5076,6 +5116,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x078e0000 0x0 0x1000>;
 
+			device-name = "cti_apss_cti0";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -5084,6 +5125,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x078f0000 0x0 0x1000>;
 
+			device-name = "cti_apss_cti1";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
@@ -5092,6 +5134,7 @@
 			compatible = "arm,coresight-cti", "arm,primecell";
 			reg = <0x0 0x07900000 0x0 0x1000>;
 
+			device-name = "cti_apss_cti2";
 			clocks = <&aoss_qmp>;
 			clock-names = "apb_pclk";
 		};
