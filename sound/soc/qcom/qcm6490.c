@@ -195,11 +195,14 @@ static const struct snd_soc_dapm_route qcs6490_rb3gen2_vision_dapm_routes[] = {
 
 static const struct snd_soc_dapm_widget qcs9100_dapm_widgets[] = {
 	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
+	SND_SOC_DAPM_PINCTRL("STUB_AIF2_PINCTRL", "stub_aif2_active", "stub_aif2_sleep"),
 };
 
 static const struct snd_soc_dapm_route qcs9100_dapm_routes[] = {
 	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
 	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF2_RX", NULL, "STUB_AIF2_PINCTRL"},
+	{"STUB_AIF2_TX", NULL, "STUB_AIF2_PINCTRL"},
 };
 
 static const struct snd_soc_ops qcm6490_be_ops = {
