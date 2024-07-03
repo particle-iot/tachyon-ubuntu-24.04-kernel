@@ -54,7 +54,6 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 
 	switch (cpu_dai->id) {
 	case TX_CODEC_DMA_TX_3:
-	case LPASS_CDC_DMA_TX3:
 	case RX_CODEC_DMA_RX_0:
 		ret = qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
 		break;
