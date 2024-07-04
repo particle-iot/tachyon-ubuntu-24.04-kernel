@@ -71,14 +71,14 @@ static void update_soc_wdt_node(void)
 	 * watchdog device node by marking it "reserved", otherwise enable it.
 	 */
 
+	soc_wdt = of_find_compatible_node(NULL, NULL, "qcom,apss-wdt-sc7280");
+	if (!soc_wdt)
+		return;
+
 	if (is_hyp_mode_available())
 		status_string = "okay";
 	else
 		status_string = "reserved";
-
-	soc_wdt = of_find_compatible_node(NULL, NULL, "qcom,kpss-wdt");
-	if (!soc_wdt)
-		return;
 
 	/* Disable the node by flipping the status to disabled */
 	newprop = kzalloc(sizeof(*newprop), GFP_KERNEL);
