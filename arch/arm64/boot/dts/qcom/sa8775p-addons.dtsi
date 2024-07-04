@@ -387,10 +387,6 @@
 		hyplog-size-offset = <0x414>;
 	};
 
-	watchdog@17c10000 {
-		status = "disabled";
-	};
-
 	csr: csr@4001000 {
 		compatible = "qcom,coresight-csr";
 		reg = <0x0 0x4001000 0x0 0x1000>;
