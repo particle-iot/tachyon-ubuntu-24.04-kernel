@@ -387,6 +387,20 @@
 		hyplog-size-offset = <0x414>;
 	};
 
+	lpass_tlmm: pinctrl@3440000 {
+		compatible = "qcom,qcs9100-lpass-lpi-pinctrl";
+		reg = <0x0 0x03440000 0x0 0x20000>,
+		      <0x0 0x034D0000 0x0 0x10000>;
+
+		clocks = <&q6prmcc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6prmcc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "core", "audio";
+
+		gpio-controller;
+		#gpio-cells = <2>;
+		gpio-ranges = <&lpass_tlmm 0 0 23>;
+	};
+
 	csr: csr@4001000 {
 		compatible = "qcom,coresight-csr";
 		reg = <0x0 0x4001000 0x0 0x1000>;
