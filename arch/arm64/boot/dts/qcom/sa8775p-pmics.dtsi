@@ -313,7 +313,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts-extended = <&spmi_bus 0x2 0x80 0x1 IRQ_TYPE_EDGE_RISING>;
-			interrupt-names = "adc-sdam1";
+			interrupt-names = "adc-sdam0";
 			#io-channel-cells = <1>;
 
 			pmm8654au_1_ref_gnd {
@@ -390,7 +390,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts-extended = <&spmi_bus 0x4 0x80 0x1 IRQ_TYPE_EDGE_RISING>;
-			interrupt-names = "adc-sdam2";
+			interrupt-names = "adc-sdam0";
 			#io-channel-cells = <1>;
 
 			pmm8654au_2_ref_gnd {
@@ -467,7 +467,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts-extended = <&spmi_bus 0x6 0x80 0x1 IRQ_TYPE_EDGE_RISING>;
-			interrupt-names = "adc-sdam3";
+			interrupt-names = "adc-sdam0";
 			#io-channel-cells = <1>;
 
 			pmm8654au_3_ref_gnd {
