@@ -750,14 +750,6 @@ static void ath11k_pci_coredump_download(struct ath11k_base *ab)
 		if (mem_idx == FW_CRASH_DUMP_NONE)
 			continue;
 
-		dump_tlv = buf;
-		dump_tlv->type = cpu_to_le32(mem_idx);
-		dump_tlv->tlv_len = cpu_to_le32(dump_seg_sz[mem_idx]);
-		buf += COREDUMP_TLV_HDR_SIZE;
-
-		if (!dump_tlv->tlv_len)
-			continue;
-
 		for (i = 0; i < ab->qmi.mem_seg_count; i++) {
 			mem_type = ath11k_coredump_get_dump_type
 						(ab->qmi.target_mem[i].type);
@@ -771,6 +763,11 @@ static void ath11k_pci_coredump_download(struct ath11k_base *ab)
 					   ab->qmi.target_mem[i].type);
 				continue;
 			}
+
+			dump_tlv = buf;
+			dump_tlv->type = cpu_to_le32(mem_idx);
+			dump_tlv->tlv_len = cpu_to_le32(dump_seg_sz[mem_idx]);
+			buf += COREDUMP_TLV_HDR_SIZE;
 
 			memcpy_fromio(buf, ab->qmi.target_mem[i].v.iaddr,
 				      ab->qmi.target_mem[i].size);
