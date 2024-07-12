@@ -65,15 +65,22 @@ static void update_soc_wdt_node(void)
 	const char *status_string;
 	int ret;
 
+
 	/*
-	 * If Linux is not booted in hyp mode, assume that Gunyah is active
-	 * and removed SoC watchdog I/O access to Linux. Disable SoC
-	 * watchdog device node by marking it "reserved", otherwise enable it.
+	 * The watchdog is emulated by gunyah hypervisor on some targets. The below
+	 * status flipping is not needed on these targets. Both KVM and Gunyah hypervisor
+	 * configurations use SoC WDT.
 	 */
 
 	soc_wdt = of_find_compatible_node(NULL, NULL, "qcom,apss-wdt-sc7280");
 	if (!soc_wdt)
 		return;
+
+	/*
+	 * If Linux is not booted in hyp mode, assume that Gunyah is active
+	 * and removed SoC watchdog I/O access to Linux. Disable SoC
+	 * watchdog device node by marking it "reserved", otherwise enable it.
+	 */
 
 	if (is_hyp_mode_available())
 		status_string = "okay";
