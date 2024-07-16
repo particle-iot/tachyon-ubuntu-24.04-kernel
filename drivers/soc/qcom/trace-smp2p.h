@@ -19,7 +19,7 @@ TRACE_EVENT(smp2p_ssr_ack,
 		__string(dev_name, dev_name(dev))
 	),
 	TP_fast_assign(
-		__assign_str(dev_name);
+		__assign_str(dev_name, dev_name(dev));
 	),
 	TP_printk("%s: SSR detected", __get_str(dev_name))
 );
@@ -32,7 +32,7 @@ TRACE_EVENT(smp2p_negotiate,
 		__field(u32, out_features)
 	),
 	TP_fast_assign(
-		__assign_str(dev_name);
+		__assign_str(dev_name, dev_name(dev));
 		__entry->out_features = features;
 	),
 	TP_printk("%s: state=open out_features=%s", __get_str(dev_name),
@@ -51,8 +51,8 @@ TRACE_EVENT(smp2p_notify_in,
 		__field(u32, val)
 	),
 	TP_fast_assign(
-		__assign_str(dev_name);
-		__assign_str(client_name);
+		__assign_str(dev_name, dev_name(smp2p_entry->smp2p->dev));
+		__assign_str(client_name, smp2p_entry->name);
 		__entry->status = status;
 		__entry->val = val;
 	),
@@ -74,8 +74,8 @@ TRACE_EVENT(smp2p_update_bits,
 		__field(u32, val)
 	),
 	TP_fast_assign(
-		__assign_str(dev_name);
-		__assign_str(client_name);
+		__assign_str(dev_name, dev_name(smp2p_entry->smp2p->dev));
+		__assign_str(client_name, smp2p_entry->name);
 		__entry->orig = orig;
 		__entry->val = val;
 	),
