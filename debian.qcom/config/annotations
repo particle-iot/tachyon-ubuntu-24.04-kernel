@@ -1042,6 +1042,8 @@ CONFIG_PCI_KEYSTONE_EP                          policy<{'arm64': '-'}>
 CONFIG_PCI_KEYSTONE_HOST                        policy<{'arm64': '-'}>
 CONFIG_PCI_LAYERSCAPE                           policy<{'arm64': '-'}>
 CONFIG_PCI_LAYERSCAPE_EP                        policy<{'arm64': '-'}>
+CONFIG_PCI_PWRCTL                               policy<{'arm64': 'm'}>
+CONFIG_PCI_PWRCTL_PWRSEQ                        policy<{'arm64': 'm'}>
 CONFIG_PCI_TEGRA                                policy<{'arm64': '-'}>
 CONFIG_PCS_LYNX                                 policy<{'arm64': 'm'}>
 CONFIG_PECI_NPCM                                policy<{'arm64': '-'}>
@@ -1284,6 +1286,8 @@ CONFIG_POWER_RESET_LINKSTATION                  policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_OCELOT_RESET                 policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_ODROID_GO_ULTRA_POWEROFF     policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_SC27XX                       policy<{'arm64': '-'}>
+CONFIG_POWER_SEQUENCING                         policy<{'arm64': 'm'}>
+CONFIG_POWER_SEQUENCING_QCOM_WCN                policy<{'arm64': 'm'}>
 CONFIG_PRU_REMOTEPROC                           policy<{'arm64': '-'}>
 CONFIG_PWC_RZV2M                                policy<{'arm64': '-'}>
 CONFIG_PWM_APPLE                                policy<{'arm64': '-'}>
@@ -1473,7 +1477,10 @@ CONFIG_RZ_MTU3                                  policy<{'arm64': '-'}>
 CONFIG_RZ_MTU3_CNT                              policy<{'arm64': '-'}>
 CONFIG_SATA_AHCI_SEATTLE                        policy<{'arm64': '-'}>
 CONFIG_SATA_RCAR                                policy<{'arm64': '-'}>
+CONFIG_SA_CAMCC_8775P                           policy<{'arm64': 'm'}>
+CONFIG_SA_DISPCC_8775P                          policy<{'arm64': 'm'}>
 CONFIG_SA_GCC_8775P                             policy<{'arm64': 'y'}>
+CONFIG_SA_VIDEOCC_8775P                         policy<{'arm64': 'm'}>
 CONFIG_SC27XX_ADC                               policy<{'arm64': '-'}>
 CONFIG_SCSI_UFSHCD                              policy<{'arm64': 'y'}>
 CONFIG_SCSI_UFSHCD_PLATFORM                     policy<{'arm64': 'y'}>
