@@ -286,17 +286,12 @@ err_mem_path_disable:
 static void qce_crypto_remove(struct platform_device *pdev)
 {
 	struct qce_device *qce = platform_get_drvdata(pdev);
-	int ret = 0;
 
 	tasklet_kill(&qce->done_tasklet);
 	qce_unregister_algs(qce);
-	ret = icc_set_bw(qce->mem_path, qce->icc_bw, qce->icc_bw);
-	if (ret)
-		return ret;
+	icc_set_bw(qce->mem_path, qce->icc_bw, qce->icc_bw);
 	qce_dma_release(&qce->dma);
-	ret = icc_set_bw(qce->mem_path, 0, 0);
-	if (ret)
-		return ret;
+	icc_set_bw(qce->mem_path, 0, 0);
 	clk_disable_unprepare(qce->bus);
 	clk_disable_unprepare(qce->iface);
 	clk_disable_unprepare(qce->core);
