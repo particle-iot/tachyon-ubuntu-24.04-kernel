@@ -937,18 +937,18 @@ static void tc956xmac_ethtool_getdrvinfo(struct net_device *dev,
 								fw_version->major, fw_version->minor,
 								fw_version->sub_minor);
 
-	strlcpy(info->fw_version, fw_version_str, sizeof(info->fw_version));
+	strscpy(info->fw_version, fw_version_str, sizeof(info->fw_version));
 
 	if (priv->plat->has_gmac || priv->plat->has_gmac4)
-		strlcpy(info->driver, GMAC_ETHTOOL_NAME, sizeof(info->driver));
+		strscpy(info->driver, GMAC_ETHTOOL_NAME, sizeof(info->driver));
 	else if (priv->plat->has_xgmac)
-		strlcpy(info->driver, XGMAC_ETHTOOL_NAME, sizeof(info->driver));
+		strscpy(info->driver, XGMAC_ETHTOOL_NAME, sizeof(info->driver));
 	else
-		strlcpy(info->driver, MAC100_ETHTOOL_NAME,
+		strscpy(info->driver, MAC100_ETHTOOL_NAME,
 			sizeof(info->driver));
 
-	strlcpy(info->version, DRV_MODULE_VERSION, sizeof(info->version));
-	strlcpy(info->bus_info, pci_name(pdev), sizeof(info->bus_info));
+	strscpy(info->version, DRV_MODULE_VERSION, sizeof(info->version));
+	strscpy(info->bus_info, pci_name(pdev), sizeof(info->bus_info));
 
 	info->n_priv_flags = TC956X_PRIV_FLAGS_STR_LEN;
 }
