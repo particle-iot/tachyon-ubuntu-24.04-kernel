@@ -93,6 +93,7 @@
 #define CAM_CC_SM_OBS_CLK					83
 #define CAM_CC_XO_CLK_SRC					84
 #define CAM_CC_QDSS_DEBUG_XO_CLK				85
+#define CAM_CC_TITAN_TOP_ACCU_SHIFT_CLK				86
 
 /* CAM_CC power domains */
 #define CAM_CC_TITAN_TOP_GDSC					0
