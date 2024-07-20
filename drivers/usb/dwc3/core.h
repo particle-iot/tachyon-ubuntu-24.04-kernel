@@ -1612,7 +1612,7 @@ void dwc3_event_buffers_cleanup(struct dwc3 *dwc);
 int dwc3_core_soft_reset(struct dwc3 *dwc);
 void dwc3_enable_susphy(struct dwc3 *dwc, bool enable);
 
-struct dwc3 *dwc3_probe(struct platform_device *pdev,
+int dwc3_probe(struct dwc3 *dwc,
 			struct dwc3_glue_data *glue_data);
 void dwc3_remove(struct dwc3 *dwc);
 
