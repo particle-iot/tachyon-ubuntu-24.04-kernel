@@ -1952,20 +1952,14 @@ static struct power_supply *dwc3_get_usb_power_supply(struct dwc3 *dwc)
 	return usb_psy;
 }
 
-struct dwc3 *dwc3_probe(struct platform_device *pdev,
+int dwc3_probe(struct dwc3 *dwc,
 			struct dwc3_glue_data *glue_data)
 {
-	struct device		*dev = &pdev->dev;
+	struct platform_device	*pdev = to_platform_device(dwc->dev);
+	struct device		*dev = dwc->dev;
 	struct resource		*res, dwc_res;
 	void __iomem		*regs;
-	struct dwc3		*dwc;
 	int			ret;
-
-	dwc = devm_kzalloc(dev, sizeof(*dwc), GFP_KERNEL);
-	if (!dwc)
-		return ERR_PTR(-ENOMEM);
-
-	dwc->dev = dev;
 
 	if (glue_data) {
 		dwc->glue_data = glue_data->glue_data;
@@ -1975,7 +1969,7 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev,
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "missing memory resource\n");
-		return ERR_PTR(-ENODEV);
+		return -ENODEV;
 	}
 
 	dwc->xhci_resources[0].start = res->start;
@@ -2005,8 +1999,8 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev,
 	}
 
 	regs = devm_ioremap_resource(dev, &dwc_res);
-	if (IS_ERR(regs))
-		return ERR_CAST(regs);
+	if (!regs)
+		return -EINVAL;
 
 	dwc->regs	= regs;
 	dwc->regs_size	= resource_size(&dwc_res);
@@ -2084,9 +2078,6 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev,
 		goto err_free_event_buffers;
 	}
 
-	if (!glue_data)
-		platform_set_drvdata(pdev, dwc);
-
 	dwc3_check_params(dwc);
 	dwc3_debugfs_init(dwc);
 
@@ -2098,7 +2089,7 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev,
 
 	dma_set_max_seg_size(dev, UINT_MAX);
 
-	return dwc;
+	return 0;
 
 err_exit_debugfs:
 	dwc3_debugfs_exit(dwc);
@@ -2122,7 +2113,7 @@ err_put_psy:
 	if (dwc->usb_psy)
 		power_supply_put(dwc->usb_psy);
 
-	return ERR_PTR(ret);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(dwc3_probe);
 
@@ -2130,13 +2121,14 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 {
 	struct dwc3 *dwc;
 
-	dwc = dwc3_probe(pdev, NULL);
-	if (IS_ERR(dwc))
-		return PTR_ERR(dwc);
+	dwc = devm_kzalloc(&pdev->dev, sizeof(*dwc), GFP_KERNEL);
+	if (!dwc)
+		return -ENOMEM;
 
+	dwc->dev = &pdev->dev;
 	platform_set_drvdata(pdev, dwc);
 
-	return 0;
+	return dwc3_probe(dwc, NULL);
 }
 
 void dwc3_remove(struct dwc3 *dwc)
