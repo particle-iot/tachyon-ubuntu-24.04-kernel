@@ -4294,6 +4294,7 @@ static const struct pci_device_id tc956xmac_id_table[] = {
 #endif
 	{}
 };
+MODULE_DEVICE_TABLE(pci, tc956xmac_id_table);
 
 static SIMPLE_DEV_PM_OPS(tc956xmac_pm_ops, tc956x_pcie_suspend, tc956x_pcie_resume);
 
