@@ -107,6 +107,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-addons-rb3gen2-video-mezz.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-addons-rb3gen2-vision-mezz.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-rb3gen2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-rb3gen2-vision-mezzanine.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-addons-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-addons-aim300-aiot.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
