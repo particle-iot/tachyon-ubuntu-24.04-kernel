@@ -45,6 +45,7 @@
 			next-level-cache = <&L2_0>;
 			power-domains = <&CPU_PD0>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 0>;
 
 			L2_0: l2-cache {
 				compatible = "cache";
@@ -68,6 +69,7 @@
 			next-level-cache = <&L2_1>;
 			power-domains = <&CPU_PD1>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 0>;
 
 			L2_1: l2-cache {
 				compatible = "cache";
@@ -85,6 +87,7 @@
 			next-level-cache = <&L2_2>;
 			power-domains = <&CPU_PD2>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 1>;
 
 			L2_2: l2-cache {
 				compatible = "cache";
@@ -102,6 +105,7 @@
 			next-level-cache = <&L2_3>;
 			power-domains = <&CPU_PD3>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 1>;
 
 			L2_3: l2-cache {
 				compatible = "cache";
@@ -119,6 +123,7 @@
 			next-level-cache = <&L2_4>;
 			power-domains = <&CPU_PD4>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 2>;
 
 			L2_4: l2-cache {
 				compatible = "cache";
@@ -142,6 +147,7 @@
 			next-level-cache = <&L2_5>;
 			power-domains = <&CPU_PD5>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 2>;
 
 			L2_5: l2-cache {
 				compatible = "cache";
@@ -159,6 +165,7 @@
 			next-level-cache = <&L2_6>;
 			power-domains = <&CPU_PD6>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 2>;
 
 			L2_6: l2-cache {
 				compatible = "cache";
@@ -176,6 +183,7 @@
 			next-level-cache = <&L2_7>;
 			power-domains = <&CPU_PD7>;
 			power-domain-names = "psci";
+			qcom,freq-domain = <&cpufreq_hw 2>;
 
 			L2_7: l2-cache {
 				compatible = "cache";
@@ -944,6 +952,19 @@
 				#clock-cells = <1>;
 				clocks = <&xo_board>;
 			};
+		};
+
+		cpufreq_hw: cpufreq@18591000 {
+			compatible = "qcom,qcs8300-cpufreq-epss", "qcom,cpufreq-epss";
+			reg = <0x0 0x18591000 0x0 0x1000>,
+			      <0x0 0x18594000 0x0 0x1000>,
+			      <0x0 0x18593000 0x0 0x1000>;
+			reg-names = "freq-domain0", "freq-domain1", "freq-domain2";
+
+			clocks = <&rpmhcc RPMH_CXO_CLK>, <&gcc GCC_GPLL0>;
+			clock-names = "xo", "alternate";
+
+			#freq-domain-cells = <1>;
 		};
 
 		tlmm: pinctrl@f100000 {
