@@ -7470,18 +7470,21 @@
 						compatible = "qcom,q6apm";
 						reg = <GPR_APM_MODULE_IID>;
 						#sound-dai-cells = <0>;
+						qcom,protection-domain = "avs/audio",
+									 "msm/adsp/audio_pd";
 
 						q6apmbedai: bedais {
 							compatible = "qcom,q6apm-lpass-dais";
 							q6apm-dai-uses-dummy-ops;
 							#sound-dai-cells = <1>;
-							qcom,prmcc_clk = <&q6prmcc>;
 						};
 					};
 
 					q6prm: service@2 {
 						compatible = "qcom,q6prm";
 						reg = <GPR_PRM_MODULE_IID>;
+						qcom,protection-domain = "avs/audio",
+									 "msm/adsp/audio_pd";
 
 						q6prmcc: clock-controller {
 							compatible = "qcom,q6prm-lpass-clocks";
