@@ -379,22 +379,80 @@
 		};
 	};
 
+	aggre1_noc: interconnect-aggre1-noc {
+		compatible = "qcom,qcs8300-aggre1-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	aggre2_noc: interconnect-aggre2-noc {
+		compatible = "qcom,qcs8300-aggre2-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
 	clk_virt: interconnect-clk-virt {
 		compatible = "qcom,qcs8300-clk-virt";
 		#interconnect-cells = <2>;
 		qcom,bcm-voters = <&apps_bcm_voter>;
 	};
 
-	config_noc: interconnect-config-noc@14c0000 {
+	config_noc: interconnect-config-noc {
 		compatible = "qcom,qcs8300-config-noc";
-		reg = <0x0 0x014c0000 0x0 0x13080>;
 		#interconnect-cells = <2>;
 		qcom,bcm-voters = <&apps_bcm_voter>;
 	};
 
-	gem_noc: interconnect-gem-noc@9100000 {
+	dc_noc: interconnect-dc-noc {
+		compatible = "qcom,qcs8300-dc-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	gem_noc: interconnect-gem-noc {
 		compatible = "qcom,qcs8300-gem-noc";
-		reg = <0x0 0x9100000 0x0 0xf7080>;
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	gpdsp_anoc: interconnect-gpdsp-anoc {
+		compatible = "qcom,qcs8300-gpdsp-anoc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	lpass_ag_noc: interconnect-lpass-ag-noc {
+		compatible = "qcom,qcs8300-lpass-ag-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	mc_virt: interconnect-mc-virt {
+		compatible = "qcom,qcs8300-mc-virt";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	mmss_noc: interconnect-mmss-noc {
+		compatible = "qcom,qcs8300-mmss-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	nspa_noc: interconnect-nspa-noc {
+		compatible = "qcom,qcs8300-nspa-noc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	pcie_anoc: interconnect-pcie-anoc {
+		compatible = "qcom,qcs8300-pcie-anoc";
+		#interconnect-cells = <2>;
+		qcom,bcm-voters = <&apps_bcm_voter>;
+	};
+
+	system_noc: interconnect-system-noc {
+		compatible = "qcom,qcs8300-system-noc";
 		#interconnect-cells = <2>;
 		qcom,bcm-voters = <&apps_bcm_voter>;
 	};
