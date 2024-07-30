@@ -9,6 +9,16 @@
 #include <asm-generic/errno-base.h>
 
 #ifdef CONFIG_QCOM_SCM_ADDON
+
+#define QCOM_SCM_CAMERA_MAX_QOS_CNT	2
+
+struct qcom_scm_camera_qos {
+	u32 offset;
+	u32 val;
+};
+
+extern int qcom_scm_camera_update_camnoc_qos(uint32_t use_case_id,
+		uint32_t qos_cnt, struct qcom_scm_camera_qos *scm_buf);
 extern bool qcom_scm_dcvs_ca_available(void);
 extern bool qcom_scm_dcvs_core_available(void);
 extern int qcom_scm_dcvs_reset(void);
