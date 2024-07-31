@@ -272,6 +272,9 @@
 #define DWC3_GUCTL1_PARKMODE_DISABLE_HS		BIT(16)
 #define DWC3_GUCTL1_RESUME_OPMODE_HS_HOST	BIT(10)
 
+/* Global User Control Register */
+#define DWC3_GUCTL_RESBWHSEPS			BIT(16)
+
 /* Global Status Register */
 #define DWC3_GSTS_OTG_IP	BIT(10)
 #define DWC3_GSTS_BC_IP		BIT(9)
@@ -1398,6 +1401,7 @@ struct dwc3 {
 	const struct dwc3_glue_ops *glue_ops;
 
 	bool			cable_disconnected;
+	bool			dwc3_guctl_resbwhseps_quirk;
 };
 
 #define INCRX_BURST_MODE 0
