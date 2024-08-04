@@ -914,6 +914,7 @@
 		vddrfa2p2-supply = <&vreg_s1c_2p19>;
 		vddasd-supply = <&vreg_l11c_2p8>;
 		max-speed = <3200000>;
+		local-bd-address = [ad 5a 00 00 90 64];
 	};
 };
 
