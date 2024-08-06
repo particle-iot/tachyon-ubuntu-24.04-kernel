@@ -67,3 +67,18 @@ obj-y += bt/
 ###
 
 obj-y += qps615/
+
+
+###
+
+export VIDEO_KERNEL_ROOT := $(srctree)/$(src)/video
+
+obj-y += video/
+
+
+##
+
+export TOUCH_ROOT := $(srctree)/$(src)/touch
+
+
+obj-y += touch/
