@@ -117,16 +117,16 @@ int msm_vidc_mmap(struct msm_vidc_inst *inst, struct file *filp, struct vm_area_
 
 int msm_vidc_querycap(struct msm_vidc_inst *inst, struct v4l2_capability *cap)
 {
-	strlcpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
-	strlcpy(cap->bus_info, MSM_VIDC_BUS_NAME, sizeof(cap->bus_info));
+	strscpy(cap->driver, MSM_VIDC_DRV_NAME, sizeof(cap->driver));
+	strscpy(cap->bus_info, MSM_VIDC_BUS_NAME, sizeof(cap->bus_info));
 	cap->version = MSM_VIDC_VERSION;
 
 	memset(cap->reserved, 0, sizeof(cap->reserved));
 
 	if (is_decode_session(inst))
-		strlcpy(cap->card, "msm_vidc_decoder", sizeof(cap->card));
+		strscpy(cap->card, "msm_vidc_decoder", sizeof(cap->card));
 	else if (is_encode_session(inst))
-		strlcpy(cap->card, "msm_vidc_encoder", sizeof(cap->card));
+		strscpy(cap->card, "msm_vidc_encoder", sizeof(cap->card));
 	else
 		return -EINVAL;
 
@@ -784,7 +784,7 @@ void *msm_vidc_open(struct msm_vidc_core *core, u32 session_type)
 	inst->session_id = hash32_ptr(inst);
 	msm_vidc_update_state(inst, MSM_VIDC_OPEN, __func__);
 	inst->sub_state = MSM_VIDC_SUB_STATE_NONE;
-	strlcpy(inst->sub_state_name, "SUB_STATE_NONE", sizeof(inst->sub_state_name));
+	strscpy(inst->sub_state_name, "SUB_STATE_NONE", sizeof(inst->sub_state_name));
 	inst->active = true;
 	inst->request = false;
 	inst->ipsc_properties_set = false;
