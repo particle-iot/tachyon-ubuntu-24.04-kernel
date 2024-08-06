@@ -971,7 +971,7 @@ int32_t nvt_check_flash_end_flag(void)
 	}
 
 	//buf[3:5] => NVT End Flag
-	strlcpy(nvt_end_flag, &buf[3], sizeof(nvt_end_flag));
+	strscpy(nvt_end_flag, &buf[3], sizeof(nvt_end_flag));
 	NVT_LOG("nvt_end_flag=%s (%02X %02X %02X)\n", nvt_end_flag, buf[3], buf[4], buf[5]);
 
 	if ((memcmp(nvt_end_flag, "NVT", NVT_FLASH_END_FLAG_LEN) == 0) ||
