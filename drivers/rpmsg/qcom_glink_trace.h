@@ -20,7 +20,7 @@ TRACE_EVENT(qcom_glink_cmd_version,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
+		__assign_str(remote, remote);
 		__entry->version = version;
 		__entry->features = features;
 		__entry->tx = tx;
@@ -45,7 +45,7 @@ TRACE_EVENT(qcom_glink_cmd_version_ack,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
+		__assign_str(remote, remote);
 		__entry->version = version;
 		__entry->features = features;
 		__entry->tx = tx;
@@ -71,8 +71,8 @@ TRACE_EVENT(qcom_glink_cmd_open,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->tx = tx;
@@ -99,8 +99,8 @@ TRACE_EVENT(qcom_glink_cmd_close,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->tx = tx;
@@ -127,8 +127,8 @@ TRACE_EVENT(qcom_glink_cmd_open_ack,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->tx = tx;
@@ -158,8 +158,8 @@ TRACE_EVENT(qcom_glink_cmd_intent,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->count = count;
@@ -194,8 +194,8 @@ TRACE_EVENT(qcom_glink_cmd_rx_done,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->iid = iid;
@@ -227,8 +227,8 @@ TRACE_EVENT(qcom_glink_cmd_rx_intent_req,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->size = size;
@@ -258,8 +258,8 @@ TRACE_EVENT(qcom_glink_cmd_rx_intent_req_ack,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->granted = granted;
@@ -292,8 +292,8 @@ TRACE_EVENT(qcom_glink_cmd_tx_data,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->iid = iid;
@@ -328,8 +328,8 @@ TRACE_EVENT(qcom_glink_cmd_close_ack,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->tx = tx;
@@ -353,7 +353,7 @@ TRACE_EVENT(qcom_glink_cmd_read_notif,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
+		__assign_str(remote, remote);
 		__entry->tx = tx;
 	),
 	TP_printk("%s remote: %s",
@@ -376,8 +376,8 @@ TRACE_EVENT(qcom_glink_cmd_signal,
 		__field(bool, tx)
 	),
 	TP_fast_assign(
-		__assign_str(remote);
-		__assign_str(channel);
+		__assign_str(remote, remote);
+		__assign_str(channel, channel);
 		__entry->lcid = lcid;
 		__entry->rcid = rcid;
 		__entry->signals = signals;
