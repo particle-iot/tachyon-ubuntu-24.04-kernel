@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+$(info "VIDEO_KERNEL_ROOT is: $(VIDEO_KERNEL_ROOT)")
+$(info "MACHINE is: $(MACHINE)")
+
+# Include Architecture configurations
+ifneq ($(KBUILD_EXTRA_CONFIGS),)
+include $(KBUILD_EXTRA_CONFIGS)
+endif
+
+# List of all camera-kernel headers
+video_include_dirs := $(shell dirname `find $(VIDEO_KERNEL_ROOT) -name '*.h'` | uniq)
+
+# Include Kernel headers
+LINUXINCLUDE +=                                 \
+    -I$(KERNEL_ROOT)                            \
+    $(addprefix -I,$(video_include_dirs))         \
+    -I$(VIDEO_KERNEL_ROOT)/vidc/inc \
+    -I$(VIDEO_KERNEL_ROOT)/variant/common/inc \
+    -I$(VIDEO_KERNEL_ROOT)/variant/iris2/inc \
+    -I$(VIDEO_KERNEL_ROOT)/variant/iris3/inc \
+    -I$(VIDEO_KERNEL_ROOT)/platform/common/inc \
+    -I$(VIDEO_KERNEL_ROOT)/platform/qcm6490/inc \
+    -I$(VIDEO_KERNEL_ROOT)/platform/sm8550/inc \
+    -I$(VIDEO_KERNEL_ROOT)/platform/sa8775p/inc \
+    -I$(VIDEO_KERNEL_ROOT)/platform/qcs8300/inc \
+    -I$(VIDEO_KERNEL_ROOT)/include/uapi/vidc/media \
+    -I$(VIDEO_KERNEL_ROOT)/include/uapi/vidc/ \
+    -I$(VIDEO_KERNEL_ROOT)/
+
+# After creating lists, add content of 'ccflags-m' variable to 'ccflags-y' one.
+ccflags-y += ${ccflags-m}
+ccflags-y += -Wmissing-prototypes
+ccflags-y += -Werror
+
+iris_vpu-y := \
+                  vidc/src/msm_vidc_debug.o \
+                  vidc/src/msm_vidc_v4l2.o \
+                  vidc/src/msm_vidc_vb2.o \
+                  vidc/src/msm_vidc.o \
+                  vidc/src/msm_vdec.o \
+                  vidc/src/msm_venc.o \
+                  vidc/src/msm_vidc_driver.o \
+                  vidc/src/msm_vidc_control.o \
+                  vidc/src/msm_vidc_buffer.o \
+                  vidc/src/msm_vidc_power.o \
+                  vidc/src/msm_vidc_probe.o \
+                  vidc/src/resources.o \
+                  vidc/src/firmware.o \
+                  vidc/src/msm_vidc_memory.o \
+                  vidc/src/msm_vidc_memory_ext.o \
+                  vidc/src/venus_hfi.o \
+                  vidc/src/venus_hfi_queue.o \
+                  vidc/src/hfi_packet.o \
+                  vidc/src/venus_hfi_response.o \
+                  vidc/src/msm_vidc_fence.o \
+                  vidc/src/msm_vidc_state.o \
+                  platform/common/src/msm_vidc_platform.o \
+                  platform/common/src/msm_vidc_platform_ext.o \
+                  platform/qcm6490/src/msm_vidc_qcm6490.o \
+                  platform/sa8775p/src/msm_vidc_sa8775p.o \
+                  platform/qcs8300/src/msm_vidc_qcs8300.o \
+                  variant/common/src/msm_vidc_variant.o \
+                  variant/iris3/src/msm_vidc_buffer_iris3.o \
+                  variant/iris3/src/msm_vidc_iris3.o \
+                  variant/iris3/src/msm_vidc_power_iris3.o \
+                  variant/iris3/src/msm_vidc_bus_iris3.o \
+                  variant/iris3/src/msm_vidc_clock_iris3.o \
+                  variant/iris2/src/msm_vidc_buffer_iris2.o \
+                  variant/iris2/src/msm_vidc_iris2.o \
+                  variant/iris2/src/msm_vidc_power_iris2.o
+
+obj-m += iris_vpu.o
+BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/iris_vpu.ko
