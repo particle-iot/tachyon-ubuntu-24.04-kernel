@@ -563,9 +563,6 @@ int btfm_slim_register_codec(struct btfmslim *btfm_slim)
 	int ret = 0;
 	struct device *dev = btfm_slim->dev;
 
-	BTFMSLIM_DBG("");
-	dev_err(dev, "\n");
-
 	/* Register Codec driver */
 	ret = snd_soc_register_component(dev, &btfmslim_codec,
 		btfmslim_dai, ARRAY_SIZE(btfmslim_dai));

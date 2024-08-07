@@ -38,7 +38,7 @@ static int btfm_num_ports_open;
 
 int btfm_slim_socid(char *soc_name)
 {
-    BTFMSLIM_ERR("btfm_slim_socid-btfm_socname:%s",soc_name);
+    BTFMSLIM_INFO("btfm_slim_socid-btfm_socname:%s",soc_name);
     if (strstr(soc_name, "qca6490")) {
       return QCA_QCA6490;
     } else if (strstr(soc_name, "qca6390")) {
@@ -604,7 +604,6 @@ static int btfm_slim_probe(struct slim_device *slim)
 	pr_info("%s: name = %s\n", __func__, dev_name(&slim->dev));
 
 	BTFMSLIM_DBG("");
-	BTFMSLIM_ERR("is_laddr_valid is true");
 	if (!slim->ctrl)
 		return -EINVAL;
 
