@@ -438,6 +438,7 @@
 		interrupt-names = "byte-cntr-irq";
 		coresight-csr = <&csr>;
 		csr-atid-offset = <0x108>;
+		csr-irqctrl-offset = <0x70>;
 		byte-cntr-name = "byte-cntr1";
 		byte-cntr-class-name = "coresight-tmc-etr1-stream";
 	};
