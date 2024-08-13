@@ -309,6 +309,11 @@
 	status = "okay";
 };
 
+&remoteproc_cdsp {
+	firmware-name = "qcom/qcs8300/cdsp0.mbn";
+	status = "okay";
+};
+
 &serdes0 {
 	phy-supply = <&vreg_l5a>;
 	status = "okay";
