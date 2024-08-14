@@ -1941,6 +1941,21 @@ static int sdhci_msm_program_key(struct cqhci_host *cq_host,
 				    cfg->data_unit_size, slot);
 }
 
+/*
+ * Derive a software secret from a hardware wrapped key. The key is unwrapped in
+ * hardware from trustzone and a software key/secret is then derived from it.
+ */
+static int sdhci_msm_ice_derive_sw_secret(struct cqhci_host *cq_host, const u8 wkey[],
+					  unsigned int wkey_size,
+					  u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE])
+{
+	struct sdhci_host *host = mmc_priv(cq_host->mmc);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
+
+	return qcom_ice_derive_sw_secret(msm_host->ice, wkey, wkey_size, sw_secret);
+}
+
 #else /* CONFIG_MMC_CRYPTO */
 
 static inline int sdhci_msm_ice_init(struct sdhci_msm_host *msm_host,
@@ -2047,6 +2062,7 @@ static const struct cqhci_host_ops sdhci_msm_cqhci_ops = {
 	.disable	= sdhci_msm_cqe_disable,
 #ifdef CONFIG_MMC_CRYPTO
 	.program_key	= sdhci_msm_program_key,
+	.derive_sw_secret	= sdhci_msm_ice_derive_sw_secret,
 #endif
 };
 
