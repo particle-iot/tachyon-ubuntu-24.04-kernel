@@ -286,6 +286,8 @@ struct cqhci_host {
 #endif
 };
 
+/* @derive_sw_secret: derive sw secret from a wrapped key
+ */
 struct cqhci_host_ops {
 	void (*dumpregs)(struct mmc_host *mmc);
 	void (*write_l)(struct cqhci_host *host, u32 val, int reg);
@@ -300,6 +302,9 @@ struct cqhci_host_ops {
 	int (*program_key)(struct cqhci_host *cq_host,
 			   const struct blk_crypto_key *bkey,
 			   const union cqhci_crypto_cfg_entry *cfg, int slot);
+	int (*derive_sw_secret)(struct cqhci_host *cq_host, const u8 wkey[],
+				unsigned int wkey_size,
+				u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE]);
 #endif
 };
 
