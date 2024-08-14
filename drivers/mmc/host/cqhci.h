@@ -287,6 +287,9 @@ struct cqhci_host {
 };
 
 /* @derive_sw_secret: derive sw secret from a wrapped key
+ * @generate_key: generate a storage key and return longterm wrapped key
+ * @prepare_key: unwrap longterm key and return ephemeral wrapped key
+ * @import_key: import sw storage key and return longterm wrapped key
  */
 struct cqhci_host_ops {
 	void (*dumpregs)(struct mmc_host *mmc);
@@ -305,6 +308,14 @@ struct cqhci_host_ops {
 	int (*derive_sw_secret)(struct cqhci_host *cq_host, const u8 wkey[],
 				unsigned int wkey_size,
 				u8 sw_secret[BLK_CRYPTO_SW_SECRET_SIZE]);
+	int (*generate_key)(struct cqhci_host *cq_host,
+			    u8 lt_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE]);
+	int (*prepare_key)(struct cqhci_host *cq_host,
+			   const u8 *lt_key, size_t lt_key_size,
+			   u8 eph_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE]);
+	int (*import_key)(struct cqhci_host *cq_host, const u8 *imp_key,
+			  size_t imp_key_size,
+			  u8 lt_key[BLK_CRYPTO_MAX_HW_WRAPPED_KEY_SIZE]);
 #endif
 };
 
