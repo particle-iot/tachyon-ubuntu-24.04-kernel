@@ -1829,6 +1829,9 @@ static int sdhci_msm_ice_init(struct sdhci_msm_host *msm_host,
 	msm_host->ice = ice;
 	mmc->caps2 |= MMC_CAP2_CRYPTO;
 
+	if (qcom_ice_hwkm_supported(msm_host->ice))
+		cq_host->quirks |= CQHCI_QUIRK_USES_WRAPPED_CRYPTO_KEYS;
+
 	return 0;
 }
 
@@ -1875,7 +1878,11 @@ static int sdhci_msm_program_key(struct cqhci_host *cq_host,
 		cap.key_size != CQHCI_CRYPTO_KEY_SIZE_256)
 		return -EINVAL;
 
-	ice_key_size = QCOM_ICE_CRYPTO_KEY_SIZE_256;
+	if (bkey->crypto_cfg.key_type == BLK_CRYPTO_KEY_TYPE_HW_WRAPPED)
+		ice_key_size = QCOM_ICE_CRYPTO_KEY_SIZE_WRAPPED;
+	else
+		ice_key_size = QCOM_ICE_CRYPTO_KEY_SIZE_256;
+
 	if (cfg->config_enable & CQHCI_CRYPTO_CONFIGURATION_ENABLE)
 		return qcom_ice_program_key(msm_host->ice,
 					    QCOM_ICE_CRYPTO_ALG_AES_XTS,
