@@ -241,6 +241,12 @@ struct cqhci_host {
 	u32 quirks;
 #define CQHCI_QUIRK_SHORT_TXFR_DESC_SZ	0x1
 
+	/*
+	 * This quirk indicates that EMMC will be using HW wrapped keys
+	 * when using inline encryption.
+	 */
+#define CQHCI_QUIRK_USES_WRAPPED_CRYPTO_KEYS	0x2
+
 	bool enabled;
 	bool halted;
 	bool init_done;
