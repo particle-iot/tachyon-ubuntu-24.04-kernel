@@ -81,7 +81,7 @@ static int tc956x_phy_power_off(struct tc956xmac_priv *priv)
 static int tc956x_platform_of_parse(struct device *dev,
 				    struct tc956x_qcom_priv *qpriv)
 {
-	if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio", &qpriv->phy_rst_gpio)) {
+	if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio-id", &qpriv->phy_rst_gpio)) {
 		dev_err(dev, "Failed to get PHY reset GPIO\n");
 		return -EINVAL;
 	}
