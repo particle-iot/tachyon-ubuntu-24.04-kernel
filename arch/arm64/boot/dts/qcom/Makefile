@@ -289,3 +289,13 @@ qcs6490-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcm6490-wlan-rb3.dtbo \
     qcm6490-bt.dtbo \
     qcm6490-video.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
+
+dtbs-to-combined := $(filter %-ovl.dtb, $(dtb-y))
+
+quiet_cmd_cat = CAT     $@
+      cmd_cat = cat $(real-prereqs) > $@
+
+$(obj)/combined-dtb.dtb: $(addprefix $(obj)/, $(filter %-ovl.dtb, $(dtb-y))) FORCE
+	$(call if_changed,cat)
