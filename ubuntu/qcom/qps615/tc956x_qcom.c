@@ -95,7 +95,7 @@ static int tc956x_platform_of_parse(struct device *dev,
 	qpriv->has_always_on_supplies = of_property_read_bool(dev->of_node, "qcom,always-on-supply");
 
 	if(!qpriv->has_always_on_supplies) {
-		if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio", &qpriv->phy_rst_gpio)) {
+		if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio-id", &qpriv->phy_rst_gpio)) {
 			dev_err(dev, "Failed to get PHY reset GPIO\n");
 			return -EINVAL;
 		}
