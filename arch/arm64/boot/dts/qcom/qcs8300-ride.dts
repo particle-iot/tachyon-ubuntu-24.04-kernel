@@ -313,6 +313,24 @@
 	status = "okay";
 };
 
+
+&mdss {
+	status = "okay";
+};
+
+&mdss_dp0 {
+	status = "okay";
+};
+
+&mdss_dp_out {
+	data-lanes = <0 1 2 3>;
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+};
+
+&mdss_edp_phy {
+	status = "okay";
+};
+
 &spmi_bus {
 	pmm8654au_2: pmic@2 {
 		compatible = "qcom,pmm8654au", "qcom,spmi-pmic";
@@ -338,6 +356,12 @@
 		function = "normal";
 		output-low;
 		bias-pull-down;
+	};
+
+	dp_hot_plug_det: dp-hot-plug-det-state {
+		pins = "gpio94";
+		function = "edp0_hot";
+		bias-disable;
 	};
 
 	ethernet0_default: ethernet0-default-state {
