@@ -1404,6 +1404,7 @@ static int bam_dma_probe(struct platform_device *pdev)
 	/* set capabilities */
 	dma_cap_zero(bdev->common.cap_mask);
 	dma_cap_set(DMA_SLAVE, bdev->common.cap_mask);
+	dma_cap_set(DMA_PRIVATE, bdev->common.cap_mask);
 
 	/* initialize dmaengine apis */
 	bdev->common.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
