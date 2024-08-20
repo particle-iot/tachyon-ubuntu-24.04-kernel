@@ -6112,7 +6112,8 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 
 	if (!dsi_display_validate_res(display)) {
 		rc = -EPROBE_DEFER;
-		DSI_ERR("resources required for display probe not present: rc=%d\n", rc);
+		// Do not show error on EPROBE_DEFER
+		//DSI_ERR("resources required for display probe not present: rc=%d\n", rc);
 		goto end;
 	}
 
