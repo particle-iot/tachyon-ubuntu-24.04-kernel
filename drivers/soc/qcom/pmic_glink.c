@@ -113,29 +113,13 @@ EXPORT_SYMBOL_GPL(pmic_glink_client_register);
 int pmic_glink_send(struct pmic_glink_client *client, void *data, size_t len)
 {
 	struct pmic_glink *pg = client->pg;
-	bool timeout_reached = false;
-	unsigned long start;
 	int ret;
 
 	mutex_lock(&pg->state_lock);
-	if (!pg->ept) {
+	if (!pg->ept)
 		ret = -ECONNRESET;
-	} else {
-		start = jiffies;
-		for (;;) {
-			ret = rpmsg_send(pg->ept, data, len);
-			if (ret != -EAGAIN)
-				break;
-
-			if (timeout_reached) {
-				ret = -ETIMEDOUT;
-				break;
-			}
-
-			usleep_range(1000, 5000);
-			timeout_reached = time_after(jiffies, start + PMIC_GLINK_SEND_TIMEOUT);
-		}
-	}
+	else
+		ret = rpmsg_send(pg->ept, data, len);
 	mutex_unlock(&pg->state_lock);
 
 	return ret;
