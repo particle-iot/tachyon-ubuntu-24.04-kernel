@@ -575,8 +575,6 @@ static int pmic_glink_altmode_probe(struct auxiliary_device *adev,
 
 	pmic_glink_client_register(altmode->client);
 
-	__altmode = altmode;
-
 	return 0;
 }
 

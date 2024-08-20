@@ -75,7 +75,6 @@ struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
 {
 	struct pmic_glink_client *client;
 	struct pmic_glink *pg = dev_get_drvdata(dev->parent);
-	unsigned long flags;
 
 	client = devres_alloc(_devm_pmic_glink_release_client, sizeof(*client), GFP_KERNEL);
 	if (!client)
@@ -86,15 +85,7 @@ struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
 	client->cb = cb;
 	client->pdr_notify = pdr;
 	client->priv = priv;
-
-	mutex_lock(&pg->state_lock);
-	spin_lock_irqsave(&pg->client_lock, flags);
-
-	list_add(&client->node, &pg->clients);
-	client->pdr_notify(client->priv, pg->client_state);
-
-	spin_unlock_irqrestore(&pg->client_lock, flags);
-	mutex_unlock(&pg->state_lock);
+	INIT_LIST_HEAD(&client->node);
 
 	devres_add(dev, client);
 
