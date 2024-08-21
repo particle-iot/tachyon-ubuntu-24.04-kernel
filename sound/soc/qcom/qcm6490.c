@@ -222,6 +222,18 @@ static const struct snd_soc_dapm_route qcs6490_rb3gen2_vision_dapm_routes[] = {
 	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
 };
 
+static const struct snd_soc_dapm_widget qcs8300_dapm_widgets[] = {
+	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
+	SND_SOC_DAPM_PINCTRL("STUB_AIF2_PINCTRL", "stub_aif2_active", "stub_aif2_sleep"),
+};
+
+static const struct snd_soc_dapm_route qcs8300_dapm_routes[] = {
+	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF2_RX", NULL, "STUB_AIF2_PINCTRL"},
+	{"STUB_AIF2_TX", NULL, "STUB_AIF2_PINCTRL"},
+};
+
 static const struct snd_soc_dapm_widget qcs9100_dapm_widgets[] = {
 	SND_SOC_DAPM_PINCTRL("STUB_AIF0_PINCTRL", "stub_aif0_active", "stub_aif0_sleep"),
 	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
@@ -290,6 +302,14 @@ static struct snd_soc_card qcs6490_rb3gen2_vision_data = {
 	.num_dapm_widgets = ARRAY_SIZE(qcs6490_rb3gen2_vision_dapm_widgets),
 	.dapm_routes = qcs6490_rb3gen2_vision_dapm_routes,
 	.num_dapm_routes = ARRAY_SIZE(qcs6490_rb3gen2_vision_dapm_routes),
+};
+
+static struct snd_soc_card snd_soc_qcs8300_data = {
+	.name = "qcs8300",
+	.dapm_widgets = qcs8300_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(qcs8300_dapm_widgets),
+	.dapm_routes = qcs8300_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(qcs8300_dapm_routes),
 };
 
 static struct snd_soc_card snd_soc_qcs9100_data = {
@@ -363,6 +383,7 @@ static const struct of_device_id snd_qcm6490_dt_match[] = {
 	{.compatible = "qcom,qcs6490-rb3gen2-ptz-sndcard", .data = &qcs6490_rb3gen2_ptz_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-video-sndcard", .data = &qcs6490_rb3gen2_video_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-vision-sndcard", .data = &qcs6490_rb3gen2_vision_data},
+	{.compatible = "qcom,qcs8300-sndcard", .data = &snd_soc_qcs8300_data},
 	{.compatible = "qcom,qcs9100-sndcard", .data = &snd_soc_qcs9100_data},
 	{}
 };
