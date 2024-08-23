@@ -1405,6 +1405,7 @@
 				compatible = "qcom,sa8775p-rpmh-clk";
 				#clock-cells = <1>;
 				clocks = <&xo_board>;
+				clock-names = "xo";
 			};
 
 			rpmhpd: power-controller {
