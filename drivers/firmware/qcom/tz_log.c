@@ -500,6 +500,8 @@ static uint64_t qseelog_shmbridge_handle;
 static struct encrypted_log_info enc_qseelog_info;
 static struct encrypted_log_info enc_tzlog_info;
 
+static bool support_hyp;
+
 /*
  * Debugfs data structure and functions
  */
@@ -1444,7 +1446,7 @@ static int tzdbg_register_qsee_log_buf(struct platform_device *pdev)
 		.ns_vm_perms[0] = QCOM_SCM_PERM_RW,
 	};
 
-	if (tzdbg.is_hyplog_enabled) {
+	if (support_hyp) {
 		ns_vm_shm.ns_vm_nums = 0;
 	} else {
 		ns_vm_shm.ns_vmids[0] = QCOM_SCM_VMID_HLOS;
@@ -1521,7 +1523,7 @@ static int tzdbg_allocate_encrypted_log_buf(struct platform_device *pdev)
 		.ns_vm_perms[0] = QCOM_SCM_PERM_RW,
 	};
 
-	if (tzdbg.is_hyplog_enabled) {
+	if (support_hyp) {
 		ns_vm_shm.ns_vm_nums = 0;
 	} else {
 		ns_vm_shm.ns_vmids[0] = QCOM_SCM_VMID_HLOS;
@@ -1818,6 +1820,14 @@ static int tz_log_probe(struct platform_device *pdev)
 	ret = tzdbg_get_tz_version();
 	if (ret)
 		return ret;
+
+	/*
+	 * This attribute indicates tz_log driver can create share memory through hypervisor,
+	 * which is associated with the share memory that registered by qtee_shmbridge dirver
+	 * with enabling hypervisor support.
+	 */
+	support_hyp = of_property_read_bool((&pdev->dev)->of_node,
+		"qcom,support-hypervisor");
 
 	/*
 	 * Get address that stores the physical location diagnostic data
