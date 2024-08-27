@@ -606,11 +606,19 @@
 			  "GNSS_BOOT_MODE";
 };
 
+&qupv3_id_0 {
+	status = "okay";
+};
+
 &qupv3_id_1 {
 	status = "okay";
 };
 
 &qupv3_id_2 {
+	status = "okay";
+};
+
+&qupv3_id_3 {
 	status = "okay";
 };
 
@@ -863,6 +871,22 @@
 
 &remoteproc_gpdsp1 {
 	firmware-name = "qcom/sa8775p/gpdsp1.mbn";
+	status = "okay";
+};
+
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
+&gpi_dma3 {
 	status = "okay";
 };
 
