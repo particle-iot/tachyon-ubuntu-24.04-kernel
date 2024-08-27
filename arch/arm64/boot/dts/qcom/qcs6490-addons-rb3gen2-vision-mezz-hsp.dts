@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+#include "qcs6490-addons-rb3gen2-vision-mezz.dts"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Robotics RB3gen2 addons vision mezz hsp platform";
+	compatible = "qcom,qcs6490-addons-rb3gen2-vision-mezz-hsp", "qcom,qcm6490";
+
+	qcom,msm-id = <497 0x10000>, <498 0x10000>, <475 0x10000>, <515 0x10000>;
+	qcom,board-id = <32 0x7>, <32 0x607>;
+
+	aliases {
+		serial2 = &uart4;
+	};
+};
