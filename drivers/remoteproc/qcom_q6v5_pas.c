@@ -879,9 +879,9 @@ static const struct adsp_data qcs8300_gpdsp_resource = {
 		"mxc",
 		NULL
 	},
-	.load_state = "gpdsp",
-	.ssr_name = "gpdsp",
-	.sysmon_name = "gpdsp",
+	.load_state = "gpdsp0",
+	.ssr_name = "gpdsp0",
+	.sysmon_name = "gpdsp0",
 	.ssctl_id = 0x21,
 };
 
