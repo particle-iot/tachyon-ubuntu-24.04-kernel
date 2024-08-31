@@ -237,31 +237,28 @@ static enum power_supply_property dev_attr_psp(struct device_attribute *attr)
 	return  to_ps_attr(attr) - power_supply_attrs;
 }
 
-static ssize_t power_supply_show_usb_type(struct device *dev,
-					  const struct power_supply_desc *desc,
-					  union power_supply_propval *value,
-					  char *buf)
+static ssize_t power_supply_show_enum_with_available(
+			struct device *dev, const char * const labels[], int label_count,
+			unsigned int available_values, int value, char *buf)
 {
-	enum power_supply_usb_type usb_type;
+	bool match = false, available, active;
 	ssize_t count = 0;
-	bool match = false;
 	int i;
 
-	for (i = 0; i < desc->num_usb_types; ++i) {
-		usb_type = desc->usb_types[i];
+	for (i = 0; i < label_count; i++) {
+		available = available_values & BIT(i);
+		active = i == value;
 
-		if (value->intval == usb_type) {
-			count += sysfs_emit_at(buf, count, "[%s] ",
-					 POWER_SUPPLY_USB_TYPE_TEXT[usb_type]);
+		if (available && active) {
+			count += sysfs_emit_at(buf, count, "[%s] ", labels[i]);
 			match = true;
-		} else {
-			count += sysfs_emit_at(buf, count, "%s ",
-					 POWER_SUPPLY_USB_TYPE_TEXT[usb_type]);
+		} else if (available) {
+			count += sysfs_emit_at(buf, count, "%s ", labels[i]);
 		}
 	}
 
 	if (!match) {
-		dev_warn(dev, "driver reporting unsupported connected type\n");
+		dev_warn(dev, "driver reporting unavailable enum value %d\n", value);
 		return -EINVAL;
 	}
 
@@ -305,8 +302,10 @@ static ssize_t power_supply_show_property(struct device *dev,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_TYPE:
-		ret = power_supply_show_usb_type(dev, psy->desc,
-						&value, buf);
+		ret = power_supply_show_enum_with_available(
+				dev, POWER_SUPPLY_USB_TYPE_TEXT,
+				ARRAY_SIZE(POWER_SUPPLY_USB_TYPE_TEXT),
+				psy->desc->usb_types, value.intval, buf);
 		break;
 	case POWER_SUPPLY_PROP_MODEL_NAME ... POWER_SUPPLY_PROP_SERIAL_NUMBER:
 		ret = sysfs_emit(buf, "%s\n", value.strval);
