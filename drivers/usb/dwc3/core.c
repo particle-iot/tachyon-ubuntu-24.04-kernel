@@ -1904,6 +1904,8 @@ struct dwc3 *dwc3_probe(struct platform_device *pdev,
 	if (!dwc)
 		return ERR_PTR(-ENOMEM);
 
+	platform_set_drvdata(pdev, dwc);
+
 	dwc->dev = dev;
 
 	if (glue_data) {
