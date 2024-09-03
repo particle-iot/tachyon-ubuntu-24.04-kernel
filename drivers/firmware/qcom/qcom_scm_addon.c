@@ -599,14 +599,16 @@ EXPORT_SYMBOL_GPL(qcom_scm_ddrbw_profiler);
  * qcom_scm_she_op() - request TZ SHE (Secure Hardware Extension) service
  *		       to perform crypto operations based on SHE tables.
  */
-int qcom_scm_she_op(u64 _arg1, u64 _arg2, u64 _arg3, u64 _arg4)
+int qcom_scm_she_op(u64 _arg1, u64 _arg2, u64 _arg3, u64 _arg4, u64 *res1)
 {
 	int ret;
+
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_SHE,
 		.cmd = QCOM_SCM_SHE_ID,
 		.owner = ARM_SMCCC_OWNER_SIP,
-		.arginfo = QCOM_SCM_ARGS(4),
+		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_VAL, QCOM_SCM_VAL,
+				     QCOM_SCM_RW, QCOM_SCM_VAL),
 	};
 	struct qcom_scm_res res;
 
@@ -617,7 +619,11 @@ int qcom_scm_she_op(u64 _arg1, u64 _arg2, u64 _arg3, u64 _arg4)
 
 	ret = qcom_scm_call(__scm ? __scm->dev : NULL, &desc, &res);
 
-	return ret ? : res.result[0];
+	/* The result from SHE service must be handled by the SHE client */
+	if (res1)
+		*res1 = res.result[0];
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(qcom_scm_she_op);
 
