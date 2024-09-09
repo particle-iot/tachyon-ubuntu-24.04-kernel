@@ -18,6 +18,14 @@
 	qcom,board-id = <32 0x6>, <32 0x606>;
 };
 
+&remoteproc_mpss {
+	status = "disabled";
+};
+
+&remoteproc_wpss {
+	status = "disabled";
+};
+
 &uart7 {
 	/delete-node/ bluetooth;
 
@@ -35,4 +43,8 @@
 		vddrfa1p2-supply = <&vreg_s8b_1p272>;
 		max-speed = <3200000>;
 	};
+};
+
+&wifi {
+	status = "disabled";
 };
