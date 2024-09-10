@@ -497,6 +497,10 @@ ifneq ($(do_full_build),false)
 	# Clean out this flavours build directory.
 	rm -rf $(builddir)/build-$*
 endif
+	$(call if_package, linux-libc-dev-$*, \
+		cp $(DEBIAN)/linux-libc-dev-$*.install debian/; \
+		dh_prep -p linux-libc-dev-$*; \
+		dh_install -p linux-libc-dev-$*)
 	$(stamp)
 
 headers_tmp := $(CURDIR)/debian/tmp-headers
@@ -618,6 +622,7 @@ endif
 ifeq ($(do_cloud_tools),true)
 	$(call dh_all,$(pkgcloud))
 endif
+	$(call if_package, linux-libc-dev-$*, $(call dh_all,linux-libc-dev-$*))
 
 #
 # per-architecture packages
