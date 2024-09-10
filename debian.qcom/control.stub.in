@@ -113,3 +113,11 @@ Description: Linux kernel version specific tools for version PKGVER-ABINUM
  =HUMAN=.
  You probably want to install linux-tools-PKGVER-ABINUM-<flavour>.
 
+Package: linux-libc-dev-qcom
+Architecture: all
+Depends: ${misc:Depends}
+Description: Linux Kernel Headers for development
+ This package provides additional downstream headers from the Linux kernel.
+ These headers are used by the installed headers for GNU glibc and other system
+ libraries. They are NOT meant to be used to build third-party modules for
+ your kernel. Use SRCPKGNAME-headers-* packages for that.
