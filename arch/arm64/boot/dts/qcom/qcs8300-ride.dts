@@ -21,10 +21,29 @@
 
 	aliases {
 		serial0 = &uart7;
+		serial1 = &uart2;
 	};
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	/* PWR_CTR2_VDD_1P8 supply */
+	vreg_conn_1p8: vreg_conn_1p8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_conn_1p8";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pmm8650au_1_gpios 4 GPIO_ACTIVE_HIGH>;
+	};
+
+	/* PWR_CTR1_VDD_PA supply */
+	vreg_conn_pa: vreg_conn_pa {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_conn_pa";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pmm8650au_1_gpios 6 GPIO_ACTIVE_HIGH>;
 	};
 };
 
@@ -290,6 +309,10 @@
 	};
 };
 
+&qupv3_id_0 {
+	status = "okay";
+};
+
 &spmi_bus {
 	pmm8654au_2: pmic@2 {
 		compatible = "qcom,pmm8654au", "qcom,spmi-pmic";
@@ -310,6 +333,13 @@
 };
 
 &tlmm {
+	bt_en_state: bt-en-state {
+		pins = "gpio55";
+		function = "normal";
+		output-low;
+		bias-pull-down;
+	};
+
 	ethernet0_default: ethernet0-default-state {
 		ethernet0_mdc: ethernet0-mdc-pins {
 			pins = "gpio5";
@@ -325,10 +355,6 @@
 			bias-pull-up;
 		};
 	};
-};
-
-&qupv3_id_0 {
-	status = "okay";
 };
 
 &remoteproc_adsp {
@@ -349,6 +375,29 @@
 &serdes0 {
 	phy-supply = <&vreg_l5a>;
 	status = "okay";
+};
+
+/* HS UART Instance */
+&uart2 {
+	status = "okay";
+	bluetooth: bluetooth {
+		compatible = "qcom,wcn6855-bt";
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_en_state>;
+		enable-gpios = <&tlmm 55 GPIO_ACTIVE_HIGH>; /* BT_EN */
+
+		vddio-supply       = <&vreg_conn_pa>;         /* bt-vdd-ctrl1-supply */
+		vddbtcxmx-supply   = <&vreg_conn_1p8>;        /* bt-vdd-ctrl2-supply */
+		vddrfacmn-supply   = <&vreg_conn_1p8>;             /* bt-vdd-aon-supply, dummy */
+		vddrfa0p8-supply   = <&vreg_conn_1p8>;             /* bt-vdd-aon-supply, dummy */
+		vddrfa1p7-supply   = <&vreg_conn_1p8>;             /* bt-vdd-aon-supply, dummy */
+		vddrfa1p2-supply   = <&vreg_conn_1p8>;             /* bt-vdd-aon-supply, dummy */
+		//vddrfacmn-supply   = <&vreg_l2c>;             /* bt-vdd-aon-supply */
+		//vddrfa0p8-supply   = <&vreg_l2c>;             /* bt-vdd-rfa1-supply */
+		//vddrfa1p7-supply   = <&vreg_s5a>;             /* bt-vdd-rfa2-supply */
+		//vddrfa1p2-supply   = <&vreg_l6e>;             /* bt-vdd-rfa3-supply */
+		max-speed = <3200000>;
+	};
 };
 
 &uart7 {
