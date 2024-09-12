@@ -16,6 +16,10 @@
 		compatible = "qcom,qcs9100-sndcard";
 		model = "qcs9100-ridesx-snd-card";
 
+		clocks = <&q6prmcc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			    <&q6prmcc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "macro", "dcodec";
+
 		pinctrl-names = "default", "stub_aif0_active", "stub_aif0_sleep",
 				"stub_aif1_active", "stub_aif1_sleep", "stub_aif2_active",
 				"stub_aif2_sleep", "stub_aif3_active", "stub_aif3_sleep";
