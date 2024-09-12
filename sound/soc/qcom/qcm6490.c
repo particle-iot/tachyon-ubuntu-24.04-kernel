@@ -31,6 +31,8 @@ struct qcm6490_snd_data {
 	struct sdw_stream_runtime *sruntime[AFE_PORT_MAX];
 	struct snd_soc_jack jack;
 	bool jack_setup;
+	struct clk *macro;
+	struct clk *dcodec;
 };
 
 static int qcm6490_slim_dai_init(struct snd_soc_pcm_runtime *rtd)
@@ -107,7 +109,34 @@ static int qcm6490_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct qcm6490_snd_data *pdata = snd_soc_card_get_drvdata(rtd->card);
+	int ret = 0;
 
+	switch (cpu_dai->id) {
+	case TERTIARY_MI2S_RX:
+	case TERTIARY_MI2S_TX:
+	case TERTIARY_TDM_RX_0:
+	case TERTIARY_TDM_TX_0:
+		/* clock setting is done for qcs9100 target to support high
+		 * speed i2s interface
+		 */
+		if (pdata->macro) {
+			ret = clk_prepare_enable(pdata->macro);
+			if (ret) {
+				dev_err(pdata->card->dev, "unable to prepare macro\n");
+				return ret;
+			}
+		}
+		if (pdata->dcodec) {
+			ret = clk_prepare_enable(pdata->dcodec);
+			if (ret) {
+				dev_err(pdata->card->dev, "unable to prepare decode\n");
+				return ret;
+			}
+		}
+		break;
+	default:
+		break;
+	}
 	return qcom_snd_sdw_hw_params(substream, params, &pdata->sruntime[cpu_dai->id]);
 }
 
@@ -313,6 +342,17 @@ static int qcm6490_platform_probe(struct platform_device *pdev)
 
 	card->driver_name = DRIVER_NAME;
 	qcm6490_add_be_ops(card);
+
+	/* get clock info to set clock for qcs9100 target to support high
+	 * speed i2s interface
+	 */
+	data->macro = devm_clk_get_optional(dev, "macro");
+	if (IS_ERR(data->macro))
+		dev_info(dev, "getting macro clock info FAILED\n");
+	data->dcodec = devm_clk_get_optional(dev, "dcodec");
+	if (IS_ERR(data->dcodec))
+		dev_info(dev, "getting decode clock info FAILED\n");
+
 	return devm_snd_soc_register_card(dev, card);
 }
 
