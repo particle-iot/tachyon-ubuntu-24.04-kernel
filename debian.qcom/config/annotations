@@ -1035,7 +1035,6 @@ CONFIG_PCIE_XILINX_DMA_PL                       policy<{'arm64': '-'}>
 CONFIG_PCIE_XILINX_NWL                          policy<{'arm64': '-'}>
 CONFIG_PCI_AARDVARK                             policy<{'arm64': '-'}>
 CONFIG_PCI_BRIDGE_EMUL                          policy<{'arm64': '-'}>
-CONFIG_PCI_DYNAMIC_OF_NODES                     policy<{'arm64': 'n'}>
 CONFIG_PCI_IMX6                                 policy<{'arm64': '-'}>
 CONFIG_PCI_IMX6_EP                              policy<{'arm64': '-'}>
 CONFIG_PCI_IMX6_HOST                            policy<{'arm64': '-'}>
