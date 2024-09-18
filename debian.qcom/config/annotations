@@ -1911,7 +1911,6 @@ CONFIG_TOUCHSCREEN_GOODIX_BERLIN_SPI            policy<{'arm64': 'n'}>
 CONFIG_TOUCHSCREEN_SUN4I                        policy<{'arm64': '-'}>
 CONFIG_TOUCHSCREEN_TI_AM335X_TSC                policy<{'arm64': '-'}>
 CONFIG_TURRIS_MOX_RWTM                          policy<{'arm64': '-'}>
-CONFIG_UBSAN_SANITIZE_ALL                       policy<{'arm64': 'n'}>
 CONFIG_USB_CDNS3_IMX                            policy<{'arm64': '-'}>
 CONFIG_USB_CDNS3_TI                             policy<{'arm64': '-'}>
 CONFIG_USB_DWC3_AM62                            policy<{'arm64': '-'}>
