@@ -16,6 +16,7 @@
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 
 #define SMP2P_NUM_PROCS				16
 #define MAX_RETRIES				20
