@@ -201,6 +201,7 @@ struct qcom_slim_ngd_ctrl {
 	bool irq_disabled;
 	bool capability_timeout;
 	struct remote_mem r_mem;
+	bool enabled;
 };
 
 enum slimbus_mode_enum_type_v01 {
@@ -1631,9 +1632,11 @@ static int qcom_slim_ngd_enable(struct qcom_slim_ngd_ctrl *ctrl, bool enable)
 		pm_runtime_mark_last_busy(ctrl->ctrl.dev);
 		pm_runtime_put(ctrl->ctrl.dev);
 		dev_dbg(ctrl->dev, "SLIM NGD Enable\n");
+		ctrl->enabled = true;
 	} else {
 		qcom_slim_qmi_exit(ctrl);
 		dev_dbg(ctrl->dev, "SLIM NGD Disable\n");
+		ctrl->enabled = false;
 	}
 
 	return 0;
@@ -1729,9 +1732,12 @@ static void qcom_slim_ngd_up_worker(struct work_struct *work)
 
 	ctrl = container_of(work, struct qcom_slim_ngd_ctrl, ngd_up_work);
 
+	if (ctrl->enabled)
+		return;
+
 	/* Make sure qmi service is up before continuing */
 	if (!wait_for_completion_interruptible_timeout(&ctrl->qmi_up,
-						       msecs_to_jiffies(MSEC_PER_SEC))) {
+						       msecs_to_jiffies(MSEC_PER_SEC * 5))) {
 		dev_err(ctrl->dev, "QMI wait timeout\n");
 		return;
 	}
