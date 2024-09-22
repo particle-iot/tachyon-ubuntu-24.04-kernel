@@ -1584,7 +1584,6 @@ static int qcom_slim_ngd_runtime_resume(struct device *dev)
 
 	mutex_lock(&ctrl->suspend_resume_lock);
 	if (!ctrl->qmi.handle) {
-		dev_err(ctrl->dev, "%s: QMI handle is NULL\n", __func__);
 		mutex_unlock(&ctrl->suspend_resume_lock);
 		return ret;
 	}
