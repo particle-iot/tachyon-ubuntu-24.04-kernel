@@ -407,7 +407,7 @@ static struct platform_driver tegra_usb_driver = {
 		.pm = &tegra_usb_pm,
 	},
 	.probe = tegra_usb_probe,
-	.remove_new = tegra_usb_remove,
+	.remove = tegra_usb_remove,
 };
 module_platform_driver(tegra_usb_driver);
 
