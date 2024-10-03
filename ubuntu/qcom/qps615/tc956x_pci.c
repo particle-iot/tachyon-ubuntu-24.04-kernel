@@ -3141,7 +3141,7 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 
 		writel(ret, res.addr + NRSTCTRL0_OFFSET);
 
-		NMSGPR_ALERT(&pdev->dev, "Enabling all eMAC clocks for Port 0 Bus number %x\n", pdev->bus->number);
+		NMSGPR_INFO(&pdev->dev, "Enabling all eMAC clocks for Port 0 Bus number %x\n", pdev->bus->number);
 		/* Enable all clocks to eMAC Port0 */
 		ret = readl(res.addr + NCLKCTRL0_OFFSET);
 
@@ -3187,7 +3187,7 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 		ret |= NRSTCTRL1_MAC1RST1;
 		writel(ret, res.addr + NRSTCTRL1_OFFSET);
 
-		NMSGPR_ALERT(&pdev->dev, "Enabling all eMAC clocks for Port 1 Bus number-%x\n", pdev->bus->number);
+		NMSGPR_INFO(&pdev->dev, "Enabling all eMAC clocks for Port 1 Bus number-%x\n", pdev->bus->number);
 		/* Enable all clocks to eMAC Port1 */
 		ret = readl(res.addr + NCLKCTRL1_OFFSET);
 
