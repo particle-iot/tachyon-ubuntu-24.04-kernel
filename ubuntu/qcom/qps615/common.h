@@ -1307,7 +1307,7 @@ RXQ1 used for MAC2MAC */
 
 #endif
 
-#define TC956X_DBG_FUNC
+//#define TC956X_DBG_FUNC
 #define TC956X_TEST
 #define TC956X_DBG_L1
 #define TC956X_DBG_L2
