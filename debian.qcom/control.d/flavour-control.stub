@@ -31,7 +31,7 @@ Depends: ${misc:Depends}, ${shlibs:Depends}, kmod, linux-base (>= 4.5ubuntu1~16.
 Recommends: BOOTLOADER, initramfs-tools | linux-initramfs-tool
 Breaks: flash-kernel (<< 3.90ubuntu2) [arm64 armhf], s390-tools (<< 2.3.0-0ubuntu3) [s390x]
 Conflicts: linux-image=SIGN-PEER-PKG=-PKGVER-ABINUM-FLAVOUR
-Suggests: fdutils, SRCPKGNAME-tools, linux-headers-PKGVER-ABINUM-FLAVOUR, linux-modules-extra-PKGVER-ABINUM-FLAVOUR
+Suggests: fdutils, SRCPKGNAME-tools, linux-headers-PKGVER-ABINUM-FLAVOUR
 Description: Linux kernel image for version PKGVER on DESC
  This package contains the=SIGN-ME-TXT= Linux kernel image for version PKGVER on
  DESC.
@@ -51,30 +51,8 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel extra modules for version PKGVER on DESC
+Description: Linux kernel modules for version PKGVER on DESC
  Contains the corresponding System.map file, the modules built by the
- packager, and scripts that try to ensure that the system is not left in an
- unbootable state after an update.
- .
- Supports SUPPORTED processors.
- .
- TARGET
- .
- You likely do not want to install this package directly. Instead, install
- the linux-FLAVOUR meta-package, which will ensure that upgrades work
- correctly, and that supporting packages are also installed.
-
-Package: linux-modules-extra-PKGVER-ABINUM-FLAVOUR
-Build-Profiles: <!stage1>
-Architecture: ARCH
-Section: kernel
-Priority: optional
-Depends: ${misc:Depends}, ${shlibs:Depends}, linux-modules-PKGVER-ABINUM-FLAVOUR, wireless-regdb
-Description: Linux kernel extra modules for version PKGVER on DESC
- This package contains the Linux kernel extra modules for version PKGVER on
- DESC.
- .
- Also includes the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
  unbootable state after an update.
  .
