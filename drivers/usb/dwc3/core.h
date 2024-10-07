@@ -1398,9 +1398,6 @@ struct dwc3 {
 	const struct dwc3_glue_ops *glue_ops;
 
 	bool			cable_disconnected;
-
-	/* HACK reverse-link to dwc3_qcom */
-	void *qcom;
 };
 
 #define INCRX_BURST_MODE 0
