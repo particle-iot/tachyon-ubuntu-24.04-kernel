@@ -15015,7 +15015,7 @@ static int qps615_eeprom_readmac(uint8_t port_id, uint8_t dev_id)
  * \return None
  *
  */
-static void parse_config_file(uint8_t port_id, uint8_t dev_id)
+static void parse_config_file(uint8_t port_id, uint8_t dev_id, struct net_device *dev)
 {
 	void *data = NULL;
 	char *cdata;
@@ -15031,6 +15031,7 @@ static void parse_config_file(uint8_t port_id, uint8_t dev_id)
 	if (ret < 0) {
 		KPRINT_INFO("Mac configuration file not found\n");
 		eth_random_addr(&dev_addr[tc956xmac_pm_usage_counter][0]);
+		dev->addr_assign_type = NET_ADDR_RANDOM;
 		KPRINT_INFO("tc956xmac_pm_usage_counter=%d\n",tc956xmac_pm_usage_counter);
 		return;
 	} else {
@@ -15414,10 +15415,10 @@ int tc956xmac_vf_dvr_probe(struct device *device,
 #else
 #ifdef TC956X_SRIOV_VF
 	/* To be enabled for config.ini parsing */
-	parse_config_file(priv->port_num, priv->plat->vf_id);
+	parse_config_file(priv->port_num, priv->plat->vf_id, priv->dev);
 #else
 	/* To be enabled for config.ini parsing */
-	parse_config_file(priv->port_num, 0);
+	parse_config_file(priv->port_num, 0, priv->dev);
 #endif
 	/* To be enabled for EEPROM MAC parsing */
 	qps615_eeprom_readmac(priv->port_num, 0);
