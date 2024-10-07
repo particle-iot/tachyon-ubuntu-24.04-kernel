@@ -559,8 +559,9 @@ static int dwc3_qcom_get_irq(struct platform_device *pdev,
 	return ret;
 }
 
-static int dwc3_qcom_setup_irq(struct platform_device *pdev, struct dwc3_qcom *qcom)
+static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 {
+	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
 	const struct dwc3_acpi_pdata *pdata = qcom->acpi_pdata;
 	int irq;
 	int ret;
@@ -822,8 +823,9 @@ static bool dwc3_qcom_has_separate_dwc3_of_node(struct device *dev)
 	return !!np;
 }
 
-static int dwc3_qcom_of_register_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
+static int dwc3_qcom_of_register_core(struct platform_device *pdev)
 {
+	struct dwc3_qcom	*qcom = platform_get_drvdata(pdev);
 	struct device_node	*np = pdev->dev.of_node, *dwc3_np;
 	struct device		*dev = &pdev->dev;
 	int			ret;
@@ -938,7 +940,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 
 	legacy_binding = dwc3_qcom_has_separate_dwc3_of_node(dev);
 
-	//platform_set_drvdata(pdev, qcom);
+	platform_set_drvdata(pdev, qcom);
 	qcom->dev = &pdev->dev;
 
 	if (has_acpi_companion(dev)) {
@@ -1007,7 +1009,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		goto clk_disable;
 	}
 
-	ret = dwc3_qcom_setup_irq(pdev, qcom);
+	ret = dwc3_qcom_setup_irq(pdev);
 	if (ret) {
 		dev_err(dev, "failed to setup IRQs, err=%d\n", ret);
 		goto clk_disable;
@@ -1040,11 +1042,9 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	}
 
 	if (legacy_binding)
-		ret = dwc3_qcom_of_register_core(pdev, qcom);
+		ret = dwc3_qcom_of_register_core(pdev);
 	else
 		ret = dwc3_qcom_probe_core(pdev, qcom);
-
-	qcom->dwc->qcom = qcom;
 
 	if (ret) {
 		dev_err(dev, "failed to register DWC3 Core, err=%d\n", ret);
@@ -1103,8 +1103,7 @@ reset_assert:
 
 static void dwc3_qcom_remove(struct platform_device *pdev)
 {
-	struct dwc3 *dwc = platform_get_drvdata(pdev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	int i;
@@ -1135,8 +1134,7 @@ static void dwc3_qcom_remove(struct platform_device *pdev)
 
 static int __maybe_unused dwc3_qcom_pm_suspend(struct device *dev)
 {
-	struct dwc3 *dwc = dev_get_drvdata(dev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 	bool wakeup = device_may_wakeup(dev);
 	int ret;
 
@@ -1157,8 +1155,7 @@ static int __maybe_unused dwc3_qcom_pm_suspend(struct device *dev)
 
 static int __maybe_unused dwc3_qcom_pm_resume(struct device *dev)
 {
-	struct dwc3 *dwc = dev_get_drvdata(dev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 	bool wakeup = device_may_wakeup(dev);
 	int ret;
 
@@ -1184,8 +1181,7 @@ static int __maybe_unused dwc3_qcom_pm_resume(struct device *dev)
 
 static void dwc3_qcom_complete(struct device *dev)
 {
-	struct dwc3 *dwc = dev_get_drvdata(dev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 
 	if (qcom->dwc)
 		dwc3_complete(qcom->dwc);
@@ -1193,8 +1189,7 @@ static void dwc3_qcom_complete(struct device *dev)
 
 static int __maybe_unused dwc3_qcom_runtime_suspend(struct device *dev)
 {
-	struct dwc3 *dwc = dev_get_drvdata(dev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 	int ret;
 
 	if (qcom->dwc) {
@@ -1208,8 +1203,7 @@ static int __maybe_unused dwc3_qcom_runtime_suspend(struct device *dev)
 
 static int __maybe_unused dwc3_qcom_runtime_resume(struct device *dev)
 {
-	struct dwc3 *dwc = dev_get_drvdata(dev);
-	struct dwc3_qcom *qcom = dwc->qcom;
+	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 	int ret;
 
 	ret = dwc3_qcom_resume(qcom, true);
