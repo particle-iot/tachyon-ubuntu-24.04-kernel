@@ -410,6 +410,7 @@
 		clocks = <&aoss_qmp>;
 		clock-names = "apb_pclk";
 
+		arm,primecell-periphid = <0x0003b999>;
 		tgu-conditions = <4>;
 		tgu-regs = <4>;
 		tgu-steps = <3>;
@@ -425,6 +426,7 @@
 		clocks = <&aoss_qmp>;
 		clock-names = "apb_pclk";
 
+		arm,primecell-periphid = <0x0003b999>;
 		tgu-conditions = <4>;
 		tgu-regs = <8>;
 		tgu-steps = <3>;
