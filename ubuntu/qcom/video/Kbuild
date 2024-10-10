@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-$(info "VIDEO_KERNEL_ROOT is: $(VIDEO_KERNEL_ROOT)")
-$(info "MACHINE is: $(MACHINE)")
+#$(info "VIDEO_KERNEL_ROOT is: $(VIDEO_KERNEL_ROOT)")
+#$(info "MACHINE is: $(MACHINE)")
 
 # Include Architecture configurations
 ifneq ($(KBUILD_EXTRA_CONFIGS),)
