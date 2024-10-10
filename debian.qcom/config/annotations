@@ -186,6 +186,7 @@ CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': '-'}>
 CONFIG_ARM_TIMER_SP804                          policy<{'arm64': '-'}>
 CONFIG_ARM_TI_CPUFREQ                           policy<{'arm64': '-'}>
 CONFIG_AS_VERSION                               policy<{'arm64': '23800'}>
+CONFIG_ATH11K_COREDUMP                          policy<{'arm64': 'n'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': '-'}>
 CONFIG_BACKLIGHT_QCOM_WLED                      policy<{'arm64': 'y'}>
 CONFIG_BERLIN2_ADC                              policy<{'arm64': '-'}>
@@ -762,6 +763,7 @@ CONFIG_INTERCONNECT_IMX8MN                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_IMX8MP                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_IMX8MQ                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_QCOM_BCM_VOTER              policy<{'arm64': 'y'}>
+CONFIG_INTERCONNECT_QCOM_QCS8300                policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_RPMH                   policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_SA8775P                policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_SC7180                 policy<{'arm64': 'y'}>
@@ -1210,6 +1212,7 @@ CONFIG_PINCTRL_PFC_R8A779G0                     policy<{'arm64': '-'}>
 CONFIG_PINCTRL_QCM2290                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCOM_SPMI_PMIC                   policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS404                           policy<{'arm64': 'y'}>
+CONFIG_PINCTRL_QCS8300                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QDF2XXX                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QDU1000                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_RENESAS                          policy<{'arm64': '-'}>
@@ -1225,6 +1228,7 @@ CONFIG_PINCTRL_S32G2                            policy<{'arm64': '-'}>
 CONFIG_PINCTRL_S700                             policy<{'arm64': '-'}>
 CONFIG_PINCTRL_S900                             policy<{'arm64': '-'}>
 CONFIG_PINCTRL_SA8775P                          policy<{'arm64': 'y'}>
+CONFIG_PINCTRL_SA8775P_LPASS_LPI                policy<{'arm64': 'm'}>
 CONFIG_PINCTRL_SC7180                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SC7280                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SC8180X                          policy<{'arm64': 'y'}>
@@ -1362,12 +1366,15 @@ CONFIG_QCOM_SMP2P                               policy<{'arm64': 'y'}>
 CONFIG_QCOM_SMP2P_SLEEPSTATE                    policy<{'arm64': 'm'}>
 CONFIG_QCOM_SMSM                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SOC_DEBUG                           policy<{'arm64': 'y'}>
+CONFIG_QCOM_SPMI_ADC5_GEN3                      policy<{'arm64': 'm'}>
+CONFIG_QCOM_SPMI_MBG_TM                         policy<{'arm64': 'm'}>
 CONFIG_QCOM_WATCHDOG_BARK_TIME                  policy<{'arm64': '11000'}>
 CONFIG_QCOM_WATCHDOG_IPI_PING                   policy<{'arm64': 'y'}>
 CONFIG_QCOM_WATCHDOG_PET_TIME                   policy<{'arm64': '9360'}>
 CONFIG_QCOM_WDOG_BITE_EARLY_PANIC               policy<{'arm64': 'n'}>
 CONFIG_QCOM_WDT_CORE                            policy<{'arm64': 'y'}>
 CONFIG_QCS_GCC_404                              policy<{'arm64': 'y'}>
+CONFIG_QCS_GCC_8300                             policy<{'arm64': 'y'}>
 CONFIG_QORIQ_CPUFREQ                            policy<{'arm64': '-'}>
 CONFIG_QORIQ_THERMAL                            policy<{'arm64': '-'}>
 CONFIG_QTEE_SHM_BRIDGE                          policy<{'arm64': 'y'}>
