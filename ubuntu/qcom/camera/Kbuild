@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-$(info "CAMERA_KERNEL_ROOT is: $(CAMERA_KERNEL_ROOT)")
-$(info "KERNEL_ROOT is: $(KERNEL_ROOT)")
-$(info "SOC_FAM is: $(SOC_FAM)")
-$(info "CAMERA_ARCH is: $(CAMERA_ARCH)")
+#$(info "CAMERA_KERNEL_ROOT is: $(CAMERA_KERNEL_ROOT)")
+#$(info "KERNEL_ROOT is: $(KERNEL_ROOT)")
+#$(info "SOC_FAM is: $(SOC_FAM)")
+#$(info "CAMERA_ARCH is: $(CAMERA_ARCH)")
 
 # Include Architecture configurations
 ifdef SOC_FAM
