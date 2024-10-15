@@ -116,6 +116,8 @@ struct msm_dp_display_private {
 
 	u32 active_stream_cnt;
 
+	const unsigned int *intf_map;
+
 	struct msm_dp_audio *audio;
 };
 
@@ -123,6 +125,27 @@ struct msm_dp_desc {
 	phys_addr_t io_start;
 	unsigned int id;
 	bool wide_bus_supported;
+	const unsigned int *intf_map;
+};
+
+/* to be kept in sync with enum dpu_intf of dpu_hw_mdss.h */
+enum dp_mst_intf {
+	INTF_0 = 1,
+	INTF_1,
+	INTF_2,
+	INTF_3,
+	INTF_4,
+	INTF_5,
+	INTF_6,
+	INTF_7,
+	INTF_8,
+	INTF_MAX
+};
+
+static const unsigned int stream_intf_map_sa_8775p[][DP_STREAM_MAX] = {
+	{INTF_0, INTF_3},
+	{INTF_4, INTF_8},
+	{}
 };
 
 static const struct msm_dp_desc msm_dp_desc_qcs8300[] = {
@@ -132,8 +155,12 @@ static const struct msm_dp_desc msm_dp_desc_qcs8300[] = {
 };
 
 static const struct msm_dp_desc msm_dp_desc_sa8775p[] = {
-	{ .io_start = 0x0af54000, .id = MSM_DP_CONTROLLER_0, .wide_bus_supported = true },
-	{ .io_start = 0x0af5c000, .id = MSM_DP_CONTROLLER_1, .wide_bus_supported = true },
+	{ .io_start = 0x0af54000, .id = MSM_DP_CONTROLLER_0, .wide_bus_supported = true,
+	  .intf_map = stream_intf_map_sa_8775p[MSM_DP_CONTROLLER_0],
+	},
+	{ .io_start = 0x0af5c000, .id = MSM_DP_CONTROLLER_1, .wide_bus_supported = true,
+	  .intf_map = stream_intf_map_sa_8775p[MSM_DP_CONTROLLER_1],
+	},
 	{ .io_start = 0x22154000, .id = MSM_DP_CONTROLLER_2, .wide_bus_supported = true },
 	{ .io_start = 0x2215c000, .id = MSM_DP_CONTROLLER_3, .wide_bus_supported = true },
 	{}
@@ -1506,6 +1533,9 @@ static int msm_dp_display_probe(struct platform_device *pdev)
 		(dp->msm_dp_display.connector_type == DRM_MODE_CONNECTOR_eDP);
 
 	dp->max_stream = DEFAULT_STREAM_COUNT;
+
+	dp->intf_map = desc->intf_map;
+
 	rc = msm_dp_init_sub_modules(dp);
 	if (rc) {
 		DRM_ERROR("init sub module failed\n");
@@ -1658,6 +1688,18 @@ bool msm_dp_wide_bus_available(const struct msm_dp *msm_dp_display)
 		return false;
 
 	return dp->wide_bus_supported;
+}
+
+int msm_dp_get_mst_intf_id(struct msm_dp *dp_display, int stream_id)
+{
+	struct msm_dp_display_private *dp;
+
+	dp = container_of(dp_display, struct msm_dp_display_private, msm_dp_display);
+
+	if (dp->intf_map)
+		return dp->intf_map[stream_id];
+
+	return 0;
 }
 
 void msm_dp_display_debugfs_init(struct msm_dp *msm_dp_display, struct dentry *root, bool is_edp)
