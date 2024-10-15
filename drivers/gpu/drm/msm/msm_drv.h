@@ -390,6 +390,8 @@ int msm_dp_mst_bridge_init(struct msm_dp *dp_display, struct drm_encoder *encode
 
 int msm_dp_mst_register(struct msm_dp *dp_display);
 
+int msm_dp_get_mst_intf_id(struct msm_dp *dp_display, int stream_id);
+
 #else
 static inline int __init msm_dp_register(void)
 {
@@ -440,6 +442,11 @@ static inline bool msm_dp_needs_periph_flush(const struct msm_dp *dp_display,
 static inline bool msm_dp_wide_bus_available(const struct msm_dp *dp_display)
 {
 	return false;
+}
+
+static inline int msm_dp_get_mst_intf_id(struct msm_dp *dp_display, int stream_id)
+{
+	return -EINVAL;
 }
 
 #endif
