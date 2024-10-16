@@ -1017,7 +1017,7 @@ static int wsa883x_get_temperature(struct snd_soc_component *component, int *tem
 		else
 			temp_val = t1 + (((dmeas - d1) * (t2 - t1))/(d2 - d1));
 
-		pr_err("%s: Calculated temperature value = %d\n", __func__, temp_val);
+		//pr_err("%s: Calculated temperature value = %d\n", __func__, temp_val);
 		/* temp_val = 25; */
 
 		if (temp_val <= LOW_TEMP_THRESHOLD ||
