@@ -606,10 +606,6 @@
 	reg = <0x0 0x8a700000 0x0 0x700000>;
 };
 
-&wifi {
-	memory-region = <&wlan_fw_mem>;
-};
-
 &xbl_mem {
 	reg = <0x0 0x80700000 0x0 0x100000>;
 };
