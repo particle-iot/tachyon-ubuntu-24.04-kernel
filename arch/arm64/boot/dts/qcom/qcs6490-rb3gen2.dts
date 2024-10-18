@@ -1256,3 +1256,8 @@
 
 	status = "okay";
 };
+
+/* moved from qcm6490-wlan-upstream.dtsi */
+&wifi {
+	status = "okay";
+};
