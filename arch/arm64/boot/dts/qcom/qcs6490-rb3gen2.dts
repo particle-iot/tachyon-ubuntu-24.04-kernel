@@ -856,7 +856,7 @@
 };
 
 &remoteproc_wpss {
-	firmware-name = "qcom/qcs6490/wpss.mdt";
+	firmware-name = "ath11k/WCN6750/hw1.0/wpss.mdt";
 	status = "okay";
 };
 
@@ -1254,5 +1254,10 @@
 	vdda18-supply = <&vreg_l1c_1p8>;
 	vdda33-supply = <&vreg_l2b_3p072>;
 
+	status = "okay";
+};
+
+/* moved from qcm6490-wlan-upstream.dtsi */
+&wifi {
 	status = "okay";
 };
