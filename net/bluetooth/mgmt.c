@@ -5450,9 +5450,6 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
 
 	hci_dev_lock(hdev);
 
-	if (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))
-		goto done;
-
 	cp = cmd->param;
 
 	rp.monitor_handle = cp->monitor_handle;
@@ -5466,7 +5463,6 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
 			  mgmt_status(status), &rp, sizeof(rp));
 	mgmt_pending_free(cmd);
 
-done:
 	hci_dev_unlock(hdev);
 	bt_dev_dbg(hdev, "remove monitor %d complete, status %d",
 		   rp.monitor_handle, status);
