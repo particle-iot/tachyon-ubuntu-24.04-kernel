@@ -224,6 +224,13 @@ int ufs_qcom_ice_import_key(struct ufs_hba *hba,
 				   lt_key);
 }
 
+static int ufs_qcom_ice_scale_clk(struct ufs_qcom_host *host, bool scale_up)
+{
+	if (host->hba->caps & UFSHCD_CAP_CRYPTO)
+		return qcom_ice_scale_clk(host->ice, scale_up);
+	return 0;
+}
+
 #else
 
 #define ufs_qcom_ice_program_key NULL
@@ -247,6 +254,11 @@ static inline int ufs_qcom_ice_resume(struct ufs_qcom_host *host)
 }
 
 static inline int ufs_qcom_ice_suspend(struct ufs_qcom_host *host)
+{
+	return 0;
+}
+
+static inline int  ufs_qcom_ice_scale_clk(struct ufs_qcom_host *host, bool scale_up)
 {
 	return 0;
 }
@@ -1370,6 +1382,7 @@ static int ufs_qcom_clk_scale_notify(struct ufs_hba *hba,
 		err = ufshcd_uic_hibern8_enter(hba);
 		if (err)
 			return err;
+
 		if (scale_up)
 			err = ufs_qcom_clk_scale_up_pre_change(hba);
 		else
@@ -1385,6 +1398,8 @@ static int ufs_qcom_clk_scale_notify(struct ufs_hba *hba,
 		else
 			err = ufs_qcom_clk_scale_down_post_change(hba);
 
+		if (!err)
+			err = ufs_qcom_ice_scale_clk(host, scale_up);
 
 		if (err) {
 			ufshcd_uic_hibern8_exit(hba);
