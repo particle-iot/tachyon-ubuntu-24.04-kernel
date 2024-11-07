@@ -335,12 +335,17 @@ static int __tc956xmac_xgmac2_mdio_write(struct mii_bus *bus, int phyaddr,
 	writel(value, priv->ioaddr + mii_data);
 
 	/*Preamble support*/
+	/* TC956X_Host_Driver-industrial_limited_tested_20241030_V_04-00-01-QPSSW-215.patch */
+#ifdef TC956X_SAMP_PHY_AQR_DRV_PSE_ENABLED
 	if ((priv->dev->phydev) && (priv->dev->phydev->priv != NULL)) {
 		if (*((int *)priv->dev->phydev->priv) == 1)
 			priv->plat->pse = 1;
 		else
 			priv->plat->pse = 0;
 	}
+#else
+	priv->plat->pse = 0;
+#endif
 	/* Wait until any existing MII operation is complete */
 	return readl_poll_timeout(priv->ioaddr + mii_data, tmp,
 				  !(tmp & MII_XGMAC_BUSY), /*100*/10, 10000);

@@ -222,6 +222,10 @@
 #define TC956X_5_G_2_5_G_EEE_SUPPORT
 // #define CONFIG_TC956XMAC_SELFTESTS  /*Enable this macro to test Feature selftest*/
 
+/* TC956X_Host_Driver-industrial_limited_tested_20241030_V_04-00-01-QPSSW-215.patch */
+/* Enable this macro when using TSB provided sample AQR driver which supports preamble suppression */
+// #define TC956X_SAMP_PHY_AQR_DRV_PSE_ENABLED
+
 #ifdef TC956X
 #define VENDOR_ID 0x1179
 #ifndef TC956X_SRIOV_VF
