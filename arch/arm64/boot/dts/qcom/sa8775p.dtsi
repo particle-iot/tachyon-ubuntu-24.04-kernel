@@ -8199,7 +8199,7 @@
 			thermal-sensors = <&tsens0 5>;
 
 			trips {
-				trip-point0 {
+				gpuss_0_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
@@ -8219,7 +8219,7 @@
 			thermal-sensors = <&tsens0 6>;
 
 			trips {
-				trip-point0 {
+				gpuss_1_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
@@ -8239,7 +8239,7 @@
 			thermal-sensors = <&tsens0 7>;
 
 			trips {
-				trip-point0 {
+				gpuss_2_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
@@ -8429,7 +8429,7 @@
 			thermal-sensors = <&tsens1 5>;
 
 			trips {
-				trip-point0 {
+				gpuss_3_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
@@ -8449,7 +8449,7 @@
 			thermal-sensors = <&tsens1 6>;
 
 			trips {
-				trip-point0 {
+				gpuss_4_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
@@ -8469,7 +8469,7 @@
 			thermal-sensors = <&tsens1 7>;
 
 			trips {
-				trip-point0 {
+				gpuss_5_passive: trip-point0 {
 					temperature = <105000>;
 					hysteresis = <5000>;
 					type = "passive";
