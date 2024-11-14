@@ -971,7 +971,8 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 		dev_dbg(glink->dev, "Data on non-existing channel\n");
 
 		/* Drop the message */
-		goto advance_rx;
+		qcom_glink_rx_advance(glink, ALIGN(sizeof(hdr) + chunk_size, 8));
+		return -EINVAL;
 	}
 
 	if (glink->intentless) {
@@ -1336,7 +1337,6 @@ static int qcom_glink_create_remote(struct qcom_glink *glink,
 		goto close_link;
 	}
 
-	qcom_glink_channel_ref_put(channel);
 	return 0;
 
 close_link:
