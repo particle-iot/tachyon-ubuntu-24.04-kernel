@@ -3690,6 +3690,10 @@ static int qmp_combo_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	if (of_property_read_bool(dev->of_node,
+				  "default-typec-orientation-reverse"))
+		qmp->orientation = TYPEC_ORIENTATION_REVERSE;
+
 	/* Check for legacy binding with child nodes. */
 	usb_np = of_get_child_by_name(dev->of_node, "usb3-phy");
 	if (usb_np) {
