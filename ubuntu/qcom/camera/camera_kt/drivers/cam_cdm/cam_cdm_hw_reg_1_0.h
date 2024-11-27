@@ -142,7 +142,7 @@ static struct cam_cdm_common_reg_data cdm_hw_1_0_cmn_reg_data = {
 	.num_scratch_reg = 0x8,
 };
 
-static struct cam_cdm_hw_reg_offset cam_cdm_1_0_reg_offset = {
+struct cam_cdm_hw_reg_offset cam_cdm_1_0_reg_offset = {
 	.cmn_reg = &cdm_hw_1_0_cmn_reg_offset,
 	.bl_fifo_reg = {
 			&cdm_hw_1_0_bl_fifo0,

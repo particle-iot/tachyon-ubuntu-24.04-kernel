@@ -1942,10 +1942,10 @@ static int cam_ife_mgr_acquire_cid_res(
 	enum cam_ife_pix_path_res_id        *path_res_id)
 {
 	int rc = -1;
-	int i, j;
+	int j;
 	struct cam_ife_hw_mgr               *ife_hw_mgr;
 	struct cam_hw_intf                  *hw_intf;
-	struct cam_isp_hw_mgr_res           *cid_res_temp, *cid_res_iterator;
+	struct cam_isp_hw_mgr_res           *cid_res_temp;
 	struct cam_csid_hw_reserve_resource_args  csid_acquire = {0};
 	uint32_t acquired_cnt = 0;
 	struct cam_isp_out_port_generic_info *out_port = NULL;

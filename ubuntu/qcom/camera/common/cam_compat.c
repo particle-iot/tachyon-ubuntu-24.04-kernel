@@ -251,7 +251,7 @@ static int camera_platform_compare_dev(struct device *dev, const void *data)
 	return platform_bus_type.match(dev, (struct device_driver *) data);
 }
 
-static int camera_i2c_compare_dev(struct device *dev, const void *data)
+int camera_i2c_compare_dev(struct device *dev, const void *data)
 {
 	return i2c_bus_type.match(dev, (struct device_driver *) data);
 }

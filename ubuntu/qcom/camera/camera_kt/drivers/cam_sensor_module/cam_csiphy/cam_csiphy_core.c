@@ -37,6 +37,7 @@
 /* Mask to enable skew calibration registers */
 #define SKEW_CAL_MASK 0x2
 
+static void cam_csiphy_cphy_irq_disable(struct csiphy_device *csiphy_dev) __attribute__((unused));
 static DEFINE_MUTEX(active_csiphy_cnt_mutex);
 
 static int csiphy_dump;

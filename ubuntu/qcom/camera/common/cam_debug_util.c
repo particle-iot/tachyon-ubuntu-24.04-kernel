@@ -32,6 +32,59 @@ struct camera_debug_settings cam_debug;
 
 struct dentry *cam_debugfs_root;
 
+static const char *cam_debug_mod_name[CAM_DBG_MOD_MAX] = {
+	[CAM_CDM]         = "CAM-CDM",
+	[CAM_CORE]        = "CAM-CORE",
+	[CAM_CRM]         = "CAM-CRM",
+	[CAM_CPAS]        = "CAM-CPAS",
+	[CAM_ISP]         = "CAM-ISP",
+	[CAM_SENSOR]      = "CAM-SENSOR",
+	[CAM_SMMU]        = "CAM-SMMU",
+	[CAM_SYNC]        = "CAM-SYNC",
+	[CAM_ICP]         = "CAM-ICP",
+	[CAM_JPEG]        = "CAM-JPEG",
+	[CAM_FD]          = "CAM-FD",
+	[CAM_LRME]        = "CAM-LRME",
+	[CAM_FLASH]       = "CAM-FLASH",
+	[CAM_ACTUATOR]    = "CAM-ACTUATOR",
+	[CAM_CCI]         = "CAM-CCI",
+	[CAM_CSIPHY]      = "CAM-CSIPHY",
+	[CAM_EEPROM]      = "CAM-EEPROM",
+	[CAM_UTIL]        = "CAM-UTIL",
+	[CAM_CTXT]        = "CAM-CTXT",
+	[CAM_HFI]         = "CAM-HFI",
+	[CAM_OIS]         = "CAM-OIS",
+	[CAM_IRQ_CTRL]    = "CAM-IRQ-CTRL",
+	[CAM_MEM]         = "CAM-MEM",
+	[CAM_PERF]        = "CAM-PERF",
+	[CAM_REQ]         = "CAM-REQ",
+	[CAM_CUSTOM]      = "CAM-CUSTOM",
+	[CAM_OPE]         = "CAM-OPE",
+	[CAM_PRESIL]      = "CAM-PRESIL",
+	[CAM_RES]         = "CAM-RES",
+	[CAM_IO_ACCESS]   = "CAM-IO-ACCESS",
+	[CAM_SFE]         = "CAM-SFE",
+	[CAM_CRE]         = "CAM-CRE",
+	[CAM_PRESIL_CORE] = "CAM-CORE-PRESIL",
+	[CAM_TPG]         = "CAM-TPG",
+	[CAM_DMA_FENCE]   = "CAM-DMA-FENCE",
+	[CAM_SENSOR_UTIL] = "CAM-SENSOR-UTIL",
+	[CAM_SYNX]        = "CAM_SYNX",
+};
+
+static const char *cam_debug_tag_name[CAM_TYPE_MAX] = {
+	[CAM_TYPE_TRACE] = "CAM_TRACE",
+	[CAM_TYPE_ERR]   = "CAM_ERR",
+	[CAM_TYPE_WARN]  = "CAM_WARN",
+	[CAM_TYPE_INFO]  = "CAM_INFO",
+	[CAM_TYPE_DBG]   = "CAM_DBG",
+};
+
+#define CAM_DBG_MOD_NAME(module_id) \
+((module_id < CAM_DBG_MOD_MAX) ? cam_debug_mod_name[module_id] : "CAMERA")
+
+#define CAM_LOG_TAG_NAME(tag) ((tag < CAM_TYPE_MAX) ? cam_debug_tag_name[tag] : "CAM_LOG")
+
 void cam_debugfs_init(void)
 {
 	struct dentry *tmp;

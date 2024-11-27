@@ -19,7 +19,7 @@ endif
 # List of all camera-kernel headers
 
 ifeq ($(CAMERA_ARCH), qcm6490)
-cam_include_dirs := $(shell dirname `find $(CAMERA_KERNEL_ROOT)/camera_kt -name '*.h'` | uniq)
+cam_include_dirs := $(shell find $(CAMERA_KERNEL_ROOT)/camera_kt -name '*.h' ! -path '*/tfe_hw/*' ! -path '*/tfe_csid_hw/*' ! -path '*/sfe_hw/*' ! -path '*/ppi_hw/*' -exec dirname {} \; | uniq)
 cam_include_dirs += $(shell dirname `find $(CAMERA_KERNEL_ROOT)/common -name '*.h'` | uniq)
 else
 cam_include_dirs := $(shell dirname `find $(CAMERA_KERNEL_ROOT)/camera -name '*.h'` | uniq)
@@ -91,13 +91,6 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid17x.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_lite17x.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ife_csid_hw/cam_ife_csid_core.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_soc.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_dev.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_core.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_top/cam_sfe_top.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_rd.o \
-	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_wr.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_soc.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_dev.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/vfe_hw/cam_vfe_core.o \
@@ -240,6 +233,15 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid_core.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid530.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/cam_tfe_hw_mgr.o
+
+camera-$(CONFIG_SPECTRA_SFE) += \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_soc.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_dev.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_core.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_top/cam_sfe_top.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_rd.o \
+	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_wr.o
 
 camera-y += camera_kt/drivers/camera_main.o
 

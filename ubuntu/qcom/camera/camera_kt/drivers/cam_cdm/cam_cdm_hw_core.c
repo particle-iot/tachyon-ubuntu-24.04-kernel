@@ -32,6 +32,7 @@
 #define CAM_CDM_BL_FIFO_WAIT_TIMEOUT 2000
 #define CAM_CDM_DBG_GEN_IRQ_USR_DATA 0xff
 
+static void cam_hw_cdm_dump_scratch_registors(struct cam_hw_info *cdm_hw) __attribute__((unused));
 static void cam_hw_cdm_work(struct work_struct *work);
 
 /* DT match table entry for all CDM variants*/

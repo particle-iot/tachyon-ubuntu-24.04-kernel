@@ -22,6 +22,8 @@
 static struct cam_req_mgr_util_hdl_tbl *hdl_tbl;
 static DEFINE_SPINLOCK(hdl_tbl_lock);
 
+static uint64_t cam_get_dev_handle_status(void) __attribute__((unused));
+
 int cam_req_mgr_util_init(void)
 {
 	int rc = 0;

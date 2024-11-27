@@ -14,7 +14,11 @@
 
 #include "cam_ife_csid_dev.h"
 #include "cam_vfe.h"
+
+#ifdef CONFIG_SPECTRA_SFE
 #include "cam_sfe_dev.h"
+#endif /* CONFIG_SPECTRA_SFE */
+
 #include "cam_isp_dev.h"
 
 #include "cam_res_mgr_api.h"
@@ -57,9 +61,13 @@
 #include "ope_dev_intf.h"
 
 #include "cam_top_tpg.h"
+
+#ifdef CONFIG_SPECTRA_TFE
 #include "cam_tfe_dev.h"
 #include "cam_tfe_csid530.h"
 #include "cam_csid_ppi100.h"
+#endif /* CONFIG_SPECTRA_TFE */
+
 #include "camera_main.h"
 
 struct camera_submodule_component {
