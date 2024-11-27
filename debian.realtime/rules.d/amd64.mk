@@ -17,7 +17,6 @@ do_tools_bpftool = true
 do_tools_x86	= true
 do_tools_hyperv	= true
 do_tools_rtla = true
-do_tools_host = false
 do_extras_package = true
 do_tools_acpidbg = true
 do_lib_rust     = false
