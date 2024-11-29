@@ -1536,23 +1536,24 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	}
 
 	/*
-	 * Above DWC_usb3.0 1.94a, it is recommended to set
-	 * DWC3_GUSB3PIPECTL_SUSPHY and DWC3_GUSB2PHYCFG_SUSPHY to '0' during
-	 * coreConsultant configuration. So default value will be '0' when the
-	 * core is reset. Application needs to set it to '1' after the core
-	 * initialization is completed.
+	 * STAR 9001346572: This issue affects DWC_usb31 versions 1.80a and
+	 * prior. When an active endpoint not currently cached in the host
+	 * controller is chosen to be cached to the same index as an endpoint
+	 * receiving NAKs, the endpoint receiving NAKs enters continuous
+	 * retry mode. This prevents it from being evicted from the host
+	 * controller cache, blocking the new endpoint from being cached and
+	 * serviced.
 	 *
-	 * Certain phy requires to be in P0 power state during initialization.
-	 * Make sure GUSB3PIPECTL.SUSPENDENABLE and GUSB2PHYCFG.SUSPHY are clear
-	 * prior to phy init to maintain in the P0 state.
-	 *
-	 * After phy initialization, some phy operations can only be executed
-	 * while in lower P states. Ensure GUSB3PIPECTL.SUSPENDENABLE and
-	 * GUSB2PHYCFG.SUSPHY are set soon after initialization to avoid
-	 * blocking phy ops.
+	 * To resolve this, for controller versions 1.70a and 1.80a, set the
+	 * GUCTL3 bit[16] (USB2.0 Internal Retry Disable) to 1. This bit
+	 * disables the USB2.0 internal retry feature. The GUCTL3[16] register
+	 * function is available only from version 1.70a.
 	 */
-	if (!DWC3_VER_IS_WITHIN(DWC3, ANY, 194A))
-		dwc3_enable_susphy(dwc, true);
+	if (DWC3_VER_IS_WITHIN(DWC31, 170A, 180A)) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUCTL3);
+		reg |= DWC3_GUCTL3_USB20_RETRY_DISABLE;
+		dwc3_writel(dwc->regs, DWC3_GUCTL3, reg);
+	}
 
 	return 0;
 
