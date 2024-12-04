@@ -1491,6 +1491,7 @@ CONFIG_SA_DISPCC_8775P                          policy<{'arm64': 'm'}>
 CONFIG_SA_GCC_8775P                             policy<{'arm64': 'y'}>
 CONFIG_SA_VIDEOCC_8775P                         policy<{'arm64': 'm'}>
 CONFIG_SC27XX_ADC                               policy<{'arm64': '-'}>
+CONFIG_SCREEN_INFO                              policy<{'arm64': '-'}>
 CONFIG_SCSI_UFSHCD                              policy<{'arm64': 'y'}>
 CONFIG_SCSI_UFSHCD_PLATFORM                     policy<{'arm64': 'y'}>
 CONFIG_SCSI_UFS_HISI                            policy<{'arm64': '-'}>
