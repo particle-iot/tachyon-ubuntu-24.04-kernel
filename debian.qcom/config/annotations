@@ -628,6 +628,7 @@ CONFIG_FSL_MC_DPIO                              policy<{'arm64': '-'}>
 CONFIG_FSL_MC_UAPI_SUPPORT                      policy<{'arm64': '-'}>
 CONFIG_FSL_QMAN_TEST                            policy<{'arm64': '-'}>
 CONFIG_FUEL_GAUGE_SC27XX                        policy<{'arm64': '-'}>
+CONFIG_GCC_ASM_GOTO_OUTPUT_WORKAROUND           policy<{'arm64': 'y'}>
 CONFIG_GCC_VERSION                              policy<{'arm64': '110400'}>
 CONFIG_GENERIC_IRQ_IPI_MUX                      policy<{'arm64': '-'}>
 CONFIG_GH_VIRT_WATCHDOG                         policy<{'arm64': 'y'}>
