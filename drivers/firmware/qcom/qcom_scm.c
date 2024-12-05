@@ -1304,14 +1304,14 @@ EXPORT_SYMBOL_GPL(qcom_scm_ice_set_key);
  * Return: 0 on success; -errno on failure.
  */
 int qcom_scm_derive_sw_secret(const u8 *wkey, size_t wkey_size,
-		u8 *sw_secret, size_t sw_secret_size)
+			     u8 *sw_secret, size_t sw_secret_size)
 {
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_ES,
 		.cmd =  QCOM_SCM_ES_DERIVE_SW_SECRET,
 		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW,
-					QCOM_SCM_VAL, QCOM_SCM_RW,
-					QCOM_SCM_VAL),
+					 QCOM_SCM_VAL, QCOM_SCM_RW,
+					 QCOM_SCM_VAL),
 		.args[1] = wkey_size,
 		.args[3] = sw_secret_size,
 		.owner = ARM_SMCCC_OWNER_SIP,
@@ -1320,14 +1320,14 @@ int qcom_scm_derive_sw_secret(const u8 *wkey, size_t wkey_size,
 	int ret;
 
 	void *wkey_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-										wkey_size,
-										GFP_KERNEL);
+							     wkey_size,
+							     GFP_KERNEL);
 	if (!wkey_buf)
 		return -ENOMEM;
 
 	void *secret_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-										sw_secret_size,
-										GFP_KERNEL);
+							       sw_secret_size,
+							       GFP_KERNEL);
 	if (!secret_buf) {
 		ret = -ENOMEM;
 		goto out_free_wrapped;
@@ -1373,8 +1373,8 @@ int qcom_scm_generate_ice_key(u8 *lt_key, size_t lt_key_size)
 	int ret;
 
 	void *lt_key_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-			lt_key_size,
-			GFP_KERNEL);
+							       lt_key_size,
+							       GFP_KERNEL);
 	if (!lt_key_buf)
 		return -ENOMEM;
 
@@ -1407,14 +1407,14 @@ EXPORT_SYMBOL_GPL(qcom_scm_generate_ice_key);
  * Return: 0 on success; -errno on failure.
  */
 int qcom_scm_prepare_ice_key(const u8 *lt_key, size_t lt_key_size,
-		u8 *eph_key, size_t eph_key_size)
+			    u8 *eph_key, size_t eph_key_size)
 {
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_ES,
 		.cmd =  QCOM_SCM_ES_PREPARE_ICE_KEY,
 		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RO,
-				QCOM_SCM_VAL, QCOM_SCM_RW,
-				QCOM_SCM_VAL),
+					 QCOM_SCM_VAL, QCOM_SCM_RW,
+					 QCOM_SCM_VAL),
 		.args[1] = lt_key_size,
 		.args[3] = eph_key_size,
 		.owner = ARM_SMCCC_OWNER_SIP,
@@ -1423,14 +1423,14 @@ int qcom_scm_prepare_ice_key(const u8 *lt_key, size_t lt_key_size,
 	int ret;
 
 	void *lt_key_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-			lt_key_size,
-			GFP_KERNEL);
+							       lt_key_size,
+							       GFP_KERNEL);
 	if (!lt_key_buf)
 		return -ENOMEM;
 
 	void *eph_key_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-			eph_key_size,
-			GFP_KERNEL);
+								eph_key_size,
+								GFP_KERNEL);
 	if (!eph_key_buf) {
 		ret = -ENOMEM;
 		goto out_free_longterm;
@@ -1465,14 +1465,14 @@ EXPORT_SYMBOL_GPL(qcom_scm_prepare_ice_key);
  * Return: 0 on success; -errno on failure.
  */
 int qcom_scm_import_ice_key(const u8 *imp_key, size_t imp_key_size,
-		u8 *lt_key, size_t lt_key_size)
+			   u8 *lt_key, size_t lt_key_size)
 {
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_ES,
 		.cmd =  QCOM_SCM_ES_IMPORT_ICE_KEY,
 		.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RO,
-				QCOM_SCM_VAL, QCOM_SCM_RW,
-				QCOM_SCM_VAL),
+					 QCOM_SCM_VAL, QCOM_SCM_RW,
+					 QCOM_SCM_VAL),
 		.args[1] = imp_key_size,
 		.args[3] = lt_key_size,
 		.owner = ARM_SMCCC_OWNER_SIP,
@@ -1481,14 +1481,14 @@ int qcom_scm_import_ice_key(const u8 *imp_key, size_t imp_key_size,
 	int ret;
 
 	void *imp_key_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-			imp_key_size,
-			GFP_KERNEL);
+								imp_key_size,
+								GFP_KERNEL);
 	if (!imp_key_buf)
 		return -ENOMEM;
 
 	void *lt_key_buf __free(qcom_tzmem) = qcom_tzmem_alloc(__scm->mempool,
-			lt_key_size,
-			GFP_KERNEL);
+							       lt_key_size,
+							       GFP_KERNEL);
 	if (!lt_key_buf) {
 		ret = -ENOMEM;
 		goto out_free_longterm;
