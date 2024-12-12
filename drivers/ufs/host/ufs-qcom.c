@@ -266,6 +266,9 @@ static int ufs_qcom_enable_lane_clks(struct ufs_qcom_host *host)
 {
 	int err;
 
+	if (host->is_lane_clks_enabled)
+		return 0;
+
 	err = clk_bulk_prepare_enable(host->num_clks, host->clks);
 	if (err)
 		return err;
