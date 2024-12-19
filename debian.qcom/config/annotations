@@ -963,6 +963,7 @@ CONFIG_NET_VENDOR_ALLWINNER                     policy<{'arm64': '-'}>
 CONFIG_NET_VENDOR_MEDIATEK                      policy<{'arm64': '-'}>
 CONFIG_NET_XGENE                                policy<{'arm64': '-'}>
 CONFIG_NET_XGENE_V2                             policy<{'arm64': '-'}>
+CONFIG_NL80211_TESTMODE                         policy<{'arm64': 'y'}>
 CONFIG_NLS_DEFAULT                              policy<{'arm64': '"iso8859-1"'}>
 CONFIG_NODES_SHIFT                              policy<{'arm64': '4'}>
 CONFIG_NOUVEAU_PLATFORM_DRIVER                  policy<{'arm64': '-'}>
