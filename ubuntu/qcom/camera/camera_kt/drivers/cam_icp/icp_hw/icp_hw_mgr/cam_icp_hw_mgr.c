@@ -3376,8 +3376,6 @@ static int cam_icp_mgr_destroy_handle(
 	destroy_cmd->fw_handles[0] = ctx_data->fw_handle;
 	destroy_cmd->user_data1 = PTR_TO_U64(ctx_data);
 	destroy_cmd->user_data2 = (uint64_t)0x0;
-	memcpy(destroy_cmd->payload.direct, &ctx_data->temp_payload,
-		sizeof(uint64_t));
 
 	rc = hfi_write_cmd(destroy_cmd);
 	if (rc) {
