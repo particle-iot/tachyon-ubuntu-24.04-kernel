@@ -1215,6 +1215,7 @@ CONFIG_PINCTRL_QCM2290                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCOM_SPMI_PMIC                   policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS404                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS8300                          policy<{'arm64': 'y'}>
+CONFIG_PINCTRL_QCS8300_LPASS_LPI                policy<{'arm64': 'm'}>
 CONFIG_PINCTRL_QDF2XXX                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QDU1000                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_RENESAS                          policy<{'arm64': '-'}>
@@ -1229,6 +1230,7 @@ CONFIG_PINCTRL_S32CC                            policy<{'arm64': '-'}>
 CONFIG_PINCTRL_S32G2                            policy<{'arm64': '-'}>
 CONFIG_PINCTRL_S700                             policy<{'arm64': '-'}>
 CONFIG_PINCTRL_S900                             policy<{'arm64': '-'}>
+CONFIG_PINCTRL_SA7255P                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SA8775P                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SA8775P_LPASS_LPI                policy<{'arm64': 'm'}>
 CONFIG_PINCTRL_SC7180                           policy<{'arm64': 'y'}>
@@ -1335,8 +1337,10 @@ CONFIG_QCOM_CLK_APCS_MSM8916                    policy<{'arm64': 'y'}>
 CONFIG_QCOM_CLK_RPMH                            policy<{'arm64': 'y'}>
 CONFIG_QCOM_CLK_SMD_RPM                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_CPR                                 policy<{'arm64': 'y'}>
+CONFIG_QCOM_CPUCP_MBOX                          policy<{'arm64': 'n'}>
 CONFIG_QCOM_DCC                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_DMABUF_HEAPS                        policy<{'arm64': 'y'}>
+CONFIG_QCOM_DMABUF_HEAPS_CARVEOUT               policy<{'arm64': 'n'}>
 CONFIG_QCOM_DMABUF_HEAPS_CMA                    policy<{'arm64': 'y'}>
 CONFIG_QCOM_DMABUF_HEAPS_PAGE_POOL_REFILL       policy<{'arm64': 'n'}>
 CONFIG_QCOM_DMABUF_HEAPS_SYSTEM                 policy<{'arm64': 'y'}>
@@ -1933,6 +1937,7 @@ CONFIG_USB_EHCI_HCD_ORION                       policy<{'arm64': '-'}>
 CONFIG_USB_EHCI_TEGRA                           policy<{'arm64': '-'}>
 CONFIG_USB_EMXX                                 policy<{'arm64': '-'}>
 CONFIG_USB_F_QDSS                               policy<{'arm64': 'm'}>
+CONFIG_USB_HUB_USB5807                          policy<{'arm64': 'm'}>
 CONFIG_USB_MTU3                                 policy<{'arm64': '-'}>
 CONFIG_USB_MTU3_DEBUG                           policy<{'arm64': '-'}>
 CONFIG_USB_MTU3_DUAL_ROLE                       policy<{'arm64': '-'}>
