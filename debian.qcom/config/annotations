@@ -1519,6 +1519,7 @@ CONFIG_SDM_DISPCC_845                           policy<{'arm64': 'y'}>
 CONFIG_SDM_GCC_845                              policy<{'arm64': 'y'}>
 CONFIG_SDM_GPUCC_845                            policy<{'arm64': 'y'}>
 CONFIG_SDM_VIDEOCC_845                          policy<{'arm64': 'y'}>
+CONFIG_SENSORS_EMC2305                          policy<{'arm64': 'y'}>
 CONFIG_SENSORS_SL28CPLD                         policy<{'arm64': '-'}>
 CONFIG_SENSORS_SPARX5                           policy<{'arm64': '-'}>
 CONFIG_SERIAL_8250_EM                           policy<{'arm64': '-'}>
