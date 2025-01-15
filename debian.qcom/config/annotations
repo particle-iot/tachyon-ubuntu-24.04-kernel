@@ -1926,11 +1926,17 @@ CONFIG_TOUCHSCREEN_TI_AM335X_TSC                policy<{'arm64': '-'}>
 CONFIG_TURRIS_MOX_RWTM                          policy<{'arm64': '-'}>
 CONFIG_USB_CDNS3_IMX                            policy<{'arm64': '-'}>
 CONFIG_USB_CDNS3_TI                             policy<{'arm64': '-'}>
+CONFIG_USB_DWC3                                 policy<{'arm64': 'y'}>
 CONFIG_USB_DWC3_AM62                            policy<{'arm64': '-'}>
+CONFIG_USB_DWC3_DUAL_ROLE                       policy<{'arm64': '-'}>
+CONFIG_USB_DWC3_GADGET                          policy<{'arm64': '-'}>
+CONFIG_USB_DWC3_HOST                            policy<{'arm64': 'y'}>
 CONFIG_USB_DWC3_IMX8MP                          policy<{'arm64': '-'}>
 CONFIG_USB_DWC3_KEYSTONE                        policy<{'arm64': '-'}>
 CONFIG_USB_DWC3_MESON_G12A                      policy<{'arm64': '-'}>
+CONFIG_USB_DWC3_QCOM                            policy<{'arm64': 'y'}>
 CONFIG_USB_DWC3_RTK                             policy<{'arm64': '-'}>
+CONFIG_USB_DWC3_ULPI                            policy<{'arm64': '-'}>
 CONFIG_USB_DWC3_XILINX                          policy<{'arm64': '-'}>
 CONFIG_USB_EHCI_HCD_NPCM7XX                     policy<{'arm64': '-'}>
 CONFIG_USB_EHCI_HCD_ORION                       policy<{'arm64': '-'}>
@@ -1957,6 +1963,7 @@ CONFIG_USB_TEGRA_XUDC                           policy<{'arm64': '-'}>
 CONFIG_USB_XHCI_HISTB                           policy<{'arm64': '-'}>
 CONFIG_USB_XHCI_MTK                             policy<{'arm64': '-'}>
 CONFIG_USB_XHCI_MVEBU                           policy<{'arm64': '-'}>
+CONFIG_USB_XHCI_PLATFORM                        policy<{'arm64': 'y'}>
 CONFIG_USB_XHCI_RCAR                            policy<{'arm64': '-'}>
 CONFIG_USB_XHCI_RZV2M                           policy<{'arm64': '-'}>
 CONFIG_USB_XHCI_TEGRA                           policy<{'arm64': '-'}>
