@@ -341,6 +341,34 @@ qcs5430-fp3-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcm6490-display-rb3.dtbo \
     qcm6490-video.dtbo
 
+#dtb-$(CONFIG_ARCH_QCOM) += sa8775p-addons-ride-ovl.dtb
+#sa8775p-addons-ride-ovl-dtbs := \
+    sa8775p-addons-ride-ovl.dtb \
+    sa8775p-video.dtbo \
+    qcs9100-graphics.dtbo \
+    qcs9100-ride-sx-camera.dtbo
+
+#dtb-$(CONFIG_ARCH_QCOM) += sa8775p-addons-ride-r3-ovl.dtb
+#sa8775p-addons-ride-r3-ovl-dtbs := \
+    sa8775p-addons-ride-r3-ovl.dtb \
+    sa8775p-video.dtbo \
+    qcs9100-graphics.dtbo \
+    qcs9100-ride-sx-camera.dtbo
+
+#dtb-$(CONFIG_ARCH_QCOM) += qcs9100-addons-ride-ovl.dtb
+#qcs9100-addons-ride-ovl-dtbs := \
+    qcs9100-addons-ride.dtb \
+    sa8775p-video.dtbo \
+    qcs9100-graphics.dtbo \
+    qcs9100-ride-sx-camera.dtbo
+
+#dtb-$(CONFIG_ARCH_QCOM) += qcs9100-addons-ride-r3-ovl.dtb
+#qcs9100-addons-ride-r3-ovl-dtbs := \
+    qcs9100-addons-ride-r3.dtb \
+    sa8775p-video.dtbo \
+    qcs9100-graphics.dtbo \
+    qcs9100-ride-sx-camera.dtbo
+
 dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
 
 dtbs-to-combined := $(filter %-ovl.dtb, $(dtb-y))
