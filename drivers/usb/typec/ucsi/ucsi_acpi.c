@@ -137,8 +137,7 @@ static int ucsi_gram_sync_control(struct ucsi *ucsi, u64 command, u32 *cci,
 static const struct ucsi_operations ucsi_gram_ops = {
 	.read_version = ucsi_acpi_read_version,
 	.read_cci = ucsi_acpi_read_cci,
-	.poll_cci = ucsi_acpi_poll_cci,
-	.read_message_in = ucsi_gram_read_message_in,
+	.read_message_in = ucsi_acpi_read_message_in,
 	.sync_control = ucsi_gram_sync_control,
 	.async_control = ucsi_acpi_async_control
 };
