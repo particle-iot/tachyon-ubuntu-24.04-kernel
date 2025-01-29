@@ -305,7 +305,7 @@ static void dsi_pll_commit(struct dsi_pll_7nm *pll, struct dsi_pll_config *confi
 	dsi_phy_write(base + REG_DSI_7nm_PHY_PLL_PLL_LOCK_DELAY, 0x06);
 	dsi_phy_write(base + REG_DSI_7nm_PHY_PLL_CMODE_1,
 		      pll->phy->cphy_mode ? 0x00 : 0x10);
-	dsi_phy_write(base + REG_DSI_7nm_PHY_PLL_CLOCK_INVERTERS,
+	dsi_phy_write(base + REG_DSI_7nm_PHY_PLL_CLOCK_INVERTERS_1,
 		      config->pll_clock_inverters);
 }
 
