@@ -764,6 +764,7 @@ CONFIG_INTERCONNECT_IMX8MN                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_IMX8MP                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_IMX8MQ                      policy<{'arm64': '-'}>
 CONFIG_INTERCONNECT_QCOM_BCM_VOTER              policy<{'arm64': 'y'}>
+CONFIG_INTERCONNECT_QCOM_QCS615                 policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_QCS8300                policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_RPMH                   policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_SA8775P                policy<{'arm64': 'y'}>
@@ -862,6 +863,7 @@ CONFIG_MFD_STM32_TIMERS                         policy<{'arm64': '-'}>
 CONFIG_MFD_SUN4I_GPADC                          policy<{'arm64': '-'}>
 CONFIG_MFD_SUN6I_PRCM                           policy<{'arm64': '-'}>
 CONFIG_MFD_TI_AM335X_TSCADC                     policy<{'arm64': '-'}>
+CONFIG_MHI_EP_NET                               policy<{'arm64': 'n'}>
 CONFIG_MMC_BLOCK_MINORS                         policy<{'arm64': '32'}>
 CONFIG_MMC_CAVIUM_THUNDERX                      policy<{'arm64': '-'}>
 CONFIG_MMC_CQHCI                                policy<{'arm64': 'y'}>
@@ -1021,6 +1023,7 @@ CONFIG_PCIE_LAYERSCAPE_GEN4                     policy<{'arm64': '-'}>
 CONFIG_PCIE_MEDIATEK                            policy<{'arm64': '-'}>
 CONFIG_PCIE_MEDIATEK_GEN3                       policy<{'arm64': '-'}>
 CONFIG_PCIE_MOBIVEIL_PLAT                       policy<{'arm64': '-'}>
+CONFIG_PCIE_QCOM_COMMON                         policy<{'arm64': 'y'}>
 CONFIG_PCIE_RCAR_EP                             policy<{'arm64': '-'}>
 CONFIG_PCIE_RCAR_GEN4                           policy<{'arm64': '-'}>
 CONFIG_PCIE_RCAR_GEN4_EP                        policy<{'arm64': '-'}>
@@ -1214,6 +1217,7 @@ CONFIG_PINCTRL_PFC_R8A779G0                     policy<{'arm64': '-'}>
 CONFIG_PINCTRL_QCM2290                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCOM_SPMI_PMIC                   policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS404                           policy<{'arm64': 'y'}>
+CONFIG_PINCTRL_QCS615                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS8300                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_QCS8300_LPASS_LPI                policy<{'arm64': 'm'}>
 CONFIG_PINCTRL_QDF2XXX                          policy<{'arm64': 'y'}>
@@ -1374,12 +1378,16 @@ CONFIG_QCOM_SMSM                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SOC_DEBUG                           policy<{'arm64': 'y'}>
 CONFIG_QCOM_SPMI_ADC5_GEN3                      policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_MBG_TM                         policy<{'arm64': 'm'}>
+CONFIG_QCOM_TZMEM                               policy<{'arm64': 'y'}>
+CONFIG_QCOM_TZMEM_MODE_GENERIC                  policy<{'arm64': 'n'}>
+CONFIG_QCOM_TZMEM_MODE_SHMBRIDGE                policy<{'arm64': 'y'}>
 CONFIG_QCOM_WATCHDOG_BARK_TIME                  policy<{'arm64': '11000'}>
 CONFIG_QCOM_WATCHDOG_IPI_PING                   policy<{'arm64': 'y'}>
 CONFIG_QCOM_WATCHDOG_PET_TIME                   policy<{'arm64': '9360'}>
 CONFIG_QCOM_WDOG_BITE_EARLY_PANIC               policy<{'arm64': 'n'}>
 CONFIG_QCOM_WDT_CORE                            policy<{'arm64': 'y'}>
 CONFIG_QCS_GCC_404                              policy<{'arm64': 'y'}>
+CONFIG_QCS_GCC_615                              policy<{'arm64': 'y'}>
 CONFIG_QCS_GCC_8300                             policy<{'arm64': 'y'}>
 CONFIG_QORIQ_CPUFREQ                            policy<{'arm64': '-'}>
 CONFIG_QORIQ_THERMAL                            policy<{'arm64': '-'}>
