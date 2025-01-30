@@ -1788,8 +1788,39 @@ static int msm_ioctl_display_hint_ops(struct drm_device *dev, void *data,
 	return 0;
 }
 
+static int msm_ioctl_gem_info(struct drm_device *dev, void *data,
+		struct drm_file *file)
+{
+	struct drm_msm_gem_info *args = data;
+	struct drm_gem_object *obj;
+	struct msm_gem_object *msm_obj;
+	int i, ret = 0;
+
+	if (args->pad)
+		return -EINVAL;
+
+	obj = drm_gem_object_lookup(file, args->handle);
+
+	switch (args->info) {
+	case MSM_INFO_GET_OFFSET:
+		/* value returned as immediate, not pointer, so len==0: */
+		if (args->len)
+			return -EINVAL;
+
+		args->value = msm_gem_mmap_offset(obj);
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	drm_gem_object_put(obj);
+	return ret;
+}
+
 static const struct drm_ioctl_desc msm_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MSM_GEM_NEW,      msm_ioctl_gem_new,      DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MSM_GEM_INFO,     msm_ioctl_gem_info,     DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MSM_GEM_CPU_PREP, msm_ioctl_gem_cpu_prep, DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MSM_GEM_CPU_FINI, msm_ioctl_gem_cpu_fini, DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MSM_GEM_MADVISE,  msm_ioctl_gem_madvise,  DRM_AUTH|DRM_RENDER_ALLOW),
