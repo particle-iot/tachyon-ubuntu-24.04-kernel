@@ -626,8 +626,8 @@
 		status = "disabled";
 	};
 
-	cam_csiphy_tpg17: qcom,tpg17@acac000 {
-		cell-index = <17>;
+	cam_csiphy_tpg13: qcom,tpg13@acac000 {
+		cell-index = <13>;
 		phy-id = <0>;
 		compatible = "qcom,cam-tpg1031";
 		reg-names = "tpg0", "cam_cpas_top";
@@ -659,8 +659,8 @@
 		};
 	};
 
-	cam_csiphy_tpg18: qcom,tpg18@acad000 {
-		cell-index = <18>;
+	cam_csiphy_tpg14: qcom,tpg14@acad000 {
+		cell-index = <14>;
 		phy-id = <1>;
 		compatible = "qcom,cam-tpg1031";
 		reg-names = "tpg1", "cam_cpas_top";
@@ -692,8 +692,8 @@
 		};
 	};
 
-	cam_csiphy_tpg19: qcom,tpg19@acae000 {
-		cell-index = <19>;
+	cam_csiphy_tpg15: qcom,tpg15@acae000 {
+		cell-index = <15>;
 		phy-id = <2>;
 		compatible = "qcom,cam-tpg1031";
 		reg-names = "tpg2", "cam_cpas_top";
@@ -942,7 +942,7 @@
 			hw-thd-dat = <22>;
 			hw-thd-sta = <35>;
 			hw-tbuf = <62>;
-			hw-scl-stretch-en = <1>;
+			hw-scl-stretch-en = <0>;
 			hw-trdhld = <6>;
 			hw-tsp = <3>;
 			cci-clk-src = <37500000>;
@@ -1037,7 +1037,7 @@
 			hw-thd-dat = <22>;
 			hw-thd-sta = <35>;
 			hw-tbuf = <62>;
-			hw-scl-stretch-en = <1>;
+			hw-scl-stretch-en = <0>;
 			hw-trdhld = <6>;
 			hw-tsp = <3>;
 			cci-clk-src = <37500000>;
@@ -1082,7 +1082,7 @@
 		reg-names = "cci";
 		reg-cam-base = <0x15000>;
 		interrupt-names = "CCI2";
-		interrupts = <GIC_SPI 651 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 652 IRQ_TYPE_EDGE_RISING>;
 		operating-points-v2 = <&cci2_opp_table>;
 		power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
 		clock-names = "cci_2_clk_src",
@@ -1132,7 +1132,7 @@
 			hw-thd-dat = <22>;
 			hw-thd-sta = <35>;
 			hw-tbuf = <62>;
-			hw-scl-stretch-en = <1>;
+			hw-scl-stretch-en = <0>;
 			hw-trdhld = <6>;
 			hw-tsp = <3>;
 			cci-clk-src = <37500000>;
@@ -1177,7 +1177,7 @@
 		reg-names = "cci";
 		reg-cam-base = <0x16000>;
 		interrupt-names = "CCI3";
-		interrupts = <GIC_SPI 771 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 772 IRQ_TYPE_EDGE_RISING>;
 		operating-points-v2 = <&cci3_opp_table>;
 		power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
 		clock-names = "cci_3_clk_src",
@@ -1227,7 +1227,7 @@
 			hw-thd-dat = <22>;
 			hw-thd-sta = <35>;
 			hw-tbuf = <62>;
-			hw-scl-stretch-en = <1>;
+			hw-scl-stretch-en = <0>;
 			hw-trdhld = <6>;
 			hw-tsp = <3>;
 			cci-clk-src = <37500000>;
@@ -1408,7 +1408,7 @@
 		clock-rates = <300000000 0>;
 		operating-points-v2 = <&cdm_cpas_opp_table0>;
 		clock-cntl-level = "svs";
-		cdm-client-names = "ife0", "dualife0";
+		cdm-client-names = "ife0";
 		single-context-cdm;
 		status = "ok";
 		cdm_cpas_opp_table0: opp-table {
@@ -1438,7 +1438,7 @@
 		clock-rates = <300000000 0>;
 		operating-points-v2 = <&cdm_cpas_opp_table1>;
 		clock-cntl-level = "svs_l1";
-		cdm-client-names = "ife1", "dualife1";
+		cdm-client-names = "ife1";
 		single-context-cdm;
 		status = "ok";
 		cdm_cpas_opp_table1: opp-table {
@@ -1530,13 +1530,13 @@
 		clock-names =
 			"cam_cc_csid_clk_src",
 			"cam_cc_csid_clk",
-			"cam_cc_csid_csiphy_rx_clk";
+			"cam_cc_cphy_rx_clk_src";
 		clocks =
 			<&camcc CAM_CC_CSID_CLK_SRC>,
 			<&camcc CAM_CC_CSID_CLK>,
-			<&camcc CAM_CC_CSID_CSIPHY_RX_CLK>;
+			<&camcc CAM_CC_CPHY_RX_CLK_SRC>;
 		clock-rates =
-			<400000000 0 0>;
+			<400000000 0 400000000>;
 		clock-cntl-level = "svs_l1";
 		src-clock-name = "cam_cc_csid_clk_src";
 		operating-points-v2 = <&csid0_opp_table>;
@@ -1611,13 +1611,13 @@
 		clock-names =
 			"cam_cc_csid_clk_src",
 			"cam_cc_csid_clk",
-			"cam_cc_csid_csiphy_rx_clk";
+			"cam_cc_cphy_rx_clk_src";
 		clocks =
 			<&camcc CAM_CC_CSID_CLK_SRC>,
 			<&camcc CAM_CC_CSID_CLK>,
-			<&camcc CAM_CC_CSID_CSIPHY_RX_CLK>;
+			<&camcc CAM_CC_CPHY_RX_CLK_SRC>;
 		clock-rates =
-			<400000000 0 0>;
+			<400000000 0 400000000>;
 		clock-cntl-level = "svs_l1";
 		src-clock-name = "cam_cc_csid_clk_src";
 		operating-points-v2 = <&csid1_opp_table>;
@@ -2447,7 +2447,7 @@
 			"ife0", "ife1",	"ife2", "ife3", "ife4",
 			"ife5",	"ife6", "ipe0", "sfe0", "sfe1",
 			"cam-cdm-intf0", "rt-cdm0", "rt-cdm1", "rt-cdm2",
-			"rt-cdm3", "icp0", "tpg17", "tpg18", "tpg19";
+			"rt-cdm3", "icp0", "tpg13", "tpg14", "tpg15";
 
 		status = "ok";
 		enable-secure-qos-update;
