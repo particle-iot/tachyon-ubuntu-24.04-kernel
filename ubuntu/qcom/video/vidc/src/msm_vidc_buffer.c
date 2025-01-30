@@ -199,6 +199,10 @@ u32 msm_vidc_internal_buffer_count(struct msm_vidc_inst *inst,
 
 u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
 {
+	struct msm_vidc_core *core;
+	struct msm_vidc_inst *i;
+	u32 count = 0;
+
 	u32 frame_size, num_mbs;
 	u32 div_factor = 1;
 	u32 base_res_mbs = NUM_MBS_4k;
@@ -239,8 +243,13 @@ u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
 	if (is_secure_session(inst))
 		div_factor = div_factor << 1;
 
+	core = inst->core;
+
+	list_for_each_entry(i, &core->instances, list)
+		count++;
+
 	/* For image session, use the actual resolution to calc buffer size */
-	if (is_image_session(inst)) {
+	if (is_image_session(inst) || count > 16) {
 		base_res_mbs = num_mbs;
 		div_factor = 1;
 	}

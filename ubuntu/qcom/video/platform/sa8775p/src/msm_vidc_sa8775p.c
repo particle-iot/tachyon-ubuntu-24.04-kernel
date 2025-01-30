@@ -305,7 +305,7 @@ static struct msm_platform_core_capability core_data_sa8775p[] = {
 	{FW_UNLOAD_DELAY,     FW_UNLOAD_DELAY_VALUE    }, /* 3000 ms (>SW_PC_DELAY)*/
 	{PAGEFAULT_NON_FATAL, 1},
 	{PAGETABLE_CACHING, 0},
-	{DCVS, 1},
+	{DCVS, 0},
 	{DECODE_BATCH, 0},
 	{DECODE_BATCH_TIMEOUT, 200},
 	{STATS_TIMEOUT_MS, 2000},
@@ -2671,7 +2671,7 @@ static const struct msm_vidc_platform_data sa8775p_data = {
 	.freq_tbl_size = ARRAY_SIZE(sa8775p_freq_table),
 	.reg_prst_tbl = sa8775p_reg_preset_table,
 	.reg_prst_tbl_size = ARRAY_SIZE(sa8775p_reg_preset_table),
-	.fwname = "./qcom/vpu-3.0/vpu30_4v",
+	.fwname = "./qcom/vpu-3.0/vpu30_4v_16mb",
 	.pas_id = 9,
 	.supports_mmrm = 0,
 

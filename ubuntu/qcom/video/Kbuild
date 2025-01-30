@@ -32,6 +32,7 @@ LINUXINCLUDE +=                                 \
 ccflags-y += ${ccflags-m}
 ccflags-y += -Wmissing-prototypes
 ccflags-y += -Werror
+ccflags-y += -Wno-enum-conversion
 
 iris_vpu-y := \
                   vidc/src/msm_vidc_debug.o \
