@@ -7,7 +7,7 @@
 
 &soc {
 	msm_gpu: qcom,kgsl-3d0@3d00000 {
-		compatible = "qcom,kgsl-3d0";
+		compatible = "qcom,kgsl";
 		status = "ok";
 		reg = <0 0x3d00000 0 0x40000>, <0 0x3d61000 0 0x800>,
 			<0 0x3de0000 0 0x10000>, <0 0x4900000 0 0x80000>,
@@ -174,7 +174,7 @@
 		power-domains = <&gpucc GPU_CC_CX_GDSC>;
 
 		gfx3d_user: gfx3d_user {
-			compatible = "qcom,smmu-kgsl-cb" , "qcom,adreno";
+			compatible = "qcom,smmu-kgsl-cb" , "qcom,adreno-gmu";
 			iommus = <&adreno_smmu 0x0 0xc00>, <&adreno_smmu 0x1 0xc00>;
 			qcom,iommu-dma = "disabled";
 		};

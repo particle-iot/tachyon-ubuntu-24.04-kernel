@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 // SPDX-License-Identifier: BSD-3-Clause
 
 #define MHZ_TO_KBPS(mhz, w) ((mhz * 1000000 * w) / (1024))
 
 &msm_gpu {
-	compatible = "qcom,kgsl-3d0",
+	compatible = "qcom,kgsl",
 		"qcom,adreno-gpu-a643";
 	status = "ok";
 
@@ -121,7 +121,7 @@
 		power-domains = <&gpucc GPU_CC_CX_GDSC>;
 
 		gfx3d_user: gfx3d_user {
-			compatible = "qcom,smmu-kgsl-cb", "qcom,adreno";
+			compatible = "qcom,smmu-kgsl-cb", "qcom,adreno-gmu";
 			iommus = <&adreno_smmu 0 0x400>, <&adreno_smmu 1 0x400>;
 			qcom,iommu-dma = "disabled";
 		};
