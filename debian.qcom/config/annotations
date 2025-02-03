@@ -129,7 +129,6 @@ CONFIG_ARCH_SPARX5                              policy<{'arm64': 'n'}>
 CONFIG_ARCH_SPRD                                policy<{'arm64': 'n'}>
 CONFIG_ARCH_STM32                               policy<{'arm64': 'n'}>
 CONFIG_ARCH_SUNXI                               policy<{'arm64': 'n'}>
-CONFIG_ARCH_SUPPORTS_SHADOW_CALL_STACK          policy<{'arm64': '-'}>
 CONFIG_ARCH_SYNQUACER                           policy<{'arm64': 'n'}>
 CONFIG_ARCH_TEGRA                               policy<{'arm64': 'n'}>
 CONFIG_ARCH_TEGRA_132_SOC                       policy<{'arm64': '-'}>
@@ -185,7 +184,6 @@ CONFIG_ARM_TEGRA20_CPUFREQ                      policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': '-'}>
 CONFIG_ARM_TIMER_SP804                          policy<{'arm64': '-'}>
 CONFIG_ARM_TI_CPUFREQ                           policy<{'arm64': '-'}>
-CONFIG_AS_VERSION                               policy<{'arm64': '23800'}>
 CONFIG_ATH11K_COREDUMP                          policy<{'arm64': 'n'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': '-'}>
 CONFIG_BACKLIGHT_QCOM_WLED                      policy<{'arm64': 'y'}>
@@ -194,11 +192,6 @@ CONFIG_CAN_BXCAN                                policy<{'arm64': '-'}>
 CONFIG_CAN_RCAR                                 policy<{'arm64': '-'}>
 CONFIG_CAN_RCAR_CANFD                           policy<{'arm64': '-'}>
 CONFIG_CAVIUM_CPT                               policy<{'arm64': '-'}>
-CONFIG_CC_HAS_AUTO_VAR_INIT_PATTERN             policy<{'arm64': '-'}>
-CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO                policy<{'arm64': '-'}>
-CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO_BARE           policy<{'arm64': '-'}>
-CONFIG_CC_HAVE_SHADOW_CALL_STACK                policy<{'arm64': '-'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc-11 (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0"'}>
 CONFIG_CEC_MESON_AO                             policy<{'arm64': '-'}>
 CONFIG_CEC_MESON_G12A_AO                        policy<{'arm64': '-'}>
 CONFIG_CEC_STM32                                policy<{'arm64': '-'}>
@@ -491,7 +484,6 @@ CONFIG_CRYPTO_DEV_SUN8I_SS_HASH                 policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_SUN8I_SS_PRNG                 policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_ZYNQMP_AES                    policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_ZYNQMP_SHA3                   policy<{'arm64': '-'}>
-CONFIG_DEBUG_INFO_COMPRESSED_ZSTD               policy<{'arm64': '-'}>
 CONFIG_DEBUG_KERNEL_DC                          policy<{'arm64': '-'}>
 CONFIG_DEVFREQ_EVENT_ROCKCHIP_DFI               policy<{'arm64': '-'}>
 CONFIG_DMA_SUN6I                                policy<{'arm64': '-'}>
@@ -628,8 +620,7 @@ CONFIG_FSL_MC_DPIO                              policy<{'arm64': '-'}>
 CONFIG_FSL_MC_UAPI_SUPPORT                      policy<{'arm64': '-'}>
 CONFIG_FSL_QMAN_TEST                            policy<{'arm64': '-'}>
 CONFIG_FUEL_GAUGE_SC27XX                        policy<{'arm64': '-'}>
-CONFIG_GCC_ASM_GOTO_OUTPUT_WORKAROUND           policy<{'arm64': 'y'}>
-CONFIG_GCC_VERSION                              policy<{'arm64': '110400'}>
+CONFIG_GCC_ASM_GOTO_OUTPUT_WORKAROUND           policy<{'arm64': '-'}>
 CONFIG_GENERIC_IRQ_IPI_MUX                      policy<{'arm64': '-'}>
 CONFIG_GH_VIRT_WATCHDOG                         policy<{'arm64': 'y'}>
 CONFIG_GPIO_ALTERA_A10SR                        policy<{'arm64': '-'}>
@@ -749,9 +740,6 @@ CONFIG_IMX_SC_WDT                               policy<{'arm64': '-'}>
 CONFIG_IMX_SDMA                                 policy<{'arm64': '-'}>
 CONFIG_IMX_THERMAL                              policy<{'arm64': '-'}>
 CONFIG_IMX_WEIM                                 policy<{'arm64': '-'}>
-CONFIG_INIT_STACK_ALL_PATTERN                   policy<{'arm64': '-'}>
-CONFIG_INIT_STACK_ALL_ZERO                      policy<{'arm64': '-'}>
-CONFIG_INIT_STACK_NONE                          policy<{'arm64': 'y'}>
 CONFIG_INPUT_BBNSM_PWRKEY                       policy<{'arm64': '-'}>
 CONFIG_INPUT_HISI_POWERKEY                      policy<{'arm64': '-'}>
 CONFIG_INPUT_SC27XX_VIBRA                       policy<{'arm64': '-'}>
@@ -799,7 +787,6 @@ CONFIG_KASAN_GENERIC                            policy<{'arm64': 'n'}>
 CONFIG_KASAN_HW_TAGS                            policy<{'arm64': 'y'}>
 CONFIG_KASAN_SW_TAGS                            policy<{'arm64': 'n'}>
 CONFIG_KASAN_VMALLOC                            policy<{'arm64': 'y'}>
-CONFIG_KCOV                                     policy<{'arm64': '-'}>
 CONFIG_KCSAN                                    policy<{'arm64': '-'}>
 CONFIG_KEEMBAY_WATCHDOG                         policy<{'arm64': '-'}>
 CONFIG_KERNEL_GZIP                              policy<{'arm64': '-'}>
@@ -816,7 +803,6 @@ CONFIG_KEYBOARD_SUN4I_LRADC                     policy<{'arm64': '-'}>
 CONFIG_KEYBOARD_TEGRA                           policy<{'arm64': '-'}>
 CONFIG_KHADAS_MCU_FAN_THERMAL                   policy<{'arm64': '-'}>
 CONFIG_KUNPENG_HCCS                             policy<{'arm64': '-'}>
-CONFIG_LD_VERSION                               policy<{'arm64': '23800'}>
 CONFIG_LEDS_SC27XX_BLTC                         policy<{'arm64': '-'}>
 CONFIG_LEDS_SUN50I_A100                         policy<{'arm64': '-'}>
 CONFIG_LEGACY_PTY_COUNT                         policy<{'arm64': '16'}>
@@ -1492,7 +1478,6 @@ CONFIG_RTC_DRV_TEGRA                            policy<{'arm64': '-'}>
 CONFIG_RTC_DRV_TI_K3                            policy<{'arm64': '-'}>
 CONFIG_RTC_DRV_XGENE                            policy<{'arm64': '-'}>
 CONFIG_RTD119X_WATCHDOG                         policy<{'arm64': '-'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': '-'}>
 CONFIG_RZG2L_ADC                                policy<{'arm64': '-'}>
 CONFIG_RZG2L_THERMAL                            policy<{'arm64': '-'}>
 CONFIG_RZ_DMAC                                  policy<{'arm64': '-'}>
@@ -1566,7 +1551,6 @@ CONFIG_SERIAL_XILINX_PS_UART_CONSOLE            policy<{'arm64': 'y'}>
 CONFIG_SERIO_AMBAKMI                            policy<{'arm64': 'y'}>
 CONFIG_SERIO_NVEC_PS2                           policy<{'arm64': '-'}>
 CONFIG_SERIO_SUN4I_PS2                          policy<{'arm64': '-'}>
-CONFIG_SHADOW_CALL_STACK                        policy<{'arm64': '-'}>
 CONFIG_SH_ETH                                   policy<{'arm64': '-'}>
 CONFIG_SH_TIMER_CMT                             policy<{'arm64': '-'}>
 CONFIG_SH_TIMER_TMU                             policy<{'arm64': '-'}>
