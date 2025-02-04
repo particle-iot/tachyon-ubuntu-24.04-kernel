@@ -80,7 +80,7 @@ Description: Linux kernel headers for version PKGVER on DESC
 
 Package: SRCPKGNAME-lib-rust-PKGVER-ABINUM-FLAVOUR
 Build-Profiles: <!stage1>
-Architecture: amd64
+Architecture: arm64
 Multi-Arch: foreign
 Section: devel
 Priority: optional
