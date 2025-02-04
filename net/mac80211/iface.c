@@ -1218,14 +1218,15 @@ void ieee80211_del_virtual_monitor(struct ieee80211_local *local)
 		return;
 	}
 
+	clear_bit(SDATA_STATE_RUNNING, &sdata->state);
+	ieee80211_link_release_channel(&sdata->deflink);
+
+	drv_remove_interface(local, sdata);
+
 	RCU_INIT_POINTER(local->monitor_sdata, NULL);
 	mutex_unlock(&local->iflist_mtx);
 
 	synchronize_net();
-
-	ieee80211_link_release_channel(&sdata->deflink);
-
-	drv_remove_interface(local, sdata);
 
 	kfree(sdata);
 }
