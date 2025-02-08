@@ -80,15 +80,14 @@ void *msm_vb2_alloc(struct vb2_buffer *vb, struct device *dev,
 	buf = msm_vidc_fetch_buffer(inst, vb);
 	if (!buf) {
 		i_vpr_e(inst, "%s: failed to fetch buffer\n", __func__);
-		buf = NULL;
-		goto exit;
+		goto error;
 	}
 
 	region = call_mem_op(core, buffer_region, inst, buf_type);
 	cb = msm_vidc_get_context_bank_for_region(inst->core, region);
 	if (!cb) {
 		i_vpr_e(inst, "%s: failed to get context bank device\n", __func__);
-		goto exit;
+		goto error;
 	}
 
 	buf->inst = inst;
@@ -104,7 +103,7 @@ void *msm_vb2_alloc(struct vb2_buffer *vb, struct device *dev,
 				      buf->dma_attrs);
 	if (!buf->kvaddr) {
 		i_vpr_e(inst, "dma alloc of size %lu failed\n", size);
-		return ERR_PTR(-ENOMEM);
+		goto error;
 	}
 
 	buf->handler.refcount = &buf->refcount;
@@ -113,11 +112,12 @@ void *msm_vb2_alloc(struct vb2_buffer *vb, struct device *dev,
 
 	refcount_set(&buf->refcount, 1);
 
-exit:
-	if (!buf)
-		msm_vidc_change_state(inst, MSM_VIDC_ERROR, __func__);
-	put_inst(inst);
 	return buf;
+
+error:
+	msm_vidc_change_state(inst, MSM_VIDC_ERROR, __func__);
+	put_inst(inst);
+	return ERR_PTR(-ENOMEM);
 }
 
 void *msm_vb2_attach_dmabuf(struct vb2_buffer *vb, struct device *dev,
@@ -211,6 +211,7 @@ void msm_vb2_put(void *buf_priv)
 		buf->kvaddr = NULL;
 		buf->device_addr = 0x0;
 	}
+	put_inst(inst);
 }
 
 int msm_vb2_mmap(void *buf_priv, struct vm_area_struct *vma)
