@@ -300,7 +300,6 @@ qcs6490-addons-rb3gen2-video-mezz-ovl-dtbs := \
     qcs6490-addons-rb3gen2-video-mezz.dtb \
     qcm6490-graphics.dtbo \
     qcm6490-camera-rb3.dtbo \
-    qcm6490-display-rb3.dtbo \
     qcm6490-video.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM) += qcs6490-addons-rb3gen2-vision-mezz-ovl.dtb
@@ -308,7 +307,6 @@ qcs6490-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcs6490-addons-rb3gen2-vision-mezz.dtb \
     qcm6490-graphics.dtbo \
     qcm6490-camera-rb3.dtbo \
-    qcm6490-display-rb3.dtbo \
     qcm6490-video.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM) += qcs5430-fp1-addons-rb3gen2-vision-mezz-ovl.dtb

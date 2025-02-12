@@ -4,10 +4,6 @@ subdir-ccflags-y += -Wno-enum-int-mismatch
 export MACHINE = qcm6490
 export KERNEL_ROOT=/
 
-export DISPLAY_ROOT := $(srctree)/$(src)/display
-
-obj-y += display/
-
 ###
 
 export KGSL_PATH := $(srctree)/$(src)/graphics
