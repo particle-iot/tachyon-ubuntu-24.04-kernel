@@ -1082,6 +1082,7 @@ CONFIG_PHY_MVEBU_A3700_UTMI                     policy<{'arm64': '-'}>
 CONFIG_PHY_MVEBU_A38X_COMPHY                    policy<{'arm64': '-'}>
 CONFIG_PHY_MVEBU_CP110_COMPHY                   policy<{'arm64': '-'}>
 CONFIG_PHY_MVEBU_CP110_UTMI                     policy<{'arm64': '-'}>
+CONFIG_PHY_NXP_PTN3222                          policy<{'arm64': 'n'}>
 CONFIG_PHY_QCOM_QMP                             policy<{'arm64': 'y'}>
 CONFIG_PHY_QCOM_QMP_PCIE                        policy<{'arm64': 'y'}>
 CONFIG_PHY_QCOM_QMP_PCIE_8996                   policy<{'arm64': 'y'}>
@@ -1290,6 +1291,7 @@ CONFIG_POWER_RESET_SC27XX                       policy<{'arm64': '-'}>
 CONFIG_POWER_SEQUENCING                         policy<{'arm64': 'm'}>
 CONFIG_POWER_SEQUENCING_QCOM_WCN                policy<{'arm64': 'm'}>
 CONFIG_PRU_REMOTEPROC                           policy<{'arm64': '-'}>
+CONFIG_PTP_QCOM_CLOCK_TSC                       policy<{'arm64': 'n'}>
 CONFIG_PWC_RZV2M                                policy<{'arm64': '-'}>
 CONFIG_PWM_APPLE                                policy<{'arm64': '-'}>
 CONFIG_PWM_BERLIN                               policy<{'arm64': '-'}>
