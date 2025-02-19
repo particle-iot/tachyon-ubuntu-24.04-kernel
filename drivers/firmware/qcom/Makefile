@@ -10,3 +10,4 @@ obj-$(CONFIG_QTEE_SHM_BRIDGE)	+= qtee_shmbridge.o
 obj-$(CONFIG_QCOM_QSEECOM)	+= qcom_qseecom.o
 obj-$(CONFIG_QCOM_QSEECOM_UEFISECAPP) += qcom_qseecom_uefisecapp.o
 obj-$(CONFIG_QTI_TZ_LOG)	+= tz_log.o
+obj-$(CONFIG_QCOM_SI_CORE)	+= si_core/
