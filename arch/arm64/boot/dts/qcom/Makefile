@@ -355,6 +355,13 @@ qcs9100-addons-ride-r3-ovl-dtbs := \
     qcs9100-graphics.dtbo \
     qcs9100-ride-sx-camera.dtbo
 
+dtb-$(CONFIG_ARCH_QCOM) += qcs9075-addons-rb8-ovl.dtb
+qcs9075-addons-rb8-ovl-dtbs := \
+    qcs9075-addons-rb8.dtb \
+    sa8775p-video.dtbo \
+    qcs9100-graphics.dtbo \
+    qcs9075-camera-rb8.dtbo
+
 dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
 
 dtbs-to-combined := $(filter %-ovl.dtb, $(dtb-y))
