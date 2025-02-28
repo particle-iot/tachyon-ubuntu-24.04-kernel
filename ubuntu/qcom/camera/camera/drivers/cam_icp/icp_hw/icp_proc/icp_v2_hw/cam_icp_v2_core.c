@@ -121,7 +121,7 @@ int cam_icp_v2_cpas_register(struct cam_hw_intf *icp_v2_intf)
 	params.cam_cpas_client_cb = cam_icp_v2_cpas_cb;
 	params.userdata = NULL;
 
-	strlcpy(params.identifier, "icp", CAM_HW_IDENTIFIER_LENGTH);
+	strscpy(params.identifier, "icp", CAM_HW_IDENTIFIER_LENGTH);
 
 	rc = cam_cpas_register_client(&params);
 	if (rc)

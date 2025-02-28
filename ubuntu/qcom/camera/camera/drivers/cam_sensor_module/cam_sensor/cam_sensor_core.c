@@ -1651,7 +1651,7 @@ int cam_sensor_publish_dev_info(struct cam_req_mgr_device_info *info)
 	}
 
 	info->dev_id = CAM_REQ_MGR_DEVICE_SENSOR;
-	strlcpy(info->name, CAM_SENSOR_NAME, sizeof(info->name));
+	strscpy(info->name, CAM_SENSOR_NAME, sizeof(info->name));
 	if (s_ctrl->num_batched_frames >= 2) {
 		info->p_delay = 1;
 		info->m_delay = s_ctrl->modeswitch_delay;
