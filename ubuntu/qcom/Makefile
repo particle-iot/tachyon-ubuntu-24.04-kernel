@@ -12,11 +12,8 @@ obj-y += graphics/
 
 ###
 
-export CAMERA_ARCH=qcm6490
-export SOC_FAM=qcm6490
-export CAMERA_KERNEL_ROOT := $(srctree)/$(src)/camera
-
-obj-y += camera/
+obj-y += camera-qcm6490/
+obj-y += camera-qcs9100/
 
 ###
 
