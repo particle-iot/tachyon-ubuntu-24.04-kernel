@@ -4,6 +4,8 @@
  * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/of_device.h>
+
 #include "cam_tpg_dev.h"
 #include "cam_tpg_core.h"
 #include "camera_main.h"
