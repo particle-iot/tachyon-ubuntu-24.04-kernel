@@ -237,7 +237,7 @@ static int tpg_register_cpas_client(struct cam_tpg_device *tpg_dev,
 	cpas_parms.dev = &pdev->dev;
 	cpas_parms.userdata = tpg_dev;
 
-	strlcpy(cpas_parms.identifier, "tpg", CAM_HW_IDENTIFIER_LENGTH);
+	strscpy(cpas_parms.identifier, "tpg", CAM_HW_IDENTIFIER_LENGTH);
 
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {
@@ -299,7 +299,7 @@ static int cam_tpg_component_bind(struct device *dev,
 		return -ENOMEM;
 	}
 
-	strlcpy(tpg_dev->device_name, CAMX_TPG_DEV_NAME,
+	strscpy(tpg_dev->device_name, CAMX_TPG_DEV_NAME,
 		sizeof(tpg_dev->device_name));
 	mutex_init(&tpg_dev->mutex);
 	tpg_dev->tpg_subdev.pdev = pdev;

@@ -39,7 +39,7 @@ int cam_tpg_publish_dev_info(
 	}
 
 	info->dev_id = CAM_REQ_MGR_DEVICE_TPG;
-	strlcpy(info->name, CAM_TPG_NAME, sizeof(info->name));
+	strscpy(info->name, CAM_TPG_NAME, sizeof(info->name));
 	/* Hard code for now */
 	info->p_delay = 1;
 	info->trigger = CAM_TRIGGER_POINT_SOF;

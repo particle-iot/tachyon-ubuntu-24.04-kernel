@@ -8058,7 +8058,7 @@ static int __cam_isp_ctx_get_dev_info(struct cam_context *ctx,
 		(struct cam_isp_context *) ctx->ctx_priv;
 
 	dev_info->dev_hdl = ctx->dev_hdl;
-	strlcpy(dev_info->name, CAM_ISP_DEV_NAME, sizeof(dev_info->name));
+	strscpy(dev_info->name, CAM_ISP_DEV_NAME, sizeof(dev_info->name));
 	dev_info->dev_id = CAM_REQ_MGR_DEVICE_IFE;
 	dev_info->p_delay = CAM_PIPELINE_DELAY_1;
 	dev_info->m_delay = CAM_MODESWITCH_DELAY_1;
