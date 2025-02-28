@@ -2608,7 +2608,7 @@ static int cam_sync_media_controller_init(struct sync_device *sync_dev,
 		return -ENOMEM;
 
 	media_device_init(sync_dev->v4l2_dev.mdev);
-	strlcpy(sync_dev->v4l2_dev.mdev->model, CAM_SYNC_DEVICE_NAME,
+	strscpy(sync_dev->v4l2_dev.mdev->model, CAM_SYNC_DEVICE_NAME,
 			sizeof(sync_dev->v4l2_dev.mdev->model));
 	sync_dev->v4l2_dev.mdev->dev = &(pdev->dev);
 
@@ -2806,7 +2806,7 @@ static int cam_sync_component_bind(struct device *dev,
 	if (rc < 0)
 		goto register_fail;
 
-	strlcpy(sync_dev->vdev->name, CAM_SYNC_NAME,
+	strscpy(sync_dev->vdev->name, CAM_SYNC_NAME,
 				sizeof(sync_dev->vdev->name));
 	sync_dev->vdev->release  = video_device_release_empty;
 	sync_dev->vdev->fops     = &cam_sync_v4l2_fops;
