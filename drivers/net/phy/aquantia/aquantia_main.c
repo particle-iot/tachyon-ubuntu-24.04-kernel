@@ -471,9 +471,12 @@ int aqr_wait_reset_complete(struct phy_device *phydev)
 				false, phydev, MDIO_MMD_VEND1,
 				VEND1_GLOBAL_FW_ID);
 	if (val < 0) {
-		phydev_err(phydev, "Failed to read VEND1_GLOBAL_FW_ID: %pe\n",
-			   ERR_PTR(val));
-		return val;
+		if (phy_read_mmd_poll_timeout(phydev, MDIO_MMD_VEND1,
+					      VEND1_GLOBAL_RSVD_STAT1, val,
+					      FIELD_GET(VEND1_GLOBAL_RSVD_STAT1_PROV_ID,
+							val) != 0,
+					      20000, 2000000, false))
+			phydev_dbg(phydev, "Provision ID is 0\n");
 	}
 
 	return ret;
