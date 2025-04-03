@@ -328,6 +328,11 @@ qcs6490-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcm6490-camera-rb3.dtbo \
     qcm6490-video.dtbo
 
+dtb-$(CONFIG_ARCH_QCOM) += qcs6490-addons-rb3gen2-ia-mezz-ovl.dtb
+
+$(obj)/qcs6490-addons-rb3gen2-ia-mezz-ovl.dtb: $(obj)/qcs6490-addons-rb3gen2-ia-mezz.dtb FORCE
+	$(call if_changed,copy)
+
 dtb-$(CONFIG_ARCH_QCOM) += qcs5430-fp1-addons-rb3gen2-vision-mezz-ovl.dtb
 qcs5430-fp1-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcs5430-fp1-addons-rb3gen2-vision-mezz.dtb \
