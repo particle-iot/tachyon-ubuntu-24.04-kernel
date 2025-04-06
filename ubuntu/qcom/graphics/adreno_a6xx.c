@@ -198,7 +198,7 @@ int a6xx_init(struct adreno_device *adreno_dev)
 							ADRENO_COOP_RESET);
 
 	/* If the memory type is DDR 4, override the existing configuration */
-	if (of_fdt_get_ddrtype() == 0x7) {
+	if (get_ddrtype() == 0x7) {
 		if (adreno_is_a660_shima(adreno_dev) ||
 			adreno_is_a642l(adreno_dev) ||
 			adreno_is_a643(adreno_dev) ||
@@ -208,6 +208,7 @@ int a6xx_init(struct adreno_device *adreno_dev)
 				adreno_is_a660(adreno_dev)))
 			adreno_dev->highest_bank_bit = 15;
 	}
+	/*todo handle case when get_ddrtype() returns negative value ? */
 
 	a6xx_crashdump_init(adreno_dev);
 
