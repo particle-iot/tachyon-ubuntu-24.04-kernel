@@ -37,6 +37,7 @@
 #include "kgsl_sync.h"
 #include "kgsl_sysfs.h"
 #include "kgsl_trace.h"
+#include "kgsl_util.h"
 /* Instantiate tracepoints */
 #define CREATE_TRACE_POINTS
 #include "kgsl_power_trace.h"
@@ -5085,9 +5086,9 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 		u32 *ptr)
 {
 	char str[32];
-	int ddr = of_fdt_get_ddrtype();
+	int ddr = get_ddrtype();
 
-	/* of_fdt_get_ddrtype returns error if the DDR type isn't determined */
+	/* get_ddrtype() returns error if the DDR type isn't determined */
 	if (ddr >= 0) {
 		int ret;
 

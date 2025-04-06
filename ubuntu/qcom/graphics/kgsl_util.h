@@ -269,4 +269,12 @@ static inline int qcom_scm_kgsl_set_smmu_lpac_aperture(
  */
 void isdb_write(void __iomem *base, u32 offset);
 
+/**
+ * get_ddrtype - Return the type of ddr on the current device
+ *
+ * On match, returns a non-zero positive value which matches the ddr type.
+ * Otherwise returns -ENOENT or negative value on failure.
+ */
+int get_ddrtype(void);
+
 #endif

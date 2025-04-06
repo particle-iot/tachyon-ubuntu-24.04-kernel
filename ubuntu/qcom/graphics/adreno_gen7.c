@@ -336,8 +336,9 @@ int gen7_init(struct adreno_device *adreno_dev)
 			ADRENO_COOP_RESET);
 
 	/* If the memory type is DDR 4, override the existing configuration */
-	if (of_fdt_get_ddrtype() == 0x7)
+	if (get_ddrtype() == 0x7)
 		adreno_dev->highest_bank_bit = 14;
+	/*todo handle case when get_ddrtype() returns negative value ? */
 
 	gen7_crashdump_init(adreno_dev);
 
