@@ -12,7 +12,7 @@
 #include "kgsl_bus.h"
 #include "kgsl_device.h"
 #include "kgsl_trace.h"
-
+#include "kgsl_util.h"
 
 static u32 _ab_buslevel_update(struct kgsl_pwrctrl *pwr,
 		u32 ib)
@@ -174,7 +174,7 @@ int kgsl_bus_init(struct kgsl_device *device, struct platform_device *pdev)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	int count;
-	int ddr = of_fdt_get_ddrtype();
+	int ddr = get_ddrtype();
 
 	if (ddr >= 0) {
 		char str[32];
