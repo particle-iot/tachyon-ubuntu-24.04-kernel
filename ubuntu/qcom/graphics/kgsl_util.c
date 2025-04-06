@@ -227,6 +227,43 @@ void kgsl_hwunlock(struct cpu_gpu_lock *lock)
 	lock->cpu_req = 0;
 }
 
+int get_ddrtype(void)
+{
+	int ret;
+	u64 ddr_type;
+	struct device_node *root_node;
+	struct device_node *mem_node = NULL;
+
+	root_node = of_find_node_by_path("/");
+
+	if (root_node == NULL) {
+		pr_err("kgsl: Unable to find device tree root node\n");
+		return -ENOENT;
+	}
+
+	do {
+		mem_node = of_get_next_child(root_node, mem_node);
+		if (of_node_name_prefix(mem_node, "memory"))
+			break;
+	} while (mem_node != NULL);
+
+	of_node_put(root_node);
+	if (mem_node == NULL) {
+		pr_err("kgsl: Unable to find device tree memory node\n");
+		return -ENOENT;
+	}
+
+	ret = of_property_read_u64(mem_node, "ddr_device_type", &ddr_type);
+
+	of_node_put(mem_node);
+	if (ret < 0) {
+		pr_err("kgsl: ddr_device_type read failed\n");
+		return ret;
+	}
+
+	return ddr_type;
+}
+
 #if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
 #include <soc/qcom/minidump.h>
 
