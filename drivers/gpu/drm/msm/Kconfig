@@ -56,7 +56,7 @@ config DRM_MSM_GPU_SUDO
 
 config DRM_MSM_VALIDATE_XML
 	bool "Validate XML register files against schema"
-	depends on DRM_MSM && EXPERT
+	depends on DRM_MSM && EXPERT && n
 	depends on $(success,$(PYTHON3) -c "import lxml")
 	help
 	  Validate XML files with register definitions against rules-fd schema.
