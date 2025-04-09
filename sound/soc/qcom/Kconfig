@@ -127,10 +127,14 @@ config SND_SOC_AUDIO_PKT
 config SND_SOC_MSM_AUDIO_MEM
 	tristate
 
+config SND_SOC_QCOM_OFFLOAD_UTILS
+	tristate
+
 config SND_SOC_QDSP6_USB
     tristate "SoC ALSA USB offloading backing for QDSP6"
     depends on SND_SOC_USB
     select AUXILIARY_BUS
+    select SND_SOC_QCOM_OFFLOAD_UTILS
 
     help
       Adds support for USB offloading for QDSP6 ASoC
