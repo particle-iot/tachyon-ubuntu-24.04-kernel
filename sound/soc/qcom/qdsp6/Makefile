@@ -21,3 +21,4 @@ obj-$(CONFIG_SND_SOC_QDSP6_PRM_LPASS_CLOCKS) += q6prm-clocks.o
 obj-$(CONFIG_SND_SOC_SPF_CORE) += spf-core.o
 obj-$(CONFIG_SND_SOC_AUDIO_PKT) += audio-pkt.o
 obj-$(CONFIG_SND_SOC_MSM_AUDIO_MEM) += msm_audio_mem.o
+obj-$(CONFIG_SND_SOC_QDSP6_USB) += q6usb.o
