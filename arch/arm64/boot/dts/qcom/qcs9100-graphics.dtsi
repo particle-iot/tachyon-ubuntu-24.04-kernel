@@ -213,12 +213,4 @@
 
 		qcom,qmp = <&aoss_qmp>;
 	};
-
-	gpu@3d00000 {
-		status = "disabled";
-	};
-
-	gmu@3d6a000 {
-		status = "disabled";
-	};
 };
