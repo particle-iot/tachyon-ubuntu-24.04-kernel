@@ -160,11 +160,4 @@
 			"memnoc_clk", "ahb_clk", "hub_clk", "smmu_vote";
 	};
 
-	gpu@3d00000 {
-		status = "disabled";
-	};
-
-	gmu@3d6a000 {
-		status = "disabled";
-	};
 };
