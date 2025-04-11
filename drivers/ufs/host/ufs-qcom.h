@@ -116,8 +116,11 @@ enum {
 				 TMRLUT_HW_CGC_EN | OCSC_HW_CGC_EN)
 
 /* QUniPro Vendor specific attributes */
+#define PA_TX_HSG1_SYNC_LENGTH	0x1552
 #define PA_VS_CONFIG_REG1	0x9000
 #define DME_VS_CORE_CLK_CTRL	0xD002
+#define TX_HS_EQUALIZER		0x0037
+
 /* bit and mask definitions for DME_VS_CORE_CLK_CTRL attribute */
 #define CLK_1US_CYCLES_MASK_V4				GENMASK(27, 16)
 #define CLK_1US_CYCLES_MASK				GENMASK(7, 0)
@@ -135,6 +138,51 @@ enum {
 #define UNIPRO_CORE_CLK_FREQ_201_5_MHZ         202
 #define UNIPRO_CORE_CLK_FREQ_403_MHZ           403
 
+/* TX_HSG1_SYNC_LENGTH attr value */
+#define PA_TX_HSG1_SYNC_LENGTH_VAL	0x4A
+
+/*
+ * Some ufs device vendors need a different TSync length.
+ * Enable this quirk to give an additional TX_HS_SYNC_LENGTH.
+ */
+#define UFS_DEVICE_QUIRK_PA_TX_HSG1_SYNC_LENGTH		BIT(16)
+
+/*
+ * Some ufs device vendors need a different Deemphasis setting.
+ * Enable this quirk to tune TX Deemphasis parameters.
+ */
+#define UFS_DEVICE_QUIRK_PA_TX_DEEMPHASIS_TUNING	BIT(17)
+
+/* ICE allocator type to share AES engines among TX stream and RX stream */
+#define ICE_ALLOCATOR_TYPE 2
+
+/*
+ * Number of cores allocated for RX stream when Read data block received and
+ * Write data block is not in progress
+ */
+#define NUM_RX_R1W0 28
+
+/*
+ * Number of cores allocated for TX stream when Device asked to send write
+ * data block and Read data block is not in progress
+ */
+#define NUM_TX_R0W1 28
+
+/*
+ * Number of cores allocated for RX stream when Read data block received and
+ * Write data block is in progress
+ * OR
+ * Device asked to send write data block and Read data block is in progress
+ */
+#define NUM_RX_R1W1 15
+
+/*
+ * Number of cores allocated for TX stream (UFS write) when Read data block
+ * received and Write data block is in progress
+ * OR
+ * Device asked to send write data block and Read data block is in progress
+ */
+#define NUM_TX_R1W1 13
 static inline void
 ufs_qcom_get_controller_revision(struct ufs_hba *hba,
 				 u8 *major, u16 *minor, u16 *step)
