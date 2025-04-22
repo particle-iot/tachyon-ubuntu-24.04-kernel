@@ -480,7 +480,7 @@ static int qtee_shmbridge_init(struct platform_device *pdev)
 	else
 		default_bridge.size = custom_bridge_size * MIN_BRIDGE_SIZE;
 
-	pr_err("qtee shmbridge registered default bridge with size %zu bytes\n",
+	pr_info("qtee shmbridge registered default bridge with size %zu bytes\n",
 		default_bridge.size);
 
 	/*
