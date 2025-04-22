@@ -123,7 +123,7 @@ static int32_t qtee_shmbridge_enable(bool enable)
 	}
 
 	qtee_shmbridge_enabled = true;
-	pr_warn("shmbridge is enabled\n");
+	pr_info("shmbridge is enabled\n");
 	return ret;
 }
 
