@@ -162,7 +162,10 @@ struct cam_icp_clk_bw_req_internal_v2 {
 	uint32_t rt_flag;
 	uint32_t reserved;
 	uint32_t num_paths;
-	struct cam_axi_per_path_bw_vote axi_path[CAM_ICP_MAX_PER_PATH_VOTES];
+	union {
+		struct cam_axi_per_path_bw_vote axi_path[CAM_ICP_MAX_PER_PATH_VOTES];
+		__DECLARE_FLEX_ARRAY(struct cam_axi_per_path_bw_vote, axi_path_flex);
+	};
 };
 
 /**

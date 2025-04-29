@@ -5828,15 +5828,15 @@ static int cam_ife_mgr_acquire_get_unified_structure_v0(
 	}
 
 	for (i = 0; i < in->num_out_res; i++) {
-		in_port->data[i].res_type     = in->data[i].res_type;
-		in_port->data[i].acquired_res_type = in->data[i].res_type;
-		in_port->data[i].format       = in->data[i].format;
-		in_port->data[i].width        = in->data[i].width;
-		in_port->data[i].height       = in->data[i].height;
-		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		in_port->data[i].split_point  = in->data[i].split_point;
-		in_port->data[i].secure_mode  = in->data[i].secure_mode;
-		in_port->data[i].reserved     = in->data[i].reserved;
+		in_port->data[i].res_type     = in->data_flex[i].res_type;
+		in_port->data[i].acquired_res_type = in->data_flex[i].res_type;
+		in_port->data[i].format       = in->data_flex[i].format;
+		in_port->data[i].width        = in->data_flex[i].width;
+		in_port->data[i].height       = in->data_flex[i].height;
+		in_port->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		in_port->data[i].split_point  = in->data_flex[i].split_point;
+		in_port->data[i].secure_mode  = in->data_flex[i].secure_mode;
+		in_port->data[i].reserved     = in->data_flex[i].reserved;
 	}
 
 	return 0;
@@ -5950,16 +5950,16 @@ static int cam_ife_mgr_acquire_get_unified_structure_v3(
 	}
 
 	for (i = 0; i < in_port->num_out_res; i++) {
-		in_port->data[i].res_type     = in->data[i].res_type;
-		in_port->data[i].acquired_res_type = in->data[i].res_type;
-		in_port->data[i].format       = in->data[i].format;
-		in_port->data[i].width        = in->data[i].width;
-		in_port->data[i].height       = in->data[i].height;
-		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		in_port->data[i].split_point  = in->data[i].split_point;
-		in_port->data[i].secure_mode  = in->data[i].secure_mode;
-		in_port->data[i].wm_mode      = in->data[i].wm_mode;
-		in_port->data[i].hw_context_id   = in->data[i].context_id;
+		in_port->data[i].res_type     = in->data_flex[i].res_type;
+		in_port->data[i].acquired_res_type = in->data_flex[i].res_type;
+		in_port->data[i].format       = in->data_flex[i].format;
+		in_port->data[i].width        = in->data_flex[i].width;
+		in_port->data[i].height       = in->data_flex[i].height;
+		in_port->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		in_port->data[i].split_point  = in->data_flex[i].split_point;
+		in_port->data[i].secure_mode  = in->data_flex[i].secure_mode;
+		in_port->data[i].wm_mode      = in->data_flex[i].wm_mode;
+		in_port->data[i].hw_context_id   = in->data_flex[i].context_id;
 	}
 
 	return 0;
@@ -6083,14 +6083,14 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 	}
 
 	for (i = 0; i < num_out_res; i++) {
-		in_port->data[i].res_type     = in->data[i].res_type;
-		in_port->data[i].acquired_res_type = in->data[i].res_type;
-		in_port->data[i].format       = in->data[i].format;
-		in_port->data[i].width        = in->data[i].width;
-		in_port->data[i].height       = in->data[i].height;
-		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		in_port->data[i].split_point  = in->data[i].split_point;
-		in_port->data[i].secure_mode  = in->data[i].secure_mode;
+		in_port->data[i].res_type     = in->data_flex[i].res_type;
+		in_port->data[i].acquired_res_type = in->data_flex[i].res_type;
+		in_port->data[i].format       = in->data_flex[i].format;
+		in_port->data[i].width        = in->data_flex[i].width;
+		in_port->data[i].height       = in->data_flex[i].height;
+		in_port->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		in_port->data[i].split_point  = in->data_flex[i].split_point;
+		in_port->data[i].secure_mode  = in->data_flex[i].secure_mode;
 	}
 
 	return 0;
@@ -6664,13 +6664,13 @@ void cam_ife_mgr_acquire_get_unified_dev_str(struct cam_isp_in_port_info *in,
 	gen_port_info->num_out_res     =  in->num_out_res;
 
 	for (i = 0; i < in->num_out_res; i++) {
-		gen_port_info->data[i].res_type     = in->data[i].res_type;
-		gen_port_info->data[i].format       = in->data[i].format;
-		gen_port_info->data[i].width        = in->data[i].width;
-		gen_port_info->data[i].height       = in->data[i].height;
-		gen_port_info->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		gen_port_info->data[i].split_point  = in->data[i].split_point;
-		gen_port_info->data[i].secure_mode  = in->data[i].secure_mode;
+		gen_port_info->data[i].res_type     = in->data_flex[i].res_type;
+		gen_port_info->data[i].format       = in->data_flex[i].format;
+		gen_port_info->data[i].width        = in->data_flex[i].width;
+		gen_port_info->data[i].height       = in->data_flex[i].height;
+		gen_port_info->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		gen_port_info->data[i].split_point  = in->data_flex[i].split_point;
+		gen_port_info->data[i].secure_mode  = in->data_flex[i].secure_mode;
 	}
 }
 
@@ -7368,9 +7368,9 @@ static int cam_isp_blob_bw_update(
 					continue;
 
 				cam_bw_bps =
-					bw_config->rdi_vote[idx].cam_bw_bps;
+					bw_config->rdi_vote_flex[idx].cam_bw_bps;
 				ext_bw_bps =
-					bw_config->rdi_vote[idx].ext_bw_bps;
+					bw_config->rdi_vote_flex[idx].ext_bw_bps;
 			} else {
 				if (hw_mgr_res->hw_res[i]) {
 					CAM_ERR(CAM_ISP, "Invalid ctx_idx: %u res_id %u",
@@ -7989,28 +7989,28 @@ skip_bw_clk_update:
 				}
 			}
 
-			cdm_cmd->cmd[i - skip].bl_addr.mem_handle = cmd->handle;
-			cdm_cmd->cmd[i - skip].offset = cmd->offset;
-			cdm_cmd->cmd[i - skip].len = cmd->len;
-			cdm_cmd->cmd[i - skip].arbitrate = false;
+			cdm_cmd->cmd_flex[i - skip].bl_addr.mem_handle = cmd->handle;
+			cdm_cmd->cmd_flex[i - skip].offset = cmd->offset;
+			cdm_cmd->cmd_flex[i - skip].len = cmd->len;
+			cdm_cmd->cmd_flex[i - skip].arbitrate = false;
 
 			if (g_ife_hw_mgr.debug_cfg.enable_cdm_cmd_check) {
 				CAM_INFO_RATE_LIMIT(CAM_ISP, "Enter cdm cmd_buf validation");
 				rc = cam_packet_util_get_cmd_mem_addr(
-					cdm_cmd->cmd[i - skip].bl_addr.mem_handle,
+					cdm_cmd->cmd_flex[i - skip].bl_addr.mem_handle,
 					&buf_addr, &len);
 				if (rc) {
 					CAM_ERR(CAM_ISP,
 						"Failed to get buf_addr and len for mem_handle: %d ctx id: %u request id: %llu",
-						cdm_cmd->cmd[i - skip].bl_addr.mem_handle,
+						cdm_cmd->cmd_flex[i - skip].bl_addr.mem_handle,
 						c_ctx->ctx_index, cfg->request_id);
 					continue;
 				}
 
 				buf_start = (uint32_t *)((uint8_t *) buf_addr +
-					cdm_cmd->cmd[i - skip].offset);
+					cdm_cmd->cmd_flex[i - skip].offset);
 				buf_end = (uint32_t *)((uint8_t *) buf_start +
-					cdm_cmd->cmd[i - skip].len - 1);
+					cdm_cmd->cmd_flex[i - skip].len - 1);
 				cmd_type = ((uint32_t)(*buf_start) >> CAM_CDM_COMMAND_OFFSET);
 				if ((i == 0) && (cmd_type != CAM_CDM_CMD_CHANGE_BASE)) {
 					CAM_ERR(CAM_ISP,
@@ -9389,7 +9389,7 @@ static int cam_isp_blob_ubwc_update(
 
 		kmd_buf_info = blob_info->kmd_buf_info;
 		for (i = 0; i < ubwc_config->num_ports; i++) {
-			ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg[i][0];
+			ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg_array_flex[i][0];
 			res_id_out = ubwc_plane_cfg->port_type & 0xFF;
 
 			CAM_DBG(CAM_ISP, "UBWC config idx %d, port_type=%d ctx_idx: %u", i,
@@ -9563,7 +9563,7 @@ static int cam_isp_blob_ubwc_update_v2(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < ubwc_config->num_ports; i++) {
-		ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg[i][0];
+		ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg_array_flex[i][0];
 		res_id_out = ubwc_plane_cfg->port_type & 0xFF;
 
 		CAM_DBG(CAM_ISP, "UBWC config idx %d, port_type=%d ctx_idx: %u", i,
@@ -9711,7 +9711,7 @@ static int cam_isp_blob_ife_scratch_buf_update(
 	ife_scratch_config = c_ctx->scratch_buf_info.ife_scratch_config;
 
 	for (i = 0; i < scratch_config->num_ports; i++) {
-		buffer_info = &scratch_config->port_scratch_cfg[i];
+		buffer_info = &scratch_config->port_scratch_cfg_flex[i];
 		if (!cam_ife_hw_mgr_is_ife_out_port(buffer_info->resource_type))
 			continue;
 
@@ -9761,7 +9761,7 @@ static int cam_isp_blob_sfe_scratch_buf_update(
 			prepare->ctxt_to_hw_map)->concr_ctx;
 
 	for (i = 0; i < scratch_config->num_ports; i++) {
-		buffer_info = &scratch_config->port_scratch_cfg[i];
+		buffer_info = &scratch_config->port_scratch_cfg_flex[i];
 		if (!cam_ife_hw_mgr_is_sfe_out_port(buffer_info->resource_type))
 			continue;
 
@@ -9948,7 +9948,7 @@ static int cam_isp_blob_sfe_exp_order_update(
 	 */
 	exp_order_max = exp_config->num_ports - 1;
 	for (i = 0; i < exp_config->num_ports; i++) {
-		order_cfg = &exp_config->wm_config[i];
+		order_cfg = &exp_config->wm_config_flex[i];
 
 		rc = cam_ife_hw_mgr_is_sfe_rdi_for_fetch(
 			order_cfg->res_type);
@@ -10224,7 +10224,7 @@ static int cam_isp_blob_hfr_update(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < hfr_config->num_ports; i++) {
-		port_hfr_config = &hfr_config->port_hfr_config[i];
+		port_hfr_config = &hfr_config->port_hfr_config_flex[i];
 
 		if (c_ctx->flags.per_port_en) {
 			out_port_res_type =
@@ -10670,7 +10670,7 @@ static int cam_isp_blob_ife_clock_update(
 			} else if ((hw_mgr_res->res_id >= CAM_ISP_HW_VFE_IN_RD) &&
 				(hw_mgr_res->res_id <= CAM_ISP_HW_VFE_IN_RDI5)) {
 				for (j = 0; j < clock_config->num_rdi; j++)
-					clk_rate = max(clock_config->rdi_hz[j], clk_rate);
+					clk_rate = max(clock_config->rdi_hz_flex[j], clk_rate);
 			} else {
 				if (hw_mgr_res->res_id != CAM_ISP_HW_VFE_IN_LCR
 					&& hw_mgr_res->hw_res[i]) {
@@ -10760,7 +10760,7 @@ static int cam_isp_blob_sfe_clock_update(
 				}
 			} else {
 				for (j = 0; j < clock_config->num_rdi; j++)
-					clk_rate = max(clock_config->rdi_hz[j],
+					clk_rate = max(clock_config->rdi_hz_flex[j],
 						clk_rate);
 			}
 
@@ -10930,7 +10930,7 @@ static int cam_isp_blob_vfe_out_update(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < vfe_out_config->num_ports; i++) {
-		wm_config = &vfe_out_config->wm_config[i];
+		wm_config = &vfe_out_config->wm_config_flex[i];
 		if ((hw_type == CAM_ISP_HW_TYPE_VFE) &&
 			(!cam_ife_hw_mgr_is_ife_out_port(wm_config->port_type)))
 			continue;
@@ -11117,7 +11117,7 @@ static int cam_isp_blob_bw_limit_update(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < bw_limit_cfg->num_ports; i++) {
-		wm_bw_limit_cfg = &bw_limit_cfg->bw_limiter_config[i];
+		wm_bw_limit_cfg = &bw_limit_cfg->bw_limiter_config_flex[i];
 		res_id_out = wm_bw_limit_cfg->res_type & 0xFF;
 
 		if ((hw_type == CAM_ISP_HW_TYPE_SFE) &&
@@ -11664,7 +11664,7 @@ static void cam_isp_copy_fcg_config(
 	for (i = 0; i < fcg_args->num_ch_ctx; i++) {
 		fcg_ch_ctx_internal = &fcg_args_internal->ch_ctx_fcg_configs[i];
 		fcg_ch_ctx = (struct cam_isp_ch_ctx_fcg_config *)
-			((void *)(fcg_args->ch_ctx_fcg_configs) +
+			((void *)(fcg_args->ch_ctx_fcg_configs_flex) +
 			i * fcg_ch_ctx_size);
 
 		fcg_ch_ctx_internal->fcg_ch_ctx_id =
@@ -11675,7 +11675,7 @@ static void cam_isp_copy_fcg_config(
 			for (j = 0; j < fcg_args->num_predictions; j++) {
 				fcg_predict_internal =
 					&fcg_ch_ctx_internal->predicted_fcg_configs[j];
-				fcg_predict = &fcg_ch_ctx->predicted_fcg_configs[j];
+				fcg_predict = &fcg_ch_ctx->predicted_fcg_configs_flex[j];
 
 				/* Copy 3 PHASE related values for R/G/B channel */
 				fcg_predict_internal->phase_index_b =
@@ -11697,7 +11697,7 @@ static void cam_isp_copy_fcg_config(
 			for (j = 0; j < fcg_args->num_predictions; j++) {
 				fcg_predict_internal =
 					&fcg_ch_ctx_internal->predicted_fcg_configs[j];
-				fcg_predict = &fcg_ch_ctx->predicted_fcg_configs[j];
+				fcg_predict = &fcg_ch_ctx->predicted_fcg_configs_flex[j];
 
 				/* Copy 3 STATS related values for R/G/B channel */
 				fcg_predict_internal->stats_index_b =
@@ -12135,13 +12135,13 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		for (i = 0; i < bw_config->num_paths; i++) {
 			path_vote = &prepare_hw_data->bw_clk_config.bw_config_v2.axi_path[i];
-			path_vote->usage_data = bw_config->axi_path[i].usage_data;
-			path_vote->transac_type = bw_config->axi_path[i].transac_type;
-			path_vote->path_data_type = bw_config->axi_path[i].path_data_type;
+			path_vote->usage_data = bw_config->axi_path_flex[i].usage_data;
+			path_vote->transac_type = bw_config->axi_path_flex[i].transac_type;
+			path_vote->path_data_type = bw_config->axi_path_flex[i].path_data_type;
 			path_vote->vote_level = 0;
-			path_vote->camnoc_bw = bw_config->axi_path[i].camnoc_bw;
-			path_vote->mnoc_ab_bw = bw_config->axi_path[i].mnoc_ab_bw;
-			path_vote->mnoc_ib_bw = bw_config->axi_path[i].mnoc_ib_bw;
+			path_vote->camnoc_bw = bw_config->axi_path_flex[i].camnoc_bw;
+			path_vote->mnoc_ab_bw = bw_config->axi_path_flex[i].mnoc_ab_bw;
+			path_vote->mnoc_ib_bw = bw_config->axi_path_flex[i].mnoc_ib_bw;
 		}
 
 		c_ctx->bw_config_version = CAM_ISP_BW_CONFIG_V2;
@@ -12230,13 +12230,13 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 
 		for (i = 0; i < bw_config->num_paths; i++) {
 			path_vote = &prepare_hw_data->bw_clk_config.bw_config_v2.axi_path[i];
-			path_vote->usage_data = bw_config->axi_path[i].usage_data;
-			path_vote->transac_type = bw_config->axi_path[i].transac_type;
-			path_vote->path_data_type = bw_config->axi_path[i].path_data_type;
-			path_vote->vote_level = bw_config->axi_path[i].vote_level;
-			path_vote->camnoc_bw = bw_config->axi_path[i].camnoc_bw;
-			path_vote->mnoc_ab_bw = bw_config->axi_path[i].mnoc_ab_bw;
-			path_vote->mnoc_ib_bw = bw_config->axi_path[i].mnoc_ib_bw;
+			path_vote->usage_data = bw_config->axi_path_flex[i].usage_data;
+			path_vote->transac_type = bw_config->axi_path_flex[i].transac_type;
+			path_vote->path_data_type = bw_config->axi_path_flex[i].path_data_type;
+			path_vote->vote_level = bw_config->axi_path_flex[i].vote_level;
+			path_vote->camnoc_bw = bw_config->axi_path_flex[i].camnoc_bw;
+			path_vote->mnoc_ab_bw = bw_config->axi_path_flex[i].mnoc_ab_bw;
+			path_vote->mnoc_ib_bw = bw_config->axi_path_flex[i].mnoc_ib_bw;
 		}
 
 		c_ctx->bw_config_version = CAM_ISP_BW_CONFIG_V3;

@@ -3155,14 +3155,14 @@ static int cam_ife_mgr_acquire_get_unified_structure_v0(
 	}
 
 	for (i = 0; i < in->num_out_res; i++) {
-		in_port->data[i].res_type     = in->data[i].res_type;
-		in_port->data[i].format       = in->data[i].format;
-		in_port->data[i].width        = in->data[i].width;
-		in_port->data[i].height       = in->data[i].height;
-		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		in_port->data[i].split_point  = in->data[i].split_point;
-		in_port->data[i].secure_mode  = in->data[i].secure_mode;
-		in_port->data[i].reserved     = in->data[i].reserved;
+		in_port->data[i].res_type     = in->data_flex[i].res_type;
+		in_port->data[i].format       = in->data_flex[i].format;
+		in_port->data[i].width        = in->data_flex[i].width;
+		in_port->data[i].height       = in->data_flex[i].height;
+		in_port->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		in_port->data[i].split_point  = in->data_flex[i].split_point;
+		in_port->data[i].secure_mode  = in->data_flex[i].secure_mode;
+		in_port->data[i].reserved     = in->data_flex[i].reserved;
 	}
 
 	return 0;
@@ -3251,13 +3251,13 @@ static int cam_ife_mgr_acquire_get_unified_structure_v2(
 	}
 
 	for (i = 0; i < in_port->num_out_res; i++) {
-		in_port->data[i].res_type     = in->data[i].res_type;
-		in_port->data[i].format       = in->data[i].format;
-		in_port->data[i].width        = in->data[i].width;
-		in_port->data[i].height       = in->data[i].height;
-		in_port->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		in_port->data[i].split_point  = in->data[i].split_point;
-		in_port->data[i].secure_mode  = in->data[i].secure_mode;
+		in_port->data[i].res_type     = in->data_flex[i].res_type;
+		in_port->data[i].format       = in->data_flex[i].format;
+		in_port->data[i].width        = in->data_flex[i].width;
+		in_port->data[i].height       = in->data_flex[i].height;
+		in_port->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		in_port->data[i].split_point  = in->data_flex[i].split_point;
+		in_port->data[i].secure_mode  = in->data_flex[i].secure_mode;
 	}
 
 	return 0;
@@ -3559,13 +3559,13 @@ static void cam_ife_mgr_acquire_get_unified_dev_str(struct cam_isp_in_port_info 
 	gen_port_info->num_out_res     =  in->num_out_res;
 
 	for (i = 0; i < in->num_out_res; i++) {
-		gen_port_info->data[i].res_type     = in->data[i].res_type;
-		gen_port_info->data[i].format       = in->data[i].format;
-		gen_port_info->data[i].width        = in->data[i].width;
-		gen_port_info->data[i].height       = in->data[i].height;
-		gen_port_info->data[i].comp_grp_id  = in->data[i].comp_grp_id;
-		gen_port_info->data[i].split_point  = in->data[i].split_point;
-		gen_port_info->data[i].secure_mode  = in->data[i].secure_mode;
+		gen_port_info->data[i].res_type     = in->data_flex[i].res_type;
+		gen_port_info->data[i].format       = in->data_flex[i].format;
+		gen_port_info->data[i].width        = in->data_flex[i].width;
+		gen_port_info->data[i].height       = in->data_flex[i].height;
+		gen_port_info->data[i].comp_grp_id  = in->data_flex[i].comp_grp_id;
+		gen_port_info->data[i].split_point  = in->data_flex[i].split_point;
+		gen_port_info->data[i].secure_mode  = in->data_flex[i].secure_mode;
 	}
 }
 
@@ -3848,10 +3848,10 @@ static int cam_isp_classify_vote_info(
 				return rc;
 
 			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
+				if (bw_config->axi_path_flex[i].usage_data ==
 					CAM_ISP_USAGE_LEFT_PX) {
 					memcpy(&isp_vote->axi_path[j],
-						&bw_config->axi_path[i],
+						&bw_config->axi_path_flex[i],
 						sizeof(struct
 						cam_axi_per_path_bw_vote));
 					j++;
@@ -3865,10 +3865,10 @@ static int cam_isp_classify_vote_info(
 				return rc;
 
 			for (i = 0; i < bw_config->num_paths; i++) {
-				if (bw_config->axi_path[i].usage_data ==
+				if (bw_config->axi_path_flex[i].usage_data ==
 					CAM_ISP_USAGE_RIGHT_PX) {
 					memcpy(&isp_vote->axi_path[j],
-						&bw_config->axi_path[i],
+						&bw_config->axi_path_flex[i],
 						sizeof(struct
 						cam_axi_per_path_bw_vote));
 					j++;
@@ -3882,14 +3882,14 @@ static int cam_isp_classify_vote_info(
 		&& (hw_mgr_res->res_id <=
 		CAM_ISP_HW_VFE_IN_RDI3)) {
 		for (i = 0; i < bw_config->num_paths; i++) {
-			if ((bw_config->axi_path[i].usage_data ==
+			if ((bw_config->axi_path_flex[i].usage_data ==
 				CAM_ISP_USAGE_RDI) &&
-				((bw_config->axi_path[i].path_data_type -
+				((bw_config->axi_path_flex[i].path_data_type -
 				CAM_AXI_PATH_DATA_IFE_RDI0) ==
 				(hw_mgr_res->res_id -
 				CAM_ISP_HW_VFE_IN_RDI0))) {
 				memcpy(&isp_vote->axi_path[j],
-					&bw_config->axi_path[i],
+					&bw_config->axi_path_flex[i],
 					sizeof(struct
 					cam_axi_per_path_bw_vote));
 				j++;
@@ -4052,9 +4052,9 @@ static int cam_isp_blob_bw_update(
 					continue;
 
 				cam_bw_bps =
-					bw_config->rdi_vote[idx].cam_bw_bps;
+					bw_config->rdi_vote_flex[idx].cam_bw_bps;
 				ext_bw_bps =
-					bw_config->rdi_vote[idx].ext_bw_bps;
+					bw_config->rdi_vote_flex[idx].ext_bw_bps;
 			} else {
 				if (hw_mgr_res->hw_res[i]) {
 					CAM_ERR(CAM_ISP, "Invalid res_id %u",
@@ -4217,10 +4217,10 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 				CAM_ERR(CAM_ISP, "Unexpected BL type %d",
 					cmd->flags);
 
-			cdm_cmd->cmd[i - skip].bl_addr.mem_handle = cmd->handle;
-			cdm_cmd->cmd[i - skip].offset = cmd->offset;
-			cdm_cmd->cmd[i - skip].len = cmd->len;
-			cdm_cmd->cmd[i - skip].arbitrate = false;
+			cdm_cmd->cmd_flex[i - skip].bl_addr.mem_handle = cmd->handle;
+			cdm_cmd->cmd_flex[i - skip].offset = cmd->offset;
+			cdm_cmd->cmd_flex[i - skip].len = cmd->len;
+			cdm_cmd->cmd_flex[i - skip].arbitrate = false;
 		}
 		cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
 
@@ -5170,7 +5170,7 @@ static int cam_isp_blob_ubwc_update(
 
 		kmd_buf_info = blob_info->kmd_buf_info;
 		for (i = 0; i < ubwc_config->num_ports; i++) {
-			ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg[i][0];
+			ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg_array_flex[i][0];
 			res_id_out = ubwc_plane_cfg->port_type & 0xFF;
 
 			CAM_DBG(CAM_ISP, "UBWC config idx %d, port_type=%d", i,
@@ -5340,7 +5340,7 @@ static int cam_isp_blob_ubwc_update_v2(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < ubwc_config->num_ports; i++) {
-		ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg[i][0];
+		ubwc_plane_cfg = &ubwc_config->ubwc_plane_cfg_array_flex[i][0];
 		res_id_out = ubwc_plane_cfg->port_type & 0xFF;
 
 		CAM_DBG(CAM_ISP, "UBWC config idx %d, port_type=%d", i,
@@ -5451,7 +5451,7 @@ static int cam_isp_blob_hfr_update(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < hfr_config->num_ports; i++) {
-		port_hfr_config = &hfr_config->port_hfr_config[i];
+		port_hfr_config = &hfr_config->port_hfr_config_flex[i];
 		res_id_out = port_hfr_config->resource_type & 0xFF;
 
 		CAM_DBG(CAM_ISP, "hfr config idx %d, type=%d", i,
@@ -5739,7 +5739,7 @@ static int cam_isp_blob_clock_update(
 				CAM_ISP_HW_VFE_IN_RD) && (hw_mgr_res->res_id
 				<= CAM_ISP_HW_VFE_IN_RDI3))
 				for (j = 0; j < clock_config->num_rdi; j++)
-					clk_rate = max(clock_config->rdi_hz[j],
+					clk_rate = max(clock_config->rdi_hz_flex[j],
 						clk_rate);
 			else
 				if (hw_mgr_res->res_id != CAM_ISP_HW_VFE_IN_LCR
@@ -5906,7 +5906,7 @@ static int cam_isp_blob_vfe_out_update(
 
 	kmd_buf_info = blob_info->kmd_buf_info;
 	for (i = 0; i < vfe_out_config->num_ports; i++) {
-		wm_config = &vfe_out_config->wm_config[i];
+		wm_config = &vfe_out_config->wm_config_flex[i];
 		res_id_out = wm_config->port_type & 0xFF;
 
 		CAM_DBG(CAM_ISP, "VFE out config idx: %d port: 0x%x",
