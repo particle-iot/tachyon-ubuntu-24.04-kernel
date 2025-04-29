@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -708,7 +708,7 @@ int hfi_send_system_cmd(int client_handle, uint32_t type, uint64_t data, uint32_
 			prop.size = sizeof(struct hfi_cmd_prop);
 			prop.pkt_type = type;
 			prop.num_prop = 1;
-			prop.prop_data[0] = HFI_PROP_SYS_DEBUG_CFG;
+			prop.prop_data_flex[0] = HFI_PROP_SYS_DEBUG_CFG;
 			rc = hfi_write_cmd(client_handle, &prop);
 		}
 	}

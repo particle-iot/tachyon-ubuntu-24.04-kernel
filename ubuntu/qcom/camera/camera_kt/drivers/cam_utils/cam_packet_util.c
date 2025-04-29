@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -131,7 +131,7 @@ int cam_packet_util_get_kmd_buffer(struct cam_packet *packet,
 
 	/* Take first command descriptor and add offset to it for kmd*/
 	cmd_desc = (struct cam_cmd_buf_desc *) ((uint8_t *)
-		&packet->payload + packet->cmd_buf_offset);
+		&packet->payload_flex + packet->cmd_buf_offset);
 	cmd_desc += packet->kmd_cmd_buf_index;
 
 	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
@@ -193,7 +193,7 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 	uint64_t   value = 0;
 
 	patch_desc = (struct cam_patch_desc *)
-			((uint32_t *) &packet->payload +
+			((uint32_t *) &packet->payload_flex +
 			packet->patch_offset/4);
 
 	CAM_INFO(CAM_UTIL, "Total num of patches : %d",
@@ -316,7 +316,7 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 
 	/* process patch descriptor */
 	patch_desc = (struct cam_patch_desc *)
-			((uint32_t *) &packet->payload +
+			((uint32_t *) &packet->payload_flex +
 			packet->patch_offset/4);
 	CAM_DBG(CAM_UTIL, "packet = %pK patch_desc = %pK size = %lu",
 			(void *)packet, (void *)patch_desc,
