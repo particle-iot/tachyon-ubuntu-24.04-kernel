@@ -83,8 +83,6 @@ static int usb5807_write_reg_u8(struct i2c_client *i2c, u16 reg, u8 value)
 /* Decode array of port numbers property into bit mask */
 static u8 usb5807_get_ports_field(struct device *dev, const char *prop_name)
 {
-	struct property *prop;
-	const __be32 *p;
 	u32 port;
 	u8 result = 0;
 
