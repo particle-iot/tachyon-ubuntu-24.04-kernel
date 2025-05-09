@@ -877,7 +877,7 @@
 };
 
 &remoteproc_wpss {
-	firmware-name = "qcom/qcs6490/wpss.mdt";
+	firmware-name = "qcom/qcs6490/wpss.mbn";
 	status = "okay";
 };
 
