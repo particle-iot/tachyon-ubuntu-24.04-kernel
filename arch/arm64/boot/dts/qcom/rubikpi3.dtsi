@@ -727,11 +727,12 @@
 };
 
 &tlmm {
-	usb2_id_det_default: usb2_id_det_default {
-		pins = "gpio61";
+	usb2_1p8_vreg_default: usb2_1p8_vreg_default {
+		pins = "gpio119";
 		function = "gpio";
 		drive-strength = <2>;
-		bias-pull-up;
+		bias-disable;
+		output-high;
 	};
 
 	sd_cd: sd-cd-state {
@@ -744,6 +745,9 @@
 /delete-node/ &usb_2_dwc3;
 
 &usb_2 {
+	pinctrl-0 = <&usb2_1p8_vreg_default>;
+	pinctrl-names = "default";
+
 	reg = <0x0 0x08c00000 0x0 0x100000>;
 
 	interrupts-extended = <&intc GIC_SPI 242 IRQ_TYPE_LEVEL_HIGH>,
@@ -767,7 +771,7 @@
 	usb-role-switch;
 	qcom,enable-rt;
 	wakeup-source;
-	dr_mode = "otg";
+	dr_mode = "host";
 
 	status = "okay";
 
