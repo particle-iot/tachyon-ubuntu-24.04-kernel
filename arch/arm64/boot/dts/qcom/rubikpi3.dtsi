@@ -943,3 +943,53 @@
 		};
 	};
 };
+
+/ {
+	vreg_usb_hub0_1p8: vreg_usb_hub0_1p8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_usb_hub0_1p8";
+		gpio = <&tlmm 86 0>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-enable-ramp-delay = <50000>;
+	};
+
+	vreg_usb_eth_1p8: vreg_usb_eth_1p8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_usb_eth_1p8";
+		gpio = <&tlmm 7 0>;
+		vin-supply = <&vreg_usb_hub0_1p8>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		regulator-enable-ramp-delay = <50000>;
+	};
+
+	vreg_usb_hub0_rest: vreg_usb_hub0_rest {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_usb_hub0_rest";
+		gpio = <&tlmm 136 0>;
+		vin-supply = <&vreg_usb_eth_1p8>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-enable-ramp-delay = <50000>;
+	};
+};
+
+&pcie0 {
+	perst-gpios = <&tlmm 87 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&pcie0_reset_n>, <&pcie0_wake_n>, <&pcie0_clkreq_n>;
+	pinctrl-names = "default";
+	status = "okay";
+	vdda-supply = <&vreg_usb_hub0_rest>;
+};
+
+&pcie0_phy {
+	status = "okay";
+	vdda-phy-supply = <&vreg_l10c_0p88>;
+	vdda-pll-supply = <&vreg_l6b_1p2>;
+};
