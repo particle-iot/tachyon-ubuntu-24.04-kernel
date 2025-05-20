@@ -361,7 +361,6 @@
 			reg = <0x6100>, <0x6200>;
 			reg-names = "rtc", "alarm";
 			interrupts = <0x0 0x62 0x1 IRQ_TYPE_NONE>;
-			allow-set-time;
 		};
 
 		pmm8654au_0_sdam_0: nvram@7100 {
