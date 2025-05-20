@@ -993,3 +993,60 @@
 	vdda-phy-supply = <&vreg_l10c_0p88>;
 	vdda-pll-supply = <&vreg_l6b_1p2>;
 };
+
+&tlmm {
+	pcie1_reset_n: pcie1-reset-n-state {
+		pins = "gpio2";
+		function = "gpio";
+		drive-strength = <16>;
+		output-low;
+		bias-disable;
+	};
+
+	pcie1_wake_n: pcie1-wake-n-state {
+		pins = "gpio3";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+};
+
+/ {
+	vreg_m2_1p8: verg_m2_1p8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_m2_1p8";
+		gpio = <&tlmm 56 0>;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		regulator-enable-ramp-delay = <50000>;
+	};
+};
+
+&pcie1 {
+	perst-gpios = <&tlmm 2 GPIO_ACTIVE_LOW>;
+
+	pinctrl-0 = <&pcie1_reset_n>, <&pcie1_wake_n>, <&pcie1_clkreq_n>;
+	pinctrl-names = "default";
+
+	vdda-supply = <&vreg_m2_1p8>;
+
+	status = "okay";
+
+	pcieport1: pcie@1 {
+		device_type = "pci";
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+		#address-cells = <5>;
+		#size-cells = <0>;
+		pcie1_bus1_dev0_fn0: pcie1_bus1_dev0_fn0 {
+			reg = <0 0 0 0 0>;
+		};
+	};
+};
+
+&pcie1_phy {
+	vdda-phy-supply = <&vreg_l10c_0p88>;
+	vdda-pll-supply = <&vreg_l6b_1p2>;
+
+	status = "okay";
+};
