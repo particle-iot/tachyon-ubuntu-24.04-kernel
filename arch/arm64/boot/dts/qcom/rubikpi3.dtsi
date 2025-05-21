@@ -476,6 +476,7 @@
 
 &pmk8350_rtc {
 	status = "okay";
+	allow-set-time;
 };
 
 &pmk8350_vadc {
