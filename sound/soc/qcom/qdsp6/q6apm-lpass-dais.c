@@ -349,6 +349,10 @@ static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 
 		if (prmcc_pdev) {
 			dai_data->cc = platform_get_drvdata(prmcc_pdev);
+			if (!dai_data->cc) {
+				pr_err("%s: dai_data->cc is null\n", __func__);
+				return -EPROBE_DEFER;
+			}
 		} else {
 			dev_err(dev, "Failed to find prmcc clock\n");
 			return -EPROBE_DEFER;
