@@ -28,7 +28,12 @@
 
 	aliases {
 		serial0 = &uart5;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		serial6 = &uart6;
 		serial7 = &uart7;
+		serial8 = &uart8;
+		serial12 = &uart12;
 	};
 
 	chosen {
@@ -1379,5 +1384,26 @@
 				sound-dai = <&msm_stub_codec 1>, <&es8316>;
 			};
 		};
+	};
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&tlmm {
+	/delete-property/ gpio-reserved-ranges;
+};
+
+&spi12 {
+	status = "okay";
+	spidev@0 {
+		compatible = "silabs,em3581";
+		spi-max-frequency = <50000000>;
+		reg = <0>;
 	};
 };
