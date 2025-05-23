@@ -1243,3 +1243,141 @@
 	remote-endpoint = <&lt9611_a>;
 	data-lanes = <0 1 2 3>;
 };
+
+&q6apmbedai {
+	qcom,prmcc_clk = <&q6prmcc>;
+};
+
+&lpass_va_macro {
+	status = "disabled";
+};
+
+&lpass_rx_macro {
+	status = "disabled";
+};
+
+&lpass_tx_macro {
+	status = "disabled";
+};
+
+&lpass_wsa_macro {
+	status = "disabled";
+};
+
+&swr0 {
+	status = "disabled";
+};
+
+&swr1 {
+	status = "disabled";
+};
+
+&swr2 {
+	status = "disabled";
+};
+
+&tlmm {
+	mi2s0_data0_sleep: mi2s0-data0-sleep {
+		pins = "gpio98";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_data1_sleep: mi2s0-data1-sleep {
+		pins = "gpio99";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_sclk_sleep: mi2s0-sclk-sleep {
+		pins = "gpio97";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+
+	mi2s0_ws_sleep: mi2s0-ws-sleep {
+		pins = "gpio100";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
+};
+
+&mi2s0_data0 {
+	drive-strength = <8>;
+	bias-disable;
+};
+
+&mi2s0_data1 {
+	drive-strength = <8>;
+	bias-disable;
+};
+
+&mi2s0_sclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&mi2s0_ws {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
+&i2c0 {
+	status = "ok";
+	es8316: es8316@11 {
+		compatible = "everest,es8316";
+		reg = <0x11>;
+		#sound-dai-cells = <0>;
+		power_en-gpio = <&tlmm 117 0>;
+		irq-gpio = <&tlmm 63 0>;
+		status = "ok";
+	};
+};
+
+/ {
+	sound: sound {
+		compatible = "qcom,qcm6490-sndcard";
+		model = "qcm6490-idp-snd-card";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		pinctrl-names = "default", "stub_aif0_active", "stub_aif0_sleep";
+		pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk>,
+					<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+		pinctrl-1 = <&mi2s0_data0>, <&mi2s0_data1>, <&mi2s0_mclk>,
+					<&mi2s0_sclk>, <&mi2s0_ws>;
+		pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk>,
+					<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+
+		mi2s-playback-dai-link {
+			link-name = "MI2S-LPAIF-RX-PRIMARY";
+			cpu {
+				sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
+			};
+			codec {
+				sound-dai = <&msm_stub_codec 0>, <&es8316>;
+			};
+		};
+
+		mi2s-capture-dai-link {
+			link-name = "MI2S-LPAIF-TX-PRIMARY";
+			cpu {
+				sound-dai = <&q6apmbedai PRIMARY_MI2S_TX>;
+			};
+			codec {
+				sound-dai = <&msm_stub_codec 1>, <&es8316>;
+			};
+		};
+	};
+};
