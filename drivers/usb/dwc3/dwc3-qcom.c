@@ -1115,6 +1115,8 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 			qcom->current_role = USB_ROLE_NONE;
 	}
 
+	dwc3_qcom_vbus_regulator_get(qcom);
+
 	if (legacy_binding)
 		ret = dwc3_qcom_of_register_core(pdev);
 	else
@@ -1141,8 +1143,6 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		if (ret)
 			goto interconnect_exit;
 	}
-
-	dwc3_qcom_vbus_regulator_get(qcom);
 
 	if (qcom->mode == USB_DR_MODE_HOST) {
 		dwc3_qcom_vbus_regulator_enable(qcom, true);
