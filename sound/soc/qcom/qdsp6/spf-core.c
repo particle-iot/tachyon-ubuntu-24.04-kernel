@@ -66,7 +66,7 @@ static int spf_core_callback(struct gpr_resp_pkt *data, void *priv, int op)
 		break;
 	case APM_CMD_RSP_GET_SPF_STATE:
 		core->is_ready = result->opcode;
-		dev_err(&gdev->dev, "%s: success response received, core->is_ready=%d\n",
+		dev_info(&gdev->dev, "%s: success response received, core->is_ready=%d\n",
 				__func__, core->is_ready);
 		core->resp_received = true;
 		break;
@@ -217,7 +217,7 @@ static void spf_core_add_child_devices(struct work_struct *work)
 	int ret;
 
 	if (spf_core_is_apm_ready()) {
-		dev_err(spf_core_priv->dev, "%s: apm is up\n",
+		dev_info(spf_core_priv->dev, "%s: apm is up\n",
 			__func__);
 	} else {
 		dev_err(spf_core_priv->dev, "%s: apm is not up\n",
