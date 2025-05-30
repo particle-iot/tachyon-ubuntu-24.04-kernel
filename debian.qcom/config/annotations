@@ -672,6 +672,7 @@ CONFIG_HSA_AMD_SVM                              policy<{'arm64': '-'}>
 CONFIG_HTE_TEGRA194                             policy<{'arm64': '-'}>
 CONFIG_HTE_TEGRA194_TEST                        policy<{'arm64': '-'}>
 CONFIG_HWSPINLOCK_OMAP                          policy<{'arm64': '-'}>
+CONFIG_HWSPINLOCK_QCOM                          policy<{'arm64': 'y'}>
 CONFIG_HWSPINLOCK_SPRD                          policy<{'arm64': '-'}>
 CONFIG_HWSPINLOCK_SUN6I                         policy<{'arm64': '-'}>
 CONFIG_HW_RANDOM_CAVIUM                         policy<{'arm64': '-'}>
