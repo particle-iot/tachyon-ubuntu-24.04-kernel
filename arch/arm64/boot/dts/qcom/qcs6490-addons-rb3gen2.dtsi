@@ -532,10 +532,10 @@
 				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
 			};
 
-			map1 {
-				trip = <&b_bcl_lvl1>;
-				cooling-device = <&cdsp_sw 4 4>;
-			};
+			//map1 {
+			//	trip = <&b_bcl_lvl1>;
+			//	cooling-device = <&cdsp_sw 4 4>;
+			//};
 
 			map2 {
 				trip = <&b_bcl_lvl1>;
@@ -558,10 +558,10 @@
 		};
 
 		cooling-maps {
-			map0 {
-				trip = <&b_bcl_lvl2>;
-				cooling-device = <&cdsp_sw 5 5>;
-			};
+			//map0 {
+			//	trip = <&b_bcl_lvl2>;
+			//	cooling-device = <&cdsp_sw 5 5>;
+			//};
 		};
 	};
 };
