@@ -185,7 +185,6 @@ CONFIG_ARM_TEGRA186_CPUFREQ                     policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA194_CPUFREQ                     policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA20_CPUFREQ                      policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': '-'}>
-CONFIG_ARM_TIMER_SP804                          policy<{'arm64': '-'}>
 CONFIG_ARM_TI_CPUFREQ                           policy<{'arm64': '-'}>
 CONFIG_ATH11K_COREDUMP                          policy<{'arm64': 'n'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': '-'}>
@@ -201,7 +200,6 @@ CONFIG_CEC_STM32                                policy<{'arm64': '-'}>
 CONFIG_CEC_TEGRA                                policy<{'arm64': '-'}>
 CONFIG_CHARGER_CPCAP                            policy<{'arm64': '-'}>
 CONFIG_CHARGER_SC2731                           policy<{'arm64': '-'}>
-CONFIG_CLKSRC_MMIO                              policy<{'arm64': '-'}>
 CONFIG_CLKSRC_STM32_LP                          policy<{'arm64': '-'}>
 CONFIG_CLK_ACTIONS                              policy<{'arm64': '-'}>
 CONFIG_CLK_IMX8MM                               policy<{'arm64': '-'}>
@@ -655,10 +653,6 @@ CONFIG_GUNYAH_PLATFORM_HOOKS                    policy<{'arm64': 'y'}>
 CONFIG_GUNYAH_QCOM_PLATFORM                     policy<{'arm64': 'y'}>
 CONFIG_GUNYAH_VCPU                              policy<{'arm64': 'y'}>
 CONFIG_HAVE_KERNEL_GZIP                         policy<{'arm64': '-'}>
-CONFIG_HAVE_KERNEL_LZ4                          policy<{'arm64': '-'}>
-CONFIG_HAVE_KERNEL_LZMA                         policy<{'arm64': '-'}>
-CONFIG_HAVE_KERNEL_LZO                          policy<{'arm64': '-'}>
-CONFIG_HAVE_KERNEL_XZ                           policy<{'arm64': '-'}>
 CONFIG_HAVE_KERNEL_ZSTD                         policy<{'arm64': '-'}>
 CONFIG_HBMC_AM654                               policy<{'arm64': '-'}>
 CONFIG_HI3660_MBOX                              policy<{'arm64': '-'}>
@@ -791,10 +785,6 @@ CONFIG_KASAN_VMALLOC                            policy<{'arm64': 'y'}>
 CONFIG_KCSAN                                    policy<{'arm64': '-'}>
 CONFIG_KEEMBAY_WATCHDOG                         policy<{'arm64': '-'}>
 CONFIG_KERNEL_GZIP                              policy<{'arm64': '-'}>
-CONFIG_KERNEL_LZ4                               policy<{'arm64': '-'}>
-CONFIG_KERNEL_LZMA                              policy<{'arm64': '-'}>
-CONFIG_KERNEL_LZO                               policy<{'arm64': '-'}>
-CONFIG_KERNEL_XZ                                policy<{'arm64': '-'}>
 CONFIG_KEYBOARD_IMX                             policy<{'arm64': '-'}>
 CONFIG_KEYBOARD_IMX_SC_KEY                      policy<{'arm64': '-'}>
 CONFIG_KEYBOARD_MT6779                          policy<{'arm64': '-'}>
