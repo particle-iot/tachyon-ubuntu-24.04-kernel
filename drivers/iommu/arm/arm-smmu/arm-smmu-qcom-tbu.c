@@ -52,11 +52,6 @@ static struct qcom_smmu *to_qcom_smmu(struct arm_smmu_device *smmu)
 	return container_of(smmu, struct qcom_smmu, smmu);
 }
 
-static struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
-{
-	return container_of(dom, struct arm_smmu_domain, domain);
-}
-
 static struct qsmmuv500_tbu *qsmmuv500_find_tbu(struct qcom_smmu *qsmmu, u32 sid)
 {
 	struct qsmmuv500_tbu *tbu = NULL;
@@ -308,9 +303,8 @@ disable_icc:
 	return phys;
 }
 
-static phys_addr_t qcom_smmu_iova_to_phys_hard(struct iommu_domain *domain, dma_addr_t iova)
+static phys_addr_t qcom_smmu_iova_to_phys_hard(struct arm_smmu_domain *smmu_domain, dma_addr_t iova)
 {
-	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	int idx = smmu_domain->cfg.cbndx;
 	u32 frsynra;
@@ -322,17 +316,16 @@ static phys_addr_t qcom_smmu_iova_to_phys_hard(struct iommu_domain *domain, dma_
 	return qsmmuv500_iova_to_phys(smmu_domain, iova, sid);
 }
 
-static phys_addr_t qcom_smmu_verify_fault(struct iommu_domain *domain, dma_addr_t iova, u32 fsr)
+static phys_addr_t qcom_smmu_verify_fault(struct arm_smmu_domain *smmu_domain, dma_addr_t iova, u32 fsr)
 {
-	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 	struct io_pgtable *iop = io_pgtable_ops_to_pgtable(smmu_domain->pgtbl_ops);
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	phys_addr_t phys_post_tlbiall;
 	phys_addr_t phys;
 
-	phys = qcom_smmu_iova_to_phys_hard(domain, iova);
+	phys = qcom_smmu_iova_to_phys_hard(smmu_domain, iova);
 	io_pgtable_tlb_flush_all(iop);
-	phys_post_tlbiall = qcom_smmu_iova_to_phys_hard(domain, iova);
+	phys_post_tlbiall = qcom_smmu_iova_to_phys_hard(smmu_domain, iova);
 
 	if (phys != phys_post_tlbiall) {
 		dev_err(smmu->dev,
@@ -345,8 +338,7 @@ static phys_addr_t qcom_smmu_verify_fault(struct iommu_domain *domain, dma_addr_
 
 irqreturn_t qcom_smmu_context_fault(int irq, void *dev)
 {
-	struct iommu_domain *domain = dev;
-	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
+	struct arm_smmu_domain *smmu_domain = dev;
 	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	u32 fsr, fsynr, cbfrsynra, resume = 0;
@@ -369,7 +361,7 @@ irqreturn_t qcom_smmu_context_fault(int irq, void *dev)
 
 	phys_soft = ops->iova_to_phys(ops, iova);
 
-	tmp = report_iommu_fault(domain, NULL, iova,
+	tmp = report_iommu_fault(&smmu_domain->domain, NULL, iova,
 				 fsynr & ARM_SMMU_FSYNR0_WNR ?
 				 IOMMU_FAULT_WRITE : IOMMU_FAULT_READ);
 	if (!tmp || tmp == -EBUSY) {
@@ -380,7 +372,7 @@ irqreturn_t qcom_smmu_context_fault(int irq, void *dev)
 		ret = IRQ_HANDLED;
 		resume = ARM_SMMU_RESUME_TERMINATE;
 	} else {
-		phys_addr_t phys_atos = qcom_smmu_verify_fault(domain, iova, fsr);
+		phys_addr_t phys_atos = qcom_smmu_verify_fault(smmu_domain, iova, fsr);
 
 		if (__ratelimit(&_rs)) {
 			dev_err(smmu->dev,
