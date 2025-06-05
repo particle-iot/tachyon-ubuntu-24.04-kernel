@@ -1,5 +1,5 @@
 Name:    linux-qcom
-Version: 6.7.0
+Version: 6.8.0
 Series:  24.04 (noble)
 Description:
     This is the source code for the Ubuntu linux kernel for the 24.04 series. This
