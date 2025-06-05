@@ -2,6 +2,7 @@
 # FORMAT: 4
 # ARCH: arm64
 # FLAVOUR: arm64-qcom
+# FLAVOUR_DEP: {'arm64-qcom': 'arm64-generic'}
 
 include "../../debian.master/config/annotations"
 
