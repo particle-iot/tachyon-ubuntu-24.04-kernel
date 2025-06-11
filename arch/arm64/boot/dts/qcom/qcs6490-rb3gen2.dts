@@ -147,6 +147,9 @@
 				sound-dai = <&left_spkr>, <&right_spkr>, <&swr2 0>,
 					    <&lpass_wsa_macro 0>;
 			};
+			platform {
+				sound-dai = <&q6apm>;
+			};
 		};
 
 		va-dai-link {
@@ -159,6 +162,9 @@
 			codec {
 				sound-dai = <&lpass_va_macro 0>;
 			};
+			platform {
+				sound-dai = <&q6apm>;
+			};
 		};
 
 		vi-feedback-dai-link {
@@ -170,6 +176,9 @@
 
 			codec {
 				sound-dai = <&swr2 6>, <&lpass_wsa_macro 2>;
+			};
+			platform {
+				sound-dai = <&q6apm>;
 			};
 		};
 	};

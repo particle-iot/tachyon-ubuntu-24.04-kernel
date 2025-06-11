@@ -406,8 +406,11 @@
 
 					q6apmbedai: bedais {
 						compatible = "qcom,q6apm-lpass-dais";
-						q6apm-dai-uses-dummy-ops;
 						#sound-dai-cells = <1>;
+					};
+					q6apmdai: dais {
+						compatible = "qcom,q6apm-dais";
+						iommus = <&apps_smmu 0x1801 0x0>;
 					};
 				};
 
