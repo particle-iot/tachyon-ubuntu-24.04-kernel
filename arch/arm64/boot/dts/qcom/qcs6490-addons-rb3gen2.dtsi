@@ -271,6 +271,9 @@
 		codec {
 			sound-dai = <&msm_stub_codec 1>;
 		};
+		platform {
+			sound-dai = <&q6apm>;
+		};
 	};
 
 	mi2s-playback-dai-link {
@@ -282,6 +285,9 @@
 
 		codec {
 			sound-dai = <&msm_stub_codec 0>;
+		};
+		platform {
+			sound-dai = <&q6apm>;
 		};
 	};
 
@@ -295,6 +301,9 @@
 		codec {
 			sound-dai = <&msm_stub_codec 1>;
 		};
+		platform {
+			sound-dai = <&q6apm>;
+		};
 	};
 
 	tdm-playback-dai-link {
@@ -306,6 +315,9 @@
 
 		codec {
 			sound-dai = <&msm_stub_codec 0>;
+		};
+		platform {
+			sound-dai = <&q6apm>;
 		};
 	};
 
