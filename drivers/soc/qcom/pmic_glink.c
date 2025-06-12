@@ -238,11 +238,24 @@ static int pmic_glink_rpmsg_probe(struct rpmsg_device *rpdev)
 {
 	struct pmic_glink *pg = __pmic_glink;
 	int ret = 0;
+	int i = 0;
 
-	mutex_lock(&__pmic_glink_lock);
+	do {
+		mutex_lock(&__pmic_glink_lock);
+		pg = __pmic_glink;
+		mutex_unlock(&__pmic_glink_lock);
+		if (pg)
+			break;
+
+		usleep_range(1000, 5000);
+		i++;
+
+	} while (i < 10000 && !pg);
+
 	if (!pg) {
 		ret = dev_err_probe(&rpdev->dev, -ENODEV, "no pmic_glink device to attach to\n");
-		goto out_unlock;
+		pr_err("%s: FAILED - pg = %p ", __func__, pg);
+		return ret;
 	}
 
 	dev_set_drvdata(&rpdev->dev, pg);
@@ -252,8 +265,6 @@ static int pmic_glink_rpmsg_probe(struct rpmsg_device *rpdev)
 	pmic_glink_state_notify_clients(pg);
 	mutex_unlock(&pg->state_lock);
 
-out_unlock:
-	mutex_unlock(&__pmic_glink_lock);
 	return ret;
 }
 
