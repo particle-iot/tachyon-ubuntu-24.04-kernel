@@ -698,7 +698,7 @@ struct audioreach_container {
 	struct audioreach_sub_graph *sub_graph;
 };
 
-#define AR_MAX_MOD_LINKS	8
+#define AR_MAX_MOD_LINKS	32
 
 struct audioreach_module {
 	uint32_t module_id;
