@@ -136,6 +136,12 @@ static bool gh_has_qcom_extensions(void)
 
 static int __init qcom_gh_platform_hooks_register(void)
 {
+	struct property *prop;
+
+	prop = of_find_property(of_root, "qcom,msm-id", NULL);
+	if (!prop)
+		return -ENODEV;
+
 	if (!gh_has_qcom_extensions())
 		return -ENODEV;
 
