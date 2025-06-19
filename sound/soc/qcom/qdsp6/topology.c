@@ -552,6 +552,13 @@ static struct audioreach_module *audioreach_parse_common_tokens(struct q6apm *ap
 		mod->in_port = in_port;
 		mod->out_port = out_port;
 		mod->src_mod_inst_id = src_mod_inst_id;
+
+		if (mod->max_op_port >= AR_MAX_MOD_LINKS) {
+			dev_warn(apm->dev,
+				 "MODULE_MAX_OP_PORTS(%u) > AR_MAX_MOD_LINKS (id=0x%x), truncating\n",
+				 mod->max_op_port, module_id);
+			mod->max_op_port = AR_MAX_MOD_LINKS;
+		}
 		for (pn = 0; pn < mod->max_op_port; pn++) {
 			if (src_mod_op_port_id[pn] && dst_mod_inst_id[pn] &&
 			    dst_mod_ip_port_id[pn]) {
