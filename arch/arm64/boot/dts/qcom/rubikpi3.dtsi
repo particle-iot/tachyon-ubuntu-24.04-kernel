@@ -623,11 +623,27 @@
 		output-high;
 		bias-disable;
 	};
+
+	wifi_host_wake: wifi_host_wake {
+		pins = "gpio38";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	wifi_power_on: wifi_power_on {
+		pins = "gpio125";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
 };
 
 / {
 	vreg_sdio_wifi_1p8: vreg_sdio_wifi_1p8 {
 		compatible = "regulator-fixed";
+		pinctrl-0 = <&wifi_reset_active>, <&wifi_host_wake>, <&wifi_power_on>;
+		pinctrl-names = "default";
 		regulator-name = "vreg_sdio_wifi_1p8";
 		enable-active-high;
 		gpio = <&tlmm 125 GPIO_ACTIVE_HIGH>;
@@ -635,23 +651,12 @@
 		regulator-enable-ramp-delay = <50000>;
 	};
 
-	vreg_sdio_bt_reset_1p8: vreg_sdio_bt_reset_1p8 {
-		pinctrl-0 = <&wifi_reset_active>;
-		pinctrl-names = "default";
-		compatible = "regulator-fixed";
-		regulator-name = "vreg_sdio_bt_reset_1p8";
-		regulator-always-on;
-		enable-active-high;
-		gpio = <&tlmm 17 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&vreg_sdio_wifi_1p8>;
-	};
-
 	bcmdhd_wlan: bcmdhd_wlan {
 		status = "okay";
 		compatible = "linux,bcmdhd_wlan";
 		gpio_wl_reg_on = <&tlmm 16 GPIO_ACTIVE_HIGH>;
 		gpio_wl_host_wake = <&tlmm 38 GPIO_ACTIVE_HIGH>;
-		vdda-supply = <&vreg_sdio_bt_reset_1p8>;
+		vdda-supply = <&vreg_sdio_wifi_1p8>;
 	};
 };
 
@@ -1163,6 +1168,29 @@
 	};
 };
 
+&tlmm {
+	bt_device_wake: bt_device_wake {
+		pins = "gpio39";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	bt_host_wake: bt_host_wake {
+		pins = "gpio137";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	bt_reset: bt_reset {
+		pins = "gpio17";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};
+
 &uart7 {
 	status = "okay";
 	/delete-property/interrupts;
@@ -1171,6 +1199,19 @@
 	pinctrl-names = "default", "sleep";
 	pinctrl-1 = <&qup_uart7_sleep_cts>, <&qup_uart7_sleep_rts>,
 			<&qup_uart7_sleep_tx>, <&qup_uart7_sleep_rx>;
+
+	bluetooth {
+		compatible = "brcm,bcm4345c5";
+		clocks = <&sleep_clk>;
+		clock-names = "lpo";
+		device-wakeup-gpios = <&tlmm 39 GPIO_ACTIVE_HIGH>;
+		host-wakeup-gpios = <&tlmm 137 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&bt_device_wake>, <&bt_host_wake>, <&bt_reset>;
+		pinctrl-names = "default";
+		vbat-supply = <&vreg_sdio_wifi_1p8>;
+		vddio-supply = <&vreg_sdio_wifi_1p8>;
+	};
 };
 
 / {
