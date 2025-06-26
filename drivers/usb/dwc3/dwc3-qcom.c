@@ -1035,13 +1035,14 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (legacy_binding) {
-		qcom->resets = devm_reset_control_array_get_optional_exclusive(dev);
-		if (IS_ERR(qcom->resets)) {
-			return dev_err_probe(&pdev->dev, PTR_ERR(qcom->resets),
-					     "failed to get resets\n");
-		}
+	/* dwc3/core.c will also get those clocks so it can't be exclusive */
+	qcom->resets = devm_reset_control_array_get_optional_shared(dev);
+	if (IS_ERR(qcom->resets)) {
+		return dev_err_probe(&pdev->dev, PTR_ERR(qcom->resets),
+				"failed to get resets\n");
+	}
 
+	if (legacy_binding) {
 		ret = reset_control_assert(qcom->resets);
 		if (ret) {
 			dev_err(&pdev->dev, "failed to assert resets, err=%d\n", ret);
@@ -1050,11 +1051,12 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 
 		usleep_range(10, 1000);
 
-		ret = reset_control_deassert(qcom->resets);
-		if (ret) {
-			dev_err(&pdev->dev, "failed to deassert resets, err=%d\n", ret);
-			goto reset_assert;
-		}
+	}
+
+	ret = reset_control_deassert(qcom->resets);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to deassert resets, err=%d\n", ret);
+		goto reset_assert;
 	}
 
 	ret = dwc3_qcom_clk_init(qcom, of_clk_get_parent_count(np));
