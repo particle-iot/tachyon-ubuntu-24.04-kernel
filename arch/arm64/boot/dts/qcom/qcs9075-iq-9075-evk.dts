@@ -28,6 +28,7 @@
 		spi16 = &spi16;
 		ufshc1 = &ufs_mem_hc;
 		mmc0 = &sdhc_1; /* SDC1 SD card slot */
+		i2c18 = &i2c18;
 	};
 
 	chosen {
@@ -580,6 +581,13 @@
 		#gpio-cells = <2>;
 		gpio-controller;
 		reg = <0x3b>;
+	};
+
+	eeprom0: 24c256@50 {
+		compatible = "atmel,24c256";
+		reg = <0x50>;
+		pagesize = <64>;
+		i2c_id = <0x12>;
 	};
 };
 
