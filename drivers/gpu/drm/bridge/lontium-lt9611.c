@@ -2300,8 +2300,10 @@ static int lt9611_probe(struct i2c_client *client)
 	ret = devm_request_threaded_irq(dev, client->irq, NULL,
 					lt9611_irq_thread_handler,
 					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "lt9611", lt9611);
-	if (ret)
+	if (ret) {
 		dev_err(dev, "failed to request irq\n");
+		goto err_disable_regulators;
+	}
 
 	i2c_set_clientdata(client, lt9611);
 
@@ -2323,8 +2325,7 @@ static int lt9611_probe(struct i2c_client *client)
 	lt9611->dsi0 = lt9611_attach_dsi(lt9611, lt9611->dsi0_node);
 	if (IS_ERR(lt9611->dsi0)) {
 		ret = PTR_ERR(lt9611->dsi0);
-		drm_bridge_remove(&lt9611->bridge);
-		return ret;
+		goto err_remove_bridge;
 	}
 
 	nlsk = netlink_kernel_create(&init_net, NETLINK_TEST, NULL);
@@ -2332,6 +2333,19 @@ static int lt9611_probe(struct i2c_client *client)
 		pr_err("%s: netlink_kernel_create error !\n", __func__);
 
 	return lt9611_audio_init(dev, lt9611);
+
+err_remove_bridge:
+	disable_irq(client->irq);
+	cancel_work_sync(&lt9611->work);
+	cancel_work_sync(&lt9611->cec_recv_work);
+	cancel_work_sync(&lt9611->cec_transmit_work);
+	cancel_delayed_work_sync(&lt9611->pm_work);
+	drm_bridge_remove(&lt9611->bridge);
+	if (lt9611->cec_adapter)
+		cec_unregister_adapter(lt9611->cec_adapter);
+
+err_disable_regulators:
+	regulator_bulk_disable(ARRAY_SIZE(lt9611->supplies), lt9611->supplies);
 
 err_of_put:
 	of_node_put(lt9611->dsi0_node);
