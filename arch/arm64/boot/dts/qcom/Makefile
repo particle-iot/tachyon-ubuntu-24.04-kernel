@@ -350,14 +350,14 @@ qcs5430-fp2-addons-rb3gen2-vision-mezz-ovl-dtbs := \
 dtb-$(CONFIG_ARCH_QCOM) += qcs5430-fp2p5-addons-rb3gen2-vision-mezz-ovl.dtb
 qcs5430-fp2p5-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcs5430-fp2p5-addons-rb3gen2-vision-mezz.dtb \
-    qcs5430-graphics.dtbo \
+    qcs5430-fp2p5-graphics.dtbo \
     qcm5430-camera-rb3.dtbo \
     qcm6490-video.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM) += qcs5430-fp3-addons-rb3gen2-vision-mezz-ovl.dtb
 qcs5430-fp3-addons-rb3gen2-vision-mezz-ovl-dtbs := \
     qcs5430-fp3-addons-rb3gen2-vision-mezz.dtb \
-    qcs5430-graphics.dtbo \
+    qcs5430-fp2p5-graphics.dtbo \
     qcm5430-camera-rb3.dtbo \
     qcm6490-video.dtbo
 
