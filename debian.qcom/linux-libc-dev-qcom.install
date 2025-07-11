@@ -18,3 +18,4 @@ ubuntu/qcom/camera/camera/include/uapi/camera/media/cam_sensor.h      usr/includ
 ubuntu/qcom/camera/camera/include/uapi/camera/media/cam_sync.h        usr/include/camera/media/
 ubuntu/qcom/camera/camera/include/uapi/camera/media/cam_tfe.h         usr/include/camera/media/
 ubuntu/qcom/graphics/include/uapi/linux/msm_kgsl.h                    usr/include/linux/
+include/uapi/linux/smcinvoke.h                                        usr/include/linux/
