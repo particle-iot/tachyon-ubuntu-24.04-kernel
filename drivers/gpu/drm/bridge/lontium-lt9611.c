@@ -103,7 +103,6 @@ enum lt9611_aspect_ratio_type {
 	RATIO_UNKOWN = 0,
 	RATIO_4_3,
 	RATIO_16_9,
-	RATIO_16_10,
 	RATIO_64_27,
 	RATIO_256_135,
 };
@@ -180,6 +179,7 @@ struct lt9611 {
 	u8 edid_buf[256];
 	bool fix_mode;
 	struct lt9611_mode debug_mode;
+	u16 min_vblank;
 };
 
 #define LT9611_PAGE_CONTROL	0xff
@@ -1746,7 +1746,82 @@ static void lt9611_edid_read(struct lt9611 *lt9611)
 	lt9611->edid_read_sts = true;
 	lt9611->edid_read_en = true;
 
+	regmap_write(lt9611->regmap, 0x8503,0xc2);
+	regmap_write(lt9611->regmap, 0x8507,0x1f);
+
 	lt9611_unlock(lt9611);
+}
+
+static void modify_edid_timing(u8 *edid_data, struct lt9611 *lt9611)
+{
+	const int offset = 0x36;
+
+	u16 v_blank = edid_data[offset+6] | ((edid_data[offset+7] & 0x0F) << 8);
+
+	/* Dynamically adjust the vertical blanking area to avoid the screen
+	   not being able to display due to its value being too small */
+	if (v_blank < lt9611->min_vblank) {
+		pr_info("Dynamically adjust the vertical blanking area from %d to %d\n",
+			v_blank, lt9611->min_vblank);
+		/* Get original edid information */
+		u16 pixel_clock = (edid_data[offset+1] << 8) | edid_data[offset];
+
+		u16 h_active = edid_data[offset+2] | ((edid_data[offset+4] & 0xF0) << 4);
+		u16 h_blank = edid_data[offset+3] | ((edid_data[offset+4] & 0x0F) << 8);
+		u16 hfp = edid_data[offset+8];
+		u16 hpw = edid_data[offset+9];
+
+		u16 v_active = edid_data[offset+5] | ((edid_data[offset+7] & 0xF0) << 4);
+		u16 v_blank = edid_data[offset+6] | ((edid_data[offset+7] & 0x0F) << 8);
+		u16 vfp = (edid_data[offset+10] >> 4) & 0x0F;
+		u16 vpw = edid_data[offset+10] & 0x0F;
+		u8 vfp_hi = (edid_data[offset+11] >> 6) & 0x03;
+		u8 vpw_hi = (edid_data[offset+11] >> 4) & 0x03;
+		vfp |= vfp_hi << 4;
+		vpw |= vpw_hi << 4;
+
+		u16 hbp = h_blank - hpw - hfp;
+		u16 vbp = v_blank - vpw - vfp;
+
+		u16 h_total = h_active + h_blank;
+		u16 v_total = v_active + v_blank;
+		u16 fps = (pixel_clock * 10000) / (h_total * v_total);
+
+		pr_debug("original edid:");
+		pr_debug("  Pixel Clock: %d kHz, fps=%d", pixel_clock * 10, fps);
+		pr_debug("  h_active=%d, h_blank=%d, h_total=%d",h_active, h_blank, h_total);
+		pr_debug("  v_active=%d,v_blank=%d, v_total=%d",v_active, v_blank, v_total);
+		pr_debug("  hfp: %d, hpw: %d, hbp: %d", hfp, hpw, hbp);
+		pr_debug("  vfp: %d, vpw: %d, vbp: %d", vfp, vpw, vbp);
+
+		/* Adjust the blanking area size to min_vblank */
+		v_blank = lt9611->min_vblank;
+		v_total = v_active + v_blank;
+		pixel_clock = h_total * v_total * fps / 10000;
+
+		/* update pixel_clock */
+		edid_data[offset] = pixel_clock & 0xFF;
+		edid_data[offset+1] = (pixel_clock >> 8) & 0xFF;
+
+		/* update v_blank */
+		edid_data[offset+6] = v_blank & 0xFF;
+		edid_data[offset+7] = (edid_data[offset+7] & 0xF0) | ((v_blank >> 8) & 0x0F);
+
+		vbp = v_blank - vpw - vfp;
+		pr_debug("changed edid:");
+		pr_debug("  Pixel Clock: %d kHz, fps=%d", pixel_clock * 10, fps);
+		pr_debug("  h_active=%d, h_blank=%d, h_total=%d",h_active, h_blank, h_total);
+		pr_debug("  v_active=%d,v_blank=%d, v_total=%d",v_active, v_blank, v_total);
+		pr_debug("  hfp: %d, hpw: %d, hbp: %d", hfp, hpw, hbp);
+		pr_debug("  vfp: %d, vpw: %d, vbp: %d", vfp, vpw, vbp);
+
+		/* Recalculate EDID checksum */
+		u8 checksum = 0;
+		for (int i = 0; i < 127; i++) {
+			checksum += edid_data[i];
+		}
+		edid_data[127] = (u8)(256 - (checksum & 0xFF));
+	}
 }
 
 static int lt9611_get_edid_block(void *data, u8 *buf, unsigned int block, size_t len)
@@ -1763,6 +1838,8 @@ static int lt9611_get_edid_block(void *data, u8 *buf, unsigned int block, size_t
 
 	if (block == 0) {
 		memcpy(buf, lt9611->edid_buf, len);
+		if (lt9611->min_vblank != 0)
+			modify_edid_timing(buf, lt9611);
 	} else {
 		memcpy(buf, lt9611->edid_buf + len, len);
 		lt9611->edid_read_sts = false;
@@ -1800,6 +1877,9 @@ static int lt9611_parse_dt(struct device *dev,
 
 	lt9611->audio_support = of_property_read_bool(dev->of_node, "lt,audio-support");
 	dev_info(lt9611->dev, "audio support = %d\n", lt9611->audio_support);
+
+	if(of_property_read_u16(dev->of_node, "min-vblank", &lt9611->min_vblank))
+		lt9611->min_vblank = 0;
 
 	return 0;
 }
