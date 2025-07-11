@@ -1266,6 +1266,7 @@
 		ocb-gpios = <&tlmm 41 0>;
 		vcc-supply = <&vreg_lt9611_3p3>;
 		config-mode = "edidAdaptiveResolution";
+		min-vblank = /bits/ 16 <0x19>;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
