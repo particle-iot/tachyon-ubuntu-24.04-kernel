@@ -185,8 +185,17 @@ CONFIG_ARM_TEGRA20_CPUFREQ                      policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': '-'}>
 CONFIG_ARM_TI_CPUFREQ                           policy<{'arm64': '-'}>
 CONFIG_ATH11K_COREDUMP                          policy<{'arm64': 'n'}>
+CONFIG_AX88179B                                 policy<{'arm64': 'y'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': '-'}>
 CONFIG_BACKLIGHT_QCOM_WLED                      policy<{'arm64': 'y'}>
+CONFIG_BCMDHD                                   policy<{'arm64': 'm'}>
+CONFIG_BCMDHD_FW_PATH                           policy<{'arm64': '"/lib/firmware/fw_bcmdhd.bin"'}>
+CONFIG_BCMDHD_NVRAM_PATH                        policy<{'arm64': '"/lib/firmware/nvram.txt"'}>
+CONFIG_BCMDHD_OOB                               policy<{'arm64': 'y'}>
+CONFIG_BCMDHD_PCIE                              policy<{'arm64': 'n'}>
+CONFIG_BCMDHD_SDIO                              policy<{'arm64': 'y'}>
+CONFIG_BCMDHD_SDIO_IRQ                          policy<{'arm64': 'n'}>
+CONFIG_BCMDHD_USB                               policy<{'arm64': 'n'}>
 CONFIG_BERLIN2_ADC                              policy<{'arm64': '-'}>
 CONFIG_CAN_BXCAN                                policy<{'arm64': '-'}>
 CONFIG_CAN_RCAR                                 policy<{'arm64': '-'}>
@@ -2023,6 +2032,7 @@ CONFIG_VIDEO_TI_J721E_CSI2RX                    policy<{'arm64': '-'}>
 CONFIG_VIDEO_WAVE_VPU                           policy<{'arm64': '-'}>
 CONFIG_VISCONTI_WATCHDOG                        policy<{'arm64': '-'}>
 CONFIG_W1_MASTER_MXC                            policy<{'arm64': '-'}>
+CONFIG_WLAN_VENDOR_BCMDHD                       policy<{'arm64': 'y'}>
 CONFIG_XGENE_DMA                                policy<{'arm64': '-'}>
 CONFIG_XGENE_PMU                                policy<{'arm64': '-'}>
 CONFIG_XGENE_SLIMPRO_MBOX                       policy<{'arm64': '-'}>
