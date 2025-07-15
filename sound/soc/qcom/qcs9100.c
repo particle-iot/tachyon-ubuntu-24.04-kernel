@@ -19,7 +19,7 @@
 #include "common.h"
 #include "sdw.h"
 
-#define DRIVER_NAME		"qcs9100"
+#define DRIVER_NAME		"qcs9075"
 #define WCN_CDC_SLIM_RX_CH_MAX	2
 #define WCN_CDC_SLIM_TX_CH_MAX	2
 #define NAME_SIZE	32
@@ -181,6 +181,24 @@ static int qcs9100_snd_hw_free(struct snd_pcm_substream *substream)
 				    &data->stream_prepared[cpu_dai->id]);
 }
 
+static int qcs9100_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	unsigned int fmt = SND_SOC_DAIFMT_BP_FP;
+
+	switch (cpu_dai->id) {
+	case PRIMARY_MI2S_RX ... QUATERNARY_MI2S_TX:
+	case PRIMARY_SDR_MI2S_RX ... QUINARY_SDR_MI2S_TX:
+		snd_soc_dai_set_fmt(cpu_dai, fmt);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget qcs8300_dapm_widgets[] = {
 	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
 	SND_SOC_DAPM_PINCTRL("STUB_AIF2_PINCTRL", "stub_aif2_active", "stub_aif2_sleep"),
@@ -219,20 +237,15 @@ static const struct snd_soc_dapm_route qcs9100_dapm_routes[] = {
 
 static const struct snd_soc_dapm_widget qcs9075_dapm_widgets[] = {
 	SND_SOC_DAPM_PINCTRL("MI2S_OUT_PINCTRL", "mi2s_aud_out_active", "mi2s_aud_out_sleep"),
-	SND_SOC_DAPM_PINCTRL("STUB_AIF0_PINCTRL", "stub_aif0_active", "stub_aif0_sleep"),
-	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
 };
 
 static const struct snd_soc_dapm_route qcs9075_dapm_routes[] = {
 	{"Speaker", NULL, "MI2S_OUT_PINCTRL"},
 	{"DMic", NULL, "MI2S_OUT_PINCTRL"},
-	{"STUB_AIF0_RX", NULL, "STUB_AIF0_PINCTRL"},
-	{"STUB_AIF0_TX", NULL, "STUB_AIF0_PINCTRL"},
-	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
-	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
 };
 
 static const struct snd_soc_ops qcs9100_be_ops = {
+	.startup = qcs9100_snd_startup,
 	.hw_params = qcs9100_snd_hw_params,
 	.hw_free = qcs9100_snd_hw_free,
 	.prepare = qcs9100_snd_prepare,
@@ -268,7 +281,7 @@ static void qcs9100_add_be_ops(struct snd_soc_card *card)
 	int i;
 
 	for_each_card_prelinks(card, i, link) {
-		if (link->no_pcm == 1) {
+		if (link->no_pcm == 1 || link->num_codecs) {
 			link->init = qcs9100_snd_init;
 			link->be_hw_params_fixup = qcs9100_be_hw_params_fixup;
 			link->ops = &qcs9100_be_ops;
