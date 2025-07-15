@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "cam_req_mgr_workq.h"
@@ -184,7 +184,7 @@ void cam_req_mgr_process_workq(struct work_struct *w)
 			cam_common_util_thread_switch_delay_detect(
 				workq->workq_name, "execution", cb,
 				sched_start_time,
-				CAM_WORKQ_SCHEDULE_TIME_THRESHOLD);
+				CAM_WORKQ_EXE_TIME_THRESHOLD);
 			CAM_DBG(CAM_CRM, "processed task %pK free_cnt %d",
 				task, atomic_read(&workq->task.free_cnt));
 			WORKQ_ACQUIRE_LOCK(workq, flags);

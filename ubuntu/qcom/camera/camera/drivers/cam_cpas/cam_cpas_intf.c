@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -166,7 +166,6 @@ const char *cam_cpas_axi_util_path_type_to_string(
 		return "CPAS_PATH_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_axi_util_path_type_to_string);
 
 const char *cam_cpas_axi_util_trans_type_to_string(
 	uint32_t transac_type)
@@ -180,7 +179,6 @@ const char *cam_cpas_axi_util_trans_type_to_string(
 		return "TRANSAC_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_axi_util_trans_type_to_string);
 
 const char *cam_cpas_axi_util_drv_vote_lvl_to_string(
 	uint32_t vote_lvl)
@@ -194,7 +192,6 @@ const char *cam_cpas_axi_util_drv_vote_lvl_to_string(
 		return "VOTE_LVL_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_axi_util_drv_vote_lvl_to_string);
 
 const char *cam_cpas_util_vote_type_to_string(enum cam_cpas_vote_type vote_type)
 {
@@ -207,7 +204,6 @@ const char *cam_cpas_util_vote_type_to_string(enum cam_cpas_vote_type vote_type)
 		return "VOTE_TYPE_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_util_vote_type_to_string);
 
 int cam_cpas_query_drv_enable(bool *is_ddr_drv_enabled, bool *is_clk_drv_enabled)
 {
@@ -236,7 +232,6 @@ int cam_cpas_query_drv_enable(bool *is_ddr_drv_enabled, bool *is_clk_drv_enabled
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_cpas_query_drv_enable);
 
 int cam_cpas_csid_process_resume(uint32_t csid_idx)
 {
@@ -261,7 +256,6 @@ int cam_cpas_csid_process_resume(uint32_t csid_idx)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_csid_process_resume);
 
 
 int cam_cpas_csid_input_core_info_update(int csid_idx, int sfe_idx, bool set_port)
@@ -292,7 +286,6 @@ int cam_cpas_csid_input_core_info_update(int csid_idx, int sfe_idx, bool set_por
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_csid_input_core_info_update);
 
 int cam_cpas_dump_camnoc_buff_fill_info(uint32_t client_handle)
 {
@@ -317,7 +310,6 @@ int cam_cpas_dump_camnoc_buff_fill_info(uint32_t client_handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_dump_camnoc_buff_fill_info);
 
 bool cam_cpas_is_part_supported(uint32_t flag, uint32_t hw_map, uint32_t part_info)
 {
@@ -400,7 +392,6 @@ bool cam_cpas_is_feature_supported(uint32_t flag, uint32_t hw_map,
 end:
 	return supported;
 }
-EXPORT_SYMBOL(cam_cpas_is_feature_supported);
 
 int cam_cpas_get_cpas_hw_version(uint32_t *hw_version)
 {
@@ -490,7 +481,6 @@ int cam_cpas_get_hw_info(uint32_t *camera_family,
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_cpas_get_hw_info);
 
 static inline enum cam_cpas_reg_base __cam_cpas_get_internal_reg_base(
 	enum cam_cpas_regbase_types reg_base)
@@ -543,7 +533,6 @@ int cam_cpas_reg_write(uint32_t client_handle, enum cam_cpas_regbase_types reg_b
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_reg_write);
 
 int cam_cpas_reg_read(uint32_t client_handle, enum cam_cpas_regbase_types reg_base,
 	uint32_t offset, bool mb, uint32_t *value)
@@ -594,7 +583,6 @@ int cam_cpas_reg_read(uint32_t client_handle, enum cam_cpas_regbase_types reg_ba
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_reg_read);
 
 int cam_cpas_update_axi_vote(uint32_t client_handle,
 	struct cam_axi_vote *axi_vote)
@@ -630,7 +618,6 @@ int cam_cpas_update_axi_vote(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_update_axi_vote);
 
 int cam_cpas_update_ahb_vote(uint32_t client_handle,
 	struct cam_ahb_vote *ahb_vote)
@@ -661,7 +648,6 @@ int cam_cpas_update_ahb_vote(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_update_ahb_vote);
 
 int cam_cpas_stop(uint32_t client_handle)
 {
@@ -689,7 +675,6 @@ int cam_cpas_stop(uint32_t client_handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_stop);
 
 int cam_cpas_start(uint32_t client_handle,
 	struct cam_ahb_vote *ahb_vote, struct cam_axi_vote *axi_vote)
@@ -725,7 +710,6 @@ int cam_cpas_start(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_start);
 
 void cam_cpas_log_votes(bool ddr_only)
 {
@@ -748,7 +732,6 @@ void cam_cpas_log_votes(bool ddr_only)
 	}
 
 }
-EXPORT_SYMBOL(cam_cpas_log_votes);
 
 int cam_cpas_select_qos_settings(uint32_t selection_mask)
 {
@@ -773,7 +756,6 @@ int cam_cpas_select_qos_settings(uint32_t selection_mask)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_select_qos_settings);
 
 int cam_cpas_enable_tpg_mux_sel(uint32_t tpg_mux_sel)
 {
@@ -798,7 +780,6 @@ int cam_cpas_enable_tpg_mux_sel(uint32_t tpg_mux_sel)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_enable_tpg_mux_sel);
 
 int cam_cpas_notify_event(const char *identifier_string,
 	int32_t identifier_value)
@@ -829,7 +810,6 @@ int cam_cpas_notify_event(const char *identifier_string,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_notify_event);
 
 int cam_cpas_unregister_client(uint32_t client_handle)
 {
@@ -854,7 +834,6 @@ int cam_cpas_unregister_client(uint32_t client_handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_unregister_client);
 
 int cam_cpas_register_client(
 	struct cam_cpas_register_params *register_params)
@@ -880,7 +859,6 @@ int cam_cpas_register_client(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_register_client);
 
 int cam_cpas_get_scid(
 	enum cam_sys_cache_config_types type)
@@ -904,7 +882,6 @@ int cam_cpas_get_scid(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_get_scid);
 
 int cam_cpas_prepare_subpart_info(enum cam_subparts_index idx, uint32_t num_subpart_available,
 	uint32_t num_subpart_functional)
@@ -961,7 +938,6 @@ int cam_cpas_prepare_subpart_info(enum cam_subparts_index idx, uint32_t num_subp
 	mutex_unlock(&cpas_hw->hw_mutex);
 	return 0;
 }
-EXPORT_SYMBOL(cam_cpas_prepare_subpart_info);
 
 int cam_cpas_activate_llcc(
 	enum cam_sys_cache_config_types type)
@@ -987,7 +963,6 @@ int cam_cpas_activate_llcc(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_activate_llcc);
 
 int cam_cpas_deactivate_llcc(
 	enum cam_sys_cache_config_types type)
@@ -1013,7 +988,6 @@ int cam_cpas_deactivate_llcc(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_deactivate_llcc);
 
 int cam_cpas_configure_staling_llcc(
 	enum cam_sys_cache_config_types type,
@@ -1051,7 +1025,6 @@ int cam_cpas_configure_staling_llcc(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_configure_staling_llcc);
 
 int cam_cpas_notif_increment_staling_counter(
 	enum cam_sys_cache_config_types type)
@@ -1079,7 +1052,6 @@ int cam_cpas_notif_increment_staling_counter(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_notif_increment_staling_counter);
 
 bool cam_cpas_is_notif_staling_supported(void)
 {
@@ -1089,7 +1061,6 @@ bool cam_cpas_is_notif_staling_supported(void)
 		return false;
 	#endif
 }
-EXPORT_SYMBOL(cam_cpas_is_notif_staling_supported);
 
 bool cam_cpas_query_domain_id_security_support(void)
 {
@@ -1107,7 +1078,6 @@ bool cam_cpas_query_domain_id_security_support(void)
 
 	return soc_private->domain_id_info.domain_id_supported;
 }
-EXPORT_SYMBOL(cam_cpas_query_domain_id_security_support);
 
 int cam_cpas_enable_clks_for_domain_id(bool enable)
 {
@@ -1127,7 +1097,6 @@ int cam_cpas_enable_clks_for_domain_id(bool enable)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_enable_clks_for_domain_id);
 
 int cam_cpas_dump_state_monitor_info(struct cam_req_mgr_dump_info *info)
 {
@@ -1147,7 +1116,6 @@ int cam_cpas_dump_state_monitor_info(struct cam_req_mgr_dump_info *info)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_dump_state_monitor_info);
 
 #ifdef CONFIG_DYNAMIC_FD_PORT_CONFIG
 static int cam_cpas_handle_fd_port_config(uint32_t is_secure)

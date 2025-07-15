@@ -22,6 +22,10 @@
 #define CAM_VFE_CAMIF_IRQ_SOF_DEBUG_CNT_MAX            2
 #define CAM_VFE_LEN_LOG_BUF                            256
 
+#define CAM_VFE_TOP_IRQ_REG0                           0
+#define CAM_VFE_TOP_IRQ_REG1                           1
+#define CAM_VFE_TOP_IRQ_MAX                            2
+
 struct cam_vfe_top_ver4_common_data {
 	struct cam_hw_intf                         *hw_intf;
 	struct cam_vfe_top_ver4_reg_offset_common  *common_reg;
@@ -54,6 +58,14 @@ enum cam_vfe_top_ver4_fsm_state {
 	VFE_TOP_VER4_FSM_EPOCH,
 	VFE_TOP_VER4_FSM_EOF,
 	VFE_TOP_VER4_FSM_MAX,
+};
+/*
+ *enum cam_vfe_top_ver4_stored_irq_masks: define frame/error irq mask parameters
+ */
+enum cam_vfe_top_ver4_stored_irq_masks {
+	VFE_TOP_VER4_FRAME_IRQ_MASK = 0,
+	VFE_TOP_VER4_ERR_MASK,
+	VFE_TOP_VER4_MAX_STORED_MASKS,
 };
 
 struct cam_vfe_mux_ver4_data {
@@ -104,6 +116,7 @@ struct cam_vfe_mux_ver4_data {
 	bool                               enable_sof_irq_debug;
 	bool                               handle_camif_irq;
 	uint32_t                           hw_ctxt_mask;
+	uint32_t  stored_irq_masks[VFE_TOP_VER4_MAX_STORED_MASKS][CAM_VFE_TOP_IRQ_MAX];
 };
 
 static inline int cam_vfe_top_ver4_get_hw_ctxt_from_irq_status(
@@ -331,7 +344,6 @@ static int cam_vfe_top_ver4_enable_irq(
 	struct cam_vfe_mux_ver4_data   *rsrc_data;
 	int                             i, rc = 0;
 	struct cam_vfe_res_irq_info    *irq_args;
-	uint32_t                        err_irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
 
 	if (!res_irq_mask) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -354,14 +366,13 @@ static int cam_vfe_top_ver4_enable_irq(
 		/* Perport works with csid only.
 		 * No need to subscribe frame irq at ife side, it is already taken care from csid
 		 */
-		err_irq_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0] = rsrc_data->reg_data->error_irq_mask;
 
 		if (!vfe_res->is_per_port_acquire && !rsrc_data->irq_err_handle &&
-			!vfe_res->is_per_port_start) {
+			!vfe_res->is_per_port_start && irq_args->enable_irq) {
 			rsrc_data->irq_err_handle = cam_irq_controller_subscribe_irq(
 				rsrc_data->vfe_irq_controller,
 				CAM_IRQ_PRIORITY_0,
-				err_irq_mask,
+				rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK],
 				vfe_res,
 				cam_vfe_ver4_err_irq_top_half,
 				vfe_res->bottom_half_handler,
@@ -381,7 +392,7 @@ static int cam_vfe_top_ver4_enable_irq(
 					rsrc_data->vfe_irq_controller,
 					rsrc_data->irq_err_handle,
 					irq_args->enable_irq,
-					err_irq_mask);
+					rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK]);
 
 				if (rc) {
 					CAM_ERR(CAM_ISP, "Error IRQ handle update failure");
@@ -394,7 +405,8 @@ static int cam_vfe_top_ver4_enable_irq(
 
 		CAM_DBG(CAM_ISP, "VFE:%d Res: %s irq enable update done err_irq_mask:0x%x",
 			vfe_res->hw_intf->hw_idx,
-			vfe_res->res_name, err_irq_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0]);
+			vfe_res->res_name,
+			rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK][CAM_VFE_TOP_IRQ_REG0]);
 		}
 
 	return rc;
@@ -1125,6 +1137,7 @@ int cam_vfe_top_ver4_release(void *device_priv,
 	struct cam_isp_resource_node            *mux_res;
 	struct cam_vfe_top_ver4_priv            *top_priv;
 	struct cam_vfe_mux_ver4_data            *vfe_priv = NULL;
+	uint32_t i, j;
 
 	if (!device_priv || !release_args) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -1146,6 +1159,12 @@ int cam_vfe_top_ver4_release(void *device_priv,
 	memset(&vfe_priv->top_priv->sof_ts_reg_addr, 0,
 		sizeof(vfe_priv->top_priv->sof_ts_reg_addr));
 	vfe_priv->hw_ctxt_mask = 0;
+
+	for (i = 0; i < VFE_TOP_VER4_MAX_STORED_MASKS; i++) {
+		for (j = 0; j < CAM_VFE_TOP_IRQ_MAX; j++)
+			vfe_priv->stored_irq_masks[i][j] = 0;
+	}
+
 	mux_res->res_state = CAM_ISP_RESOURCE_STATE_AVAILABLE;
 
 	return 0;
@@ -2145,8 +2164,6 @@ static int cam_vfe_resource_start(
 	struct cam_vfe_mux_ver4_data   *rsrc_data;
 	uint32_t                        val = 0, epoch_factor = 50;
 	int                             rc = 0;
-	uint32_t                        err_irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
-	uint32_t                        irq_mask[CAM_IFE_IRQ_REGISTERS_MAX];
 
 	if (!vfe_res) {
 		CAM_ERR(CAM_ISP, "Error, Invalid input arguments");
@@ -2159,8 +2176,6 @@ static int cam_vfe_resource_start(
 		return -EINVAL;
 	}
 
-	memset(err_irq_mask, 0, sizeof(err_irq_mask));
-	memset(irq_mask, 0, sizeof(irq_mask));
 	rsrc_data = (struct cam_vfe_mux_ver4_data *)vfe_res->res_priv;
 
 	/* config debug status registers */
@@ -2218,6 +2233,23 @@ skip_core_cfg:
 			rsrc_data->common_reg->diag_config);
 	}
 
+	rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK][CAM_VFE_TOP_IRQ_REG0] =
+		rsrc_data->reg_data->error_irq_mask;
+
+	rsrc_data->stored_irq_masks[VFE_TOP_VER4_FRAME_IRQ_MASK][CAM_VFE_TOP_IRQ_REG1] =
+		rsrc_data->reg_data->sof_irq_mask | rsrc_data->reg_data->epoch0_irq_mask |
+		rsrc_data->reg_data->eof_irq_mask;
+
+	rsrc_data->n_frame_irqs = hweight32(
+		rsrc_data->stored_irq_masks[VFE_TOP_VER4_FRAME_IRQ_MASK]
+		[CAM_VFE_TOP_IRQ_REG1]);
+
+	CAM_DBG(CAM_ISP, "stored_err_mask: 0x%x 0x%x frame_mask  0x%x 0x%x",
+		rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK][CAM_VFE_TOP_IRQ_REG0],
+		rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK][CAM_VFE_TOP_IRQ_REG1],
+		rsrc_data->stored_irq_masks[VFE_TOP_VER4_FRAME_IRQ_MASK][CAM_VFE_TOP_IRQ_REG0],
+		rsrc_data->stored_irq_masks[VFE_TOP_VER4_FRAME_IRQ_MASK][CAM_VFE_TOP_IRQ_REG1]);
+
 	if (vfe_res->is_per_port_start) {
 		CAM_DBG(CAM_ISP, "Skipping irq subscribe for resources that are not updated");
 		goto skip_irq_subscribe;
@@ -2236,18 +2268,11 @@ skip_core_cfg:
 		!rsrc_data->handle_camif_irq))
 		goto skip_frame_irq_subscribe;
 
-	irq_mask[rsrc_data->common_reg->frame_timing_irq_reg_idx] =
-		rsrc_data->reg_data->sof_irq_mask | rsrc_data->reg_data->epoch0_irq_mask |
-		rsrc_data->reg_data->eof_irq_mask;
-
-	rsrc_data->n_frame_irqs =
-		hweight32(irq_mask[rsrc_data->common_reg->frame_timing_irq_reg_idx]);
-
 	if (!rsrc_data->frame_irq_handle) {
 		rsrc_data->frame_irq_handle = cam_irq_controller_subscribe_irq(
 			rsrc_data->vfe_irq_controller,
 			CAM_IRQ_PRIORITY_1,
-			irq_mask,
+			rsrc_data->stored_irq_masks[VFE_TOP_VER4_FRAME_IRQ_MASK],
 			vfe_res,
 			vfe_res->top_half_handler,
 			vfe_res->bottom_half_handler,
@@ -2264,13 +2289,12 @@ skip_core_cfg:
 	}
 
 skip_frame_irq_subscribe:
-	err_irq_mask[CAM_IFE_IRQ_CAMIF_REG_STATUS0] = rsrc_data->reg_data->error_irq_mask;
 
 	if (!rsrc_data->irq_err_handle) {
 		rsrc_data->irq_err_handle = cam_irq_controller_subscribe_irq(
 			rsrc_data->vfe_irq_controller,
 			CAM_IRQ_PRIORITY_0,
-			err_irq_mask,
+			rsrc_data->stored_irq_masks[VFE_TOP_VER4_ERR_MASK],
 			vfe_res,
 			cam_vfe_ver4_err_irq_top_half,
 			vfe_res->bottom_half_handler,

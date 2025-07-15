@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -508,7 +508,6 @@ err:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_get_io_buf);
 
 int cam_mem_get_cpu_buf(int32_t buf_handle, uintptr_t *vaddr_ptr, size_t *len)
 {
@@ -563,7 +562,6 @@ end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_get_cpu_buf);
 
 int cam_mem_mgr_cache_ops(struct cam_mem_cache_ops_cmd *cmd)
 {
@@ -649,7 +647,6 @@ end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_cache_ops);
 
 int cam_mem_mgr_cpu_access_op(struct cam_mem_cpu_access_op *cmd)
 {
@@ -735,7 +732,6 @@ end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_cpu_access_op);
 
 #if IS_REACHABLE(CONFIG_DMABUF_HEAPS)
 
@@ -1942,7 +1938,6 @@ void cam_mem_put_cpu_buf(int32_t buf_handle)
 end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 }
-EXPORT_SYMBOL(cam_mem_put_cpu_buf);
 
 void cam_mem_put_kref(int32_t buf_handle)
 {
@@ -1984,7 +1979,6 @@ warn:
 	CAM_ERR(CAM_MEM, "Buffer unmap called from UMD before KMD , not unmapping!");
 
 }
-EXPORT_SYMBOL(cam_mem_put_kref);
 
 int cam_mem_mgr_release(struct cam_mem_mgr_release_cmd *cmd)
 {
@@ -2199,7 +2193,6 @@ map_fail:
 ion_fail:
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_request_mem);
 
 int cam_mem_mgr_release_mem(struct cam_mem_mgr_memory_desc *inp)
 {
@@ -2250,7 +2243,6 @@ end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_release_mem);
 
 int cam_mem_mgr_reserve_memory_region(struct cam_mem_mgr_request_desc *inp,
 	enum cam_smmu_region_id region,
@@ -2365,7 +2357,6 @@ kmap_fail:
 ion_fail:
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_reserve_memory_region);
 
 static void *cam_mem_mgr_user_dump_buf(
 	void *dump_struct, uint8_t *addr_ptr)
@@ -2553,7 +2544,6 @@ end:
 	mutex_unlock(&tbl.bufq[idx].q_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_free_memory_region);
 
 #ifdef CONFIG_CAM_PRESIL
 struct dma_buf *cam_mem_mgr_get_dma_buf(int fd)
@@ -2775,7 +2765,6 @@ int cam_mem_mgr_send_all_buffers_to_presil(int32_t iommu_hdl)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_mem_mgr_send_all_buffers_to_presil);
 
 int cam_mem_mgr_retrieve_buffer_from_presil(int32_t buf_handle, uint32_t buf_size,
 	uint32_t offset, int32_t iommu_hdl)

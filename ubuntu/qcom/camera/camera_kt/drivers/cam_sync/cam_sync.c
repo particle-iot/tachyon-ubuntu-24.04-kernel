@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -1167,6 +1167,16 @@ static int cam_sync_component_bind(struct device *dev,
 		goto vdev_fail;
 	}
 
+	sync_dev->work_queue = alloc_workqueue(CAM_SYNC_WORKQUEUE_NAME,
+		WQ_HIGHPRI | WQ_UNBOUND, 1);
+
+	if (!sync_dev->work_queue) {
+		CAM_ERR(CAM_SYNC,
+			"Error: high priority work queue creation failed");
+		rc = -ENOMEM;
+		goto workq_alloc_fail;
+	}
+
 	rc = cam_sync_media_controller_init(sync_dev, pdev);
 	if (rc < 0)
 		goto mcinit_fail;
@@ -1206,16 +1216,6 @@ static int cam_sync_component_bind(struct device *dev,
 	 */
 	set_bit(0, sync_dev->bitmap);
 
-	sync_dev->work_queue = alloc_workqueue(CAM_SYNC_WORKQUEUE_NAME,
-		WQ_HIGHPRI | WQ_UNBOUND, 1);
-
-	if (!sync_dev->work_queue) {
-		CAM_ERR(CAM_SYNC,
-			"Error: high priority work queue creation failed");
-		rc = -ENOMEM;
-		goto v4l2_fail;
-	}
-
 	trigger_cb_without_switch = false;
 	cam_sync_create_debugfs();
 #if IS_REACHABLE(CONFIG_MSM_GLOBAL_SYNX)
@@ -1223,17 +1223,21 @@ static int cam_sync_component_bind(struct device *dev,
 	cam_sync_configure_synx_obj(&sync_dev->params);
 	rc = cam_sync_register_synx_bind_ops(&sync_dev->params);
 	if (rc)
-		goto v4l2_fail;
+		goto video_unregister;
 #endif
 	CAM_DBG(CAM_SYNC, "Component bound successfully");
 	return rc;
 
+video_unregister:
+	video_unregister_device(sync_dev->vdev);
 v4l2_fail:
 	v4l2_device_unregister(sync_dev->vdev->v4l2_dev);
 register_fail:
 	cam_sync_media_controller_cleanup(sync_dev);
 mcinit_fail:
-	video_unregister_device(sync_dev->vdev);
+	flush_workqueue(sync_dev->work_queue);
+	destroy_workqueue(sync_dev->work_queue);
+workq_alloc_fail:
 	video_device_release(sync_dev->vdev);
 vdev_fail:
 	mutex_destroy(&sync_dev->table_lock);

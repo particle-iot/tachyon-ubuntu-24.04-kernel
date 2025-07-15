@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef CAM_ICP_HW_MGR_H
@@ -161,7 +162,10 @@ struct cam_icp_clk_bw_req_internal_v2 {
 	uint32_t rt_flag;
 	uint32_t reserved;
 	uint32_t num_paths;
-	struct cam_axi_per_path_bw_vote axi_path[CAM_ICP_MAX_PER_PATH_VOTES];
+	union {
+		struct cam_axi_per_path_bw_vote axi_path[CAM_ICP_MAX_PER_PATH_VOTES];
+		__DECLARE_FLEX_ARRAY(struct cam_axi_per_path_bw_vote, axi_path_flex);
+	};
 };
 
 /**
@@ -235,7 +239,6 @@ struct cam_ctx_clk_info {
  * @chain_ctx: Peer context
  * @hfi_frame_process: Frame process command
  * @wait_complete: Completion info
- * @temp_payload: Payload for destroy handle data
  * @ctx_id: Context Id
  * @bw_config_version: BW config version indicator
  * @clk_info: Current clock info of a context
@@ -257,7 +260,6 @@ struct cam_icp_hw_ctx_data {
 	struct cam_icp_hw_ctx_data *chain_ctx;
 	struct hfi_frame_process_info hfi_frame_process;
 	struct completion wait_complete;
-	struct ipe_bps_destroy temp_payload;
 	uint32_t ctx_id;
 	uint32_t bw_config_version;
 	struct cam_ctx_clk_info clk_info;

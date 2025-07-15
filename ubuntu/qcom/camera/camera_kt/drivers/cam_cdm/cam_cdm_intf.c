@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -161,7 +162,6 @@ int cam_cdm_get_iommu_handle(char *identifier,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_get_iommu_handle);
 
 int cam_cdm_acquire(struct cam_cdm_acquire_data *data)
 {
@@ -220,7 +220,6 @@ end:
 	}
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_acquire);
 
 struct cam_cdm_utils_ops *cam_cdm_publish_ops(void)
 {
@@ -233,7 +232,6 @@ struct cam_cdm_utils_ops *cam_cdm_publish_ops(void)
 
 	return cam_cdm_get_ops(0, &cdm_version, true);
 }
-EXPORT_SYMBOL(cam_cdm_publish_ops);
 
 int cam_cdm_release(uint32_t handle)
 {
@@ -267,7 +265,6 @@ int cam_cdm_release(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_release);
 
 
 int cam_cdm_submit_bls(uint32_t handle, struct cam_cdm_bl_request *data)
@@ -309,7 +306,6 @@ int cam_cdm_submit_bls(uint32_t handle, struct cam_cdm_bl_request *data)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_submit_bls);
 
 int cam_cdm_stream_on(uint32_t handle)
 {
@@ -343,7 +339,6 @@ int cam_cdm_stream_on(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_stream_on);
 
 int cam_cdm_stream_off(uint32_t handle)
 {
@@ -375,7 +370,6 @@ int cam_cdm_stream_off(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_stream_off);
 
 int cam_cdm_reset_hw(uint32_t handle)
 {
@@ -409,7 +403,6 @@ int cam_cdm_reset_hw(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_reset_hw);
 
 int cam_cdm_flush_hw(uint32_t handle)
 {
@@ -443,7 +436,6 @@ int cam_cdm_flush_hw(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_flush_hw);
 
 int cam_cdm_handle_error(uint32_t handle)
 {
@@ -478,7 +470,6 @@ int cam_cdm_handle_error(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_handle_error);
 
 int cam_cdm_detect_hang_error(uint32_t handle)
 {
@@ -505,7 +496,6 @@ int cam_cdm_detect_hang_error(uint32_t handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cdm_detect_hang_error);
 
 int cam_cdm_dump_debug_registers(uint32_t handle)
 {

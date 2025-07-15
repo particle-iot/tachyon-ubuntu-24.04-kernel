@@ -340,7 +340,7 @@ int cam_ife_find_reconfig_required(void *hw_mgr_priv,
 	bool reconfig = false;
 	int i, j;
 
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		if (ife_hw_mgr->virt_ctx_pool[i].is_offline &&
 			ife_hw_mgr->virt_ctx_pool[i].ctx_in_use) {
 			offline_hw_mgr_ctx = &ife_hw_mgr->virt_ctx_pool[i];
@@ -375,7 +375,7 @@ int cam_ife_mgr_required_hw(void *hw_mgr_priv, bool stop)
 	total_bw = 0;
 	max_bw = 0;
 	cnt = 0;
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		if (ife_hw_mgr->virt_ctx_pool[i].ctx_in_use &&
 				ife_hw_mgr->virt_ctx_pool[i].is_offline) {
 			current_bw = cam_ife_mgr_calc_bw(
@@ -2413,7 +2413,6 @@ static int cam_ife_mgr_stop_hw_res_stream_grp(
 		if (!hw_mgr_res)
 			continue;
 
-		CAM_INFO(CAM_ISP, "i:%d", i);
 		cam_ife_hw_mgr_stop_hw_res(hw_mgr_res);
 	}
 

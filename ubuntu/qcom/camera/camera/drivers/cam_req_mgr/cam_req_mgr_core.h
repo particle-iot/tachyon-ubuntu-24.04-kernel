@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_REQ_MGR_CORE_H_
@@ -41,7 +41,7 @@
 
 #define SYNC_LINK_SOF_CNT_MAX_LMT 1
 
-#define MAXIMUM_LINKS_CAPACITY     8
+#define MAXIMUM_LINKS_CAPACITY     16
 
 #define MAXIMUM_LINKS_PER_SESSION  64
 

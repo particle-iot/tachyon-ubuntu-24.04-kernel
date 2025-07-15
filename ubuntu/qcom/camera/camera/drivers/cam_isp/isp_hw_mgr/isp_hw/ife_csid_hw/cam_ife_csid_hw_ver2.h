@@ -251,6 +251,16 @@ struct cam_ife_csid_ver2_rup_aup_mask {
 };
 
 /*
+ *enum cam_ife_csid_ver2_stored_irq_masks: define top/error/sof_discard mask parameters
+ */
+enum cam_ife_csid_ver2_stored_irq_masks {
+    CAM_IFE_CSID_TOP_MASK,
+    CAM_IFE_CSID_SOF_DISCARD_MASK,
+    CAM_IFE_CSID_ERR_MASK,
+    CAM_IFE_CSID_MAX_STORED_MASKS,
+};
+
+/*
  * struct cam_ife_csid_ver2_path_cfg: place holder for path parameters
  *
  * @error_ts:                 Error timestamp
@@ -282,6 +292,7 @@ struct cam_ife_csid_ver2_rup_aup_mask {
  * @sof_cnt:                  SOF counter
  * @num_frames_discard:       number of frames to discard
  * @epoch_cfg:                Epoch configured value
+ * @stored_irq_masks:         Stored irq mask for each resource path
  * @switch_out_of_sync_cnt:   Sensor out of sync error cnt
  * @sync_mode   :             Sync mode--> master/slave/none
  * @vfr_en   :                flag to indicate if variable frame rate is enabled
@@ -331,6 +342,7 @@ struct cam_ife_csid_ver2_path_cfg {
 	uint32_t                             sof_cnt;
 	uint32_t                             num_frames_discard;
 	uint32_t                             epoch_cfg;
+	uint32_t   stored_irq_masks[CAM_IFE_CSID_MAX_STORED_MASKS][CAM_IFE_CSID_IRQ_REG_MAX];
 	atomic_t                             switch_out_of_sync_cnt;
 	enum cam_isp_hw_sync_mode            sync_mode;
 	bool                                 vfr_en;

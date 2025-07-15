@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_PACKET_UTIL_H_
@@ -59,6 +60,23 @@ int cam_packet_util_get_cmd_mem_addr(int handle, uint32_t **buf_addr,
  */
 int cam_packet_util_validate_packet(struct cam_packet *packet,
 	size_t remain_len);
+
+/**
+ * cam_packet_util_copy_pkt_to_kmd()
+ *
+ * @brief                   Copy packet to KMD memory and validate
+ *
+ * @pakcet_u:               Packet to be validated
+ *
+ * @packet:                 Pointer to packet copied in kernel mem
+ *
+ * @remain_len:             CPU buff length after config offset
+ *
+ * @return:                 0 for success
+ *                          -EINVAL for Fail
+ */
+int cam_packet_util_copy_pkt_to_kmd(struct cam_packet *packet_u,
+	struct cam_packet **packet, size_t remain_len);
 
 /**
  * cam_packet_util_validate_cmd_desc()

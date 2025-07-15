@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -1220,7 +1220,7 @@ static int cam_generic_fence_handle_dma_create(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 
@@ -1272,7 +1272,7 @@ static int cam_generic_fence_handle_dma_release(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 
@@ -1330,7 +1330,7 @@ static int cam_generic_fence_handle_dma_import(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 
@@ -1611,7 +1611,7 @@ static int cam_generic_fence_handle_synx_create(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 		fence_flag = 0;
@@ -1667,7 +1667,7 @@ static int cam_generic_fence_handle_synx_release(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 
@@ -1761,7 +1761,7 @@ static int cam_generic_fence_handle_synx_import(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 		is_sync_obj_signaled = false;
@@ -1945,7 +1945,7 @@ static int cam_generic_fence_handle_sync_create(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		fence_cfg->reason_code = 0;
 
@@ -2153,7 +2153,7 @@ static int cam_generic_fence_handle_sync_release(
 	}
 
 	for (i = 0; i < fence_input_info->num_fences_requested; i++) {
-		fence_cfg = &fence_input_info->fence_cfg[i];
+		fence_cfg = &fence_input_info->fence_cfg_flex[i];
 		fence_input_info->num_fences_processed++;
 		/* Reset fields */
 		fence_cfg->reason_code = 0;
@@ -2796,6 +2796,16 @@ static int cam_sync_component_bind(struct device *dev,
 		goto vdev_fail;
 	}
 
+	sync_dev->work_queue = alloc_workqueue(CAM_SYNC_WORKQUEUE_NAME,
+		WQ_HIGHPRI | WQ_UNBOUND, 1);
+
+	if (!sync_dev->work_queue) {
+		CAM_ERR(CAM_SYNC,
+			"Error: high priority work queue creation failed");
+		rc = -ENOMEM;
+		goto workq_alloc_fail;
+	}
+
 	rc = cam_sync_media_controller_init(sync_dev, pdev);
 	if (rc < 0)
 		goto mcinit_fail;
@@ -2832,22 +2842,12 @@ static int cam_sync_component_bind(struct device *dev,
 	 */
 	set_bit(0, sync_dev->bitmap);
 
-	sync_dev->work_queue = alloc_workqueue(CAM_SYNC_WORKQUEUE_NAME,
-		WQ_HIGHPRI | WQ_UNBOUND, 1);
-
-	if (!sync_dev->work_queue) {
-		CAM_ERR(CAM_SYNC,
-			"Error: high priority work queue creation failed");
-		rc = -ENOMEM;
-		goto v4l2_fail;
-	}
-
 	/* Initialize dma fence driver */
 	rc = cam_dma_fence_driver_init();
 	if (rc) {
 		CAM_ERR(CAM_SYNC,
 			"DMA fence driver initialization failed rc: %d", rc);
-		goto workq_destroy;
+		goto video_unregister;
 	}
 
 	trigger_cb_without_switch = false;
@@ -2875,14 +2875,16 @@ static int cam_sync_component_bind(struct device *dev,
 dma_driver_deinit:
 	cam_dma_fence_driver_deinit();
 #endif
-workq_destroy:
-	destroy_workqueue(sync_dev->work_queue);
+video_unregister:
+	video_unregister_device(sync_dev->vdev);
 v4l2_fail:
 	v4l2_device_unregister(sync_dev->vdev->v4l2_dev);
 register_fail:
 	cam_sync_media_controller_cleanup(sync_dev);
 mcinit_fail:
-	video_unregister_device(sync_dev->vdev);
+	flush_workqueue(sync_dev->work_queue);
+	destroy_workqueue(sync_dev->work_queue);
+workq_alloc_fail:
 	video_device_release(sync_dev->vdev);
 vdev_fail:
 	vfree(sync_dev->sync_table);

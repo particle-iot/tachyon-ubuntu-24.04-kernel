@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -94,7 +94,6 @@ void cam_res_mgr_led_trigger_register(const char *name, struct led_trigger **tp)
 		mutex_unlock(&cam_res->flash_res_lock);
 	}
 }
-EXPORT_SYMBOL(cam_res_mgr_led_trigger_register);
 
 void cam_res_mgr_led_trigger_unregister(struct led_trigger *tp)
 {
@@ -125,7 +124,6 @@ void cam_res_mgr_led_trigger_unregister(struct led_trigger *tp)
 	}
 	mutex_unlock(&cam_res->flash_res_lock);
 }
-EXPORT_SYMBOL(cam_res_mgr_led_trigger_unregister);
 
 void cam_res_mgr_led_trigger_event(struct led_trigger *trig,
 	enum led_brightness brightness)
@@ -154,7 +152,6 @@ void cam_res_mgr_led_trigger_event(struct led_trigger *trig,
 	if (found)
 		led_trigger_event(trig, brightness);
 }
-EXPORT_SYMBOL(cam_res_mgr_led_trigger_event);
 
 int cam_res_mgr_util_get_idx_from_shared_pctrl_gpio(
 	uint gpio)
@@ -172,7 +169,6 @@ int cam_res_mgr_util_get_idx_from_shared_pctrl_gpio(
 
 	return index;
 }
-EXPORT_SYMBOL(cam_res_mgr_util_get_idx_from_shared_pctrl_gpio);
 
 int cam_res_mgr_util_get_idx_from_shared_gpio(
 	uint gpio)
@@ -190,7 +186,6 @@ int cam_res_mgr_util_get_idx_from_shared_gpio(
 
 	return index;
 }
-EXPORT_SYMBOL(cam_res_mgr_util_get_idx_from_shared_gpio);
 
 static bool cam_res_mgr_gpio_is_in_shared_pctrl_gpio(
 	uint gpio)
@@ -346,7 +341,6 @@ int cam_res_mgr_util_shared_gpio_check_hold(uint gpio)
 	CAM_DBG(CAM_RES, "gpio: %u can free the resource", gpio);
 	return RES_MGR_GPIO_CAN_FREE;
 }
-EXPORT_SYMBOL(cam_res_mgr_util_shared_gpio_check_hold);
 
 static int cam_res_mgr_shared_pinctrl_select_state(
 	int idx, bool active)
@@ -545,7 +539,6 @@ end:
 	mutex_unlock(&cam_res->gpio_res_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_res_mgr_gpio_request);
 
 bool cam_res_mgr_util_check_if_gpio_is_shared(
 	struct gpio *gpio_tbl, uint8_t size)
@@ -571,7 +564,6 @@ bool cam_res_mgr_util_check_if_gpio_is_shared(
 
 	return false;
 }
-EXPORT_SYMBOL(cam_res_mgr_util_check_if_gpio_is_shared);
 
 static void cam_res_mgr_gpio_free(struct device *dev, uint gpio)
 {
@@ -656,7 +648,6 @@ void cam_res_mgr_gpio_free_arry(struct device *dev,
 	while (num--)
 		cam_res_mgr_gpio_free(dev, (array[num]).gpio);
 }
-EXPORT_SYMBOL(cam_res_mgr_gpio_free_arry);
 
 int cam_res_mgr_gpio_set_value(unsigned int gpio, int value)
 {
@@ -701,7 +692,6 @@ int cam_res_mgr_gpio_set_value(unsigned int gpio, int value)
 	mutex_unlock(&cam_res->gpio_res_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_res_mgr_gpio_set_value);
 
 static int cam_res_mgr_shared_pinctrl_init(
 	struct device *dev)

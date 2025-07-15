@@ -683,8 +683,8 @@ struct cam_ife_hw_mgr {
 	atomic_t                       active_ctx_cnt;
 	struct list_head               free_ctx_list;
 	struct list_head               used_ctx_list;
-	struct cam_ife_hw_concrete_ctx ctx_pool[CAM_CTX_MAX];
-	struct cam_ife_hw_mgr_ctx      virt_ctx_pool[CAM_CTX_MAX];
+	struct cam_ife_hw_concrete_ctx ctx_pool[CAM_IFE_CTX_MAX];
+	struct cam_ife_hw_mgr_ctx      virt_ctx_pool[CAM_IFE_CTX_MAX];
 	struct cam_ife_csid_hw_caps      csid_hw_caps[
 						CAM_IFE_CSID_HW_NUM_MAX];
 	struct cam_vfe_hw_get_hw_cap     ife_dev_caps[CAM_IFE_HW_NUM_MAX];
@@ -705,7 +705,7 @@ struct cam_ife_hw_mgr {
 	uint32_t                         isp_device_type;
 	struct cam_isp_irq_inject_param  irq_inject_param[MAX_INJECT_SET];
 	atomic_t                         num_acquired_offline_ctx;
-	struct cam_ife_offline_hw        acquired_hw_pool[CAM_CTX_MAX];
+	struct cam_ife_offline_hw        acquired_hw_pool[CAM_IFE_CTX_MAX];
 	struct cam_ife_mgr_offline_in_queue   input_queue;
 	struct cam_ife_mgr_offline_in_queue   in_proc_queue;
 	uint32_t                         starting_offline_cnt;
@@ -859,9 +859,9 @@ struct cam_ife_hw_mgr_sensor_grp_cfg {
 struct cam_ife_hw_event_recovery_data {
 	uint32_t                        error_type;
 	uint32_t                        affected_core[CAM_ISP_HW_NUM_MAX];
-	struct cam_ife_hw_concrete_ctx *affected_ctx[CAM_CTX_MAX];
+	struct cam_ife_hw_concrete_ctx *affected_ctx[CAM_IFE_CTX_MAX];
 	uint32_t                        no_of_context;
-	uint32_t                        id[CAM_CTX_MAX];
+	uint32_t                        id[CAM_IFE_CTX_MAX];
 };
 
 /**

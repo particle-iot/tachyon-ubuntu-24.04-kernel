@@ -319,7 +319,10 @@ struct hfi_caps_support {
  */
 struct hfi_caps_support_info {
 	uint32_t num_caps;
-	struct hfi_caps_support caps_data[1];
+	union {
+		struct hfi_caps_support caps_data[1];
+		__DECLARE_FLEX_ARRAY(struct hfi_caps_support, caps_data_flex);
+	};
 } __packed;
 
 /**
@@ -410,7 +413,10 @@ struct hfi_cmd_prop {
 	uint32_t size;
 	uint32_t pkt_type;
 	uint32_t num_prop;
-	uint32_t prop_data[1];
+	union {
+		uint32_t prop_data[1];
+		__DECLARE_FLEX_ARRAY(uint32_t, prop_data_flex);
+	};
 } __packed;
 
 /**
@@ -468,7 +474,10 @@ struct hfi_cmd_mem_region_info {
  */
 struct hfi_cmd_config_mem_regions {
 	uint32_t num_valid_regions;
-	struct hfi_cmd_mem_region_info region_info[1];
+	union {
+		struct hfi_cmd_mem_region_info region_info[1];
+		__DECLARE_FLEX_ARRAY(struct hfi_cmd_mem_region_info, region_info_flex);
+	};
 } __packed;
 
 /* end of sys command packet types */
@@ -503,7 +512,10 @@ struct hfi_sys_support {
  */
 struct hfi_supported_prop {
 	uint32_t num_prop;
-	uint32_t prop_data[1];
+	union {
+		uint32_t prop_data[1];
+		__DECLARE_FLEX_ARRAY(uint32_t, prop_data_flex);
+	};
 } __packed;
 
 /**
@@ -518,7 +530,10 @@ struct hfi_image_version {
 	uint32_t major;
 	uint32_t minor;
 	uint32_t ver_name_size;
-	uint8_t  ver_name[1];
+	union {
+		uint8_t ver_name[1];
+		__DECLARE_FLEX_ARRAY(uint8_t, ver_name_flex);
+	};
 } __packed;
 
 /**
@@ -552,7 +567,10 @@ struct hfi_msg_init_done {
 	uint32_t pkt_type;
 	uint32_t err_type;
 	uint32_t num_prop;
-	uint32_t prop_data[1];
+	union {
+		uint32_t prop_data[1];
+		__DECLARE_FLEX_ARRAY(uint32_t, prop_data_flex);
+	};
 } __packed;
 
 /**
@@ -580,7 +598,10 @@ struct hfi_msg_prop {
 	uint32_t size;
 	uint32_t pkt_type;
 	uint32_t num_prop;
-	uint32_t prop_data[1];
+	union {
+		uint32_t prop_data[1];
+		__DECLARE_FLEX_ARRAY(uint32_t, prop_data_flex);
+	};
 } __packed;
 
 /**
@@ -629,7 +650,10 @@ struct hfi_msg_debug {
 	uint32_t msg_size;
 	uint32_t timestamp_hi;
 	uint32_t timestamp_lo;
-	uint8_t  msg_data[1];
+	union {
+		uint8_t  msg_data[1];
+		__DECLARE_FLEX_ARRAY(uint8_t, msg_data_flex);
+	};
 } __packed;
 /**
  * struct hfi_msg_event_notify
@@ -650,7 +674,10 @@ struct hfi_msg_event_notify {
 	uint32_t event_id;
 	uint32_t event_data1;
 	uint32_t event_data2;
-	uint32_t ext_event_data[1];
+	union {
+		uint32_t ext_event_data[1];
+		__DECLARE_FLEX_ARRAY(uint32_t, ext_event_data_flex);
+	};
 } __packed;
 /**
  * end of sys message packet types

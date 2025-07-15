@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_MGR_H_
@@ -51,7 +51,7 @@ struct cam_isp_hw_mgr_ctx {
  *
  */
 struct cam_isp_hw_mgr {
-	void                           *tasklet_pool[CAM_CTX_MAX];
+	void                           *tasklet_pool[CAM_IFE_CTX_MAX];
 	int                             img_iommu_hdl;
 	int                             img_iommu_hdl_secure;
 	int                             cmd_iommu_hdl;

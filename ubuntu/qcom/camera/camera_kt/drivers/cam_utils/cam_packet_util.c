@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -10,6 +10,7 @@
 #include "cam_mem_mgr.h"
 #include "cam_packet_util.h"
 #include "cam_debug_util.h"
+#include "cam_common_util.h"
 
 #define CAM_UNIQUE_SRC_HDL_MAX 50
 
@@ -64,12 +65,14 @@ int cam_packet_util_validate_packet(struct cam_packet *packet,
 	size_t sum_cmd_desc = 0;
 	size_t sum_io_cfgs = 0;
 	size_t sum_patch_desc = 0;
-	size_t pkt_wo_payload = 0;
+	size_t pkt_wo_payload = offsetof(struct cam_packet, payload);
 
 	if (!packet)
 		return -EINVAL;
 
-	if ((size_t)packet->header.size > remain_len) {
+	if (!(packet->header.size) ||
+		(size_t)packet->header.size > remain_len ||
+		(size_t)packet->header.size <= pkt_wo_payload) {
 		CAM_ERR(CAM_UTIL,
 			"Invalid packet size: %zu, CPU buf length: %zu",
 			(size_t)packet->header.size, remain_len);
@@ -84,16 +87,13 @@ int cam_packet_util_validate_packet(struct cam_packet *packet,
 	sum_cmd_desc = packet->num_cmd_buf * sizeof(struct cam_cmd_buf_desc);
 	sum_io_cfgs = packet->num_io_configs * sizeof(struct cam_buf_io_cfg);
 	sum_patch_desc = packet->num_patches * sizeof(struct cam_patch_desc);
-	pkt_wo_payload = offsetof(struct cam_packet, payload);
 
-	if ((!packet->header.size) ||
-		((size_t)packet->header.size <= pkt_wo_payload) ||
-		((pkt_wo_payload + (size_t)packet->cmd_buf_offset +
-		sum_cmd_desc) > (size_t)packet->header.size) ||
+	if (((pkt_wo_payload + (size_t)packet->cmd_buf_offset +
+			sum_cmd_desc) > (size_t)packet->header.size) ||
 		((pkt_wo_payload + (size_t)packet->io_configs_offset +
-		sum_io_cfgs) > (size_t)packet->header.size) ||
+			sum_io_cfgs) > (size_t)packet->header.size) ||
 		((pkt_wo_payload + (size_t)packet->patch_offset +
-		sum_patch_desc) > (size_t)packet->header.size)) {
+			sum_patch_desc) > (size_t)packet->header.size)) {
 		CAM_ERR(CAM_UTIL, "params not within mem len:%zu %zu %zu %zu",
 			(size_t)packet->header.size, sum_cmd_desc,
 			sum_io_cfgs, sum_patch_desc);
@@ -101,6 +101,42 @@ int cam_packet_util_validate_packet(struct cam_packet *packet,
 	}
 
 	return 0;
+}
+
+int cam_packet_util_copy_pkt_to_kmd(struct cam_packet *packet_u, struct cam_packet **packet,
+		size_t remain_len)
+{
+	int rc = 0;
+	uint32_t packet_size;
+
+	packet_size = packet_u->header.size;
+	if (packet_size >= sizeof(struct cam_packet) && packet_size <= remain_len) {
+		rc = cam_common_mem_kdup((void **) packet,
+			packet_u, packet_size);
+		if (rc) {
+			CAM_ERR(CAM_UTIL, "Alloc and copy request %lld packet fail",
+				packet_u->header.request_id);
+			return -EINVAL;
+		}
+		(*packet)->header.size = packet_size;
+	} else {
+		CAM_ERR(CAM_UTIL, "Invalid packet header size %u",
+			packet_size);
+		return -EINVAL;
+	}
+
+	if (cam_packet_util_validate_packet(*packet, remain_len)) {
+		CAM_ERR(CAM_UTIL, "Invalid packet params");
+		rc = -EINVAL;
+		goto free_packet;
+	}
+	return rc;
+
+free_packet:
+	cam_common_mem_free(*packet);
+	*packet = NULL;
+
+	return rc;
 }
 
 int cam_packet_util_get_kmd_buffer(struct cam_packet *packet,
@@ -131,7 +167,7 @@ int cam_packet_util_get_kmd_buffer(struct cam_packet *packet,
 
 	/* Take first command descriptor and add offset to it for kmd*/
 	cmd_desc = (struct cam_cmd_buf_desc *) ((uint8_t *)
-		&packet->payload + packet->cmd_buf_offset);
+		&packet->payload_flex + packet->cmd_buf_offset);
 	cmd_desc += packet->kmd_cmd_buf_index;
 
 	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
@@ -193,7 +229,7 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 	uint64_t   value = 0;
 
 	patch_desc = (struct cam_patch_desc *)
-			((uint32_t *) &packet->payload +
+			((uint32_t *) &packet->payload_flex +
 			packet->patch_offset/4);
 
 	CAM_INFO(CAM_UTIL, "Total num of patches : %d",
@@ -316,7 +352,7 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 
 	/* process patch descriptor */
 	patch_desc = (struct cam_patch_desc *)
-			((uint32_t *) &packet->payload +
+			((uint32_t *) &packet->payload_flex +
 			packet->patch_offset/4);
 	CAM_DBG(CAM_UTIL, "packet = %pK patch_desc = %pK size = %lu",
 			(void *)packet, (void *)patch_desc,

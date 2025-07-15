@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -1304,14 +1304,24 @@ static int cam_ife_csid_ver2_handle_event_err(
 	evt.event_data = (void *)&err_evt_info;
 
 	for (i = 0; i < CAM_IFE_PIX_PATH_RES_MAX; i++) {
-		if (csid_hw->token_data[i].res_id == res->res_id) {
-			token = csid_hw->token_data[i].token;
-			break;
+		if (res) {
+			if (csid_hw->token_data[i].res_id == res->res_id) {
+				token = csid_hw->token_data[i].token;
+				break;
+			}
+		} else {
+			if (csid_hw->token_data[i].token) {
+				token = csid_hw->token_data[i].token;
+				break;
+			}
 		}
 	}
 
 	if (!token) {
-		CAM_ERR(CAM_ISP, "cannot find token data for res :%d ", res->res_id);
+		if (res)
+			CAM_ERR(CAM_ISP, "cannot find token data for res :%d ", res->res_id);
+		else
+			CAM_ERR(CAM_ISP, "cannot find token data for null res");
 		goto end;
 	}
 
@@ -4177,10 +4187,15 @@ static inline int cam_ife_csid_ver2_subscribe_sof_for_discard(
 
 	irq_mask = IFE_CSID_VER2_PATH_INFO_INPUT_SOF;
 
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_SOF_DISCARD_MASK][path_cfg->irq_reg_idx] = irq_mask;
+
+	CAM_DBG(CAM_ISP, "irq_reg_idx :%d val :%d res_id :%d", path_cfg->irq_reg_idx,
+		path_cfg->stored_irq_masks[CAM_IFE_CSID_SOF_DISCARD_MASK][path_cfg->irq_reg_idx], res->res_id);
+
 	path_cfg->discard_irq_handle = cam_irq_controller_subscribe_irq(
 		csid_hw->path_irq_controller[res->res_id],
 		CAM_IRQ_PRIORITY_0,
-		&irq_mask,
+		&path_cfg->stored_irq_masks[CAM_IFE_CSID_SOF_DISCARD_MASK][path_cfg->irq_reg_idx],
 		res,
 		top_half_handler,
 		bottom_half_handler,
@@ -4468,6 +4483,17 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	}
 
 	irq_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
+
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx] =
+		val;
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx] =
+		irq_mask;
+
+	CAM_DBG(CAM_ISP, "res_id :%d irq_reg_idx: %d frame_mask 0x%x error_mask: 0x%x",
+		res->res_id, path_cfg->irq_reg_idx,
+		path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx],
+		path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx]);
+
 	rc = cam_ife_csid_ver2_path_irq_subscribe(csid_hw, res, val, irq_mask);
 	if (rc)
 		return rc;
@@ -4546,6 +4572,11 @@ static int cam_ife_csid_ver2_program_ipp_path(
 		if (rc)
 			return rc;
 	}
+
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx] =
+		val;
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx] =
+		irq_mask;
 
 	rc = cam_ife_csid_ver2_path_irq_subscribe(csid_hw, res, val, irq_mask);
 	if (rc)
@@ -4731,6 +4762,17 @@ static int cam_ife_csid_ver2_program_ppp_path(
 	}
 
 	irq_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
+
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx] =
+		val;
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx] =
+		irq_mask;
+
+	CAM_DBG(CAM_ISP, "res_id :%d irq_reg_idx: %d frame_mask 0x%x error_mask: 0x%x",
+		res->res_id, path_cfg->irq_reg_idx,
+		path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx],
+		path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx]);
+
 	rc = cam_ife_csid_ver2_path_irq_subscribe(csid_hw, res, val, irq_mask);
 	if (rc)
 		return rc;
@@ -7062,93 +7104,36 @@ static int cam_ife_csid_ver2_update_path_irq(
 	struct cam_ife_csid_ver2_reg_info *csid_reg = csid_hw->core_info->csid_reg;
 	int top_index = -1;
 	uint32_t val = 0;
-	uint32_t irq_mask = 0;
 
 	path_cfg = (struct cam_ife_csid_ver2_path_cfg *)res->res_priv;
 	path_reg = csid_reg->path_reg[res->res_id];
 
-	if (path_cfg->irq_reg_idx >= CAM_IFE_CSID_IRQ_REG_MAX) {
-		CAM_ERR(CAM_ISP, "CSID[%d] Invalid irq reg id %d",
-			csid_hw->hw_intf->hw_idx, path_cfg->irq_reg_idx);
-		rc = -EINVAL;
-		goto end;
+	if (res->is_rdi_primary_res) {
+		val |= path_reg->rup_irq_mask;
+		if (path_cfg->handle_camif_irq)
+			val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask;
 	}
 
-	for (i = CAM_IFE_CSID_TOP_IRQ_STATUS_REG0; i < csid_reg->num_top_regs; i++) {
-		if (csid_reg->path_reg[res->res_id]->top_irq_mask[i]) {
-			top_index = i;
-			break;
-		}
+	/* Enable secondary events dictated by HW mgr for RDI paths */
+	if (path_cfg->sec_evt_config.en_secondary_evt) {
+		if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_SOF)
+			val |= path_reg->sof_irq_mask;
+
+		if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_EPOCH)
+			val |= path_reg->epoch0_irq_mask;
+
+		CAM_DBG(CAM_ISP,
+			"CSID:%u Enable camif: %d evt irq for res: %s",
+			csid_hw->hw_intf->hw_idx, path_cfg->sec_evt_config.evt_type, res->res_name);
 	}
+	path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx] = val;
 
-	if (top_index < 0 || top_index >= CAM_IFE_CSID_TOP_IRQ_STATUS_REG_MAX) {
-		CAM_ERR(CAM_ISP, "csid[%d] %s Invalid top index %s index %d",
-			csid_hw->hw_intf->hw_idx, res->res_name, top_index);
-		return -EINVAL;
-	}
+	if (!res->is_per_port_acquire && !path_cfg->irq_handle &&
+		!res->is_per_port_start && enable) {
+		rc = cam_ife_csid_ver2_path_irq_subscribe(csid_hw, res,
+			path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx],
+			path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx]);
 
-	switch (res->res_id) {
-	case  CAM_IFE_PIX_PATH_RES_IPP:
-		irq_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
-
-		val = csid_hw->debug_info.path_mask;
-
-		if (!(csid_reg->path_reg[res->res_id]->capabilities &
-			CAM_IFE_CSID_CAP_MULTI_CTXT)) {
-			if (path_cfg->sync_mode == CAM_ISP_HW_SYNC_NONE ||
-				path_cfg->sync_mode == CAM_ISP_HW_SYNC_MASTER) {
-				val |= path_reg->rup_irq_mask;
-				if (path_cfg->handle_camif_irq)
-					val |= path_reg->sof_irq_mask |
-					path_reg->epoch0_irq_mask |
-					path_reg->eof_irq_mask;
-			}
-		}
-		CAM_INFO(CAM_ISP, "val :%d irq_mask:%d", val, irq_mask);
-		break;
-	case  CAM_IFE_PIX_PATH_RES_PPP:
-		val = csid_hw->debug_info.path_mask;
-		irq_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
-		CAM_INFO(CAM_ISP, "val :%d irq_mask:%d", val, irq_mask);
-		break;
-	case CAM_IFE_PIX_PATH_RES_RDI_0:
-	case CAM_IFE_PIX_PATH_RES_RDI_1:
-	case CAM_IFE_PIX_PATH_RES_RDI_2:
-	case CAM_IFE_PIX_PATH_RES_RDI_3:
-	case CAM_IFE_PIX_PATH_RES_RDI_4:
-	case CAM_IFE_PIX_PATH_RES_RDI_5:
-		val = csid_hw->debug_info.path_mask;
-
-		if (res->is_rdi_primary_res) {
-			val |= path_reg->rup_irq_mask;
-			if (path_cfg->handle_camif_irq)
-				val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask;
-		}
-
-		/* Enable secondary events dictated by HW mgr for RDI paths */
-		if (path_cfg->sec_evt_config.en_secondary_evt) {
-			if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_SOF)
-				val |= path_reg->sof_irq_mask;
-
-			if (path_cfg->sec_evt_config.evt_type & CAM_IFE_CSID_EVT_EPOCH)
-				val |= path_reg->epoch0_irq_mask;
-
-			CAM_DBG(CAM_ISP,
-				"CSID:%u Enable camif: %d evt irq for res: %s",
-				csid_hw->hw_intf->hw_idx, path_cfg->sec_evt_config.evt_type,
-				res->res_name);
-		}
-
-		irq_mask = path_reg->fatal_err_mask | path_reg->non_fatal_err_mask;
-		break;
-	default:
-		CAM_ERR(CAM_ISP, "CSID:%d Invalid res type %d",
-			csid_hw->hw_intf->hw_idx, res->res_type);
-		break;
-	}
-
-	if (!res->is_per_port_acquire && !path_cfg->irq_handle && !res->is_per_port_start) {
-		rc = cam_ife_csid_ver2_path_irq_subscribe(csid_hw, res, val, irq_mask);
 		if (rc)
 			return rc;
 	} else {
@@ -7157,7 +7142,7 @@ static int cam_ife_csid_ver2_update_path_irq(
 				csid_hw->path_irq_controller[res->res_id],
 				path_cfg->irq_handle,
 				enable,
-				&val);
+				&path_cfg->stored_irq_masks[CAM_IFE_CSID_TOP_MASK][path_cfg->irq_reg_idx]);
 
 			if (rc) {
 				CAM_ERR(CAM_ISP, "CSID[%d] Update Irq fail %d",
@@ -7172,12 +7157,36 @@ static int cam_ife_csid_ver2_update_path_irq(
 			goto end;
 		}
 
+		if (path_cfg->discard_init_frames) {
+			if (path_cfg->discard_irq_handle) {
+				rc = cam_irq_controller_update_irq(
+					csid_hw->path_irq_controller[res->res_id],
+					path_cfg->discard_irq_handle,
+					enable,
+					path_cfg->stored_irq_masks[CAM_IFE_CSID_SOF_DISCARD_MASK]);
+
+				if (rc) {
+					CAM_ERR(CAM_ISP,
+						"CSID[%d] Updating SOF for discarding %d failed",
+						csid_hw->hw_intf->hw_idx, res->res_id);
+					rc = -EINVAL;
+					goto end;
+				}
+			} else {
+				CAM_ERR(CAM_ISP,
+					"CSID[%d] Sof discard Irq handle not found for res:%d",
+					csid_hw->hw_intf->hw_idx, res->res_id);
+				rc = -EINVAL;
+				goto end;
+			}
+		}
+
 		if (path_cfg->err_irq_handle) {
 			rc = cam_irq_controller_update_irq(
 				csid_hw->path_irq_controller[res->res_id],
 				path_cfg->err_irq_handle,
 					enable,
-				&irq_mask);
+				&path_cfg->stored_irq_masks[CAM_IFE_CSID_ERR_MASK][path_cfg->irq_reg_idx]);
 
 			if (rc) {
 				CAM_ERR(CAM_ISP, "CSID[%d] Update Err Irq fail %d",
@@ -8166,7 +8175,6 @@ int cam_ife_csid_hw_ver2_init(struct cam_hw_intf *hw_intf,
 	return 0;
 
 }
-EXPORT_SYMBOL(cam_ife_csid_hw_ver2_init);
 
 int cam_ife_csid_hw_ver2_deinit(struct cam_hw_info *hw_priv)
 {
@@ -8189,4 +8197,3 @@ int cam_ife_csid_hw_ver2_deinit(struct cam_hw_info *hw_priv)
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_ife_csid_hw_ver2_deinit);

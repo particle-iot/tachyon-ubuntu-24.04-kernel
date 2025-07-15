@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -422,6 +422,8 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 	uint16_t                op_code;
 	uint32_t                j = 0;
 	struct list_head       *list = NULL;
+	uint32_t                payload_count = 0;
+	size_t                  tot_size = 0;
 
 	while (byte_cnt < size) {
 		if ((size - byte_cnt) < sizeof(struct common_header)) {
@@ -440,6 +442,7 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 			struct cam_cmd_i2c_random_wr
 			*cam_cmd_i2c_random_wr =
 			(struct cam_cmd_i2c_random_wr *)cmd_buf;
+			payload_count = cam_cmd_i2c_random_wr->header.count;
 
 			if ((size - byte_cnt) < sizeof(struct cam_cmd_i2c_random_wr)) {
 				CAM_ERR(CAM_OIS,
@@ -448,11 +451,22 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 				rc = -EINVAL;
 				goto end;
 			}
+			tot_size = sizeof(struct i2c_rdwr_header) +
+			(sizeof(struct i2c_random_wr_payload) *
+			payload_count);
+
+			if (tot_size > (size - byte_cnt)) {
+				CAM_ERR(CAM_SENSOR_UTIL,
+				"Not enough buffer provided %d, %d, %d",
+				tot_size, size, byte_cnt);
+				rc = -EINVAL;
+				goto end;
+			}
 
 			rc = cam_sensor_handle_random_write(
 				cam_cmd_i2c_random_wr,
 				reg_settings,
-				&cmd_length_in_bytes, &j, &list);
+				&cmd_length_in_bytes, &j, &list, payload_count);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS,
 				"Failed in random write %d", rc);
@@ -469,7 +483,7 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 			struct cam_cmd_i2c_continuous_wr
 			*cam_cmd_i2c_continuous_wr =
 			(struct cam_cmd_i2c_continuous_wr *)cmd_buf;
-
+			payload_count = cam_cmd_i2c_continuous_wr->header.count;
 			if ((size - byte_cnt) < sizeof(struct cam_cmd_i2c_continuous_wr)) {
 				CAM_ERR(CAM_OIS,
 					"Not enough buffer provided,size %d,byte_cnt %d",
@@ -477,11 +491,22 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 				rc = -EINVAL;
 				goto end;
 			}
+			tot_size = sizeof(struct i2c_rdwr_header) +
+			sizeof(cam_cmd_i2c_continuous_wr->reg_addr) +
+			(sizeof(struct cam_cmd_read) *
+			payload_count);
 
+			if (tot_size > (size - byte_cnt)) {
+				CAM_ERR(CAM_SENSOR_UTIL,
+				"Not enough buffer provided %d, %d, %d",
+				tot_size, size, byte_cnt);
+				rc = -EINVAL;
+				goto end;
+			}
 			rc = cam_sensor_handle_continuous_write(
 				cam_cmd_i2c_continuous_wr,
 				reg_settings,
-				&cmd_length_in_bytes, &j, &list);
+				&cmd_length_in_bytes, &j, &list, payload_count);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS,
 				"Failed in continuous write %d", rc);
@@ -546,7 +571,7 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 			uint16_t cmd_length_in_bytes = 0;
 			struct cam_cmd_i2c_random_rd *i2c_random_rd =
 			(struct cam_cmd_i2c_random_rd *)cmd_buf;
-
+			payload_count = i2c_random_rd->header.count;
 			if ((size - byte_cnt) < sizeof(struct cam_cmd_i2c_random_rd)) {
 				CAM_ERR(CAM_OIS,
 					"Not enough buffer provided,size %d,byte_cnt %d",
@@ -555,11 +580,21 @@ static int cam_ois_parse_fw_setting(uint8_t *cmd_buf, uint32_t size,
 				goto end;
 			}
 
+			tot_size = sizeof(struct i2c_rdwr_header) +
+			(sizeof(struct cam_cmd_read) *
+			payload_count);
+			if (tot_size > (size - byte_cnt)) {
+				CAM_ERR(CAM_SENSOR_UTIL,
+				"Not enough buffer provided %d, %d, %d",
+				tot_size, size, byte_cnt);
+				rc = -EINVAL;
+				goto end;
+			}
 			rc = cam_sensor_handle_random_read(
 				i2c_random_rd,
 				reg_settings,
 				&cmd_length_in_bytes, &j, &list,
-				NULL);
+				NULL, payload_count);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS,
 				"Failed in random read %d", rc);
@@ -624,6 +659,7 @@ static int cam_ois_fw_info_pkt_parser(struct cam_ois_ctrl_t *o_ctrl,
 	struct i2c_settings_array      *reg_settings = NULL;
 	uint8_t                         count = 0;
 	uint32_t                        idx;
+	uint8_t                         ois_fw_count = 0;
 
 	if (!o_ctrl || !cmd_buf || len < sizeof(struct cam_cmd_ois_fw_info)) {
 		CAM_ERR(CAM_OIS, "Invalid Args,o_ctrl %p,cmd_buf %p,len %d",
@@ -632,15 +668,16 @@ static int cam_ois_fw_info_pkt_parser(struct cam_ois_ctrl_t *o_ctrl,
 	}
 
 	ois_fw_info = (struct cam_cmd_ois_fw_info *)cmd_buf;
+	ois_fw_count = ois_fw_info->fw_count;
 	CAM_DBG(CAM_OIS, "endianness %d, fw_count %d",
-		ois_fw_info->endianness, ois_fw_info->fw_count);
+		ois_fw_info->endianness, ois_fw_count);
 
-	if (ois_fw_info->fw_count <= MAX_OIS_FW_COUNT) {
+	if (ois_fw_count <= MAX_OIS_FW_COUNT) {
 		memcpy(&o_ctrl->fw_info, ois_fw_info, sizeof(struct cam_cmd_ois_fw_info));
+		o_ctrl->fw_info.fw_count = ois_fw_count;
 		pSettingData = (uint8_t *)cmd_buf + sizeof(struct cam_cmd_ois_fw_info);
-
-		if ((ois_fw_info->param_mask & CAM_OIS_FW_VERSION_CHECK_MASK) == 0x1) {
-			version_size = ois_fw_info->params[0];
+		if ((o_ctrl->fw_info.param_mask & CAM_OIS_FW_VERSION_CHECK_MASK) == 0x1) {
+			version_size = o_ctrl->fw_info.params[0];
 			CAM_DBG(CAM_OIS, "versionSize: %d", version_size);
 		}
 
@@ -656,16 +693,16 @@ static int cam_ois_fw_info_pkt_parser(struct cam_ois_ctrl_t *o_ctrl,
 			pSettingData += version_size;
 		}
 
-		for (count = 0; count < ois_fw_info->fw_count*2; count++) {
+		for (count = 0; count <  o_ctrl->fw_info.fw_count*2; count++) {
 			idx = count / 2;
 			/* init settings */
 			if ((count & 0x1) == 0) {
-				size = ois_fw_info->fw_param[idx].fw_init_size;
+				size =  o_ctrl->fw_info.fw_param[idx].fw_init_size;
 				reg_settings = &o_ctrl->i2c_fw_init_data[idx];
 				CAM_DBG(CAM_OIS, "init size %d", size);
 			/* finalize settings */
 			} else if ((count & 0x1) == 1) {
-				size = ois_fw_info->fw_param[idx].fw_finalize_size;
+				size = o_ctrl->fw_info.fw_param[idx].fw_finalize_size;
 				reg_settings = &o_ctrl->i2c_fw_finalize_data[idx];
 				CAM_DBG(CAM_OIS, "finalize size %d", size);
 			} else {
@@ -688,6 +725,7 @@ static int cam_ois_fw_info_pkt_parser(struct cam_ois_ctrl_t *o_ctrl,
 		}
 	} else {
 		CAM_ERR(CAM_OIS, "Exceed max fw count");
+		return -EINVAL;
 	}
 
 	return rc;
@@ -1060,7 +1098,6 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 	struct cam_ois_soc_private     *soc_private =
 		(struct cam_ois_soc_private *)o_ctrl->soc_info.soc_private;
 	struct cam_sensor_power_ctrl_t  *power_info = &soc_private->power_info;
-	size_t                           packet_size = 0;
 
 	ioctl_ctrl = (struct cam_control *)arg;
 	if (copy_from_user(&dev_config,
@@ -1089,27 +1126,11 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 	remain_len -= (size_t)dev_config.offset;
 	csl_packet_u = (struct cam_packet *)
 		(generic_pkt_addr + (uint32_t)dev_config.offset);
-	packet_size = csl_packet_u->header.size;
-	if (packet_size <= remain_len) {
-		rc = cam_common_mem_kdup((void **)&csl_packet,
-			csl_packet_u, packet_size);
-		if (rc) {
-			CAM_ERR(CAM_OIS, "Alloc and copy request %lld packet fail",
-				csl_packet_u->header.request_id);
-			goto put_ref;
-		}
-	} else {
-		CAM_ERR(CAM_OIS, "Invalid packet header size %u",
-			packet_size);
-		rc = -EINVAL;
-		goto put_ref;
-	}
 
-	if (cam_packet_util_validate_packet(csl_packet,
-		remain_len)) {
-		CAM_ERR(CAM_OIS, "Invalid packet params");
-		rc = -EINVAL;
-		goto end;
+	rc = cam_packet_util_copy_pkt_to_kmd(csl_packet_u, &csl_packet, remain_len);
+	if (rc) {
+		CAM_ERR(CAM_OIS, "Copying packet to KMD failed");
+		goto put_ref;
 	}
 
 	switch (csl_packet->header.op_code & 0xFFFFFF) {
@@ -1117,7 +1138,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		CAM_DBG(CAM_OIS, "CAM_OIS_PACKET_OPCODE_INIT,num_cmd_buf %d",
 			csl_packet->num_cmd_buf);
 
-		offset = (uint32_t *)&csl_packet->payload;
+		offset = (uint32_t *)&csl_packet->payload_flex;
 		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 
@@ -1393,7 +1414,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				o_ctrl->cam_ois_state);
 			goto end;
 		}
-		offset = (uint32_t *)&csl_packet->payload;
+		offset = (uint32_t *)&csl_packet->payload_flex;
 		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		i2c_reg_settings = &(o_ctrl->i2c_mode_data);
@@ -1445,7 +1466,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		INIT_LIST_HEAD(&(i2c_read_settings.list_head));
 
 		io_cfg = (struct cam_buf_io_cfg *) ((uint8_t *)
-			&csl_packet->payload +
+			&csl_packet->payload_flex +
 			csl_packet->io_configs_offset);
 
 		/* validate read data io config */
@@ -1455,7 +1476,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			goto end;
 		}
 
-		offset = (uint32_t *)&csl_packet->payload;
+		offset = (uint32_t *)&csl_packet->payload_flex;
 		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		i2c_read_settings.is_settings_valid = 1;
@@ -1512,7 +1533,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				o_ctrl->cam_ois_state);
 			goto end;
 		}
-		offset = (uint32_t *)&csl_packet->payload;
+		offset = (uint32_t *)&csl_packet->payload_flex;
 		offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		i2c_reg_settings = &(o_ctrl->i2c_time_data);

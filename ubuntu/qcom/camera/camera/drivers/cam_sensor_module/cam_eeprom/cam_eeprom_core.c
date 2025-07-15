@@ -476,11 +476,11 @@ static int32_t cam_eeprom_parse_memory_map(
 		for (cnt = 0; cnt < (payload_count);
 			cnt++) {
 			map[*num_map + cnt].page.addr =
-				i2c_random_wr->random_wr_payload[cnt].reg_addr;
+				i2c_random_wr->random_wr_payload_flex[cnt].reg_addr;
 			map[*num_map + cnt].page.addr_type =
 				i2c_random_wr->header.addr_type;
 			map[*num_map + cnt].page.data =
-				i2c_random_wr->random_wr_payload[cnt].reg_data;
+				i2c_random_wr->random_wr_payload_flex[cnt].reg_data;
 			map[*num_map + cnt].page.data_type =
 				i2c_random_wr->header.data_type;
 			map[*num_map + cnt].page.valid_size = 1;
@@ -724,7 +724,7 @@ static int32_t cam_eeprom_parse_write_memory_packet(
 	struct cam_cmd_i2c_info        *i2c_info = NULL;
 
 
-	offset = (uint32_t *)&csl_packet->payload;
+	offset = (uint32_t *)&csl_packet->payload_flex;
 	offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 	cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 
@@ -951,7 +951,7 @@ static int32_t cam_eeprom_init_pkt_parser(struct cam_eeprom_ctrl_t *e_ctrl,
 	}
 	map = e_ctrl->cal_data.map;
 
-	offset = (uint32_t *)&csl_packet->payload;
+	offset = (uint32_t *)&csl_packet->payload_flex;
 	offset += (csl_packet->cmd_buf_offset / sizeof(uint32_t));
 	cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 
@@ -1099,7 +1099,7 @@ static int32_t cam_eeprom_get_cal_data(struct cam_eeprom_ctrl_t *e_ctrl,
 	size_t                remain_len = 0;
 
 	io_cfg = (struct cam_buf_io_cfg *) ((uint8_t *)
-		&csl_packet->payload +
+		&csl_packet->payload_flex +
 		csl_packet->io_configs_offset);
 	plane_offset = io_cfg->offsets[0];
 	mem_handle   = io_cfg->mem_handle[0];
