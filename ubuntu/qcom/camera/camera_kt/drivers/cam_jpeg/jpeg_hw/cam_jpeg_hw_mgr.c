@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -115,11 +115,11 @@ static int cam_jpeg_process_next_hw_update(void *priv, void *data,
 		p_cfg_req);
 
 	cmd = (config_args->hw_update_entries + cdm_cfg_to_insert);
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].bl_addr.mem_handle =
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].bl_addr.mem_handle =
 		cmd->handle;
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].offset =
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].offset =
 		cmd->offset;
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].len =
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].len =
 		cmd->len;
 	CAM_DBG(CAM_JPEG, "i %d entry h %d o %d l %d",
 		i, cmd->handle, cmd->offset, cmd->len);
@@ -466,11 +466,11 @@ static int cam_jpeg_insert_cdm_change_base(
 		ch_base_iova_addr, mem_cam_base);
 
 	cdm_cmd = ctx_data->cdm_cmd;
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].bl_addr.mem_handle =
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].bl_addr.mem_handle =
 		config_args->hw_update_entries[CAM_JPEG_CHBASE].handle;
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].offset =
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].offset =
 		config_args->hw_update_entries[CAM_JPEG_CHBASE].offset;
-	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].len = size * sizeof(uint32_t);
+	cdm_cmd->cmd_flex[cdm_cmd->cmd_arrary_count].len = size * sizeof(uint32_t);
 	cdm_cmd->cmd_arrary_count++;
 	cdm_cmd->gen_irq_arb = false;
 
@@ -799,7 +799,7 @@ static int cam_jpeg_mgr_prepare_hw_update(void *hw_mgr_priv,
 		return rc;
 	}
 
-	io_cfg_ptr = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload +
+	io_cfg_ptr = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload_flex +
 		packet->io_configs_offset / 4);
 	CAM_DBG(CAM_JPEG, "packet = %pK io_cfg_ptr = %pK size = %lu",
 		(void *)packet, (void *)io_cfg_ptr,

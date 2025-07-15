@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <media/cam_defs.h>
@@ -171,7 +171,7 @@ static int cam_isp_update_dual_config(
 				CAM_PACKET_MAX_PLANES)) +
 				(outport_id * CAM_PACKET_MAX_PLANES);
 
-			if (dual_config->stripes[ports_plane_idx].port_id == 0)
+			if (dual_config->stripes_flex[ports_plane_idx].port_id == 0)
 				continue;
 
 			dual_isp_update_args.split_id = j;
@@ -277,7 +277,7 @@ int cam_isp_add_command_buffers(
 	 * packet
 	 */
 	cmd_desc = (struct cam_cmd_buf_desc *)
-			((uint8_t *)&prepare->packet->payload +
+			((uint8_t *)&prepare->packet->payload_flex +
 			prepare->packet->cmd_buf_offset);
 
 	CAM_DBG(CAM_ISP, "split id = %d, number of command buffers:%d",
@@ -508,7 +508,7 @@ int cam_isp_add_io_buffers(
 	uint32_t                            mode;
 
 	io_cfg = (struct cam_buf_io_cfg *) ((uint8_t *)
-			&prepare->packet->payload +
+			&prepare->packet->payload_flex +
 			prepare->packet->io_configs_offset);
 	num_out_buf = 0;
 	num_in_buf  = 0;

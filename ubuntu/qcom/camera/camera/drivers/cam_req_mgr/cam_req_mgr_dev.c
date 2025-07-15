@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -330,7 +330,6 @@ uint32_t cam_req_mgr_get_id_subscribed(void)
 {
 	return g_dev.v4l2_sub_ids;
 }
-EXPORT_SYMBOL(cam_req_mgr_get_id_subscribed);
 
 static int cam_unsubscribe_event(struct v4l2_fh *fh,
 	const struct v4l2_event_subscription *sub)
@@ -842,7 +841,6 @@ int cam_req_mgr_notify_message(struct cam_req_mgr_message *msg,
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_req_mgr_notify_message);
 
 void cam_video_device_cleanup(void)
 {
@@ -867,7 +865,6 @@ void cam_subdev_notify_message(u32 subdev_type,
 		}
 	}
 }
-EXPORT_SYMBOL(cam_subdev_notify_message);
 
 bool cam_req_mgr_is_open(void)
 {
@@ -879,13 +876,11 @@ bool cam_req_mgr_is_open(void)
 
 	return crm_status;
 }
-EXPORT_SYMBOL(cam_req_mgr_is_open);
 
 bool cam_req_mgr_is_shutdown(void)
 {
 	return g_dev.shutdown_state;
 }
-EXPORT_SYMBOL(cam_req_mgr_is_shutdown);
 
 int cam_register_subdev(struct cam_subdev *csd)
 {
@@ -943,7 +938,6 @@ reg_fail:
 	mutex_unlock(&g_dev.dev_lock);
 	return rc;
 }
-EXPORT_SYMBOL(cam_register_subdev);
 
 int cam_unregister_subdev(struct cam_subdev *csd)
 {
@@ -959,7 +953,6 @@ int cam_unregister_subdev(struct cam_subdev *csd)
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_unregister_subdev);
 
 static inline void cam_req_mgr_destroy_timer_slab(void)
 {
@@ -1168,7 +1161,6 @@ int cam_req_mgr_init(void)
 {
 	return platform_driver_register(&cam_req_mgr_driver);
 }
-EXPORT_SYMBOL(cam_req_mgr_init);
 
 void cam_req_mgr_exit(void)
 {

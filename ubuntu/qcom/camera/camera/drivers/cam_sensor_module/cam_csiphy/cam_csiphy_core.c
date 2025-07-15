@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -98,7 +98,7 @@ int32_t cam_csiphy_get_instance_offset(struct csiphy_device *csiphy_dev, int32_t
 		return -EINVAL;
 	}
 
-	for (i = 0; i < csiphy_dev->acquire_count; i++) {
+	for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 		if (dev_handle ==
 			csiphy_dev->csiphy_info[i].hdl_data.device_hdl)
 			break;
@@ -986,7 +986,7 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 
 	if (csl_packet->num_cmd_buf)
 		cmd_desc = (struct cam_cmd_buf_desc *)
-			((uint32_t *)&csl_packet->payload +
+			((uint32_t *)&csl_packet->payload_flex +
 			csl_packet->cmd_buf_offset / 4);
 	else {
 		CAM_ERR(CAM_CSIPHY, "num_cmd_buffer = %d", csl_packet->num_cmd_buf);
@@ -1568,7 +1568,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 	}
 
 	if (csiphy_dev->csiphy_state == CAM_CSIPHY_ACQUIRE) {
-		for (i = 0; i < csiphy_dev->acquire_count; i++) {
+		for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 			if (csiphy_dev->csiphy_info[i].hdl_data.device_hdl
 				!= -1)
 				cam_destroy_device_hdl(
@@ -1579,11 +1579,11 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		}
 	}
 
-	csiphy_dev->ref_count = 0;
 	for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 		csiphy_dev->lanes_assigned[i].lane_assign = -1;
 		csiphy_dev->lanes_assigned[i].lane_assign_cnt = 0;
 	}
+	csiphy_dev->ref_count = 0;
 	csiphy_dev->lanes_enabled = 0x0;
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;

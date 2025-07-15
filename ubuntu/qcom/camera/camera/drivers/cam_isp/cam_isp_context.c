@@ -387,7 +387,7 @@ static void __cam_isp_ctx_req_mini_dump(struct cam_ctx_request *req,
 		if (start_addr + *bytes_updated + bytes_required > end_addr)
 			return;
 
-		io_cfg = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload +
+		io_cfg = (struct cam_buf_io_cfg *)((uint32_t *)&packet->payload_flex +
 			    packet->io_configs_offset / 4);
 		req_md->io_cfg = (struct cam_buf_io_cfg *)((uint8_t *)start_addr + *bytes_updated);
 		memcpy(req_md->io_cfg, io_cfg, bytes_required);
@@ -2155,7 +2155,7 @@ static int __cam_isp_handle_deferred_buf_done(
 		}
 
 		if (!bubble_handling) {
-			CAM_WARN(CAM_ISP,
+			CAM_WARN_RATE_LIMIT(CAM_ISP,
 				"Unexpected Buf done for res=0x%x on ctx[%u] link[0x%x] for Req %llu, status=%d, possible bh delays",
 				req_isp->fence_map_out[j].resource_handle, ctx->ctx_id,
 				ctx->link_hdl, req->request_id, status);
@@ -2346,7 +2346,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request_verify_addr(
 		 * IRQ delay happens. It is only valid when the
 		 * platform doesn't have last consumed address.
 		 */
-		CAM_WARN(CAM_ISP,
+		CAM_WARN_RATE_LIMIT(CAM_ISP,
 			"BUF_DONE for res %s last_consumed_addr:0x%x not found in Req %lld ",
 			__cam_isp_resource_handle_id_to_type(
 			ctx_isp->isp_device_type, done->resource_handle),

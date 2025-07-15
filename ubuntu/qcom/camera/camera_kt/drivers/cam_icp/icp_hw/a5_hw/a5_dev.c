@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -21,7 +21,6 @@
 #include "camera_main.h"
 
 struct a5_soc_info cam_a5_soc_info;
-EXPORT_SYMBOL(cam_a5_soc_info);
 
 struct cam_a5_device_hw_info cam_a5_hw_info = {
 	.hw_ver = 0x0,
@@ -43,7 +42,6 @@ struct cam_a5_device_hw_info cam_a5_hw_info = {
 	.uncached_heap_size = 0x60,
 	.a5_status = 0x200,
 };
-EXPORT_SYMBOL(cam_a5_hw_info);
 
 static bool cam_a5_cpas_cb(uint32_t client_handle, void *userdata,
 	struct cam_cpas_irq_data *irq_data)

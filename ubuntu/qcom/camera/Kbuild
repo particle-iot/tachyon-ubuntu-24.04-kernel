@@ -2,14 +2,13 @@
 
 $(info "CAMERA_KERNEL_ROOT is: $(CAMERA_KERNEL_ROOT)")
 $(info "KERNEL_ROOT is: $(KERNEL_ROOT)")
-$(info "SOC_FAM is: $(SOC_FAM)")
 $(info "CAMERA_ARCH is: $(CAMERA_ARCH)")
 
 # Include Architecture configurations
-ifdef SOC_FAM
-include $(CAMERA_KERNEL_ROOT)/config/$(SOC_FAM)-camera.mk
+ifdef CAMERA_ARCH
+include $(CAMERA_KERNEL_ROOT)/config/$(CAMERA_ARCH)-camera.mk
 else
-$(info "SOC_FAM not defined.")
+$(info "CAMERA ARCH not defined.")
 endif
 
 ifneq ($(KBUILD_EXTRA_CONFIGS),)
@@ -44,7 +43,7 @@ LINUXINCLUDE +=                                                  \
 # After creating lists, add content of 'ccflags-m' variable to 'ccflags-y' one.
 ccflags-y += ${ccflags-m}
 
-camera-y := \
+camera_$(CAMERA_ARCH)-y := \
 	camera_kt/drivers/cam_req_mgr/cam_req_mgr_core.o \
 	camera_kt/drivers/cam_req_mgr/cam_req_mgr_dev.o \
 	camera_kt/drivers/cam_req_mgr/cam_req_mgr_debug.o \
@@ -79,10 +78,10 @@ camera-y := \
 	common/cam_req_mgr_workq.o \
 	common/cam_soc_icc.o
 
-camera-$(CONFIG_QCOM_CX_IPEAK) += camera_kt/drivers/cam_utils/cam_cx_ipeak.o
-camera-$(CONFIG_QCOM_BUS_SCALING) += camera_kt/drivers/cam_utils/cam_soc_bus.o
+camera_$(CAMERA_ARCH)-$(CONFIG_QCOM_CX_IPEAK) += camera_kt/drivers/cam_utils/cam_cx_ipeak.o
+camera_$(CAMERA_ARCH)-$(CONFIG_QCOM_BUS_SCALING) += camera_kt/drivers/cam_utils/cam_soc_bus.o
 
-camera-$(CONFIG_SPECTRA_ISP) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_ISP) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/hw_utils/cam_tasklet_util.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/hw_utils/cam_isp_packet_parser.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/hw_utils/irq_controller/cam_irq_controller.o \
@@ -121,7 +120,7 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/top_tpg/cam_top_tpg_ver1.o
 
-camera-$(CONFIG_SPECTRA_ICP) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_ICP) += \
 	camera_kt/drivers/cam_icp/icp_hw/icp_hw_mgr/cam_icp_hw_mgr.o \
 	camera_kt/drivers/cam_icp/icp_hw/ipe_hw/ipe_dev.o \
 	camera_kt/drivers/cam_icp/icp_hw/ipe_hw/ipe_core.o \
@@ -136,7 +135,7 @@ camera-$(CONFIG_SPECTRA_ICP) += \
 	camera_kt/drivers/cam_icp/cam_icp_context.o \
 	camera_kt/drivers/cam_icp/hfi.o
 
-camera-$(CONFIG_SPECTRA_JPEG) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_JPEG) += \
 	camera_kt/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_dev.o \
 	camera_kt/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_core.o \
 	camera_kt/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_soc.o \
@@ -147,7 +146,7 @@ camera-$(CONFIG_SPECTRA_JPEG) += \
 	camera_kt/drivers/cam_jpeg/cam_jpeg_dev.o \
 	camera_kt/drivers/cam_jpeg/cam_jpeg_context.o
 
-camera-$(CONFIG_SPECTRA_FD) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_FD) += \
 	camera_kt/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_dev.o \
 	camera_kt/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_core.o \
 	camera_kt/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_soc.o \
@@ -155,7 +154,7 @@ camera-$(CONFIG_SPECTRA_FD) += \
 	camera_kt/drivers/cam_fd/cam_fd_dev.o \
 	camera_kt/drivers/cam_fd/cam_fd_context.o
 
-camera-$(CONFIG_SPECTRA_LRME) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_LRME) += \
 	camera_kt/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_dev.o \
 	camera_kt/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_core.o \
 	camera_kt/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_soc.o \
@@ -163,7 +162,7 @@ camera-$(CONFIG_SPECTRA_LRME) += \
 	camera_kt/drivers/cam_lrme/cam_lrme_dev.o \
 	camera_kt/drivers/cam_lrme/cam_lrme_context.o
 
-camera-$(CONFIG_SPECTRA_SENSOR) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_SENSOR) += \
 	camera_kt/drivers/cam_sensor_module/cam_actuator/cam_actuator_dev.o \
 	camera_kt/drivers/cam_sensor_module/cam_actuator/cam_actuator_core.o \
 	camera_kt/drivers/cam_sensor_module/cam_actuator/cam_actuator_soc.o \
@@ -199,7 +198,7 @@ camera-$(CONFIG_SPECTRA_SENSOR) += \
 	camera_kt/drivers/cam_sensor_module/cam_ir_led/cam_ir_led_core.o \
 	camera_kt/drivers/cam_sensor_module/cam_ir_led/cam_ir_led_soc.o
 
-camera-$(CONFIG_SPECTRA_CUSTOM) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_CUSTOM) += \
 	camera_kt/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_soc.o \
 	camera_kt/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_dev.o \
 	camera_kt/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_core.o \
@@ -208,7 +207,7 @@ camera-$(CONFIG_SPECTRA_CUSTOM) += \
 	camera_kt/drivers/cam_cust/cam_custom_dev.o \
 	camera_kt/drivers/cam_cust/cam_custom_context.o
 
-camera-$(CONFIG_SPECTRA_OPE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_OPE) += \
 	camera_kt/drivers/cam_ope/cam_ope_subdev.o \
 	camera_kt/drivers/cam_ope/cam_ope_context.o \
 	camera_kt/drivers/cam_ope/ope_hw_mgr/cam_ope_hw_mgr.o \
@@ -219,7 +218,7 @@ camera-$(CONFIG_SPECTRA_OPE) += \
 	camera_kt/drivers/cam_ope/ope_hw_mgr/ope_hw/bus_rd/ope_bus_rd.o\
 	camera_kt/drivers/cam_ope/ope_hw_mgr/ope_hw/bus_wr/ope_bus_wr.o
 
-camera-$(CONFIG_SPECTRA_TFE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_TFE) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_core.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_dev.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi100.o \
@@ -234,7 +233,7 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid530.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/cam_tfe_hw_mgr.o
 
-camera-$(CONFIG_SPECTRA_SFE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_SFE) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_soc.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_dev.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/cam_sfe_core.o \
@@ -243,12 +242,12 @@ camera-$(CONFIG_SPECTRA_SFE) += \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_rd.o \
 	camera_kt/drivers/cam_isp/isp_hw_mgr/isp_hw/sfe_hw/sfe_bus/cam_sfe_bus_wr.o
 
-camera-y += camera_kt/drivers/camera_main.o
+camera_$(CAMERA_ARCH)-y += camera_kt/drivers/camera_main.o
 
 ccflags-y += -Wmissing-prototypes
 
-obj-m += camera.o
-BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/camera.ko
+obj-m += camera_$(CAMERA_ARCH).o
+BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/camera_$(CAMERA_ARCH).ko
 else
 # Include UAPI headers
 USERINCLUDE +=                              \
@@ -274,7 +273,7 @@ LINUXINCLUDE +=                                                       \
 
 # After creating lists, add content of 'ccflags-m' variable to 'ccflags-y' one.
 ccflags-y += ${ccflags-m}
-camera-y := \
+camera_$(CAMERA_ARCH)-y := \
 	camera/drivers/cam_req_mgr/cam_req_mgr_core.o \
 	camera/drivers/cam_req_mgr/cam_req_mgr_dev.o \
 	camera/drivers/cam_req_mgr/cam_mem_mgr.o \
@@ -311,16 +310,16 @@ camera-y := \
 	common/cam_soc_icc.o
 
 ifeq (,$(filter $(CONFIG_CAM_PRESIL),y m))
-	camera-y += camera/drivers/cam_presil/stub/cam_presil_hw_access_stub.o
+	camera_$(CAMERA_ARCH)-y += camera/drivers/cam_presil/stub/cam_presil_hw_access_stub.o
 else
 	ccflags-y += -DCONFIG_CAM_PRESIL=1
 endif
 
-camera-$(TARGET_SYNX_ENABLE) += camera/drivers/cam_sync/cam_sync_synx.o
-camera-$(CONFIG_QCOM_CX_IPEAK) += camera/drivers/cam_utils/cam_cx_ipeak.o
-camera-$(CONFIG_QCOM_BUS_SCALING) += camera/drivers/cam_utils/cam_soc_bus.o
+camera_$(CAMERA_ARCH)-$(TARGET_SYNX_ENABLE) += camera/drivers/cam_sync/cam_sync_synx.o
+camera_$(CAMERA_ARCH)-$(CONFIG_QCOM_CX_IPEAK) += camera/drivers/cam_utils/cam_cx_ipeak.o
+camera_$(CAMERA_ARCH)-$(CONFIG_QCOM_BUS_SCALING) += camera/drivers/cam_utils/cam_soc_bus.o
 
-camera-$(CONFIG_SPECTRA_ISP) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_ISP) += \
 	camera/drivers/cam_isp/isp_hw_mgr/hw_utils/cam_tasklet_util.o \
 	camera/drivers/cam_isp/isp_hw_mgr/hw_utils/cam_isp_packet_parser.o \
 	camera/drivers/cam_isp/isp_hw_mgr/hw_utils/irq_controller/cam_irq_controller.o \
@@ -363,7 +362,7 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	camera/drivers/cam_isp/cam_isp_dev.o \
 	camera/drivers/cam_isp/cam_isp_context.o
 
-camera-$(CONFIG_SPECTRA_ICP) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_ICP) += \
 	camera/drivers/cam_icp/icp_hw/icp_hw_mgr/cam_icp_hw_mgr.o \
 	camera/drivers/cam_icp/icp_hw/ipe_hw/ipe_dev.o \
 	camera/drivers/cam_icp/icp_hw/ipe_hw/ipe_core.o \
@@ -385,7 +384,7 @@ camera-$(CONFIG_SPECTRA_ICP) += \
 	camera/drivers/cam_icp/cam_icp_context.o \
 	camera/drivers/cam_icp/hfi.o
 
-camera-$(CONFIG_SPECTRA_JPEG) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_JPEG) += \
 	camera/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_dev.o \
 	camera/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_core.o \
 	camera/drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_soc.o \
@@ -396,7 +395,7 @@ camera-$(CONFIG_SPECTRA_JPEG) += \
 	camera/drivers/cam_jpeg/cam_jpeg_dev.o \
 	camera/drivers/cam_jpeg/cam_jpeg_context.o
 
-camera-$(CONFIG_SPECTRA_FD) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_FD) += \
 	camera/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_dev.o \
 	camera/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_core.o \
 	camera/drivers/cam_fd/fd_hw_mgr/fd_hw/cam_fd_hw_soc.o \
@@ -404,7 +403,7 @@ camera-$(CONFIG_SPECTRA_FD) += \
 	camera/drivers/cam_fd/cam_fd_dev.o \
 	camera/drivers/cam_fd/cam_fd_context.o
 
-camera-$(CONFIG_SPECTRA_LRME) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_LRME) += \
 	camera/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_dev.o \
 	camera/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_core.o \
 	camera/drivers/cam_lrme/lrme_hw_mgr/lrme_hw/cam_lrme_hw_soc.o \
@@ -412,7 +411,7 @@ camera-$(CONFIG_SPECTRA_LRME) += \
 	camera/drivers/cam_lrme/cam_lrme_dev.o \
 	camera/drivers/cam_lrme/cam_lrme_context.o
 
-camera-$(CONFIG_SPECTRA_SENSOR) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_SENSOR) += \
 	camera/drivers/cam_sensor_module/cam_actuator/cam_actuator_dev.o \
 	camera/drivers/cam_sensor_module/cam_actuator/cam_actuator_core.o \
 	camera/drivers/cam_sensor_module/cam_actuator/cam_actuator_soc.o \
@@ -451,7 +450,7 @@ camera-$(CONFIG_SPECTRA_SENSOR) += \
 	camera/drivers/cam_sensor_module/cam_flash/cam_flash_soc.o \
 	camera/drivers/cam_sensor_module/cam_sensor_module_debug.o
 
-camera-$(CONFIG_SPECTRA_CUSTOM) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_CUSTOM) += \
 	camera/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_soc.o \
 	camera/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_dev.o \
 	camera/drivers/cam_cust/cam_custom_hw_mgr/cam_custom_hw1/cam_custom_sub_mod_core.o \
@@ -460,7 +459,7 @@ camera-$(CONFIG_SPECTRA_CUSTOM) += \
 	camera/drivers/cam_cust/cam_custom_dev.o \
 	camera/drivers/cam_cust/cam_custom_context.o
 
-camera-$(CONFIG_SPECTRA_OPE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_OPE) += \
 	camera/drivers/cam_ope/cam_ope_subdev.o \
 	camera/drivers/cam_ope/cam_ope_context.o \
 	camera/drivers/cam_ope/ope_hw_mgr/cam_ope_hw_mgr.o \
@@ -471,7 +470,7 @@ camera-$(CONFIG_SPECTRA_OPE) += \
 	camera/drivers/cam_ope/ope_hw_mgr/ope_hw/bus_rd/ope_bus_rd.o\
 	camera/drivers/cam_ope/ope_hw_mgr/ope_hw/bus_wr/ope_bus_wr.o
 
-camera-$(CONFIG_SPECTRA_CRE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_CRE) += \
 	camera/drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_core.o \
 	camera/drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_soc.o \
 	camera/drivers/cam_cre/cam_cre_hw_mgr/cre_hw/cre_dev.o \
@@ -482,7 +481,7 @@ camera-$(CONFIG_SPECTRA_CRE) += \
 	camera/drivers/cam_cre/cam_cre_dev.o \
 	camera/drivers/cam_cre/cam_cre_context.o
 
-camera-$(CONFIG_SPECTRA_TFE) += \
+camera_$(CAMERA_ARCH)-$(CONFIG_SPECTRA_TFE) += \
 	camera/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_core.o \
 	camera/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi_dev.o \
 	camera/drivers/cam_isp/isp_hw_mgr/isp_hw/ppi_hw/cam_csid_ppi100.o \
@@ -497,8 +496,8 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 	camera/drivers/cam_isp/isp_hw_mgr/isp_hw/tfe_csid_hw/cam_tfe_csid.o \
 	camera/drivers/cam_isp/isp_hw_mgr/cam_tfe_hw_mgr.o
 
-camera-y += camera/drivers/camera_main.o
+camera_$(CAMERA_ARCH)-y += camera/drivers/camera_main.o
 
-obj-m += camera.o
-BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/camera.ko
+obj-m += camera_$(CAMERA_ARCH).o
+BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/camera_$(CAMERA_ARCH).ko
 endif
