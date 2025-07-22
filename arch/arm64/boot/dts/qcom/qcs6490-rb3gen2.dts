@@ -729,29 +729,32 @@
 
 &lpass_dmic01_clk {
 	drive-strength = <8>;
-	bias-disable;
+	output-high;
 };
 
 &lpass_dmic01_data {
-	bias-pull-down;
+	drive-strength = <8>;
+	input-enable;
 };
 
 &lpass_dmic23_clk {
 	drive-strength = <8>;
-	bias-disable;
+	output-high;
 };
 
 &lpass_dmic23_data {
-	bias-pull-down;
+	drive-strength = <8>;
+	input-enable;
 };
 
 &lpass_dmic45_clk {
 	drive-strength = <8>;
-	bias-disable;
+	output-high;
 };
 
 &lpass_dmic45_data {
-	bias-pull-down;
+	drive-strength = <8>;
+	input-enable;
 };
 
 &lpass_wsa_swr_clk {
