@@ -4,11 +4,9 @@ CAMERA_KERNEL_ROOT := $(srctree)/$(src)/../camera
 
 include $(srctree)/$(src)/../camera/Kbuild
 
-obj-m := camera-qcm6490.o
+objs := $(camera_$(CAMERA_ARCH)-y) $(camera_$(CAMERA_ARCH)-m)
 
-camera-qcm6490-objs := $(camera-y) $(camera-m)
-
-srcs := $(camera-qcm6490-objs:%.o=%.c)
+srcs := $(objs:%.o=%.c)
 
 $(addprefix $(obj)/, $(srcs)): $(obj)/%.c: $(src)/../camera/%.c FORCE
 	$(Q)mkdir -p $(dir $@)
