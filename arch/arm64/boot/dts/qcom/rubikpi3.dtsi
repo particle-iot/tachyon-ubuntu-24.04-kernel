@@ -1100,6 +1100,70 @@
 	status = "okay";
 };
 
+&thermal_zones {
+	cpu0-thermal {
+		trips {
+			cpu_tepid: cpu-tepid {
+				temperature = <65000>;
+				hysteresis = <5000>;
+				type = "active";
+			};
+
+			cpu_warm: cpu-warm {
+				temperature = <80000>;
+				hysteresis = <5000>;
+				type = "active";
+			};
+
+			cpu_hot: cpu-hot {
+				temperature = <90000>;
+				hysteresis = <5000>;
+				type = "active";
+			};
+		};
+	};
+
+	gpuss0-thermal {
+		trips {
+			gpuss0_alert0: trip-point0 {
+				temperature = <95000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	gpuss1-thermal {
+		trips {
+			gpuss1_alert0: trip-point0 {
+				temperature = <95000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	nspss0-thermal {
+		trips {
+			nspss0_alert0: trip-point0 {
+				temperature = <95000>;
+				hysteresis = <5000>;
+				type = "hot";
+			};
+		};
+	};
+
+	nspss1-thermal {
+		trips {
+			nspss1_alert0: trip-point0 {
+				temperature = <95000>;
+				hysteresis = <5000>;
+				type = "hot";
+			};
+		};
+	};
+};
+
 / {
 	fan0: pwm-fan {
 		compatible = "pwm-fan";
