@@ -1,0 +1,81 @@
+version: 2.1
+
+tag_filters: &tag_filters
+  filters:
+    tags:
+      only:
+        - /.+/
+
+orbs:
+  particle-artifact: particle-iot/particle-artifact@1
+  aws-cli: circleci/aws-cli@4.1.2
+  docker: circleci/docker@2
+
+commands:
+  build-kernel-packages:
+    steps:
+      - particle-artifact/install-deb-dependencies
+      - run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          touch ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run: git clone -b "$CIRCLE_BRANCH$CIRCLE_TAG" "$CIRCLE_REPOSITORY_URL" --depth=1 ./
+      - docker/check:
+          docker-username: DOCKERHUB_USERNAME
+          docker-password: DOCKERHUB_PASSWORD
+      - run: docker run -v $(pwd):/build --rm ubuntu:24.04 /bin/bash -c '/build/ci-scripts/build.sh'
+      - run: ls -la debs/ || true
+      - store_artifacts:
+          path: ./debs
+      - persist_to_workspace:
+          root: ./debs
+          paths:
+            - "*.deb"
+
+jobs:
+  build-kernel:
+    machine: true
+    resource_class: "particle-iot/tachyon-build-farm-xlarge"
+    steps:
+      - build-kernel-packages
+  upload-deb:
+    machine:
+      image: ubuntu-2004:2024.11.1
+    resource_class: arm.medium
+    steps:
+      - attach_workspace:
+          at: /tmp/deb
+      - run:
+          name: Move .deb to expected location
+          command: |
+            mkdir -p deb
+            mv /tmp/deb/*.deb deb/
+      - particle-artifact/import-gpg-keys
+      - particle-artifact/upload-apt-to-s3:
+          architecture: "arm64"
+          apt-repo: "ubuntu"
+          base-codename: "noble"
+      - particle-artifact/upload-apt-to-s3:
+          architecture: "all"
+          apt-repo: "ubuntu"
+          base-codename: "noble"
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-kernel:
+          context:
+            - particle-ci-private
+          <<: *tag_filters
+      - upload-deb:
+          <<: *tag_filters
+          requires:
+            - build-kernel
+          pre-steps:
+            - aws-cli/setup:
+                role_arn: ${AWS_ROLE_ARN}
+                region: us-east-1
+          context: packages-particle-production
