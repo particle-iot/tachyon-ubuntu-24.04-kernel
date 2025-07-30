@@ -82,6 +82,22 @@
 						remote-endpoint = <&usb_1_dwc3_hs>;
 					};
 				};
+
+				port@1 {
+					reg = <1>;
+
+					pmic_glink_ss_in: endpoint {
+						remote-endpoint = <&usb_1_qmpphy_out>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+
+					pmic_glink_sbu: endpoint {
+						remote-endpoint = <&usb1_sbu_mux>;
+					};
+				};
 			};
 		};
 	};
@@ -535,6 +551,15 @@
 	status = "okay";
 };
 
+&mdss_dp {
+	status = "okay";
+};
+
+&mdss_dp_out {
+	data-lanes = <0 1>;
+	remote-endpoint = <&usb_1_qmpphy_dp_in>;
+};
+
 &mdss_dsi {
 	vdda-supply = <&vreg_l6b_1p2>;
 	status = "okay";
@@ -737,6 +762,49 @@
 
 	orientation-switch;
 	status = "okay";
+};
+
+&usb_1_qmpphy_out {
+	remote-endpoint = <&pmic_glink_ss_in>;
+};
+
+&usb_1_qmpphy_dp_in {
+	remote-endpoint = <&mdss_dp_out>;
+};
+
+&tlmm {
+	usb1_sbu_default: usb1-sbu-state {
+		oe-n-pins {
+			pins = "gpio53";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+			output-high;
+		};
+		sel-pins {
+			pins = "gpio52";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+		};
+	};
+};
+
+/ {
+	usb1-sbu-mux {
+		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
+		enable-gpios = <&tlmm 53 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 52 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb1_sbu_default>;
+		mode-switch;
+		orientation-switch;
+		port {
+			usb1_sbu_mux: endpoint {
+				remote-endpoint = <&pmic_glink_sbu>;
+			};
+		};
+	};
 };
 
 &vreg_l7b_2p952 {
