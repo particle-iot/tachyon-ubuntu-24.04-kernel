@@ -5,7 +5,7 @@
 
 /dts-v1/;
 
-#include "rubikpi3.dtsi"
+#include "qcs6490-thundercomm-rubikpi3.dtsi"
 
 / {
 	model = "Thundercomm, Inc. RUBIK Pi 3";
