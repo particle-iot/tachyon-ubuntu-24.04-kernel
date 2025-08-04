@@ -1338,11 +1338,12 @@
 		clock-names = "lpo";
 		device-wakeup-gpios = <&tlmm 39 GPIO_ACTIVE_HIGH>;
 		host-wakeup-gpios = <&tlmm 137 GPIO_ACTIVE_HIGH>;
-		reset-gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
+		shutdown-gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>;
 		pinctrl-0 = <&bt_device_wake>, <&bt_host_wake>, <&bt_reset>;
 		pinctrl-names = "default";
 		vbat-supply = <&vreg_sdio_wifi_1p8>;
 		vddio-supply = <&vreg_sdio_wifi_1p8>;
+		max-speed = <3000000>;
 	};
 };
 
