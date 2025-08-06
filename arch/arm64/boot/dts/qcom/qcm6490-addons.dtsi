@@ -1112,7 +1112,7 @@
 
 			map2 {
 				trip = <&camera0_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1782,7 +1782,7 @@
 
 			map2 {
 				trip = <&nspss0_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1821,7 +1821,7 @@
 
 			map2 {
 				trip = <&nspss1_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1893,7 +1893,7 @@
 		cooling-maps {
 			map0 {
 				trip = <&c_bcl_lvl1>;
-				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
 			map1 {
@@ -1963,7 +1963,7 @@
 
 			map2 {
 				trip = <&video_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
