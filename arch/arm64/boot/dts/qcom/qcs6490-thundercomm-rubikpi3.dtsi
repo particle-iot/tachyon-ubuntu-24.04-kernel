@@ -17,7 +17,6 @@
 #include "pm8350c.dtsi"
 #include "pmk8350.dtsi"
 #include "qcm6490-addons.dtsi"
-#include "pm7325b.dtsi"
 
 / {
 	model = "Thundercomm, Inc. RUBIK Pi 3";
