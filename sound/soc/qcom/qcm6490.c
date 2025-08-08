@@ -72,6 +72,8 @@ static int qcm6490_snd_init(struct snd_soc_pcm_runtime *rtd)
 	case PRIMARY_MI2S_TX:
 	case PRIMARY_TDM_RX_0:
 	case PRIMARY_TDM_TX_0:
+	case QUATERNARY_MI2S_RX:
+	case QUATERNARY_MI2S_TX:
 		break;
 	case SLIMBUS_0_RX:
 	case SLIMBUS_0_TX:
@@ -192,6 +194,23 @@ static int qcm6490_snd_hw_free(struct snd_pcm_substream *substream)
 				    &data->stream_prepared[cpu_dai->id]);
 }
 
+static int qcm6490_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	unsigned int fmt = SND_SOC_DAIFMT_BP_FP;
+
+	switch (cpu_dai->id) {
+	case PRIMARY_MI2S_RX ... QUATERNARY_MI2S_TX:
+		snd_soc_dai_set_fmt(cpu_dai, fmt);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget qcm6490_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
@@ -199,6 +218,17 @@ static const struct snd_soc_dapm_widget qcm6490_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route qcm6490_dapm_routes[] = {
+	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
+	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
+};
+
+static const struct snd_soc_dapm_widget qcs6490_rubikpi3_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
+};
+
+static const struct snd_soc_dapm_route qcs6490_rubikpi3_dapm_routes[] = {
 	{"STUB_AIF1_RX", NULL, "STUB_AIF1_PINCTRL"},
 	{"STUB_AIF1_TX", NULL, "STUB_AIF1_PINCTRL"},
 };
@@ -256,6 +286,7 @@ static const struct snd_soc_ops qcm6490_be_ops = {
 	.hw_params = qcm6490_snd_hw_params,
 	.hw_free = qcm6490_snd_hw_free,
 	.prepare = qcm6490_snd_prepare,
+	.startup = qcm6490_snd_startup,
 };
 
 static struct snd_soc_card qcm6490_data = {
@@ -264,6 +295,14 @@ static struct snd_soc_card qcm6490_data = {
 	.num_dapm_widgets = ARRAY_SIZE(qcm6490_dapm_widgets),
 	.dapm_routes = qcm6490_dapm_routes,
 	.num_dapm_routes = ARRAY_SIZE(qcm6490_dapm_routes),
+};
+
+static struct snd_soc_card qcs6490_rubikpi3_data = {
+	.name = "qcs6490-rubikpi3",
+	.dapm_widgets = qcs6490_rubikpi3_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(qcs6490_rubikpi3_dapm_widgets),
+	.dapm_routes = qcs6490_rubikpi3_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(qcs6490_rubikpi3_dapm_routes),
 };
 
 static struct snd_soc_card qcs6490_rb3gen2_data = {
@@ -352,6 +391,7 @@ static int qcm6490_platform_probe(struct platform_device *pdev)
 
 static const struct of_device_id snd_qcm6490_dt_match[] = {
 	{.compatible = "qcom,qcm6490-sndcard", .data = &qcm6490_data},
+	{.compatible = "qcom,qcs6490-rubikpi3-sndcard", .data = &qcs6490_rubikpi3_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-sndcard", .data = &qcs6490_rb3gen2_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-ia-sndcard", .data = &qcs6490_rb3gen2_ia_data},
 	{.compatible = "qcom,qcs6490-rb3gen2-ptz-sndcard", .data = &qcs6490_rb3gen2_ptz_data},
