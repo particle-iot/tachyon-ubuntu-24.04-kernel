@@ -43,7 +43,7 @@
 #define GPIO_LOW  0
 #define GPIO_HIGH 1
 #define es8316_DEF_VOL	0xbb
-#define MCLK 0
+#define MCLK 1
 static int es8316_init_reg;
 static struct snd_soc_component *es8316_component;
 
