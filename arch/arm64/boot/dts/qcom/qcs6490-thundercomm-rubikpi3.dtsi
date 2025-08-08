@@ -1487,6 +1487,14 @@
 		bias-pull-down;
 		input-enable;
 	};
+
+	mi2s0_mclk_sleep: mi2s0-mclk-sleep-state {
+		pins = "gpio96";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+		input-enable;
+	};
 };
 
 &mi2s0_data0 {
@@ -1511,11 +1519,19 @@
 	output-high;
 };
 
+&mi2s0_mclk {
+	drive-strength = <8>;
+	bias-disable;
+	output-high;
+};
+
 &i2c0 {
 	status = "ok";
 	es8316: es8316@11 {
 		compatible = "everest,es8316";
 		reg = <0x11>;
+		clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "mclk";
 		#sound-dai-cells = <0>;
 		power_en-gpio = <&tlmm 117 0>;
 		irq-gpio = <&tlmm 63 0>;
@@ -1524,22 +1540,12 @@
 };
 
 &lpass_tlmm {
-	lpass_ext_mas_clk1_a: ext-master-clk1-a-state {
-		pins = "gpio13";
-		function = "ext_mas_clk1_a";
-	};
-
-	lpass_ext_mas_clk1_a_sleep: ext-master-clk1-a-sleep {
-		pins = "gpio13";
-		function = "ext_mas_clk1_a";
-		drive-strength = <2>;
-		bias-pull-down;
-		input-enable;
-	};
-
 	lpass_qua_mi2s_sclk: qua-mi2s-sclk-state {
 		pins = "gpio0";
 		function = "qua_mi2s_sclk";
+		drive-strength = <8>;
+		bias-disable;
+		output-high;
 	};
 
 	lpass_qua_mi2s_sclk_sleep: qua-mi2s-sclk-sleep {
@@ -1553,6 +1559,8 @@
 	lpass_qua_mi2s_ws: qua-mi2s-ws-state {
 		pins = "gpio1";
 		function = "qua_mi2s_ws";
+		drive-strength = <8>;
+		output-high;
 	};
 
 	lpass_qua_mi2s_ws_sleep: qua-mi2s-ws-sleep {
@@ -1566,6 +1574,8 @@
 	lpass_qua_mi2s_data0: qua-mi2s-data0-state {
 		pins = "gpio2";
 		function = "qua_mi2s_data";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	lpass_qua_mi2s_data0_sleep: qua-mi2s-data0-sleep {
@@ -1579,6 +1589,8 @@
 	lpass_qua_mi2s_data1: qua-mi2s-data1-state {
 		pins = "gpio3";
 		function = "qua_mi2s_data";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	lpass_qua_mi2s_data1_sleep: qua-mi2s-data1-sleep {
@@ -1592,6 +1604,8 @@
 	lpass_qua_mi2s_data2: qua-mi2s-data2-state {
 		pins = "gpio4";
 		function = "qua_mi2s_data";
+		drive-strength = <8>;
+		bias-disable;
 	};
 
 	lpass_qua_mi2s_data2_sleep: qua-mi2s-data2-sleep {
@@ -1601,48 +1615,31 @@
 		bias-pull-down;
 		input-enable;
 	};
-
-	lpass_qua_mi2s_data3: qua-mi2s-data3-state {
-		pins = "gpio5";
-		function = "qua_mi2s_data";
-	};
-
-	lpass_qua_mi2s_data3_sleep: qua-mi2s-data3-sleep {
-		pins = "gpio5";
-		function = "qua_mi2s_data";
-		drive-strength = <2>;
-		bias-pull-down;
-		input-enable;
-	};
 };
 
 / {
 	sound: sound {
-		compatible = "qcom,qcm6490-sndcard";
-		model = "qcm6490-idp-snd-card";
+		compatible = "qcom,qcs6490-rubikpi3-sndcard";
+		model = "qcs6490-rubikpi3-snd-card";
 
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		pinctrl-names = "default", "stub_aif0_active", "stub_aif0_sleep";
+		pinctrl-names = "default", "stub_aif1_active", "stub_aif1_sleep";
 		pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk>,
 					<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>,
-					<&lpass_ext_mas_clk1_a_sleep>, <&lpass_qua_mi2s_sclk_sleep>,
+					<&lpass_qua_mi2s_sclk_sleep>,
 					<&lpass_qua_mi2s_ws_sleep>, <&lpass_qua_mi2s_data0_sleep>,
-					<&lpass_qua_mi2s_data1_sleep>, <&lpass_qua_mi2s_data2_sleep>,
-					<&lpass_qua_mi2s_data3_sleep>;
+					<&lpass_qua_mi2s_data1_sleep>, <&lpass_qua_mi2s_data2_sleep>;
 		pinctrl-1 = <&mi2s0_data0>, <&mi2s0_data1>, <&mi2s0_mclk>,
-					<&mi2s0_sclk>, <&mi2s0_ws>,
-					<&lpass_ext_mas_clk1_a>, <&lpass_qua_mi2s_sclk>,
+					<&mi2s0_sclk>, <&mi2s0_ws>, <&lpass_qua_mi2s_sclk>,
 					<&lpass_qua_mi2s_ws>, <&lpass_qua_mi2s_data0>,
-					<&lpass_qua_mi2s_data1>, <&lpass_qua_mi2s_data2>,
-					<&lpass_qua_mi2s_data3>;
+					<&lpass_qua_mi2s_data1>, <&lpass_qua_mi2s_data2>;
 		pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>, <&mi2s0_mclk>,
 					<&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>,
-					<&lpass_ext_mas_clk1_a_sleep>, <&lpass_qua_mi2s_sclk_sleep>,
+					<&lpass_qua_mi2s_sclk_sleep>,
 					<&lpass_qua_mi2s_ws_sleep>, <&lpass_qua_mi2s_data0_sleep>,
-					<&lpass_qua_mi2s_data1_sleep>, <&lpass_qua_mi2s_data2_sleep>,
-					<&lpass_qua_mi2s_data3_sleep>;
+					<&lpass_qua_mi2s_data1_sleep>, <&lpass_qua_mi2s_data2_sleep>;
 
 		mi2s-playback-dai-link {
 			link-name = "MI2S-LPAIF-RX-PRIMARY";
@@ -1650,7 +1647,10 @@
 				sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
 			};
 			codec {
-				sound-dai = <&msm_stub_codec 0>, <&es8316>;
+				sound-dai = <&msm_stub_codec 2>, <&es8316>;
+			};
+			platform {
+				sound-dai = <&q6apm>;
 			};
 		};
 
@@ -1660,7 +1660,10 @@
 				sound-dai = <&q6apmbedai PRIMARY_MI2S_TX>;
 			};
 			codec {
-				sound-dai = <&msm_stub_codec 1>, <&es8316>;
+				sound-dai = <&msm_stub_codec 3>, <&es8316>;
+			};
+			platform {
+				sound-dai = <&q6apm>;
 			};
 		};
 
@@ -1670,7 +1673,10 @@
 				sound-dai = <&q6apmbedai QUATERNARY_MI2S_RX>;
 			};
 			codec {
-				sound-dai = <&msm_stub_codec 0>;
+				sound-dai = <&msm_stub_codec 2>;
+			};
+			platform {
+				sound-dai = <&q6apm>;
 			};
 		};
 	};
