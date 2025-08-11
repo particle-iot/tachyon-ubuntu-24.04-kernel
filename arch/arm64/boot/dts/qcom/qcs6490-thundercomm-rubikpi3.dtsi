@@ -887,7 +887,8 @@
 	usb-role-switch;
 	qcom,enable-rt;
 	wakeup-source;
-	dr_mode = "host";
+	dr_mode = "otg";
+	role-switch-default-mode = "host";
 
 	status = "okay";
 
