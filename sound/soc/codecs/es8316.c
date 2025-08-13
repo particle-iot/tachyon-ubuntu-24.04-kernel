@@ -15,6 +15,8 @@
 #include <linux/mod_devicetable.h>
 #include <linux/mutex.h>
 #include <linux/regmap.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -42,6 +44,17 @@ struct es8316_priv {
 	unsigned int allowed_rates[ARRAY_SIZE(supported_mclk_lrck_ratios)];
 	struct snd_pcm_hw_constraint_list sysclk_constraints;
 	bool jd_inverted;
+	int use_init_reg;
+};
+
+static struct snd_soc_jack es8316_jack;
+
+/* Headset jack detection DAPM pins */
+static struct snd_soc_jack_pin es8316_headset_pins[] = {
+	{
+		.pin = "Headset",
+		.mask = SND_JACK_HEADSET,
+	},
 };
 
 /*
@@ -472,6 +485,37 @@ static int es8316_pcm_hw_params(struct snd_pcm_substream *substream,
 	unsigned int clk = es8316->sysclk / 2;
 	bool clk_valid = false;
 
+	if (es8316->use_init_reg) {
+		switch (params_format(params)) {
+		case SNDRV_PCM_FORMAT_S16_LE:
+			wordlen = ES8316_SERDATA2_LEN_16;
+			break;
+		case SNDRV_PCM_FORMAT_S20_3LE:
+			wordlen = ES8316_SERDATA2_LEN_20;
+			break;
+		case SNDRV_PCM_FORMAT_S24_LE:
+			wordlen = ES8316_SERDATA2_LEN_24;
+			break;
+		case SNDRV_PCM_FORMAT_S32_LE:
+			wordlen = ES8316_SERDATA2_LEN_32;
+			break;
+		default:
+			return -EINVAL;
+		}
+
+		snd_soc_component_update_bits(component, ES8316_SERDATA_DAC,
+					ES8316_SERDATA2_LEN_MASK, wordlen);
+		snd_soc_component_update_bits(component, ES8316_SERDATA_ADC,
+					ES8316_SERDATA2_LEN_MASK, wordlen);
+
+		snd_soc_component_write(component, ES8316_CLKMGR_CLKSW, 0x7f);
+		snd_soc_component_write(component, ES8316_CLKMGR_CLKSEL, 0x09);
+		snd_soc_component_update_bits(component, ES8316_ADC_PDN_LINSEL, 0xcf, 0x00);
+		snd_soc_component_write(component, ES8316_SERDATA_ADC, 0x00);
+		snd_soc_component_write(component, ES8316_SYS_PDN, 0x00);
+		return 0;
+	}
+
 	/* We will start with halved sysclk and see if we can use it
 	 * for proper clocking. This is to minimise the risk of running
 	 * the CODEC with a too high frequency. We have an SKU where
@@ -549,6 +593,77 @@ static int es8316_mute(struct snd_soc_dai *dai, int mute, int direction)
 
 #define ES8316_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+
+static int es8316_init_regs(struct snd_soc_component *component)
+{
+	struct es8316_priv *es8316 = snd_soc_component_get_drvdata(component);
+	int ret;
+	static const struct reg_sequence init_seq[] = {
+		{ ES8316_RESET,            0x00, .delay_us = 30 * USEC_PER_MSEC },
+		{ ES8316_SYS_VMIDSEL,      0xFF, .delay_us = 30 * USEC_PER_MSEC },
+		{ ES8316_CLKMGR_CLKSEL,    0x09 },
+		{ ES8316_CLKMGR_ADCOSR,    0x32 },
+		{ ES8316_CLKMGR_ADCDIV1,   0x11 },
+		{ ES8316_CLKMGR_ADCDIV2,   0x90 },
+		{ ES8316_CLKMGR_DACDIV1,   0x11 },
+		{ ES8316_CLKMGR_DACDIV2,   0x90 },
+		{ ES8316_CLKMGR_CPDIV,     0x00 },
+		{ ES8316_SERDATA1,         0x04 },
+		{ ES8316_CLKMGR_CLKSW,     0x7F },
+		{ ES8316_CAL_TYPE,         0x0F },
+		{ ES8316_CAL_HPLIV,        0x90 },
+		{ ES8316_CAL_HPRIV,        0x90 },
+		{ ES8316_ADC_VOLUME,       0x00 },
+		{ ES8316_ADC_PDN_LINSEL,   0xC0 },
+		{ ES8316_ADC_D2SEPGA,      0x00 },
+		{ ES8316_ADC_DMIC,         0x08 },
+		{ ES8316_DAC_SET2,         0x20 },
+		{ ES8316_DAC_SET3,         0x00 },
+		{ ES8316_DAC_VOLL,         0x00 },
+		{ ES8316_DAC_VOLR,         0x00 },
+		{ ES8316_SERDATA_ADC,      0x00 },
+		{ ES8316_SERDATA_DAC,      0x00 },
+		{ ES8316_SYS_VMIDLOW,      0x11 },
+		{ ES8316_SYS_VSEL,         0xFC },
+		{ ES8316_SYS_REF,          0x28 },
+		{ ES8316_SYS_LP1,          0x04 },
+		{ ES8316_SYS_LP2,          0x0C },
+		{ ES8316_DAC_PDN,          0x11 },
+		{ ES8316_HPMIX_SEL,        0x00 },
+		{ ES8316_HPMIX_SWITCH,     0x88 },
+		{ ES8316_HPMIX_PDN,        0x00 },
+		{ ES8316_HPMIX_VOL,        0xBB },
+		{ ES8316_CPHP_PDN2,        0x10 },
+		{ ES8316_CPHP_LDOCTL,      0x30 },
+		{ ES8316_CPHP_PDN1,        0x02 },
+		{ ES8316_CPHP_ICAL_VOL,    0x00 },
+		{ ES8316_GPIO_SEL,         0x00 },
+		{ ES8316_GPIO_DEBOUNCE,    0xF2 },
+		{ ES8316_TESTMODE,         0xA0 },
+		{ ES8316_ADC_MUTE,         0x00 },
+		{ ES8316_TEST1,            0x00 },
+		{ ES8316_TEST2,            0x00 },
+		{ ES8316_SYS_PDN,          0x00 },
+		{ ES8316_RESET,            0xC0, .delay_us = 50 * USEC_PER_MSEC },
+		{ ES8316_ADC_PGAGAIN,      0x60 },
+		{ ES8316_ADC_PDN_LINSEL,   0x30 },
+		{ ES8316_ADC_D2SEPGA,      0x00 },
+		/* adc ds mode, HPF enable */
+		{ ES8316_ADC_DMIC,         0x08 },
+		{ ES8316_ADC_ALC1,         0xCD },
+		{ ES8316_ADC_ALC2,         0x08 },
+		{ ES8316_ADC_ALC3,         0xA0 },
+		{ ES8316_ADC_ALC4,         0x05 },
+		{ ES8316_ADC_ALC5,         0x06 },
+		{ ES8316_ADC_ALC_NG,       0x61 },
+	};
+
+	ret = regmap_multi_reg_write(es8316->regmap, init_seq, ARRAY_SIZE(init_seq));
+	if (ret)
+		dev_err(component->dev, "init sequence failed: %d\n", ret);
+
+	return ret;
+}
 
 static const struct snd_soc_dai_ops es8316_ops = {
 	.startup = es8316_pcm_startup,
@@ -766,11 +881,26 @@ static int es8316_probe(struct snd_soc_component *component)
 		return ret;
 	}
 
+	if (es8316->irq > 0) {
+		ret = snd_soc_card_jack_new_pins(component->card, "Headset",
+					SND_JACK_HEADSET | SND_JACK_BTN_0,
+					&es8316_jack,
+					es8316_headset_pins,
+					ARRAY_SIZE(es8316_headset_pins));
+		if (ret)
+			dev_warn(component->dev, "new a jack failed\n");
+		else
+			snd_soc_component_set_jack(component, &es8316_jack, NULL);
+	}
+
 	/* Reset codec and enable current state machine */
 	snd_soc_component_write(component, ES8316_RESET, 0x3f);
 	usleep_range(5000, 5500);
 	snd_soc_component_write(component, ES8316_RESET, ES8316_RESET_CSM_ON);
 	msleep(30);
+
+	if (es8316->use_init_reg)
+		es8316_init_regs(component);
 
 	/*
 	 * Documentation is unclear, but this value from the vendor driver is
@@ -867,6 +997,11 @@ static int es8316_i2c_probe(struct i2c_client *i2c_client)
 	es8316->regmap = devm_regmap_init_i2c(i2c_client, &es8316_regmap);
 	if (IS_ERR(es8316->regmap))
 		return PTR_ERR(es8316->regmap);
+
+	if (of_property_read_bool(dev->of_node, "init-regs")) {
+		dev_info(dev, "Use the initialization register configuration\n");
+		es8316->use_init_reg = 1;
+	}
 
 	es8316->irq = i2c_client->irq;
 	mutex_init(&es8316->lock);
