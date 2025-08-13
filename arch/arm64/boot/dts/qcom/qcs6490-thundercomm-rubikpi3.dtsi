@@ -1496,6 +1496,13 @@
 		bias-pull-down;
 		input-enable;
 	};
+
+	es8316_power_on: es8316_power_on {
+		pins = "gpio117";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
 };
 
 &mi2s0_data0 {
@@ -1526,6 +1533,18 @@
 	output-high;
 };
 
+&soc {
+	es8316_enable_vreg: es8316_enable_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "es8316_enable_vreg";
+		pinctrl-names = "default";
+		pinctrl-0 = <&es8316_power_on>;
+		gpio = <&tlmm 117 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+	};
+};
+
 &i2c0 {
 	status = "ok";
 	es8316: es8316@11 {
@@ -1534,8 +1553,10 @@
 		clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
 		clock-names = "mclk";
 		#sound-dai-cells = <0>;
-		power_en-gpio = <&tlmm 117 0>;
-		irq-gpio = <&tlmm 63 0>;
+		dummy-supply = <&es8316_enable_vreg>;
+		interrupts-extended = <&tlmm 63 IRQ_TYPE_EDGE_BOTH>;
+		everest,jack-detect-inverted = <1>;
+		init-regs;
 		status = "ok";
 	};
 };
