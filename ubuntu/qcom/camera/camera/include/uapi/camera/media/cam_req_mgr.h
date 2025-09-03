@@ -48,7 +48,7 @@
  */
 #define CAM_REQ_MGR_MAX_HANDLES           64
 #define CAM_REQ_MGR_MAX_HANDLES_V2        256
-#define MAX_LINKS_PER_SESSION             4
+#define MAX_LINKS_PER_SESSION             2
 
 /* Interval for cam_info_rate_limit_custom() */
 #define CAM_RATE_LIMIT_INTERVAL_5SEC 5
