@@ -98,6 +98,7 @@ struct lt9611uxc_mode {
  * Enumerate them here to check whether the mode is supported.
  */
 static struct lt9611uxc_mode lt9611uxc_modes[] = {
+	{ 3840, 4400, 2160, 2250, 30 },
 	{ 1920, 2200, 1080, 1125, 60 },
 	{ 1920, 2200, 1080, 1125, 30 },
 	{ 1920, 2640, 1080, 1125, 25 },
@@ -180,6 +181,9 @@ static void lt9611uxc_hpd_work(struct work_struct *work)
 		mutex_lock(&lt9611uxc->ocm_lock);
 		connected = lt9611uxc->hdmi_connected;
 		mutex_unlock(&lt9611uxc->ocm_lock);
+
+		if (!connected)
+			lt9611uxc->edid_read = false;
 
 		drm_bridge_hpd_notify(&lt9611uxc->bridge,
 				      connected ?
