@@ -284,7 +284,7 @@ static void dpu_encoder_phys_vid_setup_timing_engine(
 	intf_cfg.stream_sel = 0; /* Don't care value for video mode */
 	intf_cfg.mode_3d = dpu_encoder_helper_get_3d_blend_mode(phys_enc);
 	intf_cfg.dsc = dpu_encoder_helper_get_dsc(phys_enc);
-	if (phys_enc->hw_pp->merge_3d)
+	if (intf_cfg.mode_3d && phys_enc->hw_pp->merge_3d)
 		intf_cfg.merge_3d = phys_enc->hw_pp->merge_3d->idx;
 
 	spin_lock_irqsave(phys_enc->enc_spinlock, lock_flags);
@@ -421,10 +421,12 @@ static void dpu_encoder_phys_vid_enable(struct dpu_encoder_phys *phys_enc)
 	struct dpu_hw_ctl *ctl;
 	const struct dpu_format *fmt;
 	u32 fmt_fourcc;
+	u32 mode_3d;
 
 	ctl = phys_enc->hw_ctl;
 	fmt_fourcc = dpu_encoder_get_drm_fmt(phys_enc);
 	fmt = dpu_get_dpu_format(fmt_fourcc);
+	mode_3d = dpu_encoder_helper_get_3d_blend_mode(phys_enc);
 
 	DPU_DEBUG_VIDENC(phys_enc, "\n");
 
@@ -447,7 +449,8 @@ static void dpu_encoder_phys_vid_enable(struct dpu_encoder_phys *phys_enc)
 		goto skip_flush;
 
 	ctl->ops.update_pending_flush_intf(ctl, phys_enc->hw_intf->idx);
-	if (ctl->ops.update_pending_flush_merge_3d && phys_enc->hw_pp->merge_3d)
+	if (mode_3d && ctl->ops.update_pending_flush_merge_3d &&
+	    phys_enc->hw_pp->merge_3d)
 		ctl->ops.update_pending_flush_merge_3d(ctl, phys_enc->hw_pp->merge_3d->idx);
 
 	if (ctl->ops.update_pending_flush_cdm && phys_enc->hw_cdm)
