@@ -161,8 +161,7 @@ msm-display-$(CONFIG_DRM_MSM_DSI_7NM_PHY) += dsi/phy/dsi_phy_7nm.o
 
 msm-y += $(adreno-y) $(msm-display-y)
 
-obj-$(CONFIG_DRM_MSM)	+= msm_display.o
-msm_display-y := $(msm-y)
+obj-$(CONFIG_DRM_MSM)	+= msm.o
 
 ifeq (y,$(CONFIG_DRM_MSM_VALIDATE_XML))
 	headergen-opts += --validate
