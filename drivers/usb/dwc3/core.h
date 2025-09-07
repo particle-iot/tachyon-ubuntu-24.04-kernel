@@ -1011,6 +1011,17 @@ struct dwc3_glue_data {
 };
 
 /**
+ * struct dwc3_glue_ops - The ops indicate the notifications that
+ *				need to be passed on to glue layer
+ * @pre_set_role: Notify glue of role switch notifications
+ * @pre_run_stop: Notify run stop enable/disable information to glue
+ */
+struct dwc3_glue_ops {
+	void	(*pre_set_role)(struct dwc3 *dwc, enum usb_role role);
+	void	(*pre_run_stop)(struct dwc3 *dwc, bool is_on);
+};
+
+/**
  * struct dwc3 - representation of our controller
  * @drd_work: workqueue used for role swapping
  * @ep0_trb: trb which is used for the ctrl_req
@@ -1030,6 +1041,7 @@ struct dwc3_glue_data {
  * @eps: endpoint array
  * @gadget: device side representation of the peripheral controller
  * @gadget_driver: pointer to the gadget driver
+ * @glue_ops: Vendor callbacks for flattened device implementations.
  * @bus_clk: clock for accessing the registers
  * @ref_clk: reference clock
  * @susp_clk: clock used when the SS phy is in low power (S3) state
@@ -1208,6 +1220,8 @@ struct dwc3 {
 
 	struct usb_gadget	*gadget;
 	struct usb_gadget_driver *gadget_driver;
+
+	const struct dwc3_glue_ops	*glue_ops;
 
 	struct clk		*bus_clk;
 	struct clk		*ref_clk;
@@ -1669,6 +1683,18 @@ static inline void dwc3_notify_post_conndone(struct dwc3 *dwc)
 {
 	if (dwc->glue_ops && dwc->glue_ops->post_conndone)
 		dwc->glue_ops->post_conndone(dwc->glue_data);
+}
+
+static inline void dwc3_pre_set_role(struct dwc3 *dwc, enum usb_role role)
+{
+	if (dwc->glue_ops && dwc->glue_ops->pre_set_role)
+		dwc->glue_ops->pre_set_role(dwc, role);
+}
+
+static inline void dwc3_pre_run_stop(struct dwc3 *dwc, bool is_on)
+{
+	if (dwc->glue_ops && dwc->glue_ops->pre_run_stop)
+		dwc->glue_ops->pre_run_stop(dwc, is_on);
 }
 
 #if IS_ENABLED(CONFIG_USB_DWC3_HOST) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
