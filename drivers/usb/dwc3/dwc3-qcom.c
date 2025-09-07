@@ -1007,6 +1007,55 @@ static void dwc3_qcom_vbus_regulator_get(struct dwc3_qcom *qcom)
 	}
 }
 
+static void dwc3_qcom_set_role_notifier(struct dwc3 *dwc, enum usb_role next_role)
+{
+	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
+
+	if (qcom->current_role == next_role)
+		return;
+
+	if (pm_runtime_resume_and_get(qcom->dev)) {
+		dev_dbg(qcom->dev, "Failed to resume device\n");
+		return;
+	}
+
+	if (qcom->current_role == USB_ROLE_DEVICE)
+		dwc3_qcom_vbus_override_enable(qcom, false);
+	else if (qcom->current_role != USB_ROLE_DEVICE)
+		dwc3_qcom_vbus_override_enable(qcom, true);
+
+	pm_runtime_mark_last_busy(qcom->dev);
+	pm_runtime_put_sync(qcom->dev);
+
+	/*
+	 * Current role changes via usb_role_switch_set_role callback protected
+	 * internally by mutex lock.
+	 */
+	qcom->current_role = next_role;
+}
+
+static void dwc3_qcom_run_stop_notifier(struct dwc3 *dwc, bool is_on)
+{
+	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
+
+	/*
+	 * When autosuspend is enabled and controller goes to suspend
+	 * after removing UDC from userspace, the next UDC write needs
+	 * setting of QSCRATCH VBUS_VALID to "1" to generate a connect
+	 * done event.
+	 */
+	if (!is_on)
+		return;
+
+	dwc3_qcom_vbus_override_enable(qcom, true);
+	pm_runtime_mark_last_busy(qcom->dev);
+}
+
+struct dwc3_glue_ops dwc3_qcom_glue_ops = {
+	.pre_set_role	= dwc3_qcom_set_role_notifier,
+	.pre_run_stop	= dwc3_qcom_run_stop_notifier,
+};
+
 static int dwc3_qcom_probe(struct platform_device *pdev)
 {
 	struct device_node	*np = pdev->dev.of_node;
@@ -1125,13 +1174,21 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		 */
 		qcom->mode = usb_get_dr_mode(dev);
 
-		if (qcom->mode == USB_DR_MODE_HOST)
+		if (qcom->mode == USB_DR_MODE_HOST) {
 			qcom->current_role = USB_ROLE_HOST;
-		else if (qcom->mode == USB_DR_MODE_PERIPHERAL)
+		} else if (qcom->mode == USB_DR_MODE_PERIPHERAL) {
 			qcom->current_role = USB_ROLE_DEVICE;
-		else
-			qcom->current_role = USB_ROLE_NONE;
+			dwc3_qcom_vbus_override_enable(qcom, true);
+		} else {
+			if ((device_property_read_bool(dev, "usb-role-switch")) &&
+				(usb_get_role_switch_default_mode(dev) == USB_DR_MODE_HOST))
+				qcom->current_role = USB_ROLE_HOST;
+			else
+				qcom->current_role = USB_ROLE_DEVICE;
+		}
 	}
+
+	qcom->dwc.glue_ops = &dwc3_qcom_glue_ops;
 
 	if (device_property_read_bool(dev, "vbus_dwc3"))
 		dwc3_qcom_vbus_regulator_get(qcom);
@@ -1161,11 +1218,6 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		ret = dwc3_qcom_register_extcon(qcom);
 		if (ret)
 			goto interconnect_exit;
-	}
-
-	if (qcom->mode == USB_DR_MODE_HOST) {
-		dwc3_qcom_vbus_regulator_enable(qcom, true);
-		qcom->is_vbus_enabled = true;
 	}
 
 	wakeup_source = of_property_read_bool(dev->of_node, "wakeup-source");
