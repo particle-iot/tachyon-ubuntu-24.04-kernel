@@ -2144,6 +2144,7 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 
 	dwc->dev = &pdev->dev;
 	platform_set_drvdata(pdev, dwc);
+	dwc->glue_ops = NULL;
 
 	return dwc3_probe(dwc, NULL);
 }
