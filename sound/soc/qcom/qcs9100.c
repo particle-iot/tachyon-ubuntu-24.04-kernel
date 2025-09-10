@@ -19,7 +19,7 @@
 #include "common.h"
 #include "sdw.h"
 
-#define DRIVER_NAME		"qcs9075"
+#define DRIVER_NAME		"qcs8275"
 #define WCN_CDC_SLIM_RX_CH_MAX	2
 #define WCN_CDC_SLIM_TX_CH_MAX	2
 #define NAME_SIZE	32
