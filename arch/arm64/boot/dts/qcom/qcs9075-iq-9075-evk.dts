@@ -7,6 +7,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/pwm/pwm.h>
 
 #include "sa8775p.dtsi"
 #include "sa8775p-pmics.dtsi"
@@ -612,9 +613,14 @@
 	pinctrl-names = "default";
 	status = "okay";
 
-	fan: fan@18 {
+	fan_controller: fan@18 {
 		compatible = "ti,amc6821";
 		reg = <0x18>;
+		#pwm-cells = <2>;
+
+		fan {
+			pwms = <&fan_controller 40000 PWM_POLARITY_INVERTED>;
+		};
 	};
 };
 
