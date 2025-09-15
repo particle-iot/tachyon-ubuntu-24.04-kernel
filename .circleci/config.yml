@@ -36,8 +36,9 @@ commands:
 
 jobs:
   build-kernel:
-    machine: true
-    resource_class: "particle-iot/tachyon-build-farm-xlarge"
+    machine:
+      image: ubuntu-2004:2024.11.1
+    resource_class: arm.large
     steps:
       - build-kernel-packages
   upload-deb:
@@ -68,7 +69,7 @@ workflows:
     jobs:
       - build-kernel:
           context:
-            - particle-ci-private
+            - linux-build-secrets
           <<: *tag_filters
       - upload-deb:
           <<: *tag_filters
@@ -78,4 +79,4 @@ workflows:
             - aws-cli/setup:
                 role_arn: ${AWS_ROLE_ARN}
                 region: us-east-1
-          context: packages-particle-production
+          context: linux-build-secrets
