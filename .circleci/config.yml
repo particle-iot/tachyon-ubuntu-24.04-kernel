@@ -38,7 +38,7 @@ jobs:
   build-kernel:
     machine:
       image: ubuntu-2004:2024.11.1
-    resource_class: arm.2xlarge
+    resource_class: arm.xlarge
     steps:
       - build-kernel-packages
   upload-deb:
