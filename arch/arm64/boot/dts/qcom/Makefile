@@ -400,6 +400,16 @@ qcs9075-addons-iq-9075-evk-ovl-dtbs := \
     qcs9100-graphics.dtbo \
     qcs9075-camera-iq-9075-evk.dtbo
 
+dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-ovl.dtb
+qcs8275-addons-iq-8275-evk-ovl-dtbs := \
+    qcs8275-addons-iq-8275-evk.dtb \
+    qcs8275-camera-iq-8275-evk.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-pro-sku-ovl.dtb
+qcs8275-addons-iq-8275-evk-pro-sku-ovl-dtbs := \
+    qcs8275-addons-iq-8275-evk-pro-sku.dtb \
+    qcs8275-camera-iq-8275-evk-pro-sku.dtbo
+
 dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
 
 dtbs-to-combined := $(filter %-ovl.dtb, $(dtb-y))
