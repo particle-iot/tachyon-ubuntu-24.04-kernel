@@ -103,6 +103,7 @@ modules.order
 !.kunitconfig
 !.mailmap
 !.rustfmt.toml
+!.circleci/
 
 #
 # Generated include files
