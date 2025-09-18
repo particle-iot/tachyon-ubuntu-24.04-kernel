@@ -19,7 +19,6 @@
 #include "common.h"
 #include "sdw.h"
 
-#define DRIVER_NAME		"qcs8275"
 #define WCN_CDC_SLIM_RX_CH_MAX	2
 #define WCN_CDC_SLIM_TX_CH_MAX	2
 #define NAME_SIZE	32
@@ -262,6 +261,7 @@ static const struct snd_soc_ops qcs9100_be_ops = {
 
 static struct snd_soc_card snd_soc_iq8_8275_evk_data = {
 	.name = "iq8-8275-evk",
+	.driver_name = "qcs8275",
 	.dapm_widgets = iq8_8275_evk_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(iq8_8275_evk_dapm_widgets),
 	.dapm_routes = iq8_8275_evk_dapm_routes,
@@ -269,7 +269,8 @@ static struct snd_soc_card snd_soc_iq8_8275_evk_data = {
 };
 
 static struct snd_soc_card snd_soc_qcs8300_data = {
-	.name = "qcs8300",
+	.name = "qcs8300-ride",
+	.driver_name = "qcs8300",
 	.dapm_widgets = qcs8300_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs8300_dapm_widgets),
 	.dapm_routes = qcs8300_dapm_routes,
@@ -277,7 +278,8 @@ static struct snd_soc_card snd_soc_qcs8300_data = {
 };
 
 static struct snd_soc_card snd_soc_qcs9100_data = {
-	.name = "qcs9100",
+	.name = "qcs9100-ride",
+	.driver_name = "qcs9100",
 	.dapm_widgets = qcs9100_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
 	.dapm_routes = qcs9100_dapm_routes,
@@ -286,6 +288,7 @@ static struct snd_soc_card snd_soc_qcs9100_data = {
 
 static struct snd_soc_card snd_soc_qcs9075_rb8_data = {
 	.name = "qcs9075-rb8",
+	.driver_name = "qcs9075",
 	.dapm_widgets = qcs9075_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs9075_dapm_widgets),
 	.dapm_routes = qcs9075_dapm_routes,
@@ -331,7 +334,6 @@ static int qcs9100_platform_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	card->driver_name = DRIVER_NAME;
 	qcs9100_add_be_ops(card);
 
 	/* get clock info to set clock for qcs9100 target to support high
