@@ -1133,7 +1133,8 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 			qcom->current_role = USB_ROLE_NONE;
 	}
 
-	dwc3_qcom_vbus_regulator_get(qcom);
+	if (device_property_read_bool(dev, "vbus_dwc3"))
+		dwc3_qcom_vbus_regulator_get(qcom);
 
 	if (legacy_binding)
 		ret = dwc3_qcom_of_register_core(pdev);
