@@ -890,12 +890,15 @@ static void rtw89_ops_cancel_hw_scan(struct ieee80211_hw *hw,
 
 	if (!RTW89_CHK_FW_FEATURE(SCAN_OFFLOAD, &rtwdev->fw))
 		return;
+	
+	mutex_lock(&rtwdev->mutex);
 
 	if (!rtwdev->scanning)
-		return;
+		goto out;
 
-	mutex_lock(&rtwdev->mutex);
 	rtw89_hw_scan_abort(rtwdev, vif);
+
+out:
 	mutex_unlock(&rtwdev->mutex);
 }
 
