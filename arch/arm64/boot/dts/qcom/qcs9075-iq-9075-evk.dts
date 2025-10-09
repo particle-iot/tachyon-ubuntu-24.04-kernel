@@ -1257,7 +1257,7 @@
 	usb-role-switch;
 	snps,dis_u2_susphy_quirk;
 	snps,dis_enblslpm_quirk;
-	maximum-speed = "super-speed";
+	maximum-speed = "super-speed-plus";
 	qcom,enable-rt;
 	wakeup-source;
 	vbus_dwc3-supply = <&vbus_supply_regulator_0>;
@@ -1315,7 +1315,7 @@
 	snps,dis_enblslpm_quirk;
 	qcom,enable-rt;
 	wakeup-source;
-	maximum-speed = "super-speed";
+	maximum-speed = "super-speed-plus";
 	dr_mode = "otg";
 	usb-role-switch;
 	role-switch-default-mode = "host";
