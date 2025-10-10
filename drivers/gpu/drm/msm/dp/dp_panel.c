@@ -483,7 +483,7 @@ static int msm_dp_panel_parse_dt(struct msm_dp_panel *msm_dp_panel)
 {
 	struct msm_dp_panel_private *panel;
 	struct device_node *of_node;
-	int cnt;
+	int cnt, ret;
 
 	panel = container_of(msm_dp_panel, struct msm_dp_panel_private, msm_dp_panel);
 	of_node = panel->dev->of_node;
@@ -501,6 +501,17 @@ static int msm_dp_panel_parse_dt(struct msm_dp_panel *msm_dp_panel)
 		msm_dp_panel->max_dp_lanes = cnt;
 	else
 		msm_dp_panel->max_dp_lanes = DP_MAX_NUM_DP_LANES; /* 4 lanes */
+
+	ret = drm_of_get_lane_mapping(of_node,
+                             "lane-mapping", 1, 0, 4, 4,
+                             msm_dp_panel->lane_map);
+	if (ret < 0) {
+		/* fallback: identity mapping */
+		msm_dp_panel->lane_map[0] = 0;
+		msm_dp_panel->lane_map[1] = 1;
+		msm_dp_panel->lane_map[2] = 2;
+		msm_dp_panel->lane_map[3] = 3;
+	}
 
 	msm_dp_panel->max_dp_link_rate = msm_dp_panel_link_frequencies(of_node);
 	if (!msm_dp_panel->max_dp_link_rate)

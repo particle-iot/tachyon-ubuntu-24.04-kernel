@@ -56,6 +56,20 @@
 		enable-active-high;
 		regulator-enable-ramp-delay = <10000>;
 	};
+
+	dp1-connector {
+		compatible = "dp-connector";
+		label = "DP";
+		type = "full-size";
+		hpd-gpios = <&tlmm 104 GPIO_ACTIVE_LOW>;
+
+		port {
+			dp1_connector_in: endpoint {
+				remote-endpoint = <&mdss_dp_out>;
+			};
+		};
+	};
+
 };
 
 &i2c1 {
@@ -370,6 +384,30 @@
 
 &qupv3_id_1 {
 	status = "okay";
+};
+
+&mdss_dp {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp_hot_plug_det>;
+};
+
+&mdss_dp_out {
+	lane-mapping = <1 0 3 2>;
+	remote-endpoint = <&dp1_connector_in>;
+};
+
+&dp_hot_plug_det {
+	pins = "gpio104";
+	function = "gpio";
+	bias-disable;
+};
+
+&pmic_glink {
+	qcom,no-pmic-hpd;
+};
+
+&usb_1_qmpphy_dp_in{
+	/delete-property/ remote-endpoint;
 };
 
 &redriver_ss_in {

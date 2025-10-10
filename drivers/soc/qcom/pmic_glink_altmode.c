@@ -97,6 +97,7 @@ struct pmic_glink_altmode {
 	struct device *dev;
 
 	unsigned int owner_id;
+	bool skip_pmic_hpd;
 
 	/* To synchronize WRITE_REQ acks */
 	struct mutex lock;
@@ -268,10 +269,11 @@ static void pmic_glink_altmode_worker(struct work_struct *work)
 	else
 		pmic_glink_altmode_enable_usb(altmode, alt_port);
 
-	drm_aux_hpd_bridge_notify(&alt_port->bridge->dev,
-				  alt_port->hpd_state ?
-				  connector_status_connected :
-				  connector_status_disconnected);
+	if(!altmode->skip_pmic_hpd)
+		drm_aux_hpd_bridge_notify(&alt_port->bridge->dev,
+					  alt_port->hpd_state ?
+					  connector_status_connected :
+					  connector_status_disconnected);
 
 	pmic_glink_altmode_request(altmode, ALTMODE_PAN_ACK, alt_port->index);
 }
@@ -467,6 +469,11 @@ static int pmic_glink_altmode_probe(struct auxiliary_device *adev,
 	INIT_WORK(&altmode->enable_work, pmic_glink_altmode_enable_worker);
 	init_completion(&altmode->pan_ack);
 	mutex_init(&altmode->lock);
+
+	if (of_property_read_bool(altmode->dev->of_node, "qcom,no-pmic-hpd")) {
+		dev_info(altmode->dev, "Skipping PMIC HPD handling (native DP HPD)\n");
+		altmode->skip_pmic_hpd = true;
+	}
 
 	device_for_each_child_node(dev, fwnode) {
 		ret = fwnode_property_read_u32(fwnode, "reg", &port);

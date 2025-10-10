@@ -57,6 +57,7 @@ struct msm_dp_panel {
 	u32 max_dp_link_rate;
 
 	u32 max_bw_code;
+	u32 lane_map[4];
 
 	struct mst_caps mst_caps;
 };
