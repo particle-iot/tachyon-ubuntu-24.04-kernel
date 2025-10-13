@@ -116,13 +116,20 @@
 		type = "full-size";
 		hpd-gpios = <&tlmm 104 GPIO_ACTIVE_LOW>;
 
-		port {
-			dp1_connector_in: endpoint {
-				remote-endpoint = <&mdss_dp_out>;
+		ports {
+			port@0 {
+				dp1_connector_in: endpoint {
+					remote-endpoint = <&mdss_dp_out>;
+				};
+			};
+
+			port@1 {
+				redriver_dp_in: endpoint {
+					remote-endpoint = <&redriver_ss_out>;
+				};
 			};
 		};
 	};
-
 };
 
 &i2c1 {
@@ -484,6 +491,10 @@
 	};
 };
 
+&pmic_glink_ss_in {
+	/delete-property/ remote-endpoint;
+};
+
 &qps615_rsex_vreg {
 	vin-supply = <&qps615_rc1_resx_vreg>;
 };
@@ -510,6 +521,7 @@
 
 &pmic_glink {
 	qcom,no-pmic-hpd;
+	status = "disabled";
 };
 
 &usb_1_qmpphy_dp_in{
@@ -519,6 +531,10 @@
 &redriver_ss_in {
 	data-lanes = <0 1 2 3>;
 	remote-endpoint = <&usb_1_qmpphy_out>;
+};
+
+&redriver_ss_out {
+	remote-endpoint = <&redriver_dp_in>;
 };
 
 &sound {
@@ -773,12 +789,20 @@
 	};
 };
 
+&typec_retimer {
+	default-dp-mode;
+};
+
 &uart4 {
 	status = "okay";
 };
 
 &uart7 {
 	status = "disabled";
+};
+
+&usb_1_qmpphy_dp_in {
+	/delete-property/ remote-endpoint;
 };
 
 &soc {

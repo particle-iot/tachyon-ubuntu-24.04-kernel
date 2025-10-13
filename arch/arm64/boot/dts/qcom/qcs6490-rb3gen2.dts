@@ -564,7 +564,7 @@
 		};
 	};
 
-	typec-retimer@1c {
+	typec_retimer: typec-retimer@1c {
 		compatible = "onnn,nb7vpq904m";
 		reg = <0x1c>;
 
