@@ -1559,8 +1559,6 @@ CONFIG_SERIAL_STM32                             policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA                             policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA_TCU                         policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA_TCU_CONSOLE                 policy<{'arm64': '-'}>
-CONFIG_SERIAL_XILINX_PS_UART                    policy<{'arm64': 'y'}>
-CONFIG_SERIAL_XILINX_PS_UART_CONSOLE            policy<{'arm64': 'y'}>
 CONFIG_SERIO_AMBAKMI                            policy<{'arm64': 'y'}>
 CONFIG_SERIO_NVEC_PS2                           policy<{'arm64': '-'}>
 CONFIG_SERIO_SUN4I_PS2                          policy<{'arm64': '-'}>
