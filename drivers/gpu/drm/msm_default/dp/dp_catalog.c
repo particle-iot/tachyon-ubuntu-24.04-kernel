@@ -494,17 +494,16 @@ void msm_dp_catalog_ctrl_config_ctrl(struct msm_dp_catalog *msm_dp_catalog, u32 
 		msm_dp_write_link(catalog, REG_DP_CONFIGURATION_CTRL + reg_offset, cfg);
 }
 
-void msm_dp_catalog_ctrl_lane_mapping(struct msm_dp_catalog *msm_dp_catalog)
+void msm_dp_catalog_ctrl_lane_mapping(struct msm_dp_catalog *msm_dp_catalog, const u32 *lane_map)
 {
 	struct msm_dp_catalog_private *catalog = container_of(msm_dp_catalog,
 				struct msm_dp_catalog_private, msm_dp_catalog);
-	u32 ln_0 = 0, ln_1 = 1, ln_2 = 2, ln_3 = 3; /* One-to-One mapping */
 	u32 ln_mapping;
 
-	ln_mapping = ln_0 << LANE0_MAPPING_SHIFT;
-	ln_mapping |= ln_1 << LANE1_MAPPING_SHIFT;
-	ln_mapping |= ln_2 << LANE2_MAPPING_SHIFT;
-	ln_mapping |= ln_3 << LANE3_MAPPING_SHIFT;
+	ln_mapping  = lane_map[0] << LANE0_MAPPING_SHIFT;
+	ln_mapping |= lane_map[1] << LANE1_MAPPING_SHIFT;
+	ln_mapping |= lane_map[2] << LANE2_MAPPING_SHIFT;
+	ln_mapping |= lane_map[3] << LANE3_MAPPING_SHIFT;
 
 	msm_dp_write_link(catalog, REG_DP_LOGICAL2PHYSICAL_LANE_MAPPING,
 			ln_mapping);
@@ -1548,6 +1547,8 @@ static int msm_dp_catalog_get_io(struct msm_dp_catalog_private *catalog)
 	struct platform_device *pdev = to_platform_device(catalog->dev);
 	struct dss_io_data *dss = &catalog->io;
 
+	u32 num_resources = pdev->num_resources;
+
 	dss->ahb.base = msm_dp_ioremap(pdev, 0, &dss->ahb.len);
 	if (IS_ERR(dss->ahb.base))
 		return PTR_ERR(dss->ahb.base);
@@ -1591,26 +1592,35 @@ static int msm_dp_catalog_get_io(struct msm_dp_catalog_private *catalog)
 			return PTR_ERR(dss->p0.base);
 		}
 
-		dss->p1.base = msm_dp_ioremap(pdev, 4, &dss->p1.len);
-		if (IS_ERR(dss->p1.base))
-			DRM_DEBUG("unable to remap p1 region: %pe\n", dss->p1.base);
+		if (num_resources > 4) {
+			dss->p1.base = msm_dp_ioremap(pdev, 4, &dss->p1.len);
+			if (IS_ERR(dss->p1.base))
+				DRM_DEBUG("unable to remap p1 region: %pe\n", dss->p1.base);
+		}
 
-		dss->p2.base = msm_dp_ioremap(pdev, 5, &dss->p2.len);
-		if (IS_ERR(dss->p2.base))
-			DRM_DEBUG("unable to remap p2 region: %pe\n", dss->p2.base);
+		if (num_resources > 5) {
+			dss->p2.base = msm_dp_ioremap(pdev, 5, &dss->p2.len);
+			if (IS_ERR(dss->p2.base))
+				DRM_DEBUG("unable to remap p2 region: %pe\n", dss->p2.base);
+		}
+		if (num_resources > 6) {
+			dss->p3.base = msm_dp_ioremap(pdev, 6, &dss->p3.len);
+			if (IS_ERR(dss->p3.base))
+				DRM_DEBUG("unable to remap p3 region: %pe\n", dss->p3.base);
+		}
+		if (num_resources > 7) {
+			dss->mst2_link.base = msm_dp_ioremap(pdev, 7, &dss->mst2_link.len);
+			if (IS_ERR(dss->mst2_link.base))
+				DRM_DEBUG("unable to remap mst2_link region: %pe\n",
+					dss->mst2_link.base);
+		}
 
-		dss->p3.base = msm_dp_ioremap(pdev, 6, &dss->p3.len);
-		if (IS_ERR(dss->p3.base))
-			DRM_DEBUG("unable to remap p3 region: %pe\n", dss->p3.base);
-
-		dss->mst2_link.base = msm_dp_ioremap(pdev, 7, &dss->mst2_link.len);
-		if (IS_ERR(dss->mst2_link.base))
-			DRM_DEBUG("unable to remap mst2_link region: %pe\n", dss->mst2_link.base);
-
-		dss->mst3_link.base = msm_dp_ioremap(pdev, 8, &dss->mst3_link.len);
-		if (IS_ERR(dss->mst3_link.base))
-			DRM_DEBUG("unable to remap mst3_link region: %pe\n", dss->mst3_link.base);
-
+		if (num_resources > 8) {
+			dss->mst3_link.base = msm_dp_ioremap(pdev, 8, &dss->mst3_link.len);
+			if (IS_ERR(dss->mst3_link.base))
+				DRM_DEBUG("unable to remap mst3_link region: %pe\n",
+					dss->mst3_link.base);
+		}
 	}
 
 	return 0;

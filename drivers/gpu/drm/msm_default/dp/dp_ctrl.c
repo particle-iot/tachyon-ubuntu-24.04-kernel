@@ -231,7 +231,7 @@ static void msm_dp_ctrl_configure_source_params(struct msm_dp_ctrl_private *ctrl
 	u32 cc, tb;
 	ctrl->catalog->stream_id = msm_dp_panel->stream_id;
 
-	msm_dp_catalog_ctrl_lane_mapping(ctrl->catalog);
+	msm_dp_catalog_ctrl_lane_mapping(ctrl->catalog, ctrl->panel->lane_map);
 	msm_dp_catalog_setup_peripheral_flush(ctrl->catalog);
 
 	if (ctrl->mst_active)
