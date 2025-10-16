@@ -288,7 +288,7 @@ static struct snd_soc_card snd_soc_qcs9100_data = {
 
 static struct snd_soc_card snd_soc_qcs9075_rb8_data = {
 	.name = "qcs9075-rb8",
-	.driver_name = "qcs9075",
+	.driver_name = "sa8775p",
 	.dapm_widgets = qcs9075_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs9075_dapm_widgets),
 	.dapm_routes = qcs9075_dapm_routes,
