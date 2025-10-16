@@ -17,7 +17,7 @@
 
 	sound {
 		compatible = "qcom,qcs9075-rb8-sndcard";
-		model = "qcs9075-iq-evk-snd-card";
+		model = "LEMANS-EVK";
 
 		clocks = <&q6prmcc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 			    <&q6prmcc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
