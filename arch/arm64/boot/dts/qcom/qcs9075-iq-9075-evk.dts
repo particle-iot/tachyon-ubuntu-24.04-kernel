@@ -1260,6 +1260,7 @@
 	maximum-speed = "super-speed-plus";
 	qcom,enable-rt;
 	wakeup-source;
+	vbus_dwc3;
 	vbus_dwc3-supply = <&vbus_supply_regulator_0>;
 	status = "okay";
 
