@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -24,7 +24,6 @@
 #include <linux/security.h>
 #include <linux/sort.h>
 #include <linux/string_helpers.h>
-#include <soc/qcom/of_common.h>
 #include <soc/qcom/secure_buffer.h>
 
 #include "kgsl_compat.h"
@@ -5086,14 +5085,14 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 		u32 *ptr)
 {
 	char str[32];
-	int ddr = get_ddrtype();
+	u64 ddr = kgsl_get_ddrtype();
 
-	/* get_ddrtype() returns error if the DDR type isn't determined */
-	if (ddr >= 0) {
+	/* kgsl_get_ddrtype returns error if the DDR type isn't determined */
+	if (!IS_ERR_VALUE(ddr)) {
 		int ret;
 
 		/* Construct expanded string for the DDR type  */
-		ret = snprintf(str, sizeof(str), "%s-ddr%d", base, ddr);
+		ret = snprintf(str, sizeof(str), "%s-ddr%llu", base, ddr);
 
 		/* WARN_ON() if the array size was too small for the string */
 		if (WARN_ON(ret > sizeof(str)))

@@ -272,7 +272,6 @@ struct kfd_node {
 
 	/* Interrupts */
 	struct kfifo ih_fifo;
-	struct workqueue_struct *ih_wq;
 	struct work_struct interrupt_work;
 	spinlock_t interrupt_lock;
 
@@ -364,6 +363,8 @@ struct kfd_dev {
 	/* Track per device allocated watch points */
 	uint32_t alloc_watch_ids;
 	spinlock_t watch_points_lock;
+
+	struct workqueue_struct *ih_wq;
 
 	/* Kernel doorbells for KFD device */
 	struct amdgpu_bo *doorbells;

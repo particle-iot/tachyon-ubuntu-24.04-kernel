@@ -77,7 +77,7 @@ static int cmma_test_essa(void)
 		: [reg1] "=&d" (reg1),
 		  [reg2] "=&a" (reg2),
 		  [rc] "+&d" (rc),
-		  [tmp] "=&d" (tmp),
+		  [tmp] "+&d" (tmp),
 		  "+Q" (S390_lowcore.program_new_psw),
 		  "=Q" (old)
 		: [psw_old] "a" (&old),

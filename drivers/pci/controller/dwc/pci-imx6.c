@@ -744,12 +744,9 @@ static int imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 	struct device *dev = pci->dev;
 
 	switch (imx6_pcie->drvdata->variant) {
-	case IMX8MQ:
-	case IMX8MQ_EP:
-		reset_control_deassert(imx6_pcie->pciephy_reset);
-		break;
 	case IMX7D:
 		reset_control_deassert(imx6_pcie->pciephy_reset);
+		reset_control_deassert(imx6_pcie->apps_reset);
 
 		/* Workaround for ERR010728, failure of PCI-e PLL VCO to
 		 * oscillate, especially when cold.  This turns off "Duty-cycle
@@ -783,10 +780,16 @@ static int imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 		usleep_range(200, 500);
 		break;
 	case IMX6Q:		/* Nothing to do */
+		break;
+	case IMX8MQ:
+	case IMX8MQ_EP:
+		reset_control_deassert(imx6_pcie->pciephy_reset);
+		fallthrough;
 	case IMX8MM:
 	case IMX8MM_EP:
 	case IMX8MP:
 	case IMX8MP_EP:
+		reset_control_deassert(imx6_pcie->apps_reset);
 		break;
 	}
 

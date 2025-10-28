@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "tpg_hw_v_1_3.h"
@@ -864,27 +863,31 @@ DEFINE_SIMPLE_ATTRIBUTE(tpg_1_3_shdr_line_offset1,
 int tpg_1_3_layer_init(struct tpg_hw *hw)
 {
 	int rc = 0;
-	struct dentry *dbgfileptr_parent = NULL;
 	char dir_name[160];
 
 	snprintf(dir_name, sizeof(dir_name), "tpg%d",
 		hw->hw_idx);
 
-	dbgfileptr_parent = debugfs_create_dir(dir_name, NULL);
-	if (!dbgfileptr_parent) {
+	/* Store the debugfs root directory */
+	hw->debugfs_root = debugfs_create_dir(dir_name, NULL);
+	if (!hw->debugfs_root) {
 		CAM_ERR(CAM_TPG, "Debug fs could not create directory");
-		rc = -ENOENT;
+		return -ENOENT;
 	}
+
+    /* Create debugfs entries */
 	debugfs_create_file("tpg_xcfa_test", 0644,
-		dbgfileptr_parent, hw, &tpg_1_3_xcfa_test);
+		hw->debugfs_root, hw, &tpg_1_3_xcfa_test);
 	debugfs_create_file("tpg_shdr_overlap_test", 0644,
-		dbgfileptr_parent, hw, &tpg_1_3_shdr_overlap_test);
+		hw->debugfs_root, hw, &tpg_1_3_shdr_overlap_test);
 	debugfs_create_file("tpg_shdr_offset_num_batch", 0644,
-		dbgfileptr_parent, hw, &tpg_1_3_shdr_offset_num_batch);
+		hw->debugfs_root, hw, &tpg_1_3_shdr_offset_num_batch);
 	debugfs_create_file("tpg_shdr_line_offset0", 0644,
-		dbgfileptr_parent, hw, &tpg_1_3_shdr_line_offset0);
+		hw->debugfs_root, hw, &tpg_1_3_shdr_line_offset0);
 	debugfs_create_file("tpg_shdr_line_offset1", 0644,
-		dbgfileptr_parent, hw, &tpg_1_3_shdr_line_offset1);
+		hw->debugfs_root, hw, &tpg_1_3_shdr_line_offset1);
+
 	CAM_INFO(CAM_TPG, "Layer init called");
+
 	return rc;
 }

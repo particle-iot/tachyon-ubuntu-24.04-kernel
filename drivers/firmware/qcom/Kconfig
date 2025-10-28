@@ -41,33 +41,12 @@ config QCOM_TZMEM_MODE_SHMBRIDGE
 
 endchoice
 
-config QCOM_SCM_DOWNLOAD_MODE_DEFAULT
-	bool "Qualcomm download mode enabled by default"
-	depends on QCOM_SCM
-	help
-	  A device with "download mode" enabled will upon an unexpected
-	  warm-restart enter a special debug mode that allows the user to
-	  "download" memory content over USB for offline postmortem analysis.
-	  The feature can be enabled/disabled on the kernel command line.
-
-	  Say Y here to enable "download mode" by default.
-
 config QCOM_SCM_ADDON
 	bool "Qualcomm SCM Addon Support"
 	depends on QCOM_SCM
 	help
 	  QCOM SCM addon provision APIs for client like kgsl, SHMBridge, etc,
 	  once enable it provides extra API via QCOM_SCM.
-
-config QTEE_SHM_BRIDGE
-	bool "QTI TEE shared memory bridge"
-	depends on QCOM_SCM && QCOM_SCM_ADDON
-	help
-	  QTEE shared memory bridge driver provides kernel APIs to share
-	  memory between trustzone & other VMs through shared memory bridge.
-	  It allows kernel clients to create bridge, delete bridge, and do
-	  memory sub-allocation and free from the default kernel bridge
-	  created by bridge driver.
 
 config QCOM_QSEECOM
 	bool "Qualcomm QSEECOM interface driver"
@@ -109,5 +88,7 @@ config QTI_TZ_LOG
 	  Provide debugging capability with a procfs interface for messages produced
 	  by the Secure code (Trust zone). These messages provide diagnostic information
 	  about TZ operations.
+
+source "drivers/firmware/qcom/si_core/Kconfig"
 
 endmenu

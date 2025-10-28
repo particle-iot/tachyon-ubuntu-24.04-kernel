@@ -185,8 +185,17 @@ CONFIG_ARM_TEGRA20_CPUFREQ                      policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': '-'}>
 CONFIG_ARM_TI_CPUFREQ                           policy<{'arm64': '-'}>
 CONFIG_ATH11K_COREDUMP                          policy<{'arm64': 'n'}>
+CONFIG_AX88179B                                 policy<{'arm64': 'y'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': '-'}>
 CONFIG_BACKLIGHT_QCOM_WLED                      policy<{'arm64': 'y'}>
+CONFIG_BCMDHD                                   policy<{'arm64': '-'}>
+CONFIG_BCMDHD_FW_PATH                           policy<{'arm64': '-'}>
+CONFIG_BCMDHD_NVRAM_PATH                        policy<{'arm64': '-'}>
+CONFIG_BCMDHD_OOB                               policy<{'arm64': '-'}>
+CONFIG_BCMDHD_PCIE                              policy<{'arm64': '-'}>
+CONFIG_BCMDHD_SDIO                              policy<{'arm64': '-'}>
+CONFIG_BCMDHD_SDIO_IRQ                          policy<{'arm64': '-'}>
+CONFIG_BCMDHD_USB                               policy<{'arm64': '-'}>
 CONFIG_BERLIN2_ADC                              policy<{'arm64': '-'}>
 CONFIG_CAN_BXCAN                                policy<{'arm64': '-'}>
 CONFIG_CAN_RCAR                                 policy<{'arm64': '-'}>
@@ -999,6 +1008,7 @@ CONFIG_PCIE_MEDIATEK                            policy<{'arm64': '-'}>
 CONFIG_PCIE_MEDIATEK_GEN3                       policy<{'arm64': '-'}>
 CONFIG_PCIE_MOBIVEIL_PLAT                       policy<{'arm64': '-'}>
 CONFIG_PCIE_QCOM_COMMON                         policy<{'arm64': 'y'}>
+CONFIG_PCIE_QCOM_EP                             policy<{'arm64': 'n'}>
 CONFIG_PCIE_RCAR_EP                             policy<{'arm64': '-'}>
 CONFIG_PCIE_RCAR_GEN4                           policy<{'arm64': '-'}>
 CONFIG_PCIE_RCAR_GEN4_EP                        policy<{'arm64': '-'}>
@@ -1213,6 +1223,7 @@ CONFIG_PINCTRL_S900                             policy<{'arm64': '-'}>
 CONFIG_PINCTRL_SA7255P                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SA8775P                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SA8775P_LPASS_LPI                policy<{'arm64': 'm'}>
+CONFIG_PINCTRL_SA8797P                          policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SC7180                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SC7280                           policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_SC8180X                          policy<{'arm64': 'y'}>
@@ -1337,6 +1348,7 @@ CONFIG_QCOM_KVM_ENABLED                         policy<{'arm64': 'n'}>
 CONFIG_QCOM_MEMORY_DUMP_V2                      policy<{'arm64': 'y'}>
 CONFIG_QCOM_MEM_BUF                             policy<{'arm64': 'y'}>
 CONFIG_QCOM_MEM_BUF_DEV                         policy<{'arm64': 'y'}>
+CONFIG_QCOM_MINIDUMP                            policy<{'arm64': 'n'}>
 CONFIG_QCOM_MPM                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_PANEL_EVENT_NOTIFIER                policy<{'arm64': 'm'}>
 CONFIG_QCOM_PDR_HELPERS                         policy<{'arm64': 'y'}>
@@ -1344,9 +1356,16 @@ CONFIG_QCOM_QMI_COOLING                         policy<{'arm64': 'm'}>
 CONFIG_QCOM_QMI_HELPERS                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_QPS615_PCIE_SWITCH                  policy<{'arm64': 'y'}>
 CONFIG_QCOM_RPMPD                               policy<{'arm64': 'y'}>
+CONFIG_QCOM_RPROC_MINIDUMP                      policy<{'arm64': 'm'}>
 CONFIG_QCOM_SCM_ADDON                           policy<{'arm64': 'y'}>
+CONFIG_QCOM_SCM_DOWNLOAD_MODE_DEFAULT           policy<{'arm64': '-'}>
 CONFIG_QCOM_SECURE_BUFFER                       policy<{'arm64': 'y'}>
-CONFIG_QCOM_SMCINVOKE                           policy<{'arm64': 'm'}>
+CONFIG_QCOM_SI_CORE                             policy<{'arm64': 'm'}>
+CONFIG_QCOM_SI_CORE_ADCI                        policy<{'arm64': 'n'}>
+CONFIG_QCOM_SI_CORE_MEM_OBJECT                  policy<{'arm64': 'm'}>
+CONFIG_QCOM_SI_CORE_WQ                          policy<{'arm64': 'y'}>
+CONFIG_QCOM_SI_CORE_XTS                         policy<{'arm64': 'm'}>
+CONFIG_QCOM_SMCINVOKE                           policy<{'arm64': '-'}>
 CONFIG_QCOM_SMD_RPM                             policy<{'arm64': 'y'}>
 CONFIG_QCOM_SMEM                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SMP2P                               policy<{'arm64': 'y'}>
@@ -1372,7 +1391,6 @@ CONFIG_QCS_GPUCC_615                            policy<{'arm64': 'm'}>
 CONFIG_QCS_VIDEOCC_615                          policy<{'arm64': 'm'}>
 CONFIG_QORIQ_CPUFREQ                            policy<{'arm64': '-'}>
 CONFIG_QORIQ_THERMAL                            policy<{'arm64': '-'}>
-CONFIG_QTEE_SHM_BRIDGE                          policy<{'arm64': 'y'}>
 CONFIG_QTI_BCL_PMIC5                            policy<{'arm64': 'y'}>
 CONFIG_QTI_DEVFREQ_CDEV                         policy<{'arm64': 'm'}>
 CONFIG_QTI_TZ_LOG                               policy<{'arm64': 'm'}>
@@ -1541,8 +1559,6 @@ CONFIG_SERIAL_STM32                             policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA                             policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA_TCU                         policy<{'arm64': '-'}>
 CONFIG_SERIAL_TEGRA_TCU_CONSOLE                 policy<{'arm64': '-'}>
-CONFIG_SERIAL_XILINX_PS_UART                    policy<{'arm64': 'y'}>
-CONFIG_SERIAL_XILINX_PS_UART_CONSOLE            policy<{'arm64': 'y'}>
 CONFIG_SERIO_AMBAKMI                            policy<{'arm64': 'y'}>
 CONFIG_SERIO_NVEC_PS2                           policy<{'arm64': '-'}>
 CONFIG_SERIO_SUN4I_PS2                          policy<{'arm64': '-'}>
@@ -2014,6 +2030,7 @@ CONFIG_VIDEO_TI_J721E_CSI2RX                    policy<{'arm64': '-'}>
 CONFIG_VIDEO_WAVE_VPU                           policy<{'arm64': '-'}>
 CONFIG_VISCONTI_WATCHDOG                        policy<{'arm64': '-'}>
 CONFIG_W1_MASTER_MXC                            policy<{'arm64': '-'}>
+CONFIG_WLAN_VENDOR_BCMDHD                       policy<{'arm64': 'n'}>
 CONFIG_XGENE_DMA                                policy<{'arm64': '-'}>
 CONFIG_XGENE_PMU                                policy<{'arm64': '-'}>
 CONFIG_XGENE_SLIMPRO_MBOX                       policy<{'arm64': '-'}>

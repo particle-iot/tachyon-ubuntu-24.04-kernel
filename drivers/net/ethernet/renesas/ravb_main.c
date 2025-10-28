@@ -2994,10 +2994,12 @@ static int __maybe_unused ravb_suspend(struct device *dev)
 
 	netif_device_detach(ndev);
 
+	rtnl_lock();
 	if (priv->wol_enabled)
 		ret = ravb_wol_setup(ndev);
 	else
 		ret = ravb_close(ndev);
+	rtnl_unlock();
 
 	if (priv->info->ccc_gac)
 		ravb_ptp_stop(ndev);
@@ -3012,12 +3014,16 @@ static int __maybe_unused ravb_resume(struct device *dev)
 	const struct ravb_hw_info *info = priv->info;
 	int ret = 0;
 
+	rtnl_lock();
 	/* If WoL is enabled set reset mode to rearm the WoL logic */
 	if (priv->wol_enabled) {
 		ret = ravb_set_opmode(ndev, CCC_OPC_RESET);
-		if (ret)
+		if (ret) {
+			rtnl_unlock();
 			return ret;
+		}
 	}
+	rtnl_unlock();
 
 	/* All register have been reset to default values.
 	 * Restore all registers which where setup at probe time and
@@ -3049,14 +3055,20 @@ static int __maybe_unused ravb_resume(struct device *dev)
 		ravb_ptp_init(ndev, priv->pdev);
 
 	if (netif_running(ndev)) {
+		rtnl_lock();
 		if (priv->wol_enabled) {
 			ret = ravb_wol_restore(ndev);
-			if (ret)
+			if (ret) {
+				rtnl_unlock();
 				return ret;
+			}
 		}
 		ret = ravb_open(ndev);
-		if (ret < 0)
+		if (ret < 0) {
+			rtnl_unlock();
 			return ret;
+		}
+		rtnl_unlock();
 		ravb_set_rx_mode(ndev);
 		netif_device_attach(ndev);
 	}

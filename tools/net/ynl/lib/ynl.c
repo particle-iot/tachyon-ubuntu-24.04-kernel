@@ -94,7 +94,7 @@ ynl_err_walk(struct ynl_sock *ys, void *start, void *end, unsigned int off,
 
 	mnl_attr_for_each_payload(start, data_len) {
 		astart_off = (char *)attr - (char *)start;
-		aend_off = astart_off + mnl_attr_get_payload_len(attr);
+		aend_off = (char *)mnl_attr_get_payload_len(attr) - (char *)start;
 		if (aend_off <= off)
 			continue;
 

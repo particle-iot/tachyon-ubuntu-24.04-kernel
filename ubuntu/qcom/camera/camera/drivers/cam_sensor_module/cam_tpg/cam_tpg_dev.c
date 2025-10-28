@@ -254,6 +254,32 @@ static int tpg_register_cpas_client(struct cam_tpg_device *tpg_dev,
 	return rc;
 }
 
+static int cam_tpg_hw_queue_init(struct cam_tpg_device *tpg_dev)
+{
+	/* Initialize only the essential components needed for safe operation */
+
+	/* Initialize locks */
+	spin_lock_init(&tpg_dev->tpg_hw.hw_state_lock);
+	mutex_init(&tpg_dev->tpg_hw.mutex);
+
+	/* Set TPG initial state */
+	tpg_dev->tpg_hw.state = TPG_HW_STATE_HW_DISABLED;
+
+	/* Initialize completion */
+	init_completion(&tpg_dev->tpg_hw.complete_rup);
+
+	/* Initialize queues */
+	INIT_LIST_HEAD(&(tpg_dev->tpg_hw.waiting_request_q));
+	INIT_LIST_HEAD(&(tpg_dev->tpg_hw.active_request_q));
+	tpg_dev->tpg_hw.waiting_request_q_depth = 0;
+	tpg_dev->tpg_hw.active_request_q_depth = 0;
+	tpg_dev->tpg_hw.settings_update = 0;
+	tpg_dev->tpg_hw.tpg_clock = 0;
+
+	return 0;
+}
+
+
 static int cam_tpg_hw_layer_init(struct cam_tpg_device *tpg_dev,
 		struct device *dev)
 {
@@ -272,17 +298,8 @@ static int cam_tpg_hw_layer_init(struct cam_tpg_device *tpg_dev,
 	tpg_dev->tpg_hw.hw_info  = (struct tpg_hw_info *)match_dev->data;
 	tpg_dev->tpg_hw.soc_info = &tpg_dev->soc_info;
 	tpg_dev->tpg_hw.cpas_handle = tpg_dev->cpas_handle;
-	spin_lock_init(&tpg_dev->tpg_hw.hw_state_lock);
-	tpg_dev->tpg_hw.state = TPG_HW_STATE_HW_DISABLED;
-	mutex_init(&tpg_dev->tpg_hw.mutex);
-	init_completion(&tpg_dev->tpg_hw.complete_rup);
-	/*Initialize the waiting queue and active queues*/
-	INIT_LIST_HEAD(&(tpg_dev->tpg_hw.waiting_request_q));
-	INIT_LIST_HEAD(&(tpg_dev->tpg_hw.active_request_q));
-	tpg_dev->tpg_hw.waiting_request_q_depth = 0;
-	tpg_dev->tpg_hw.active_request_q_depth  = 0;
-	tpg_dev->tpg_hw.settings_update         = 0;
-	tpg_dev->tpg_hw.tpg_clock               = 0;
+
+	/* Call layer_init */
 	tpg_dev->tpg_hw.hw_info->layer_init(&tpg_dev->tpg_hw);
 	return 0;
 }
@@ -307,9 +324,9 @@ static int cam_tpg_component_bind(struct device *dev,
 	tpg_dev->tpg_subdev.pdev = pdev;
 	tpg_dev->state = CAM_TPG_STATE_INIT;
 
-	rc = cam_tpg_hw_layer_init(tpg_dev, dev);
+	rc = cam_tpg_hw_queue_init(tpg_dev);
 	if (rc < 0) {
-		CAM_ERR(CAM_TPG, "Hw layer init failed");
+		CAM_ERR(CAM_TPG, "Mutex and queue init failed");
 		goto bind_error_exit;
 	}
 
@@ -330,7 +347,14 @@ static int cam_tpg_component_bind(struct device *dev,
 		CAM_ERR(CAM_TPG, "cpas register failed");
 		goto release_subdev;
 	}
+
 	tpg_crm_intf_init(tpg_dev);
+
+	rc = cam_tpg_hw_layer_init(tpg_dev, dev);
+	if (rc < 0) {
+		CAM_ERR(CAM_TPG, "Hw layer init failed");
+		goto release_subdev;
+	}
 
 	platform_set_drvdata(pdev, tpg_dev);
 
@@ -355,6 +379,9 @@ static void cam_tpg_component_unbind(struct device *dev,
 		CAM_ERR(CAM_TPG, "Error No data in tpg_dev");
 		return;
 	}
+
+	/* Clean up debugfs entries */
+	tpg_hw_debugfs_cleanup(&tpg_dev->tpg_hw);
 
 	CAM_INFO(CAM_TPG, "Unbind TPG component");
 	cam_cpas_unregister_client(tpg_dev->cpas_handle);

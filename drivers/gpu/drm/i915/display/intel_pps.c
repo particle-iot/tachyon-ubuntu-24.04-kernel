@@ -351,6 +351,9 @@ static int intel_num_pps(struct drm_i915_private *i915)
 	if (IS_GEMINILAKE(i915) || IS_BROXTON(i915))
 		return 2;
 
+	if (INTEL_PCH_TYPE(i915) >= PCH_MTL)
+		return 2;
+
 	if (INTEL_PCH_TYPE(i915) >= PCH_DG1)
 		return 1;
 
@@ -366,7 +369,7 @@ static bool intel_pps_is_valid(struct intel_dp *intel_dp)
 
 	if (intel_dp->pps.pps_idx == 1 &&
 	    INTEL_PCH_TYPE(i915) >= PCH_ICP &&
-	    INTEL_PCH_TYPE(i915) < PCH_MTP)
+	    INTEL_PCH_TYPE(i915) <= PCH_ADP)
 		return intel_de_read(i915, SOUTH_CHICKEN1) & ICP_SECOND_PPS_IO_SELECT;
 
 	return true;

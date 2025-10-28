@@ -19,7 +19,6 @@
 #include "common.h"
 #include "sdw.h"
 
-#define DRIVER_NAME		"qcs9100"
 #define WCN_CDC_SLIM_RX_CH_MAX	2
 #define WCN_CDC_SLIM_TX_CH_MAX	2
 #define NAME_SIZE	32
@@ -181,6 +180,33 @@ static int qcs9100_snd_hw_free(struct snd_pcm_substream *substream)
 				    &data->stream_prepared[cpu_dai->id]);
 }
 
+static int qcs9100_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	unsigned int fmt = SND_SOC_DAIFMT_BP_FP;
+
+	switch (cpu_dai->id) {
+	case PRIMARY_MI2S_RX ... QUATERNARY_MI2S_TX:
+	case PRIMARY_SDR_MI2S_RX ... QUINARY_SDR_MI2S_TX:
+		snd_soc_dai_set_fmt(cpu_dai, fmt);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget iq8_8275_evk_dapm_widgets[] = {
+	SND_SOC_DAPM_PINCTRL("MI2S_OUT_PINCTRL", "mi2s_aud_out_active", "mi2s_aud_out_sleep"),
+};
+
+static const struct snd_soc_dapm_route iq8_8275_evk_dapm_routes[] = {
+	{"Speaker", NULL, "MI2S_OUT_PINCTRL"},
+	{"DMic", NULL, "MI2S_OUT_PINCTRL"},
+};
+
 static const struct snd_soc_dapm_widget qcs8300_dapm_widgets[] = {
 	SND_SOC_DAPM_PINCTRL("STUB_AIF1_PINCTRL", "stub_aif1_active", "stub_aif1_sleep"),
 	SND_SOC_DAPM_PINCTRL("STUB_AIF2_PINCTRL", "stub_aif2_active", "stub_aif2_sleep"),
@@ -227,13 +253,24 @@ static const struct snd_soc_dapm_route qcs9075_dapm_routes[] = {
 };
 
 static const struct snd_soc_ops qcs9100_be_ops = {
+	.startup = qcs9100_snd_startup,
 	.hw_params = qcs9100_snd_hw_params,
 	.hw_free = qcs9100_snd_hw_free,
 	.prepare = qcs9100_snd_prepare,
 };
 
+static struct snd_soc_card snd_soc_iq8_8275_evk_data = {
+	.name = "iq8-8275-evk",
+	.driver_name = "qcs8275",
+	.dapm_widgets = iq8_8275_evk_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(iq8_8275_evk_dapm_widgets),
+	.dapm_routes = iq8_8275_evk_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(iq8_8275_evk_dapm_routes),
+};
+
 static struct snd_soc_card snd_soc_qcs8300_data = {
-	.name = "qcs8300",
+	.name = "qcs8300-ride",
+	.driver_name = "qcs8300",
 	.dapm_widgets = qcs8300_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs8300_dapm_widgets),
 	.dapm_routes = qcs8300_dapm_routes,
@@ -241,7 +278,8 @@ static struct snd_soc_card snd_soc_qcs8300_data = {
 };
 
 static struct snd_soc_card snd_soc_qcs9100_data = {
-	.name = "qcs9100",
+	.name = "qcs9100-ride",
+	.driver_name = "qcs9100",
 	.dapm_widgets = qcs9100_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
 	.dapm_routes = qcs9100_dapm_routes,
@@ -250,6 +288,7 @@ static struct snd_soc_card snd_soc_qcs9100_data = {
 
 static struct snd_soc_card snd_soc_qcs9075_rb8_data = {
 	.name = "qcs9075-rb8",
+	.driver_name = "sa8775p",
 	.dapm_widgets = qcs9075_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(qcs9075_dapm_widgets),
 	.dapm_routes = qcs9075_dapm_routes,
@@ -262,7 +301,7 @@ static void qcs9100_add_be_ops(struct snd_soc_card *card)
 	int i;
 
 	for_each_card_prelinks(card, i, link) {
-		if (link->no_pcm == 1) {
+		if (link->no_pcm == 1 || link->num_codecs) {
 			link->init = qcs9100_snd_init;
 			link->be_hw_params_fixup = qcs9100_be_hw_params_fixup;
 			link->ops = &qcs9100_be_ops;
@@ -295,7 +334,6 @@ static int qcs9100_platform_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	card->driver_name = DRIVER_NAME;
 	qcs9100_add_be_ops(card);
 
 	/* get clock info to set clock for qcs9100 target to support high
@@ -316,6 +354,7 @@ static int qcs9100_platform_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id snd_qcs9100_dt_match[] = {
+	{.compatible = "qcom,iq8-8275-evk-sndcard", .data = &snd_soc_iq8_8275_evk_data},
 	{.compatible = "qcom,qcs8300-sndcard", .data = &snd_soc_qcs8300_data},
 	{.compatible = "qcom,qcs9100-sndcard", .data = &snd_soc_qcs9100_data},
 	{.compatible = "qcom,qcs9075-rb8-sndcard", .data = &snd_soc_qcs9075_rb8_data},

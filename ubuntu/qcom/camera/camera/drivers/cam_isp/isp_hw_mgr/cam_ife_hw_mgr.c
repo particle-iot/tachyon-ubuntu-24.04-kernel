@@ -2403,7 +2403,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 	}
 
 	for (i = 0; i < num_out_res; i++) {
-		if (!in_port->ipp_count) {
+		if (!in_port->ipp_count && per_port_acquire) {
 			out_port = &in_port->data[0];
 			res_type = CAM_ISP_IFE_OUT_RES_BASE + i;
 		} else {
@@ -2536,6 +2536,9 @@ skip_get_ife_out_res:
 				vfe_acquire.vfe_out.comp_grp_id, c_ctx->ctx_index);
 		}
 
+		if (!per_port_acquire && !is_ife_out_in_list)
+				c_ctx->num_acq_vfe_out++;
+
 		if (!update_only) {
 			ife_out_res->res_type = CAM_ISP_RESOURCE_VFE_OUT;
 			ife_out_res->res_id = res_type;
@@ -2543,9 +2546,8 @@ skip_get_ife_out_res:
 				vfe_acquire.vfe_out.out_port_info->hw_context_id;
 			if (!per_port_acquire && !is_ife_out_in_list) {
 				ife_src_res->num_children++;
-				c_ctx->num_acq_vfe_out++;
 				CAM_DBG(CAM_ISP, "IFE SRC num_children = %d acq vfe out %d",
-					ife_src_res->num_children,c_ctx->num_acq_vfe_out);
+					ife_src_res->num_children, c_ctx->num_acq_vfe_out);
 			}
 		}
 	}
@@ -6199,6 +6201,39 @@ static int cam_ife_mgr_acquire_offline_out(
 	return rc;
 }
 
+static void cam_ife_mgr_update_acquire_param(
+	struct cam_ife_hw_mgr_ctx *ife_ctx,
+	struct cam_hw_acquire_args *acquire_args)
+{
+	struct cam_ife_hw_concrete_ctx  *c_ctx = ife_ctx->concr_ctx;
+
+	if (g_ife_hw_mgr.isp_caps.support_consumed_addr)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_CONSUME_ADDR_EN;
+
+	if ((c_ctx->flags.is_sfe_shdr) || (c_ctx->flags.is_sfe_fs))
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_APPLY_DEFAULT_CFG;
+
+	if (c_ctx->ctx_type == CAM_IFE_CTX_TYPE_CUSTOM)
+		acquire_args->op_flags |= CAM_IFE_CTX_CUSTOM_EN;
+
+	if (c_ctx->ctx_config & CAM_IFE_CTX_CFG_FRAME_HEADER_TS)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_FRAME_HEADER_EN;
+
+	if (c_ctx->ctx_config & CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_DYNAMIC_SWITCH_EN;
+
+	if (c_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)
+		acquire_args->op_flags |=
+			CAM_IFE_CTX_SFE_EN;
+
+	if (c_ctx->flags.is_aeb_mode)
+		acquire_args->op_flags |= CAM_IFE_CTX_AEB_EN;
+}
+
 /* entry function: acquire_hw */
 static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 {
@@ -6308,7 +6343,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		ife_mgr_ctx->in_ports[i].is_offline = c_ctx->is_offline;
 		rc = cam_ife_mgr_acquire_get_unified_structure(acquire_hw_info,
 			i, &input_size,  &ife_mgr_ctx->in_ports[i]);
-
 		if (rc < 0) {
 			CAM_ERR(CAM_ISP, "Failed in parsing: %d, ctx_idx: %u",
 				rc, c_ctx->ctx_index);
@@ -6533,14 +6567,10 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	c_ctx->last_cdm_done_req = 0;
 
-	if (g_ife_hw_mgr.isp_caps.support_consumed_addr)
-		acquire_args->op_flags |=
-			CAM_IFE_CTX_CONSUME_ADDR_EN;
+	cam_ife_mgr_update_acquire_param(ife_mgr_ctx, acquire_args);
 
 	if ((c_ctx->flags.is_sfe_shdr) ||
 		(c_ctx->flags.is_sfe_fs)) {
-		acquire_args->op_flags |=
-			CAM_IFE_CTX_APPLY_DEFAULT_CFG;
 		c_ctx->scratch_buf_info.sfe_scratch_config =
 			kzalloc(sizeof(struct cam_sfe_scratch_buf_cfg), GFP_KERNEL);
 		if (!c_ctx->scratch_buf_info.sfe_scratch_config) {
@@ -6563,24 +6593,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		/* Set scratch by default at stream on */
 		cam_ife_mgr_reset_streamon_scratch_cfg(ife_mgr_ctx);
 	}
-
-	if (c_ctx->ctx_type == CAM_IFE_CTX_TYPE_CUSTOM)
-		acquire_args->op_flags |= CAM_IFE_CTX_CUSTOM_EN;
-
-	if (c_ctx->ctx_config & CAM_IFE_CTX_CFG_FRAME_HEADER_TS)
-		acquire_args->op_flags |=
-			CAM_IFE_CTX_FRAME_HEADER_EN;
-
-	if (c_ctx->ctx_config & CAM_IFE_CTX_CFG_DYNAMIC_SWITCH_ON)
-		acquire_args->op_flags |=
-			CAM_IFE_CTX_DYNAMIC_SWITCH_EN;
-
-	if (c_ctx->ctx_type == CAM_IFE_CTX_TYPE_SFE)
-		acquire_args->op_flags |=
-			CAM_IFE_CTX_SFE_EN;
-
-	if (c_ctx->flags.is_aeb_mode)
-		acquire_args->op_flags |= CAM_IFE_CTX_AEB_EN;
 
 	c_ctx->flags.ctx_in_use = true;
 	c_ctx->num_reg_dump_buf = 0;
@@ -9162,18 +9174,20 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 
 	if (c_ctx->flags.per_port_en && !c_ctx->flags.is_dual) {
 		for (i = 0; i < g_ife_sns_grp_cfg.num_grp_cfg; i++) {
+			if (!g_ife_sns_grp_cfg.grp_cfg[i])
+				continue;
 			for (j = 0; j <
 				g_ife_sns_grp_cfg.grp_cfg[i]->stream_cfg_cnt; j++) {
 				if (c_ctx->sensor_id ==
 					g_ife_sns_grp_cfg.grp_cfg[i]->stream_cfg[j].sensor_id) {
 					mutex_lock(&g_ife_sns_grp_cfg.grp_cfg[i]->lock);
 					skip_deinit_hw = true;
+					g_ife_sns_grp_cfg.grp_cfg[i]->hw_ctx_cnt--;
 					if (g_ife_sns_grp_cfg.grp_cfg[i]->stream_on_cnt ==
 						0) {
 						rc =
 						cam_ife_hw_mgr_release_hw_for_ctx(hw_mgr_ctx, i);
 						skip_deinit_hw = false;
-						g_ife_sns_grp_cfg.grp_cfg[i]->hw_ctx_cnt--;
 					}
 					cam_ife_hw_mgr_free_hw_ctx(hw_mgr_ctx);
 					per_port_feature_enable = true;
@@ -9256,6 +9270,15 @@ static int cam_ife_mgr_release_hw(void *hw_mgr_priv,
 		c_ctx->sof_cnt[i] = 0;
 		c_ctx->eof_cnt[i] = 0;
 		c_ctx->epoch_cnt[i] = 0;
+	}
+
+	if (hw_mgr_ctx->in_ports) {
+		for (i = 0; i < hw_mgr_ctx->num_in_ports; i++) {
+			kfree(hw_mgr_ctx->in_ports[i].data);
+			hw_mgr_ctx->in_ports[i].data = NULL;
+		}
+		kfree(hw_mgr_ctx->in_ports);
+		hw_mgr_ctx->in_ports = NULL;
 	}
 
 	cam_ife_mgr_free_cdm_cmd(&c_ctx->cdm_cmd);
@@ -16013,7 +16036,7 @@ static int  cam_ife_hw_mgr_find_affected_ctx(
 		/* Add affected_context in list of recovery data */
 		CAM_DBG(CAM_ISP, "Add affected ctx %c to list",
 			c_ctx->ctx_index);
-		if (recovery_data->no_of_context < CAM_CTX_MAX)
+		if (recovery_data->no_of_context < CAM_IFE_CTX_MAX)
 			recovery_data->affected_ctx[
 				recovery_data->no_of_context++] = c_ctx;
 
@@ -18696,7 +18719,7 @@ static int cam_ife_mgr_v_acquire(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 
 	mutex_lock(&ife_hw_mgr->ctx_mutex);
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		if (!ife_hw_mgr->virt_ctx_pool[i].ctx_in_use) {
 			ife_mgr_ctx = &ife_hw_mgr->virt_ctx_pool[i];
 			ife_mgr_ctx->ctx_in_use = true;
@@ -18707,7 +18730,7 @@ static int cam_ife_mgr_v_acquire(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 	mutex_unlock(&ife_hw_mgr->ctx_mutex);
 
-	if (i == CAM_CTX_MAX) {
+	if (i == CAM_IFE_CTX_MAX) {
 		CAM_ERR(CAM_ISP, "No free context!");
 		return -EINVAL;
 	}
@@ -18734,8 +18757,6 @@ static int cam_ife_mgr_v_acquire(void *hw_mgr_priv, void *acquire_hw_args)
 			CAM_IFE_DECODE_FORMAT_MASK;
 		allocated = false;
 		mutex_lock(&ife_hw_mgr->ctx_mutex);
-		ife_hw_mgr->offline_reconfig =
-			cam_ife_find_reconfig_required(hw_mgr_priv, ife_mgr_ctx);
 		ctx_idx =
 			atomic_read(&ife_hw_mgr->num_acquired_offline_ctx);
 		/* TODO: update the condition for allocating additional HWs */
@@ -18785,6 +18806,8 @@ static int cam_ife_mgr_v_acquire(void *hw_mgr_priv, void *acquire_hw_args)
 			    sizeof(acq_args_ptr->acquired_hw_path));
 
 			ife_hw_mgr->starting_offline_cnt++;
+			ife_hw_mgr->offline_reconfig =
+				cam_ife_find_reconfig_required(hw_mgr_priv, ife_mgr_ctx);
 		} else {
 			/* Offline multi camera currently supports only contexts
 			 * with same capabilities. because it forced to use the first
@@ -18808,6 +18831,9 @@ static int cam_ife_mgr_v_acquire(void *hw_mgr_priv, void *acquire_hw_args)
 				acq_args_ptr->acquired_hw_path,
 				acquired_hw_data->acquired_hw_path,
 				sizeof(acq_args_ptr->acquired_hw_path));
+			cam_ife_mgr_update_acquire_param(ife_mgr_ctx, acq_args_ptr);
+			ife_hw_mgr->offline_reconfig =
+				cam_ife_find_reconfig_required(hw_mgr_priv, ife_mgr_ctx);
 		}
 	} else {
 		rc =  cam_ife_mgr_acquire(hw_mgr_priv, acquire_hw_args);
@@ -18926,7 +18952,7 @@ static int cam_ife_mgr_v_release_hw(void *hw_mgr_priv, void *release_hw_args)
 	hw_mgr_ctx = (struct cam_ife_hw_mgr_ctx *)release_args->ctxt_to_hw_map;
 	if (hw_mgr_ctx->is_offline) {
 		ife_idx = atomic_read(&ife_hw_mgr->num_acquired_offline_ctx);
-		if (ife_idx < CAM_CTX_MAX &&
+		if (ife_idx < CAM_IFE_CTX_MAX &&
 				ife_hw_mgr->acquired_hw_pool[ife_idx].ife_ctx) {
 			/* HW is stopped - so we release it */
 			hw_mgr_ctx->concr_ctx =
@@ -18942,6 +18968,7 @@ static int cam_ife_mgr_v_release_hw(void *hw_mgr_priv, void *release_hw_args)
 	}
 	rc = cam_ife_mgr_release_hw(hw_mgr_priv, release_hw_args);
 	hw_mgr_ctx->ctx_in_use = false;
+	hw_mgr_ctx->is_offline = false;
 	return rc;
 }
 
@@ -19009,6 +19036,20 @@ static int cam_ife_mgr_v_dump(void *hw_mgr_priv, void *args)
 static int cam_ife_mgr_v_recover_hw(void *priv, void *data)
 {
 	return cam_ife_mgr_recover_hw(priv, data);
+}
+
+static int cam_ife_mgr_close_hw(void *hw_priv, void *hw_close_args)
+{
+	int i;
+
+	CAM_DBG(CAM_ISP, "Clearing out stream groups");
+	for (i = 0; i < CAM_ISP_STREAM_GROUP_CFG_MAX; i++) {
+		if (!g_ife_sns_grp_cfg.grp_cfg[i])
+			continue;
+		cam_ife_mgr_clear_sensor_stream_cfg_grp(i);
+	}
+
+	return 0;
 }
 
 int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl,
@@ -19221,12 +19262,12 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl,
 	INIT_LIST_HEAD(&g_ife_hw_mgr.in_proc_queue.list);
 	atomic_set(&g_ife_hw_mgr.active_ctx_cnt, 0);
 	atomic_set(&g_ife_hw_mgr.num_acquired_offline_ctx, 0);
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		memset(&g_ife_hw_mgr.virt_ctx_pool[i], 0,
 			sizeof(g_ife_hw_mgr.virt_ctx_pool[i]));
 	}
 
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		memset(&g_ife_hw_mgr.acquired_hw_pool[i], 0,
 			sizeof(g_ife_hw_mgr.acquired_hw_pool[i]));
 		g_ife_hw_mgr.acquired_hw_pool[i].ctx_idx = i;
@@ -19317,6 +19358,7 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl,
 	hw_mgr_intf->hw_dump = cam_ife_mgr_v_dump;
 	hw_mgr_intf->hw_recovery = cam_ife_mgr_v_recover_hw;
 	hw_mgr_intf->hw_update_sensor_grp_stream_cfg = cam_ife_mgr_update_sensor_grp_stream_cfg;
+	hw_mgr_intf->hw_close = cam_ife_mgr_close_hw;
 
 	if (iommu_hdl)
 		*iommu_hdl = g_ife_hw_mgr.mgr_common.img_iommu_hdl;
@@ -19365,7 +19407,7 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl,
 	return 0;
 end:
 	if (rc) {
-		for (i = 0; i < CAM_CTX_MAX; i++) {
+		for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 			cam_tasklet_deinit(
 				&g_ife_hw_mgr.mgr_common.tasklet_pool[i]);
 			g_ife_hw_mgr.ctx_pool[i].cdm_cmd = NULL;
@@ -19394,7 +19436,7 @@ void cam_ife_hw_mgr_deinit(void)
 	kfree(g_ife_hw_mgr.debug_cfg.sfe_perf_counter_val);
 	kfree(g_ife_hw_mgr.debug_cfg.ife_perf_counter_val);
 
-	for (i = 0; i < CAM_CTX_MAX; i++) {
+	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		cam_tasklet_deinit(
 			&g_ife_hw_mgr.mgr_common.tasklet_pool[i]);
 		g_ife_hw_mgr.ctx_pool[i].cdm_cmd = NULL;

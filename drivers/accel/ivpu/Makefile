@@ -16,5 +16,6 @@ intel_vpu-y := \
 	ivpu_pm.o
 
 intel_vpu-$(CONFIG_DEBUG_FS) += ivpu_debugfs.o
+intel_vpu-$(CONFIG_DEV_COREDUMP) += ivpu_coredump.o
 
 obj-$(CONFIG_DRM_ACCEL_IVPU) += intel_vpu.o

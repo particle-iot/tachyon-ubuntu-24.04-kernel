@@ -130,7 +130,7 @@
 	};
 
 	/* Rear (W) */
-	qcom,cam-sensor0 {
+	idp_slot0: qcom,cam-sensor0 {
 		cell-index = <4>;
 		compatible = "qcom,cam-sensor";
 		csiphy-sd-index = <0>;
@@ -175,7 +175,7 @@
 	};
 
 	/* Rear-aux (T) */
-	qcom,cam-sensor1 {
+	idp_slot1: qcom,cam-sensor1 {
 		cell-index = <5>;
 		compatible = "qcom,cam-sensor";
 		csiphy-sd-index = <1>;
@@ -375,7 +375,7 @@
 	};
 
 	/* Rear-aux (UW) */
-	qcom,cam-sensor2 {
+	idp_slot2: qcom,cam-sensor2 {
 		cell-index = <6>;
 		compatible = "qcom,cam-sensor";
 		csiphy-sd-index = <2>;
@@ -419,7 +419,7 @@
 	};
 
 	/* Front */
-	qcom,cam-sensor3 {
+	idp_slot3: qcom,cam-sensor3 {
 		cell-index = <2>;
 		compatible = "qcom,cam-sensor";
 		csiphy-sd-index = <3>;

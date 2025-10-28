@@ -135,7 +135,7 @@ int bnxt_re_query_device(struct ib_device *ibdev,
 			 struct ib_udata *udata)
 {
 	struct bnxt_re_dev *rdev = to_bnxt_re_dev(ibdev, ibdev);
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 
 	memset(ib_attr, 0, sizeof(*ib_attr));
 	memcpy(&ib_attr->fw_ver, dev_attr->fw_ver,
@@ -208,7 +208,7 @@ int bnxt_re_query_port(struct ib_device *ibdev, u32 port_num,
 		       struct ib_port_attr *port_attr)
 {
 	struct bnxt_re_dev *rdev = to_bnxt_re_dev(ibdev, ibdev);
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 	int rc;
 
 	memset(port_attr, 0, sizeof(*port_attr));
@@ -266,8 +266,8 @@ void bnxt_re_query_fw_str(struct ib_device *ibdev, char *str)
 	struct bnxt_re_dev *rdev = to_bnxt_re_dev(ibdev, ibdev);
 
 	snprintf(str, IB_FW_VERSION_NAME_MAX, "%d.%d.%d.%d",
-		 rdev->dev_attr.fw_ver[0], rdev->dev_attr.fw_ver[1],
-		 rdev->dev_attr.fw_ver[2], rdev->dev_attr.fw_ver[3]);
+		 rdev->dev_attr->fw_ver[0], rdev->dev_attr->fw_ver[1],
+		 rdev->dev_attr->fw_ver[2], rdev->dev_attr->fw_ver[3]);
 }
 
 int bnxt_re_query_pkey(struct ib_device *ibdev, u32 port_num,
@@ -989,7 +989,7 @@ static int bnxt_re_setup_swqe_size(struct bnxt_re_qp *qp,
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
 	sq = &qplqp->sq;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	align = sizeof(struct sq_send_hdr);
 	ilsize = ALIGN(init_attr->cap.max_inline_data, align);
@@ -1209,7 +1209,7 @@ static int bnxt_re_init_rq_attr(struct bnxt_re_qp *qp,
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
 	rq = &qplqp->rq;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	if (init_attr->srq) {
 		struct bnxt_re_srq *srq;
@@ -1246,7 +1246,7 @@ static void bnxt_re_adjust_gsi_rq_attr(struct bnxt_re_qp *qp)
 
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	if (!bnxt_qplib_is_chip_gen_p5_p7(rdev->chip_ctx)) {
 		qplqp->rq.max_sge = dev_attr->max_qp_sges;
@@ -1271,7 +1271,7 @@ static int bnxt_re_init_sq_attr(struct bnxt_re_qp *qp,
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
 	sq = &qplqp->sq;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	sq->max_sge = init_attr->cap.max_send_sge;
 	if (sq->max_sge > dev_attr->max_qp_sges) {
@@ -1314,7 +1314,7 @@ static void bnxt_re_adjust_gsi_sq_attr(struct bnxt_re_qp *qp,
 
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	if (!bnxt_qplib_is_chip_gen_p5_p7(rdev->chip_ctx)) {
 		entries = bnxt_re_init_depth(init_attr->cap.max_send_wr + 1, uctx);
@@ -1363,7 +1363,7 @@ static int bnxt_re_init_qp_attr(struct bnxt_re_qp *qp, struct bnxt_re_pd *pd,
 
 	rdev = qp->rdev;
 	qplqp = &qp->qplib_qp;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 
 	uctx = rdma_udata_to_drv_context(udata, struct bnxt_re_ucontext, ib_uctx);
 	/* Setup misc params */
@@ -1525,7 +1525,7 @@ int bnxt_re_create_qp(struct ib_qp *ib_qp, struct ib_qp_init_attr *qp_init_attr,
 	struct ib_pd *ib_pd = ib_qp->pd;
 	struct bnxt_re_pd *pd = container_of(ib_pd, struct bnxt_re_pd, ib_pd);
 	struct bnxt_re_dev *rdev = pd->rdev;
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 	struct bnxt_re_qp *qp = container_of(ib_qp, struct bnxt_re_qp, ib_qp);
 	u32 active_qps;
 	int rc;
@@ -1745,7 +1745,7 @@ int bnxt_re_create_srq(struct ib_srq *ib_srq,
 	ib_pd = ib_srq->pd;
 	pd = container_of(ib_pd, struct bnxt_re_pd, ib_pd);
 	rdev = pd->rdev;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 	srq = container_of(ib_srq, struct bnxt_re_srq, ib_srq);
 
 	if (srq_init_attr->attr.max_wr >= dev_attr->max_srq_wqes) {
@@ -1777,6 +1777,8 @@ int bnxt_re_create_srq(struct ib_srq *ib_srq,
 	srq->qplib_srq.threshold = srq_init_attr->attr.srq_limit;
 	srq->srq_limit = srq_init_attr->attr.srq_limit;
 	srq->qplib_srq.eventq_hw_ring_id = rdev->nq[0].ring_id;
+	srq->qplib_srq.sg_info.pgsize = PAGE_SIZE;
+	srq->qplib_srq.sg_info.pgshft = PAGE_SHIFT;
 	nq = &rdev->nq[0];
 
 	if (udata) {
@@ -1940,7 +1942,7 @@ int bnxt_re_modify_qp(struct ib_qp *ib_qp, struct ib_qp_attr *qp_attr,
 {
 	struct bnxt_re_qp *qp = container_of(ib_qp, struct bnxt_re_qp, ib_qp);
 	struct bnxt_re_dev *rdev = qp->rdev;
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 	enum ib_qp_state curr_qp_state, new_qp_state;
 	int rc, entries;
 	unsigned int flags;
@@ -2963,7 +2965,7 @@ int bnxt_re_create_cq(struct ib_cq *ibcq, const struct ib_cq_init_attr *attr,
 	struct bnxt_re_dev *rdev = to_bnxt_re_dev(ibcq->device, ibdev);
 	struct bnxt_re_ucontext *uctx =
 		rdma_udata_to_drv_context(udata, struct bnxt_re_ucontext, ib_uctx);
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 	struct bnxt_qplib_chip_ctx *cctx;
 	struct bnxt_qplib_nq *nq = NULL;
 	unsigned int nq_alloc_cnt;
@@ -3106,7 +3108,7 @@ int bnxt_re_resize_cq(struct ib_cq *ibcq, int cqe, struct ib_udata *udata)
 
 	cq =  container_of(ibcq, struct bnxt_re_cq, ib_cq);
 	rdev = cq->rdev;
-	dev_attr = &rdev->dev_attr;
+	dev_attr = rdev->dev_attr;
 	if (!ibcq->uobject) {
 		ibdev_err(&rdev->ibdev, "Kernel CQ Resize not supported");
 		return -EOPNOTSUPP;
@@ -4160,7 +4162,7 @@ int bnxt_re_alloc_ucontext(struct ib_ucontext *ctx, struct ib_udata *udata)
 	struct bnxt_re_ucontext *uctx =
 		container_of(ctx, struct bnxt_re_ucontext, ib_uctx);
 	struct bnxt_re_dev *rdev = to_bnxt_re_dev(ibdev, ibdev);
-	struct bnxt_qplib_dev_attr *dev_attr = &rdev->dev_attr;
+	struct bnxt_qplib_dev_attr *dev_attr = rdev->dev_attr;
 	struct bnxt_re_user_mmap_entry *entry;
 	struct bnxt_re_uctx_resp resp = {};
 	struct bnxt_re_uctx_req ureq = {};
@@ -4314,9 +4316,10 @@ int bnxt_re_mmap(struct ib_ucontext *ib_uctx, struct vm_area_struct *vma)
 	case BNXT_RE_MMAP_TOGGLE_PAGE:
 		/* Driver doesn't expect write access for user space */
 		if (vma->vm_flags & VM_WRITE)
-			return -EFAULT;
-		ret = vm_insert_page(vma, vma->vm_start,
-				     virt_to_page((void *)bnxt_entry->mem_offset));
+			ret = -EFAULT;
+		else
+			ret = vm_insert_page(vma, vma->vm_start,
+					     virt_to_page((void *)bnxt_entry->mem_offset));
 		break;
 	default:
 		ret = -EINVAL;

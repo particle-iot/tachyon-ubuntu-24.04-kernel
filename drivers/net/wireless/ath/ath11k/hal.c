@@ -600,7 +600,11 @@ u32 ath11k_hal_ce_dst_status_get_length(void *buf)
 	u32 len;
 
 	len = FIELD_GET(HAL_CE_DST_STATUS_DESC_FLAGS_LEN, desc->flags);
-	desc->flags &= ~HAL_CE_DST_STATUS_DESC_FLAGS_LEN;
+	/* Skip updating the length field of the descriptor when it is 0,
+	 * because there's a racing update, may never see the updated length.
+	 */
+	if (likely(len))
+		desc->flags &= ~HAL_CE_DST_STATUS_DESC_FLAGS_LEN;
 
 	return len;
 }
@@ -639,6 +643,21 @@ static void ath11k_hal_srng_prefetch_desc(struct ath11k_base *ab,
 					DMA_FROM_DEVICE);
 		prefetch(desc);
 	}
+}
+
+void ath11k_hal_srng_dst_next(struct ath11k_base *ab, struct hal_srng *srng)
+{
+	lockdep_assert_held(&srng->lock);
+
+	srng->u.dst_ring.tp += srng->entry_size;
+
+	/* wrap around to start of ring*/
+	if (srng->u.dst_ring.tp == srng->ring_size)
+		srng->u.dst_ring.tp = 0;
+
+	/* Try to prefetch the next descriptor in the ring */
+	if (srng->flags & HAL_SRNG_FLAGS_CACHED)
+		ath11k_hal_srng_prefetch_desc(ab, srng);
 }
 
 u32 *ath11k_hal_srng_dst_get_next_entry(struct ath11k_base *ab,

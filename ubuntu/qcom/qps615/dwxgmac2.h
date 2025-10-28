@@ -4,7 +4,7 @@
  * dwxgmac2.h
  *
  * Copyright (C) 2018 Synopsys, Inc. and/or its affiliates.
- * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro and Synopsys Linux driver,
  * and developed or modified for TC956X.
@@ -54,6 +54,10 @@
  *  VERSION     : 04-00
  *  29 Mar 2024 : 1. Support for without MDIO and without PHY case
  *  VERSION     : 04-00
+ *  31 May 2024 : 1. Modified for TC FPE support
+ *  VERSION     : 05-00
+ *  31 Jan 2025 : 1. Support for w/o MDIO and w/o PHY configuration in cascade network using BDF based module parameter
+ *  VERSION     : 05-00-01
  */
 
 
@@ -245,9 +249,7 @@
 #define XGMAC_HWFEAT_MMCSEL		BIT(8)
 #define XGMAC_HWFEAT_MGKSEL		BIT(7)
 #define XGMAC_HWFEAT_RWKSEL		BIT(6)
-#ifdef TC956X_WITHOUT_MDIO_WITHOUT_PHY
 #define XGMAC_HWFEAT_SMASEL		BIT(5)
-#endif
 #define XGMAC_HWFEAT_VLHASH		BIT(4)
 #define XGMAC_HWFEAT_GMIISEL		BIT(1)
 #define XGMAC_HW_FEATURE1		(MAC_OFFSET + 0x00000120)
@@ -494,6 +496,9 @@
 #define XGMAC_TXQEN_SHIFT		2
 #define XGMAC_TSF			BIT(1)
 #define XGMAC_FTQ			BIT(0)
+#define XGMAC_AFSZ_64BYTES	0
+#define XGMAC_RADV			6400
+#define XGMAC_HADV			6400
 
 #define XGMAC_MTL_TXQ_UF_OFFSET(x)	(MAC_OFFSET + (0x00001104 + (0x80 * (x))))
 #define XGMAC_MTL_UFPKTCNT_MASK		GENMASK(10, 0)

@@ -4,7 +4,7 @@
  * tc956xmac_tc.c
  *
  * Copyright (C) 2018 Synopsys, Inc. and/or its affiliates.
- * Copyright (C) 2023 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro and Synopsys Linux driver,
  * and developed or modified for TC956X.
@@ -36,6 +36,11 @@
  *  26 Dec 2023 : 1. Kernel 6.6 Porting changes
  *              : 2. Added the support for TC commands taprio and flower
  *  VERSION     : 01-03-59
+ *  31 May 2024 : 1. Modified for TC FPE support
+ *  VERSION     : 05-00
+ *  31 Jan 2025 : 1. Linux Kernel version check for supported TC command
+ *                2. Initialisation of some local variables to avoid compiler warnings
+ *  VERSION     : 05-00-01
  */
 
 #include <net/pkt_cls.h>
@@ -1078,7 +1083,7 @@ static int tc_setup_taprio(struct tc956xmac_priv *priv,
 	bool fpe = false;
 	int i, ret = 0;
 
-	u64 system_time;
+	u64 system_time = 0;
 	ktime_t current_time_ns;
 
 	u32 tx_channels_count = priv->plat->tx_queues_to_use;
@@ -1195,7 +1200,14 @@ static int tc_setup_taprio(struct tc956xmac_priv *priv,
 		default:
 			return -EOPNOTSUPP;
 		}
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+		if ((qopt->mqprio.preemptible_tcs != 0) && (priv->dma_cap.fpesel)) {
+			if (gates & (1 << (MTL_MAX_TX_TC - 1))) /* Check for Express Queue Open */
+				gates |= qopt->mqprio.preemptible_tcs;
+			else
+				gates &= ~qopt->mqprio.preemptible_tcs;
+		}
+#endif
 		priv->plat->est->gcl[i] = delta_ns | (gates << wid);
 	}
 
@@ -1217,10 +1229,13 @@ static int tc_setup_taprio(struct tc956xmac_priv *priv,
 	priv->plat->est->ctr[0] = (u32)(qopt->cycle_time % NSEC_PER_SEC);
 	priv->plat->est->ctr[1] = (u32)(qopt->cycle_time / NSEC_PER_SEC);
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+	if (!(priv->dma_cap.fpesel))
+		qopt->mqprio.preemptible_tcs = 0;
 
-	if (fpe && !priv->dma_cap.fpesel)
-		return -EOPNOTSUPP;
-#ifdef TC956X_UNSUPPORTED_UNTESTED
+	fpe = qopt->mqprio.preemptible_tcs;
+#endif
+
 	ret = tc956xmac_fpe_configure(priv, priv->ioaddr,
 				   priv->plat->tx_queues_to_use,
 				   priv->plat->rx_queues_to_use, fpe);
@@ -1228,7 +1243,7 @@ static int tc_setup_taprio(struct tc956xmac_priv *priv,
 		netdev_err(priv->dev, "failed to enable Frame Preemption\n");
 		return ret;
 	}
-#endif
+
 	ret = tc956xmac_est_configure(priv, priv->ioaddr, priv->plat->est,
 				   priv->plat->clk_ptp_rate);
 	if (ret) {

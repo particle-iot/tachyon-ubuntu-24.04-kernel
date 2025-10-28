@@ -1428,6 +1428,8 @@ int ceph_security_init_secctx(struct dentry *dentry, umode_t mode,
 		as_ctx->pagelist = pagelist;
 	}
 
+	ceph_pagelist_encode_32(pagelist, name_len);
+	ceph_pagelist_append(pagelist, name, name_len);
 	ceph_pagelist_encode_32(pagelist, as_ctx->lsmctx.len);
 	ceph_pagelist_append(pagelist, as_ctx->lsmctx.context,
 			     as_ctx->lsmctx.len);

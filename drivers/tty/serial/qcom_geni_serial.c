@@ -95,7 +95,7 @@ void serial_trace_log(struct device *dev, const char *fmt, ...)
 #define STALE_TIMEOUT			16
 #define DEFAULT_BITS_PER_CHAR		10
 #define GENI_UART_CONS_PORTS		1
-#define GENI_UART_PORTS			5
+#define GENI_UART_PORTS			13
 #define DEF_FIFO_DEPTH_WORDS		16
 #define DEF_TX_WM			2
 #define DEF_FIFO_WIDTH_BITS		32
@@ -116,6 +116,8 @@ void serial_trace_log(struct device *dev, const char *fmt, ...)
 #define BYTES_PER_FIFO_WORD		4U
 
 #define DMA_RX_BUF_SIZE		2048
+
+static DEFINE_IDA(port_ida);
 
 struct qcom_geni_device_data {
 	bool console;
@@ -270,10 +272,24 @@ static struct qcom_geni_serial_port *get_port_from_line(int line, bool console)
 	struct qcom_geni_serial_port *port;
 	int nr_ports = console ? GENI_UART_CONS_PORTS : GENI_UART_PORTS;
 
-	if (line < 0 || line >= nr_ports)
-		return ERR_PTR(-ENXIO);
+	if (console) {
+		if (line < 0 || line >= nr_ports)
+			return ERR_PTR(-ENXIO);
 
-	port = console ? &qcom_geni_console_port : &qcom_geni_uart_ports[line];
+		port = &qcom_geni_console_port;
+	} else {
+		int max_alias_num = of_alias_get_highest_id("serial");
+
+		if (line < 0 || line >= nr_ports)
+			line = ida_alloc_range(&port_ida, max_alias_num + 1, nr_ports, GFP_KERNEL);
+		else
+			line = ida_alloc_range(&port_ida, line, nr_ports, GFP_KERNEL);
+
+		if (line < 0)
+			return ERR_PTR(-ENXIO);
+
+		port = &qcom_geni_uart_ports[line];
+	}
 	return port;
 }
 
@@ -1224,11 +1240,6 @@ static int qcom_geni_serial_startup(struct uart_port *uport)
 		if (ret)
 			return ret;
 	}
-
-	uart_port_lock_irq(uport);
-	qcom_geni_serial_start_rx(uport);
-	uart_port_unlock_irq(uport);
-
 	enable_irq(uport->irq);
 
 	return 0;
@@ -1314,6 +1325,7 @@ static void qcom_geni_serial_set_termios(struct uart_port *uport,
 	unsigned int avg_bw_core;
 	unsigned long timeout;
 
+	qcom_geni_serial_stop_rx(uport);
 	/* baud rate */
 	baud = uart_get_baud_rate(uport, termios, old, 300, 4000000);
 
@@ -1329,7 +1341,7 @@ static void qcom_geni_serial_set_termios(struct uart_port *uport,
 		dev_err(port->se.dev,
 			"Couldn't find suitable clock rate for %u\n",
 			baud * sampling_rate);
-		return;
+		goto out_restart_rx;
 	}
 
 	serial_trace_log(port->se.dev, "baud: %u, desired_rate: %u, clk_rate: %lu, clk_div: %u\n",
@@ -1420,6 +1432,8 @@ static void qcom_geni_serial_set_termios(struct uart_port *uport,
 	writel(stop_bit_len, uport->membase + SE_UART_TX_STOP_BIT_LEN);
 	writel(ser_clk_cfg, uport->membase + GENI_SER_M_CLK_CFG);
 	writel(ser_clk_cfg, uport->membase + GENI_SER_S_CLK_CFG);
+out_restart_rx:
+	qcom_geni_serial_start_rx(uport);
 }
 
 #ifdef CONFIG_SERIAL_QCOM_GENI_CONSOLE
@@ -1811,6 +1825,7 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 						port->wakeup_irq);
 		if (ret) {
 			device_init_wakeup(&pdev->dev, false);
+			ida_free(&port_ida, uport->line);
 			uart_remove_one_port(drv, uport);
 			return ret;
 		}
@@ -1822,10 +1837,12 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 static void qcom_geni_serial_remove(struct platform_device *pdev)
 {
 	struct qcom_geni_serial_port *port = platform_get_drvdata(pdev);
+	struct uart_port *uport = &port->uport;
 	struct uart_driver *drv = port->private_data.drv;
 
 	dev_pm_clear_wake_irq(&pdev->dev);
 	device_init_wakeup(&pdev->dev, false);
+	ida_free(&port_ida, uport->line);
 	uart_remove_one_port(drv, &port->uport);
 }
 

@@ -511,8 +511,6 @@ static int pwm_samsung_parse_dt(struct samsung_pwm_chip *our_chip)
 {
 	struct device_node *np = our_chip->chip.dev->of_node;
 	const struct of_device_id *match;
-	struct property *prop;
-	const __be32 *cur;
 	u32 val;
 
 	match = of_match_node(samsung_pwm_matches, np);
@@ -521,7 +519,7 @@ static int pwm_samsung_parse_dt(struct samsung_pwm_chip *our_chip)
 
 	memcpy(&our_chip->variant, match->data, sizeof(our_chip->variant));
 
-	of_property_for_each_u32(np, "samsung,pwm-outputs", prop, cur, val) {
+	of_property_for_each_u32(np, "samsung,pwm-outputs", val) {
 		if (val >= SAMSUNG_PWM_NUM) {
 			dev_err(our_chip->chip.dev,
 				"%s: invalid channel index in samsung,pwm-outputs property\n",

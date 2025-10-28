@@ -643,9 +643,8 @@ xfs_buf_find_insert(
 		spin_unlock(&pag->pag_buf_lock);
 		goto out_free_buf;
 	}
-	if (bp) {
+	if (bp && atomic_inc_not_zero(&bp->b_hold)) {
 		/* found an existing buffer */
-		atomic_inc(&bp->b_hold);
 		spin_unlock(&pag->pag_buf_lock);
 		error = xfs_buf_find_lock(bp, flags);
 		if (error)

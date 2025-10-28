@@ -1454,3 +1454,19 @@ int tpg_hw_add_stream_v3(
 	return rc;
 }
 
+int tpg_hw_debugfs_cleanup(struct tpg_hw *hw)
+{
+	if (!hw) {
+		CAM_ERR(CAM_TPG, "Invalid hw pointer");
+		return -EINVAL;
+	}
+
+	if (hw->debugfs_root) {
+		CAM_INFO(CAM_TPG, "Removing debugfs directory for tpg%d", hw->hw_idx);
+		debugfs_remove_recursive(hw->debugfs_root);
+		hw->debugfs_root = NULL;
+	}
+
+	return 0;
+}
+

@@ -7,7 +7,7 @@
  *     'int set_selection_kernel(struct tiocl_selection *, struct tty_struct *)'
  *     'void clear_selection(void)'
  *     'int paste_selection(struct tty_struct *)'
- *     'int sel_loadlut(char __user *)'
+ *     'int sel_loadlut(u32 __user *)'
  *
  * Now that /dev/vcs exists, most of this can disappear again.
  */
@@ -111,15 +111,15 @@ static inline int inword(const u32 c)
 
 /**
  *	sel_loadlut()		-	load the LUT table
- *	@p: user table
+ *	@lut: user table
  *
  *	Load the LUT table from user space. The caller must hold the console
  *	lock. Make a temporary copy so a partial update doesn't make a mess.
  */
-int sel_loadlut(char __user *p)
+int sel_loadlut(u32 __user *lut)
 {
 	u32 tmplut[ARRAY_SIZE(inwordLut)];
-	if (copy_from_user(tmplut, (u32 __user *)(p+4), sizeof(inwordLut)))
+	if (copy_from_user(tmplut, lut, sizeof(inwordLut)))
 		return -EFAULT;
 	memcpy(inwordLut, tmplut, sizeof(inwordLut));
 	return 0;
@@ -182,6 +182,19 @@ int set_selection_user(const struct tiocl_selection __user *sel,
 
 	if (copy_from_user(&v, sel, sizeof(*sel)))
 		return -EFAULT;
+
+	/*
+	 * TIOCL_SELCLEAR and TIOCL_SELPOINTER are OK to use without
+	 * CAP_SYS_ADMIN as they do not modify the selection.
+	 */
+	switch (v.sel_mode) {
+	case TIOCL_SELCLEAR:
+	case TIOCL_SELPOINTER:
+		break;
+	default:
+		if (!capable(CAP_SYS_ADMIN))
+			return -EPERM;
+	}
 
 	return set_selection_kernel(&v, tty);
 }

@@ -5193,7 +5193,9 @@ static int cam_tfe_update_dual_config(
 	uint32_t                                    outport_id;
 	size_t                                      len = 0, remain_len = 0;
 	uint32_t                                   *cpu_addr;
+	uint32_t                                   *cpu_addr_local = NULL;
 	uint32_t                                    i, j, stp_index;
+	size_t                                      packet_size = 0;
 
 	CAM_DBG(CAM_ISP, "cmd des size %d, length: %d",
 		cmd_desc->size, cmd_desc->length);
@@ -5216,7 +5218,23 @@ static int cam_tfe_update_dual_config(
 
 	remain_len = len - cmd_desc->offset;
 	cpu_addr += (cmd_desc->offset / 4);
-	dual_config = (struct cam_isp_tfe_dual_config *)cpu_addr;
+	packet_size = cmd_desc->length;
+
+	if (packet_size <= remain_len) {
+		rc = cam_common_mem_kdup((void **)&cpu_addr_local,
+			cpu_addr, packet_size);
+		if (rc) {
+			CAM_ERR(CAM_ISP, "Alloc and copy cmd desc fail");
+			goto put_ref;
+		}
+	} else {
+		CAM_ERR(CAM_ISP, "Invalid packet header size %u",
+			packet_size);
+		rc = -EINVAL;
+		goto put_ref;
+	}
+
+	dual_config = (struct cam_isp_tfe_dual_config *)cpu_addr_local;
 
 	if ((dual_config->num_ports *
 		sizeof(struct cam_isp_tfe_dual_stripe_config)) >
@@ -5224,7 +5242,8 @@ static int cam_tfe_update_dual_config(
 			offsetof(struct cam_isp_tfe_dual_config, stripes))) {
 		CAM_ERR(CAM_ISP, "not enough buffer for all the dual configs");
 		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end
 	}
 
 	CAM_DBG(CAM_ISP, "num_ports:%d", dual_config->num_ports);
@@ -5285,6 +5304,8 @@ static int cam_tfe_update_dual_config(
 	}
 
 end:
+	cam_common_mem_free(cpu_addr_local);
+put_ref:
 	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 	return rc;
 }

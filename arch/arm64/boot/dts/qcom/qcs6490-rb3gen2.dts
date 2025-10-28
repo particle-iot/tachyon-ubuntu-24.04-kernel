@@ -40,6 +40,20 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	dp-connector {
+		compatible = "dp-connector";
+		label = "DP";
+		type = "mini";
+
+		hpd-gpios = <&tlmm 60 GPIO_ACTIVE_HIGH>;
+
+		port {
+			dp_connector_in: endpoint {
+				remote-endpoint = <&mdss_edp_out>;
+			};
+		};
+	};
+
 	hdmi-connector {
 		compatible = "hdmi-connector";
 		type = "a";
@@ -98,7 +112,7 @@
 					reg = <0>;
 
 					pmic_glink_hs_in: endpoint {
-						remote-endpoint = <&usb_1_dwc3_hs>;
+						remote-endpoint = <&eud_con>;
 					};
 				};
 
@@ -123,7 +137,7 @@
 
 	sound: sound {
 		compatible = "qcom,qcm6490-sndcard";
-		model = "qcm6490-rb3-snd-card";
+		model = "QCS6490-RB3Gen2";
 
 		audio-routing =
 			"SpkrLeft IN", "WSA_SPK1 OUT",
@@ -481,6 +495,19 @@
 	};
 };
 
+&eud {
+	usb-role-switch;
+	status = "okay";
+};
+
+&eud_con {
+	remote-endpoint = <&pmic_glink_hs_in>;
+};
+
+&eud_ep {
+	remote-endpoint = <&usb_1_dwc3_hs>;
+};
+
 &gcc {
 	protected-clocks = <GCC_QSPI_CNOC_PERIPH_AHB_CLK>, <GCC_QSPI_CORE_CLK>,
 			<GCC_QSPI_CORE_CLK_SRC>, <GCC_CFG_NOC_LPASS_CLK>,
@@ -773,6 +800,15 @@
 	status = "okay";
 };
 
+&mdss_dp {
+	status = "okay";
+};
+
+&mdss_dp_out {
+	data-lanes = <0 1>;
+	remote-endpoint = <&usb_1_qmpphy_dp_in>;
+};
+
 &mdss_dsi {
 	vdda-supply = <&vreg_l6b_1p2>;
 	status = "okay";
@@ -785,6 +821,21 @@
 
 &mdss_dsi_phy {
 	vdds-supply = <&vreg_l10c_0p88>;
+	status = "okay";
+};
+
+&mdss_edp {
+	status = "okay";
+};
+
+&mdss_edp_out {
+	data-lanes = <0 1 2 3>;
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+
+	remote-endpoint = <&dp_connector_in>;
+};
+
+&mdss_edp_phy {
 	status = "okay";
 };
 
@@ -812,6 +863,11 @@
 	vdda-pll-supply = <&vreg_l6b_1p2>;
 
 	status = "okay";
+};
+
+&edp_hot_plug_det {
+	function = "gpio";
+	bias-disable;
 };
 
 &qup_uart5_rx {
@@ -874,17 +930,17 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/qcs6490/adsp.mdt";
+	firmware-name = "qcom/qcs6490/adsp.mbn";
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/qcs6490/cdsp.mdt";
+	firmware-name = "qcom/qcs6490/cdsp.mbn";
 	status = "okay";
 };
 
 &remoteproc_mpss {
-	firmware-name = "qcom/qcs6490/modem.mdt";
+	firmware-name = "qcom/qcs6490/modem.mbn";
 	status = "okay";
 };
 
@@ -1121,7 +1177,7 @@
 };
 
 &usb_1_dwc3_hs {
-	remote-endpoint = <&pmic_glink_hs_in>;
+	remote-endpoint = <&eud_ep>;
 };
 
 &usb_1_hsphy {
@@ -1135,6 +1191,7 @@
 &usb_1_qmpphy {
 	vdda-phy-supply = <&vreg_l6b_1p2>;
 	vdda-pll-supply = <&vreg_l1b_0p912>;
+	vdda-aux-supply = <&vreg_l7c_3p0>;
 
 	orientation-switch;
 	status = "okay";
@@ -1142,6 +1199,10 @@
 
 &usb_1_qmpphy_out {
 	remote-endpoint = <&redriver_ss_in>;
+};
+
+&usb_1_qmpphy_dp_in {
+	remote-endpoint = <&mdss_dp_out>;
 };
 
 &vreg_l7b_2p952 {

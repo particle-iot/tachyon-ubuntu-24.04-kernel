@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/clock/qcom,qcs8300-gcc.h>
@@ -272,13 +272,13 @@ static struct msm_platform_core_capability core_data_qcs8300[] = {
 	/* {type, value} */
 	{ENC_CODECS, H264|HEVC},
 	{DEC_CODECS, H264|HEVC|VP9|AV1},
-	{MAX_SESSION_COUNT, 16},
-	{MAX_NUM_720P_SESSIONS, 16},
-	{MAX_NUM_1080P_SESSIONS, 16},
-	{MAX_NUM_4K_SESSIONS, 4},
+	{MAX_SESSION_COUNT, 24},
+	{MAX_NUM_720P_SESSIONS, 24},
+	{MAX_NUM_1080P_SESSIONS, 24},
+	{MAX_NUM_4K_SESSIONS, 8},
 	{MAX_SECURE_SESSION_COUNT, 3},
-	{MAX_RT_MBPF, (((4096 * 2176) / 256) * 4)},	/* (4096*2176)/256 * 4 */
-	{MAX_MBPF, (((4096 * 2176) / 256) * 4)}, /* (4096*2176)/256 * 4 */
+	{MAX_RT_MBPF, (((4096 * 2176) / 256) * 8)},	/* (4096*2176)/256 * 8 */
+	{MAX_MBPF, (((4096 * 2176) / 256) * 8)}, /* (4096*2176)/256 * 8 */
 	{MAX_MBPS, (((3840 * 2176) / 256) * 120)},	/* max_load 3840x2176@120fps */
 	{MAX_IMAGE_MBPF, ((16384 * 16384) / 256)},  /* (16384x16384)/256 */
 	{MAX_MBPF_HQ, ((1280 * 720) / 256)}, /* ((1280*720)/256)) */

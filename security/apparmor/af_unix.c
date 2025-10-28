@@ -12,6 +12,7 @@
  * License.
  */
 
+#include <linux/fs.h>
 #include <net/tcp_states.h>
 
 #include "include/audit.h"
@@ -81,8 +82,11 @@ static inline int unix_fs_perm(const char *op, u32 mask,
 					      -EACCES, false));
 	} else {
 		/* the sunpath may not be valid for this ns so use the path */
-		struct path_cond cond = { u->path.dentry->d_inode->i_uid,
-					  u->path.dentry->d_inode->i_mode
+		struct inode *inode = u->path.dentry->d_inode;
+		vfsuid_t vfsuid = i_uid_into_vfsuid(mnt_idmap(u->path.mnt), inode);
+		struct path_cond cond = {
+			.uid = vfsuid_into_kuid(vfsuid),
+			.mode = inode->i_mode,
 		};
 
 		return aa_path_perm(op, subj_cred, label, &u->path, flags,

@@ -108,7 +108,7 @@ static bool perf_mem_event__supported(const char *mnt, struct perf_pmu *pmu,
 	struct stat st;
 
 	scnprintf(sysfs_name, sizeof(sysfs_name), e->sysfs_name, pmu->name);
-	scnprintf(path, PATH_MAX, "%s/devices/%s", mnt, sysfs_name);
+	scnprintf(path, PATH_MAX, "%s/bus/event_source/devices/%s", mnt, sysfs_name);
 	return !stat(path, &st);
 }
 

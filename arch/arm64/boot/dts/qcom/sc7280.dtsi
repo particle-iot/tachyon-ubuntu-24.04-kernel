@@ -82,7 +82,7 @@
 
 		sleep_clk: sleep-clk {
 			compatible = "fixed-clock";
-			clock-frequency = <32000>;
+			clock-frequency = <32764>;
 			#clock-cells = <0>;
 		};
 	};
@@ -1028,7 +1028,6 @@
 			power-domains = <&rpmhpd SC7280_CX>;
 			operating-points-v2 = <&sdhc1_opp_table>;
 
-			qcom,ice = <&ice_mmc>;
 			bus-width = <8>;
 			supports-cqe;
 			dma-coherent;
@@ -1060,13 +1059,6 @@
 					opp-avg-kBps = <390000 0>;
 				};
 			};
-		};
-
-		ice_mmc: crypto@7c8000 {
-			compatible = "qcom,inline-crypto-engine";
-			reg = <0x0 0x7C8000 0x0 0x10000>;
-			qcom,ice-use-hwkm;
-			clocks = <&gcc GCC_SDCC1_ICE_CORE_CLK>;
 		};
 
 		gpi_dma0: dma-controller@900000 {
@@ -5217,6 +5209,7 @@
 			reg = <0x0 0x01d88000 0x0 0x10000>;
 			qcom,ice-use-hwkm;
 			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
+			status = "okay";
 		};
 
 		usb_1_hsphy: phy@88e3000 {
@@ -5345,13 +5338,6 @@
 				phys = <&usb_2_hsphy>;
 				phy-names = "usb2-phy";
 				maximum-speed = "high-speed";
-				usb-role-switch;
-
-				port {
-					usb2_role_switch: endpoint {
-						remote-endpoint = <&eud_ep>;
-					};
-				};
 			};
 		};
 
@@ -5589,11 +5575,13 @@
 		};
 
 		eud: eud@88e0000 {
-			compatible = "qcom,eud";
+			compatible = "qcom,secure-eud";
 			reg = <0 0x88e0000 0 0x2000>,
 			      <0 0x88e2000 0 0x1000>;
 			interrupts-extended = <&pdc 11 IRQ_TYPE_LEVEL_HIGH>;
 
+			phys = <&usb_1_hsphy>;
+			phy-names = "usb2-phy";
 			status = "disabled";
 
 			ports {
@@ -5603,7 +5591,12 @@
 				port@0 {
 					reg = <0>;
 					eud_ep: endpoint {
-						remote-endpoint = <&usb2_role_switch>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					eud_con: endpoint {
 					};
 				};
 			};
@@ -6310,6 +6303,11 @@
 					opp-506666667 {
 						opp-hz = /bits/ 64 <506666667>;
 						required-opps = <&rpmhpd_opp_nom>;
+					};
+
+					opp-608000000 {
+						opp-hz = /bits/ 64 <608000000>;
+						required-opps = <&rpmhpd_opp_turbo>;
 					};
 				};
 			};

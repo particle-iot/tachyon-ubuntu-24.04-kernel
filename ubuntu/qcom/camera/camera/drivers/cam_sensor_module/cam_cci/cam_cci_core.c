@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -12,8 +12,7 @@
 
 #define CCI_MASTER_LOCK_TIMEOUT msecs_to_jiffies(1000)
 
-
-static int32_t cam_cci_process_master_lock(struct cam_cci_ctrl *cci_ctrl,
+static int32_t cam_cci_master_lock_handler(struct cam_cci_ctrl *cci_ctrl,
 	struct cci_device *cci_dev,
 	bool condition,
 	bool force_unlock)
@@ -21,322 +20,285 @@ static int32_t cam_cci_process_master_lock(struct cam_cci_ctrl *cci_ctrl,
 	int32_t rc = 0;
 	enum cci_i2c_master_t master = cci_ctrl->cci_info->cci_i2c_master;
 	int32_t loop_check_cnt = 0;
-	int32_t process_cmd = 0;
+	int32_t process_cmd = force_unlock ? MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK : cci_ctrl->cmd;
 
-	CAM_DBG(CAM_CCI,"Entered for cmd=%d with condition=%d", cci_ctrl->cmd, condition);
-	CAM_DBG(CAM_CCI, "E: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+	if (cci_dev->cci_state != CCI_STATE_ENABLED) {
+		CAM_WARN(CAM_CCI, "CCI is not enabled, bypassing master lock state processing");
+		return rc;
+	}
+
+	if (force_unlock) {
+		CAM_DBG(CAM_CCI,
+		"cmd:%d with condition=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+		cci_ctrl->cmd, condition,
 		cci_dev->cci_master_info[master].is_master_locked,
 		cci_dev->cci_master_info[master].is_read_append_locked,
 		cci_ctrl->cci_info->is_master_owned,
 		cci_dev->cci_master_info[master].master_usage_cnt,
 		force_unlock);
-
-	if (cci_dev->cci_state ==  CCI_STATE_ENABLED) {
-
-		if(force_unlock) {
-			process_cmd = MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK;
-		} else {
-			process_cmd = cci_ctrl->cmd;
-		}
-loop_check_again:
-	if(loop_check_cnt > 1) {
-		CAM_ERR(CAM_CCI,"loop_check_again is greater than 1 loop_check_cnt=%d",
-                loop_check_cnt);
 	}
-	if(condition) {
-		mutex_lock(&(cci_dev->cci_master_info[master].master_lock_mutex));
 
-		switch (process_cmd) {
-		case MSM_CCI_I2C_READ:
-		case MSM_CCI_I2C_WRITE:
-		case MSM_CCI_I2C_WRITE_SEQ:
-		case MSM_CCI_I2C_WRITE_BURST:
-		case MSM_CCI_I2C_WRITE_SYNC:
-		case MSM_CCI_I2C_WRITE_ASYNC:
-		case MSM_CCI_I2C_WRITE_SYNC_BLOCK: {
-			if (!cci_dev->cci_master_info[master].is_master_locked ||
-				cci_ctrl->cci_info->is_master_owned) {
-				//Not locked or owned by same client
+	while (1) {
+		mutex_lock(&(cci_dev->cci_master_info[master].master_lock_mutex));
+		rc = 0;
+		if (condition) {
+			switch (process_cmd) {
+			case MSM_CCI_I2C_READ:
+			case MSM_CCI_I2C_WRITE:
+			case MSM_CCI_I2C_WRITE_SEQ:
+			case MSM_CCI_I2C_WRITE_BURST:
+			case MSM_CCI_I2C_WRITE_SYNC:
+			case MSM_CCI_I2C_WRITE_ASYNC:
+			case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
+				if (!cci_dev->cci_master_info[master].is_master_locked ||
+					cci_ctrl->cci_info->is_master_owned) {
 					cci_dev->cci_master_info[master].master_usage_cnt++;
-					CAM_DBG(CAM_CCI, "master usage count=%d for cmd=%d",
-						cci_dev->cci_master_info[master].master_usage_cnt, cci_ctrl->cmd);
-			}
-			else if (cci_dev->cci_master_info[master].is_master_locked &&
+					CAM_DBG(CAM_CCI, "Refcnt++: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+						cci_dev->cci_master_info[master].is_master_locked,
+						cci_dev->cci_master_info[master].is_read_append_locked,
+						cci_ctrl->cci_info->is_master_owned,
+						cci_dev->cci_master_info[master].master_usage_cnt,
+						force_unlock);
+				} else if (cci_dev->cci_master_info[master].is_master_locked &&
 					!cci_ctrl->cci_info->is_master_owned) {
-				// locked but not owned by same client so add to wait queue
-				CAM_DBG(CAM_CCI, "Going to enter wait for pid=%d threadid=%d",
-					current->pid, current->tgid);
-				mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-				rc = wait_event_interruptible_timeout(
-						cci_dev->cci_master_info[master].lock_wait,
-						!cci_dev->cci_master_info[master].is_master_locked,
-						CCI_MASTER_LOCK_TIMEOUT);
-				if (rc < 0) {
-						CAM_ERR(CAM_CCI,"wait failed");
-						rc = -1;
-					} else if (rc == 0) {
-						CAM_ERR(CAM_CCI," wait timeout happend and condition is still not met");
-						rc = -1;
-					} else {
-						//Now condition success try to check again
-						CAM_DBG(CAM_CCI,"Now condition success try to check again for cmd=%d",
-							cci_ctrl->cmd);
-						rc = 0;
-						loop_check_cnt++;
-						mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-						goto loop_check_again;
+					mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
+					CAM_DBG(CAM_CCI, "Going-> to enter wait for pid=%d threadid=%d",
+						current->pid, current->tgid);
+					rc = wait_event_interruptible_timeout(
+							cci_dev->cci_master_info[master].lock_wait,
+							!cci_dev->cci_master_info[master].is_master_locked,
+							CCI_MASTER_LOCK_TIMEOUT);
+					if (rc <= 0) {
+						CAM_ERR(CAM_CCI, "wait timeout happend and condition is still not met rc=%d", rc);
+						rc = -EINVAL;
+						goto skip_master_unlock;
 					}
-			}
-			else {
-				CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-				rc = -1;
-			}
-		}
-		break;
-		case MSM_CCI_I2C_READ_APPEND_WRITE:
-			if (cci_dev->cci_master_info[master].is_master_locked &&
-				cci_ctrl->cci_info->is_master_owned &&
-				!cci_dev->cci_master_info[master].is_read_append_locked) {
-				cci_dev->cci_master_info[master].master_usage_cnt++;
-				CAM_DBG(CAM_CCI, "master usage count=%d for read_append_write(already global_locked)",
-					cci_dev->cci_master_info[master].master_usage_cnt);
-			}
-			else if(!cci_dev->cci_master_info[master].is_master_locked &&
-				(cci_dev->cci_master_info[master].master_usage_cnt == 0)) {
-				//Now take lock success
+					CAM_DBG(CAM_CCI, "Continue while again");
+					loop_check_cnt++;
+					continue;
+				} else {
+					CAM_ERR(CAM_CCI, "In Error Condition");
+					rc = -EINVAL;
+				}
+				break;
+
+			case MSM_CCI_I2C_READ_APPEND_WRITE:
+				if (cci_dev->cci_master_info[master].is_master_locked &&
+					cci_ctrl->cci_info->is_master_owned &&
+					!cci_dev->cci_master_info[master].is_read_append_locked) {
+					cci_dev->cci_master_info[master].master_usage_cnt++;
+				} else if (!cci_dev->cci_master_info[master].is_master_locked &&
+					cci_dev->cci_master_info[master].master_usage_cnt == 0) {
 					cci_dev->cci_master_info[master].is_master_locked = TRUE;
 					cci_dev->cci_master_info[master].is_read_append_locked = TRUE;
 					cci_ctrl->cci_info->is_master_owned = TRUE;
 					cci_dev->cci_master_info[master].master_usage_cnt++;
-					CAM_DBG(CAM_CCI, "master usage count=%d for read_append_write(success)",
-						cci_dev->cci_master_info[master].master_usage_cnt);
-			}
-			else if (!cci_dev->cci_master_info[master].is_master_locked &&
-				(cci_dev->cci_master_info[master].master_usage_cnt > 0)) {
-				// Not locked but usage count is greater than 0 so someone is still accessing the master,
-				// so add to wait queue until the count becomes 0
-				CAM_DBG(CAM_CCI, "Going to enter wait for pid=%d threadid=%d",
-					current->pid, current->tgid);
 
-				mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-				rc = wait_event_interruptible_timeout(
-						cci_dev->cci_master_info[master].lock_wait,
-						(cci_dev->cci_master_info[master].master_usage_cnt == 0),
-						CCI_MASTER_LOCK_TIMEOUT);
-				if (rc < 0) {
-						CAM_ERR(CAM_CCI,"wait failed");
-						rc = -1;
-					} else if (rc == 0) {
-						CAM_ERR(CAM_CCI," wait timeout happend and condition is still not met");
-						rc = -1;
-					} else {
-						//Now condition success try to check again
-						CAM_DBG(CAM_CCI,"Now condition success try to check again for cmd=%d",
-							cci_ctrl->cmd);
-						rc = 0;
-						loop_check_cnt++;
+					CAM_DBG(CAM_CCI,
+						"RALOCK: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+						cci_dev->cci_master_info[master].is_master_locked,
+						cci_dev->cci_master_info[master].is_read_append_locked,
+						cci_ctrl->cci_info->is_master_owned,
+						cci_dev->cci_master_info[master].master_usage_cnt,
+						force_unlock);
+
+				} else if (cci_dev->cci_master_info[master].master_usage_cnt > 0 ||
+					!cci_ctrl->cci_info->is_master_owned) {
 						mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-						goto loop_check_again;
+						CAM_DBG(CAM_CCI, "Going-> to enter wait for pid=%d threadid=%d",
+							current->pid, current->tgid);
+						rc = wait_event_interruptible_timeout(
+								cci_dev->cci_master_info[master].lock_wait,
+								(cci_dev->cci_master_info[master].master_usage_cnt == 0),
+								CCI_MASTER_LOCK_TIMEOUT);
+					if (rc <= 0) {
+						CAM_ERR(CAM_CCI," wait timeout happend and condition is still not met rc=%d", rc);
+						rc = -1;
+						goto skip_master_unlock;
 					}
-			}
-			else {
-				CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-				rc = -1;
-			}
-			break;
-		case MSM_CCI_I2C_SEQUENTIAL_XFER_LOCK: {
-			if (cci_dev->cci_master_info[master].is_master_locked &&
-				cci_ctrl->cci_info->is_master_owned) {
-				CAM_ERR(CAM_CCI, "master cannot be locked by same thread again for SEQUENTIAL_XFER_LOCK");
-				rc = -1;
-			}
-			else if(!cci_dev->cci_master_info[master].is_master_locked &&
-				(cci_dev->cci_master_info[master].master_usage_cnt == 0)) {
-				//Now take lock success
+					CAM_DBG(CAM_CCI, "Continue while again");
+					loop_check_cnt++;
+					continue;
+				} else {
+					CAM_ERR(CAM_CCI, "In Error condition");
+					rc = -EINVAL;
+				}
+				break;
+
+			case MSM_CCI_I2C_SEQUENTIAL_XFER_LOCK:
+				if (cci_dev->cci_master_info[master].is_master_locked &&
+					cci_ctrl->cci_info->is_master_owned) {
+					CAM_ERR(CAM_CCI,
+						"master cannot be locked by same thread again for SEQUENTIAL_XFER_LOCK");
+					rc = -EINVAL;
+				} else if (!cci_dev->cci_master_info[master].is_master_locked &&
+					cci_dev->cci_master_info[master].master_usage_cnt == 0) {
 					cci_dev->cci_master_info[master].is_master_locked = TRUE;
 					cci_ctrl->cci_info->is_master_owned = TRUE;
 					cci_dev->cci_master_info[master].master_usage_cnt++;
-					CAM_DBG(CAM_CCI, "Master lock acquired by pid=%d threadid=%d",
+
+					CAM_DBG(CAM_CCI,
+						"LOCK: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+						cci_dev->cci_master_info[master].is_master_locked,
+						cci_dev->cci_master_info[master].is_read_append_locked,
+						cci_ctrl->cci_info->is_master_owned,
+						cci_dev->cci_master_info[master].master_usage_cnt,
+						force_unlock);
+
+				} else if (cci_dev->cci_master_info[master].master_usage_cnt > 0) {
+					mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
+					CAM_DBG(CAM_CCI, "Going-> to enter wait for pid=%d threadid=%d",
 						current->pid, current->tgid);
-					CAM_DBG(CAM_CCI, "master usage count=%d for SEQUENTIAL_XFER_LOCK (success)",
-						cci_dev->cci_master_info[master].master_usage_cnt);
-			}
-			else if (!cci_dev->cci_master_info[master].is_master_locked &&
-				(cci_dev->cci_master_info[master].master_usage_cnt > 0)) {
-				// Not locked but usage count is greater than 0 so someone is still accessing the master,
-				// so add to wait queue until the count becomes 0
-				CAM_DBG(CAM_CCI, "Going to enter wait for pid=%d threadid=%d",
-					current->pid, current->tgid);
-				mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-				rc = wait_event_interruptible_timeout(
-						cci_dev->cci_master_info[master].lock_wait,
-						(cci_dev->cci_master_info[master].master_usage_cnt == 0),
-						CCI_MASTER_LOCK_TIMEOUT);
-				if (rc < 0) {
-						CAM_ERR(CAM_CCI,"wait failed");
-						rc = -1;
-					} else if (rc == 0) {
-						CAM_ERR(CAM_CCI," wait timeout happend and condition is still not met");
-						rc = -1;
-					} else {
-						//Now condition success try to check again
-						CAM_DBG(CAM_CCI,"Now condition success try to check again for cmd=%d",
-							cci_ctrl->cmd);
-						rc = 0;
-						loop_check_cnt++;
-						mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-						goto loop_check_again;
+					rc = wait_event_interruptible_timeout(
+							cci_dev->cci_master_info[master].lock_wait,
+							(cci_dev->cci_master_info[master].master_usage_cnt == 0),
+							CCI_MASTER_LOCK_TIMEOUT);
+					if (rc <= 0) {
+						CAM_ERR(CAM_CCI," wait timeout happend and condition is still not met rc=%d", rc);
+						rc = -EINVAL;
+						goto skip_master_unlock;
 					}
-			}
-			else {
-				CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-					rc = -1;
-			}
-		}
-		break;
-		case MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK: {
-			if (cci_dev->cci_master_info[master].is_master_locked &&
-				cci_ctrl->cci_info->is_master_owned &&
-				(cci_dev->cci_master_info[master].master_usage_cnt == 1)) {
-				CAM_DBG(CAM_CCI, "master is locked by correct thread so lets SEQUENTIAL_XFER_UNLOCK now");
-				cci_dev->cci_master_info[master].is_master_locked = FALSE;
-				cci_ctrl->cci_info->is_master_owned = FALSE;
-				cci_dev->cci_master_info[master].master_usage_cnt--;
-				CAM_DBG(CAM_CCI, "Master lock released by pid=%d threadid=%d",
-					current->pid, current->tgid);
-				wake_up(&cci_dev->cci_master_info[master].lock_wait);
-				CAM_DBG(CAM_CCI, "master SEQUENTIAL_XFER_UNLOCK success");
-			}
-			else if (cci_dev->cci_master_info[master].is_master_locked &&
-					(!cci_ctrl->cci_info->is_master_owned) &&
-					(!force_unlock)){
-				//Master is locked but not owned by the caller but still asking for unlock
-				CAM_ERR(CAM_CCI, "UNLOCK ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-				rc = -1;
-			}
-			else if (!force_unlock) {
-				CAM_ERR(CAM_CCI, "UNLOCK ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt,
-					force_unlock);
-					rc = -1;
-			}
-		}
-		break;
-		default:
-			CAM_DBG(CAM_CCI, "some cmd=%d need not to process anything here just ignore",
-				cci_ctrl->cmd);
-			break;
+					CAM_DBG(CAM_CCI, "Continue while again");
+					loop_check_cnt++;
+					continue;
+				} else {
+					CAM_ERR(CAM_CCI, "In Error Condition");
+					rc = -EINVAL;
+				}
+				break;
 
-		}
-		mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-	}
-	else {
-		mutex_lock(&(cci_dev->cci_master_info[master].master_lock_mutex));
-
-		switch (process_cmd) {
-		case MSM_CCI_I2C_READ:
-		case MSM_CCI_I2C_WRITE:
-		case MSM_CCI_I2C_WRITE_SEQ:
-		case MSM_CCI_I2C_WRITE_BURST:
-		case MSM_CCI_I2C_WRITE_SYNC:
-		case MSM_CCI_I2C_WRITE_ASYNC:
-		case MSM_CCI_I2C_WRITE_SYNC_BLOCK: {
-			if (!cci_dev->cci_master_info[master].is_master_locked ||
-				cci_ctrl->cci_info->is_master_owned ||
-				cci_dev->cci_master_info[master].master_usage_cnt) {
-				//Not locked or owned by same client or valid usage count
-					cci_dev->cci_master_info[master].master_usage_cnt--;
-					wake_up(&cci_dev->cci_master_info[master].lock_wait);
-					CAM_DBG(CAM_CCI, "master usage count=%d for cmd=%d",
-						cci_dev->cci_master_info[master].master_usage_cnt, cci_ctrl->cmd);
-			}
-			else {
-				CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-				rc = -1;
-			}
-		}
-		break;
-		case MSM_CCI_I2C_READ_APPEND_WRITE:
-			if (cci_dev->cci_master_info[master].is_master_locked &&
-				cci_ctrl->cci_info->is_master_owned &&
-				!cci_dev->cci_master_info[master].is_read_append_locked) {
-				cci_dev->cci_master_info[master].master_usage_cnt--;
-				wake_up(&cci_dev->cci_master_info[master].lock_wait);
-				CAM_DBG(CAM_CCI, "master usage count=%d for read_append_write complete (already global_locked)",
-					cci_dev->cci_master_info[master].master_usage_cnt);
-			}
-			else if (cci_dev->cci_master_info[master].is_master_locked &&
-				cci_ctrl->cci_info->is_master_owned &&
-				cci_dev->cci_master_info[master].is_read_append_locked &&
-				(cci_dev->cci_master_info[master].master_usage_cnt == 1)) {
-				//Now take lock success
+			case MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK:
+				if (cci_dev->cci_master_info[master].is_master_locked &&
+					cci_ctrl->cci_info->is_master_owned &&
+					cci_dev->cci_master_info[master].master_usage_cnt == 1) {
 					cci_dev->cci_master_info[master].is_master_locked = FALSE;
-					cci_dev->cci_master_info[master].is_read_append_locked = FALSE;
 					cci_ctrl->cci_info->is_master_owned = FALSE;
 					cci_dev->cci_master_info[master].master_usage_cnt--;
-					wake_up(&cci_dev->cci_master_info[master].lock_wait);
-					CAM_DBG(CAM_CCI, "master usage count=%d for read_append_write complete(success)",
-						cci_dev->cci_master_info[master].master_usage_cnt);
+
+					CAM_DBG(CAM_CCI,
+						"UNLOCK: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+						cci_dev->cci_master_info[master].is_master_locked,
+						cci_dev->cci_master_info[master].is_read_append_locked,
+						cci_ctrl->cci_info->is_master_owned,
+						cci_dev->cci_master_info[master].master_usage_cnt,
+						force_unlock);
+
+					if (cci_dev->cci_master_info[master].master_usage_cnt == 0)
+						wake_up(&cci_dev->cci_master_info[master].lock_wait);
+				} else if (cci_dev->cci_master_info[master].is_master_locked &&
+					!cci_ctrl->cci_info->is_master_owned &&
+					!force_unlock) {
+					CAM_ERR(CAM_CCI, "UNLOCK ERROR");
+					rc = -EINVAL;
+				} else if (!force_unlock) {
+					CAM_ERR(CAM_CCI, "In Errot Condition");
+					rc = -EINVAL;
+				}
+				break;
+
+			default:
+				CAM_DBG(CAM_CCI, "Ignoring cmd=%d", cci_ctrl->cmd);
+				break;
 			}
-			else {
-				CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
-					cci_ctrl->cmd,
-					cci_dev->cci_master_info[master].is_master_locked,
-					cci_dev->cci_master_info[master].is_read_append_locked,
-					cci_ctrl->cci_info->is_master_owned,
-					cci_dev->cci_master_info[master].master_usage_cnt);
-				rc = -1;
+		} else {
+			// Handling for condition == 0 (exit)
+			switch (process_cmd) {
+			case MSM_CCI_I2C_READ:
+			case MSM_CCI_I2C_WRITE:
+			case MSM_CCI_I2C_WRITE_SEQ:
+			case MSM_CCI_I2C_WRITE_BURST:
+			case MSM_CCI_I2C_WRITE_SYNC:
+			case MSM_CCI_I2C_WRITE_ASYNC:
+			case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
+				if (!cci_dev->cci_master_info[master].is_master_locked ||
+					cci_ctrl->cci_info->is_master_owned ||
+					cci_dev->cci_master_info[master].master_usage_cnt) {
+					cci_dev->cci_master_info[master].master_usage_cnt--;
+
+					CAM_DBG(CAM_CCI,
+						"Refcnt--: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+						cci_dev->cci_master_info[master].is_master_locked,
+						cci_dev->cci_master_info[master].is_read_append_locked,
+						cci_ctrl->cci_info->is_master_owned,
+						cci_dev->cci_master_info[master].master_usage_cnt,
+						force_unlock);
+
+					if (cci_dev->cci_master_info[master].master_usage_cnt == 0)
+						wake_up(&cci_dev->cci_master_info[master].lock_wait);
+				} else {
+					CAM_ERR(CAM_CCI, "In Error Condition");
+					rc = -EINVAL;
+				}
+				break;
+
+			case MSM_CCI_I2C_READ_APPEND_WRITE:
+				if (cci_dev->cci_master_info[master].is_master_locked &&
+					cci_ctrl->cci_info->is_master_owned &&
+					!cci_dev->cci_master_info[master].is_read_append_locked) {
+					cci_dev->cci_master_info[master].master_usage_cnt--;
+					if (cci_dev->cci_master_info[master].master_usage_cnt == 0)
+						wake_up(&cci_dev->cci_master_info[master].lock_wait);
+				} else if (cci_dev->cci_master_info[master].is_master_locked &&
+					cci_ctrl->cci_info->is_master_owned &&
+					cci_dev->cci_master_info[master].is_read_append_locked &&
+					cci_dev->cci_master_info[master].master_usage_cnt == 1) {
+						cci_dev->cci_master_info[master].is_master_locked = FALSE;
+						cci_dev->cci_master_info[master].is_read_append_locked = FALSE;
+						cci_ctrl->cci_info->is_master_owned = FALSE;
+						cci_dev->cci_master_info[master].master_usage_cnt--;
+
+						CAM_DBG(CAM_CCI, "RAUnlock: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force_unlock=%d",
+							cci_dev->cci_master_info[master].is_master_locked,
+							cci_dev->cci_master_info[master].is_read_append_locked,
+							cci_ctrl->cci_info->is_master_owned,
+							cci_dev->cci_master_info[master].master_usage_cnt,
+							force_unlock);
+
+					if (cci_dev->cci_master_info[master].master_usage_cnt == 0)
+						wake_up(&cci_dev->cci_master_info[master].lock_wait);
+				} else {
+					CAM_ERR(CAM_CCI, "In Error Condition");
+					rc = -EINVAL;
+				}
+				break;
+
+			case MSM_CCI_I2C_SEQUENTIAL_XFER_LOCK:
+			case MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK:
+				break;
+
+			default:
+				CAM_DBG(CAM_CCI, "some cmd=%d need not to process anything here just ignore", cci_ctrl->cmd);
+				break;
 			}
-			break;
-		case MSM_CCI_I2C_SEQUENTIAL_XFER_LOCK:
-		case MSM_CCI_I2C_SEQUENTIAL_XFER_UNLOCK:
-			break;
-		default:
-			CAM_DBG(CAM_CCI, "some cmd=%d need not to process anything here just ignore",
-				cci_ctrl->cmd);
-			break;
+		}
+
+		if (rc < 0) {
+		CAM_ERR(CAM_CCI, "ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force=%d cnd=%d",
+			cci_ctrl->cmd,
+			cci_dev->cci_master_info[master].is_master_locked,
+			cci_dev->cci_master_info[master].is_read_append_locked,
+			cci_ctrl->cci_info->is_master_owned,
+			cci_dev->cci_master_info[master].master_usage_cnt,
+			force_unlock, condition);
 		}
 		mutex_unlock(&(cci_dev->cci_master_info[master].master_lock_mutex));
+		break;
 	}
+
+	if (loop_check_cnt > 3) {
+		CAM_ERR(CAM_CCI, "loop_check_again is greater than 1 loop_check_cnt=%d", loop_check_cnt);
 	}
-	else {
-		CAM_DBG(CAM_CCI, "master lock state processing cannot be done until cci is enabled so just bypass");
-	}
-	CAM_DBG(CAM_CCI,"Exit for cmd=%d with condition=%d rc=%d", cci_ctrl->cmd, condition, rc);
-	CAM_DBG(CAM_CCI, "X: isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d",
+
+skip_master_unlock:
+	if (rc < 0) {
+	CAM_ERR(CAM_CCI, "X:ERROR cmd=%d isMlocked=%d isRAlocked=%d isMowned=%d MusageCnt=%d force=%d cnd=%d",
+		cci_ctrl->cmd,
 		cci_dev->cci_master_info[master].is_master_locked,
 		cci_dev->cci_master_info[master].is_read_append_locked,
 		cci_ctrl->cci_info->is_master_owned,
-		cci_dev->cci_master_info[master].master_usage_cnt);
+		cci_dev->cci_master_info[master].master_usage_cnt,
+		force_unlock, condition);
+	}
 
 	return rc;
 }
@@ -626,7 +588,6 @@ void cam_cci_dump_registers(struct cci_device *cci_dev,
 			reg_offset, read_val);
 	}
 }
-EXPORT_SYMBOL(cam_cci_dump_registers);
 
 static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master,
@@ -2943,7 +2904,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	cci_dev->is_probing = false;
 	CAM_DBG(CAM_CCI, "CCI%d_I2C_M%d cmd = %d", cci_dev->soc_info.index, master, cci_ctrl->cmd);
 
-	rc = cam_cci_process_master_lock(cci_ctrl, cci_dev, TRUE, FALSE);
+	rc = cam_cci_master_lock_handler(cci_ctrl, cci_dev, TRUE, FALSE);
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "MASTER lock state check failed for master: %d for cmd=%d", master, cci_ctrl->cmd);
 		return -EINVAL;
@@ -2996,7 +2957,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	}
 
 	cci_ctrl->status = rc;
-	rc = cam_cci_process_master_lock(cci_ctrl, cci_dev, FALSE, FALSE);
+	rc = cam_cci_master_lock_handler(cci_ctrl, cci_dev, FALSE, FALSE);
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "MASTER state check last failed for master: %d with cci status=%d for cmd=%d",
 			master, cci_ctrl->status, cci_ctrl->cmd);
@@ -3005,7 +2966,7 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	if (cci_ctrl->status) {
 		CAM_ERR(CAM_CCI, "cci status=%d for cmd=%d has failed so force unblock to avoid deadlock",
 			cci_ctrl->status, cci_ctrl->cmd);
-		rc = cam_cci_process_master_lock(cci_ctrl, cci_dev, TRUE, TRUE);
+		rc = cam_cci_master_lock_handler(cci_ctrl, cci_dev, TRUE, TRUE);
 		if (rc < 0) {
 			CAM_ERR(CAM_CCI, "MASTER state check last failed for master: %d with cci status=%d for cmd=%d",
 				master, cci_ctrl->status, cci_ctrl->cmd);

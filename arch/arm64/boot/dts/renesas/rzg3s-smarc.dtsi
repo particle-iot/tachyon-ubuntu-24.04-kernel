@@ -10,8 +10,13 @@
 
 / {
 	aliases {
-		serial0 = &scif0;
+		serial3 = &scif0;
 		mmc1 = &sdhi1;
+	};
+
+	chosen {
+		bootargs = "ignore_loglevel";
+		stdout-path = "serial3:115200n8";
 	};
 
 	vcc_sdhi1: regulator-vcc-sdhi1 {

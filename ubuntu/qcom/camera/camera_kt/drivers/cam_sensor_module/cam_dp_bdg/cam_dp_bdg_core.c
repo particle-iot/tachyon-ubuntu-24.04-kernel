@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/firmware.h>
@@ -1234,5 +1235,3 @@ fail:
 	mutex_unlock(&(cam_dp_bdg_cam_ctrl->cam_sensor_mutex));
 	return rc;
 }
-EXPORT_SYMBOL(cam_dp_bdg_get_src_resolution);
-EXPORT_SYMBOL(cam_dp_bdg_get_fw_version);

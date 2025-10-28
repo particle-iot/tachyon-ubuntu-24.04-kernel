@@ -4,7 +4,7 @@
  * common.h - Common Header File
  *
  * Copyright (C) 2007-2009 STMicroelectronics Ltd
- * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro Linux driver,
  * and developed or modified for TC956X.
@@ -84,6 +84,16 @@
  *  13 Feb 2024 : 1. Merged CPE and Automotive package
  *                2. Added support for board device RBTC9563_3MA
  *  VERSION     : 04-00
+ *  31 May 2024 : 1. Lower speed(1G, 100M, 10M) support added for USXGMII interface
+ *              : 2. Error handling added for oversize gptp packets
+ *  VERSION     : 05-00
+ *  31 Jan 2025 : 1. Support for w/o MDIO and w/o PHY configuration in cascade network using BDF based module parameter
+ *              : 2. USXGMII (0) made as supported module param for TC956x Rev ID1
+ *  VERSION     : 05-00-01
+ *  28 Feb 2025 : 1. Support for USP Lo/L1 Delay module parameters
+ *  VERSION     : 05-02-00
+ *  31 Mar 2025 : 1. Support for 3MA/3DB environment
+ *  VERSION     : 06-00-00
 */
 
 #ifndef __COMMON_H__
@@ -133,6 +143,15 @@ enum TC956X_PORT_LINK_CHANGE_STATE {
 	LINK_DOWN = 0,
 	LINK_UP,
 };
+
+/* PHY/MDIO configurations */
+enum TC956X_PHY_MDIO_AVAILABILITY {
+	PHY_ON_MDIO_ON = 0, /* PHY and MDIO available */
+	PHY_ON_MDIO_OFF,    /* PHY available and MDIO not available */ /* Not supported currently */
+	PHY_OFF_MDIO_ON,    /* PHY not available and MDIO available */ /* Not supported currrently */
+	PHY_OFF_MDIO_OFF    /* PHY not available and MDIO not available */
+};
+
 #if defined(TC956X_SRIOV_PF)
 //#define TC956X_PCIE_LINK_STATE_LATENCY_CTRL
 #define TC956X_PCIE_DSP_CUT_THROUGH
@@ -175,7 +194,10 @@ enum TC956X_PORT_LINK_CHANGE_STATE {
 // #define TSN_DEMO_AUTOMOTIVE
 
 /* This macro to be disabled for board device other than RBTC9563_3MA */
-/* #define RBTC9563_3MA */
+//#define RBTC9563_3MA
+
+/* This macro to be enabled when RBTC9563-3DB PHY to be used */
+//#define RBTC9563_3DB
 
 #define TC956X_M3_DMEM_OFFSET	0x40000
 #define MAC2MAC_ETH0_RXDESC_L	0x7800
@@ -1409,10 +1431,12 @@ RXQ1 used for MAC2MAC */
 #define RSCMNG_PFN_SHIFT	0
 
 /*	Configuration Register Address	*/
-#define NCID_OFFSET		(0x0000) /* TC956X Chip and revision ID */
+#define NCID_OFFSET			(0x0000) /* TC956X Chip and revision ID */
 #define NMODESTS_OFFSET		(0x0004) /* TC956X current operation mode */
 #define NFUNCEN0_OFFSET		(0x0008) /* TC956X pin mux control */
 #define NPCIEBOOT_OFFSET	(0x0018) /* TC956X PCIE Boot HW Sequence Status and Control */
+
+#define NCID_FPE			BIT(7)
 
 /* Pinmux for PPS Out PPO01 and PPO11*/
 #define NFUNCEN0_JTAGEN_MASK	0x40000000U
@@ -1529,6 +1553,7 @@ RXQ1 used for MAC2MAC */
 
 #ifdef TC956X
 #define NEMAC0CTL_OFFSET	(0x1070) /* eMAC Port-0 Control */
+#define NMISCCTL_OFFSET		(0x1800)
 #endif
 
 #ifdef TC956X_SRIOV_PF
@@ -1667,6 +1692,26 @@ RXQ1 used for MAC2MAC */
 #define NEMACCTL_SP_SEL_USXGMII_5G_5G		(0xA) /* USXGMII 5G/5G */
 #define NEMACCTL_SP_SEL_USXGMII_5G_10G		(0x9) /* USXGMII 5G/10G */
 #define NEMACCTL_SP_SEL_USXGMII_10G_10G		(0x8) /* USXGMII 10G/10G */
+#define NEMACCTL_SP_SEL_USXGMII_1G_10G		(0x8) /* USXGMII 1G/10G */
+#define NEMACCTL_SP_SEL_USXGMII_100M_10G	(0x9) /* USXGMII 100M/10G */
+#define NEMACCTL_SP_SEL_USXGMII_10M_10G		(0x9) /* USXGMII 10M/10G */
+#define NEMACCTL_SP_SEL_USXGMII_1G_5G		(0xC) /* USXGMII 1G/5G */
+#define NEMACCTL_SP_SEL_USXGMII_100M_5G		(0xC) /* USXGMII 100M/5G */
+#define NEMACCTL_SP_SEL_USXGMII_10M_5G		(0xA) /* USXGMII 10M/5G */
+#define NEMACCTL_SP_SEL_USXGMII_1G_2_5G		(0xD) /* USXGMII 1G/2.5G */
+#define NEMACCTL_SP_SEL_USXGMII_100M_2_5G	(0xD) /* USXGMII 100M/2.5G */
+#define NEMACCTL_SP_SEL_USXGMII_10M_2_5G	(0xD) /* USXGMII 10M/2.5G */
+
+#define SP_ETH0_SHIFT			16
+#define SP_ETH1_SHIFT			24
+#define SP_ETH_1G				1
+#define SP_ETH_100M				3
+#define SP_ETH_10M				7
+
+#define REV_ID_MASK				0xF
+#define REV_ID1					0x1
+#define REV_ID2					0x2
+
 #define NEMACCTL_SP_SEL_RGMII_10M		(0x2) /* RGMII 10M */
 #define NEMACCTL_SP_SEL_RGMII_100M		(0x1) /* RGMII 100M */
 #define NEMACCTL_SP_SEL_RGMII_1000M		(0x0) /* RGMII 1000M */
@@ -1785,7 +1830,15 @@ RXQ1 used for MAC2MAC */
 #define INTC_MAC_STATUS	\
 	((MAC_PORT_NUM_CHECK) ? (INTC_MAC0STATUS) : (INTC_MAC1STATUS))
 
+#define MISC_CTRL \
+	((MAC_PORT_NUM_CHECK) ? (0xFFF8FFFF) : (0xF8FFFFFF))
 
+#define SP_ETH_SHIFT \
+	((MAC_PORT_NUM_CHECK) ? (SP_ETH0_SHIFT) : (SP_ETH1_SHIFT))
+
+/* REV_ID1 does not support USXGMII_5G, USXGMII_2_5G interface type */
+#define MAX_INTERFACE \
+	((plat->RevID == REV_ID1) ? (ENABLE_USXGMII_10G_INTERFACE) : (ENABLE_USXGMII_2_5G_INTERFACE))
 
 #ifdef TC956X
 #define TC956X_ETH_XPCS_INT				BIT(19)
@@ -1853,6 +1906,12 @@ RXQ1 used for MAC2MAC */
 #define TC956X_PCIE_EP_L0s_ENTRY_MASK		GENMASK(17, 13)
 #define TC956X_PCIE_EP_L1_ENTRY_MASK		GENMASK(27, 18)
 
+#define	TC956X_PCIE_USP_L0s_ENTRY_SHIFT		(0)
+#define	TC956X_PCIE_USP_L1_ENTRY_SHIFT		(0)
+
+#define TC956X_PCIE_USP_L0s_ENTRY_MASK		GENMASK(4, 0)
+#define TC956X_PCIE_USP_L1_ENTRY_MASK		GENMASK(9, 0)
+
 #define TC956X_PCIE_S_EN_ALL_PORTS_ACCESS	(0xF)
 
 /*
@@ -1861,6 +1920,10 @@ L1 value range : 1-1023
 
 Ex: entry value is n then
 entry delay = n * 256 ns */
+
+/* Invalid entry delays*/
+#define INVALID_L0s_ENTRY_DELAY	(0x0U)
+#define INVALID_L1_ENTRY_DELAY	(0x0U)
 
 /* Link state change delay configuration for Upstream Port */
 #define USP_L0s_ENTRY_DELAY	(0x1FU)
@@ -2812,6 +2875,8 @@ struct dma_features {
 
 #define TC956X_MIN_LPI_AUTO_ENTRY_TIMER		0
 #define TC956X_MAX_LPI_AUTO_ENTRY_TIMER		0xFFFF8 /* LPI Entry timer is in the units of 8 micro second granularity. So mask the last 3 bits. */
+
+#define PTP_MAX_PKT_SIZE  512
 
 extern const struct tc956xmac_desc_ops enh_desc_ops;
 extern const struct tc956xmac_desc_ops ndesc_ops;

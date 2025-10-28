@@ -291,6 +291,7 @@ static const struct snd_soc_dai_ops q6i2s_ops = {
 	.shutdown	= q6apm_lpass_dai_shutdown,
 	.set_channel_map  = q6dma_set_channel_map,
 	.hw_params        = q6dma_hw_params,
+	.set_fmt	= q6i2s_set_fmt,
 };
 
 static const struct snd_soc_dai_ops q6hdmi_ops = {
@@ -348,6 +349,10 @@ static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 
 		if (prmcc_pdev) {
 			dai_data->cc = platform_get_drvdata(prmcc_pdev);
+			if (!dai_data->cc) {
+				pr_err("%s: dai_data->cc is null\n", __func__);
+				return -EPROBE_DEFER;
+			}
 		} else {
 			dev_err(dev, "Failed to find prmcc clock\n");
 			return -EPROBE_DEFER;

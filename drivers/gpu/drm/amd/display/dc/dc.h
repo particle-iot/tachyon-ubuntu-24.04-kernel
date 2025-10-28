@@ -435,6 +435,7 @@ struct dc_config {
 	bool enable_auto_dpm_test_logs;
 	unsigned int disable_ips;
 	unsigned int disable_ips_in_vpb;
+	bool support_edp0_on_dp1;
 };
 
 enum visual_confirm {

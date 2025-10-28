@@ -25,9 +25,6 @@
 };
 
 &sound {
-	compatible = "qcom,qcm6490-sndcard";
-	model = "qcm6490-rb3-vision-snd-card";
-
 	audio-routing =
 		"SpkrLeft IN", "WSA_SPK1 OUT",
 		"SpkrRight IN", "WSA_SPK2 OUT",
@@ -176,7 +173,7 @@
 
 			map4 {
 				trip = <&b_bcl_lvl0>;
-				cooling-device = <&cdsp_sw 2 2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
 			map5 {
@@ -207,13 +204,13 @@
 		cooling-maps {
 			map0 {
 				trip = <&b_bcl_lvl1>;
-				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
-			//map1 {
-			//	trip = <&b_bcl_lvl1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map1 {
+				trip = <&b_bcl_lvl1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map2 {
 				trip = <&b_bcl_lvl1>;
@@ -236,10 +233,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&b_bcl_lvl2>;
-			//	cooling-device = <&cdsp_sw 5 5>;
-			//};
+			map0 {
+				trip = <&b_bcl_lvl2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 		};
 	};
 };

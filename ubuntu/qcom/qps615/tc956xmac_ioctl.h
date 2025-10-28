@@ -4,7 +4,7 @@
  * tc956xmac_ioctl.h
  *
  * Copyright (C) 2018 Synopsys, Inc. and/or its affiliates.
- * Copyright (C) 2021 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro and Synopsys Linux driver,
  * and developed or modified for TC956X.
@@ -37,6 +37,8 @@
  *                3. Removed IOCTL TC956XMAC_VLAN_STRIP_CONFIG.
  *                4. Removed "Disable VLAN Filter" option in IOCTL TC956XMAC_VLAN_FILTERING.
  *  VERSION     : 01-00-13
+ *  31 May 2024 : 1. Set and get FPE supported
+ *  VERSION     : 05-00
  */
 
 #ifndef _IOCTL_H__
@@ -57,10 +59,8 @@ enum ioctl_commands {
 	TC956XMAC_SET_CBS = 0x2,
 	TC956XMAC_GET_EST = 0x3,
 	TC956XMAC_SET_EST = 0x4,
-#ifdef TC956X_UNSUPPORTED_UNTESTED
 	TC956XMAC_GET_FPE = 0x5,
 	TC956XMAC_SET_FPE = 0x6,
-#endif
 	TC956XMAC_GET_RXP = 0x7,
 	TC956XMAC_SET_RXP = 0x8,
 	TC956XMAC_GET_SPEED = 0x9,

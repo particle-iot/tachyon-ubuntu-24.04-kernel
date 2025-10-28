@@ -96,6 +96,7 @@ static void ivpu_hw_timeouts_init(struct ivpu_device *vdev)
 	vdev->timeout.reschedule_suspend = 10;
 	vdev->timeout.autosuspend = 10;
 	vdev->timeout.d0i3_entry_msg = 5;
+	vdev->timeout.state_dump_msg = 10;
 }
 
 static int ivpu_pll_wait_for_cmd_send(struct ivpu_device *vdev)

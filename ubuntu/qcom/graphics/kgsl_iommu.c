@@ -1365,10 +1365,6 @@ static int set_smmu_lpac_aperture(struct kgsl_device *device,
 	if (ret == -EBUSY)
 		ret = qcom_scm_kgsl_set_smmu_lpac_aperture(context->cb_num);
 
-	if (ret)
-		dev_err(&device->pdev->dev, "Unable to set the LPAC SMMU aperture: %d. The aperture needs to be set to use per-process pagetables\n",
-			ret);
-
 	return ret;
 }
 
@@ -2450,6 +2446,8 @@ static int iommu_probe_user_context(struct kgsl_device *device,
 	ret = set_smmu_lpac_aperture(device, &iommu->lpac_context);
 	/* LPAC is optional, ignore setup failures in absence of LPAC feature */
 	if ((ret < 0) && ADRENO_FEATURE(adreno_dev, ADRENO_LPAC)) {
+		dev_err(&device->pdev->dev, "Unable to set the LPAC SMMU aperture: %d. The aperture needs to be set to use per-process pagetables\n",
+			ret);
 		kgsl_iommu_detach_context(&iommu->lpac_context);
 		goto err;
 	}

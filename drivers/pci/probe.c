@@ -982,10 +982,9 @@ static int pci_register_host_bridge(struct pci_host_bridge *bridge)
 	/* Temporarily move resources off the list */
 	list_splice_init(&bridge->windows, &resources);
 	err = device_add(&bridge->dev);
-	if (err) {
-		put_device(&bridge->dev);
+	if (err)
 		goto free;
-	}
+
 	bus->bridge = get_device(&bridge->dev);
 	device_enable_async_suspend(bus->bridge);
 	pci_set_bus_of_node(bus);
@@ -1241,7 +1240,8 @@ static void pci_enable_crs(struct pci_dev *pdev)
 	if (root_cap & PCI_EXP_RTCAP_CRSVIS) {
 		pcie_capability_set_word(pdev, PCI_EXP_RTCTL,
 					 PCI_EXP_RTCTL_CRSSVE);
-		pdev->config_crs_sv = 1;
+		if (!(pdev->dev_flags & PCI_DEV_FLAGS_NO_RRS_SV))
+			pdev->config_crs_sv = 1;
 	}
 }
 

@@ -119,6 +119,8 @@ r535_gsp_msgq_wait(struct nvkm_gsp *gsp, u32 repc, u32 *prepc, int *ptime)
 		return mqe->data;
 	}
 
+	size = ALIGN(repc + GSP_MSG_HDR_SIZE, GSP_PAGE_SIZE);
+
 	msg = kvmalloc(repc, GFP_KERNEL);
 	if (!msg)
 		return ERR_PTR(-ENOMEM);
@@ -127,18 +129,14 @@ r535_gsp_msgq_wait(struct nvkm_gsp *gsp, u32 repc, u32 *prepc, int *ptime)
 	len = min_t(u32, repc, len);
 	memcpy(msg, mqe->data, len);
 
-	rptr += DIV_ROUND_UP(len, GSP_PAGE_SIZE);
-	if (rptr == gsp->msgq.cnt)
-		rptr = 0;
-
 	repc -= len;
 
 	if (repc) {
 		mqe = (void *)((u8 *)gsp->shm.msgq.ptr + 0x1000 + 0 * 0x1000);
 		memcpy(msg + len, mqe, repc);
-
-		rptr += DIV_ROUND_UP(repc, GSP_PAGE_SIZE);
 	}
+
+	rptr = (rptr + DIV_ROUND_UP(size, GSP_PAGE_SIZE)) % gsp->msgq.cnt;
 
 	mb();
 	(*gsp->msgq.rptr) = rptr;
@@ -161,7 +159,7 @@ r535_gsp_cmdq_push(struct nvkm_gsp *gsp, void *argv)
 	u64 *end;
 	u64 csum = 0;
 	int free, time = 1000000;
-	u32 wptr, size;
+	u32 wptr, size, step;
 	u32 off = 0;
 
 	argc = ALIGN(GSP_MSG_HDR_SIZE + argc, GSP_PAGE_SIZE);
@@ -195,7 +193,9 @@ r535_gsp_cmdq_push(struct nvkm_gsp *gsp, void *argv)
 		}
 
 		cqe = (void *)((u8 *)gsp->shm.cmdq.ptr + 0x1000 + wptr * 0x1000);
-		size = min_t(u32, argc, (gsp->cmdq.cnt - wptr) * GSP_PAGE_SIZE);
+		step = min_t(u32, free, (gsp->cmdq.cnt - wptr));
+		size = min_t(u32, argc, step * GSP_PAGE_SIZE);
+
 		memcpy(cqe, (u8 *)cmd + off, size);
 
 		wptr += DIV_ROUND_UP(size, 0x1000);
