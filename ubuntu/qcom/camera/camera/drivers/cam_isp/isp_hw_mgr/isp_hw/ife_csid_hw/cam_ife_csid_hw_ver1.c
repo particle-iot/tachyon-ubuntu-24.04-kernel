@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -4826,7 +4826,6 @@ err:
 	cam_ife_csid_ver1_free_res(ife_csid_hw);
 	return rc;
 }
-EXPORT_SYMBOL(cam_ife_csid_hw_ver1_init);
 
 int cam_ife_csid_hw_ver1_deinit(struct cam_hw_info *hw_priv)
 {
@@ -4848,4 +4847,3 @@ int cam_ife_csid_hw_ver1_deinit(struct cam_hw_info *hw_priv)
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_ife_csid_hw_ver1_deinit);

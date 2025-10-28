@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -182,12 +182,12 @@ static int cam_isp_dev_component_bind(struct device *dev,
 		rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
 		CAM_IFE_DEVICE_TYPE);
 		g_isp_dev.isp_device_type = CAM_IFE_DEVICE_TYPE;
-		g_isp_dev.max_context = CAM_CTX_MAX;
+		g_isp_dev.max_context = CAM_IFE_CTX_MAX;
 	} else if (strnstr(compat_str, "mc_tfe", strlen(compat_str))) {
 		rc  = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
 		CAM_TFE_MC_DEVICE_TYPE);
 		g_isp_dev.isp_device_type = CAM_TFE_MC_DEVICE_TYPE;
-		g_isp_dev.max_context = CAM_CTX_MAX;
+		g_isp_dev.max_context = CAM_IFE_CTX_MAX;
 	} else if (strnstr(compat_str, "tfe", strlen(compat_str))) {
 		rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
 		CAM_TFE_DEVICE_TYPE);

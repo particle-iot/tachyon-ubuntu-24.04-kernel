@@ -146,6 +146,9 @@ static int vxlan_fan_add_map(struct vxlan_dev *vxlan, struct ifla_fan_map *map)
 		return -EEXIST;
 
 	fan_map = kmalloc(sizeof(*fan_map), GFP_KERNEL);
+	if (!fan_map)
+		return -ENOMEM;
+
 	fan_map->underlay = map->underlay;
 	fan_map->overlay = map->overlay;
 	fan_map->underlay_prefix = map->underlay_prefix;
@@ -3053,8 +3056,11 @@ static int vxlan_init(struct net_device *dev)
 	struct vxlan_dev *vxlan = netdev_priv(dev);
 	int err;
 
-	if (vxlan->cfg.flags & VXLAN_F_VNIFILTER)
-		vxlan_vnigroup_init(vxlan);
+	if (vxlan->cfg.flags & VXLAN_F_VNIFILTER) {
+		err = vxlan_vnigroup_init(vxlan);
+		if (err)
+			return err;
+	}
 
 	dev->tstats = netdev_alloc_pcpu_stats(struct pcpu_sw_netstats);
 	if (!dev->tstats) {

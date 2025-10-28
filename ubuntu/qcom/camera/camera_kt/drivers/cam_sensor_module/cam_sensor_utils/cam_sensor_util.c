@@ -1326,15 +1326,16 @@ int32_t cam_sensor_update_power_settings(void *cmd_buf,
 		kzalloc(sizeof(struct cam_cmd_power), GFP_KERNEL);
 	if (!pwr_cmd)
 		return -ENOMEM;
-	memcpy(pwr_cmd, cmd_buf, sizeof(struct cam_cmd_power));
 
-	if (!pwr_cmd || !cmd_length || cmd_buf_len < (size_t)cmd_length ||
+	if (!cmd_length || cmd_buf_len < (size_t)cmd_length ||
 		cam_sensor_validate(cmd_buf, cmd_buf_len)) {
-		CAM_ERR(CAM_SENSOR, "Invalid Args: pwr_cmd %pK, cmd_length: %d",
-			pwr_cmd, cmd_length);
+		CAM_ERR(CAM_SENSOR, "Invalid Args: cmd_length: %d cmd_buf_len %d",
+			cmd_length, cmd_buf_len);
 		rc = -EINVAL;
 		goto free_power_command;
 	}
+
+	memcpy(pwr_cmd, cmd_buf, sizeof(struct cam_cmd_power));
 
 	power_info->power_setting_size = 0;
 	power_info->power_setting =

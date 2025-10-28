@@ -425,7 +425,7 @@ static int paicrypt_push_sample(size_t rawsize, struct paicrypt_map *cpump,
 	if (event->attr.sample_type & PERF_SAMPLE_RAW) {
 		raw.frag.size = rawsize;
 		raw.frag.data = cpump->save;
-		perf_sample_save_raw_data(&data, &raw);
+		perf_sample_save_raw_data(&data, event, &raw);
 	}
 
 	overflow = perf_event_overflow(event, &data, &regs);
@@ -677,6 +677,22 @@ static const char * const paicrypt_ctrnames[] = {
 	[154] = "PCKMO_ENCRYPT_ECC_ED448_KEY",
 	[155] = "IBM_RESERVED_155",
 	[156] = "IBM_RESERVED_156",
+	[157] = "KM_FULL_XTS_AES_128",
+	[158] = "KM_FULL_XTS_AES_256",
+	[159] = "KM_FULL_XTS_ENCRYPTED_AES_128",
+	[160] = "KM_FULL_XTS_ENCRYPTED_AES_256",
+	[161] = "KMAC_HMAC_SHA_224",
+	[162] = "KMAC_HMAC_SHA_256",
+	[163] = "KMAC_HMAC_SHA_384",
+	[164] = "KMAC_HMAC_SHA_512",
+	[165] = "KMAC_HMAC_ENCRYPTED_SHA_224",
+	[166] = "KMAC_HMAC_ENCRYPTED_SHA_256",
+	[167] = "KMAC_HMAC_ENCRYPTED_SHA_384",
+	[168] = "KMAC_HMAC_ENCRYPTED_SHA_512",
+	[169] = "PCKMO_ENCRYPT_HMAC_512_KEY",
+	[170] = "PCKMO_ENCRYPT_HMAC_1024_KEY",
+	[171] = "PCKMO_ENCRYPT_AES_XTS_128",
+	[172] = "PCKMO_ENCRYPT_AES_XTS_256",
 };
 
 static void __init attr_event_free(struct attribute **attrs, int num)
@@ -698,6 +714,12 @@ static int __init attr_event_init_one(struct attribute **attrs, int num)
 {
 	struct perf_pmu_events_attr *pa;
 
+	/* Index larger than array_size, no counter name available */
+	if (num >= ARRAY_SIZE(paicrypt_ctrnames)) {
+		attrs[num] = NULL;
+		return 0;
+	}
+
 	pa = kzalloc(sizeof(*pa), GFP_KERNEL);
 	if (!pa)
 		return -ENOMEM;
@@ -718,11 +740,10 @@ static int __init attr_event_init(void)
 	struct attribute **attrs;
 	int ret, i;
 
-	attrs = kmalloc_array(ARRAY_SIZE(paicrypt_ctrnames) + 1, sizeof(*attrs),
-			      GFP_KERNEL);
+	attrs = kmalloc_array(paicrypt_cnt + 2, sizeof(*attrs), GFP_KERNEL);
 	if (!attrs)
 		return -ENOMEM;
-	for (i = 0; i < ARRAY_SIZE(paicrypt_ctrnames); i++) {
+	for (i = 0; i <= paicrypt_cnt; i++) {
 		ret = attr_event_init_one(attrs, i);
 		if (ret) {
 			attr_event_free(attrs, i);

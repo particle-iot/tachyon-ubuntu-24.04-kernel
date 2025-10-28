@@ -98,7 +98,7 @@ int32_t cam_csiphy_get_instance_offset(struct csiphy_device *csiphy_dev, int32_t
 		return -EINVAL;
 	}
 
-	for (i = 0; i < csiphy_dev->acquire_count; i++) {
+	for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 		if (dev_handle ==
 			csiphy_dev->csiphy_info[i].hdl_data.device_hdl)
 			break;
@@ -1568,7 +1568,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 	}
 
 	if (csiphy_dev->csiphy_state == CAM_CSIPHY_ACQUIRE) {
-		for (i = 0; i < csiphy_dev->acquire_count; i++) {
+		for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 			if (csiphy_dev->csiphy_info[i].hdl_data.device_hdl
 				!= -1)
 				cam_destroy_device_hdl(
@@ -1579,11 +1579,11 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		}
 	}
 
-	csiphy_dev->ref_count = 0;
 	for (i = 0; i < csiphy_dev->session_max_device_support; i++) {
 		csiphy_dev->lanes_assigned[i].lane_assign = -1;
 		csiphy_dev->lanes_assigned[i].lane_assign_cnt = 0;
 	}
+	csiphy_dev->ref_count = 0;
 	csiphy_dev->lanes_enabled = 0x0;
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;

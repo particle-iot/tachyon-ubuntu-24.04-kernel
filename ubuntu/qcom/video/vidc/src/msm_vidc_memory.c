@@ -17,7 +17,9 @@
 #include "msm_vidc_platform.h"
 #include "venus_hfi.h"
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0))
+	MODULE_IMPORT_NS("DMA_BUF");
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0))
 	MODULE_IMPORT_NS(DMA_BUF);
 #endif
 

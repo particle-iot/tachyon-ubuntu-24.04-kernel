@@ -47,9 +47,6 @@
 };
 
 &sound {
-	compatible = "qcom,qcm6490-sndcard";
-	model = "qcm6490-rb3-vision-snd-card";
-
 	audio-routing =
 		"SpkrLeft IN", "WSA_SPK1 OUT",
 		"SpkrRight IN", "WSA_SPK2 OUT",

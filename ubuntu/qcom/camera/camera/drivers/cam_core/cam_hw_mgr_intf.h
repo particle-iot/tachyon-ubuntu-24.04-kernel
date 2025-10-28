@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_HW_MGR_INTF_H_
@@ -20,8 +20,7 @@
 
 /* maximum context numbers */
 #define CAM_CTX_MAX                         10
-#define CAM_MAX_OFFLINE_HW                   2
-
+#define CAM_MAX_OFFLINE_HW                   1
 /* maximum buf done irqs */
 #define CAM_NUM_OUT_PER_COMP_IRQ_MAX        12
 

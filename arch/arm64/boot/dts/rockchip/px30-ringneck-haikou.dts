@@ -222,11 +222,12 @@
 };
 
 &uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_xfer>;
 	status = "okay";
 };
 
 &uart5 {
-	pinctrl-0 = <&uart5_xfer>;
 	status = "okay";
 };
 

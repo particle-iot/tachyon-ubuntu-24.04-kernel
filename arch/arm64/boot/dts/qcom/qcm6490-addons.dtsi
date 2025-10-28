@@ -2,7 +2,7 @@
 /*
  * qcm6490-addons device tree source
  *
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -42,8 +42,8 @@
 
 	/* Add overlay for firmware node containing qcom_scm in sc7280.dtsi */
 	firmware {
-		qtee_shmbridge {
-			compatible = "qcom,tee-shared-memory-bridge";
+		qcom_mem_object {
+			compatible = "qcom,mem-object";
 		};
 
 		qcom_smcinvoke {
@@ -1100,10 +1100,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&camera0_alert1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map0 {
+				trip = <&camera0_alert1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map1 {
 				trip = <&camera0_alert1>;
@@ -1112,7 +1112,7 @@
 
 			map2 {
 				trip = <&camera0_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1770,10 +1770,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&nspss0_alert1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map0 {
+				trip = <&nspss0_alert1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map1 {
 				trip = <&nspss0_alert1>;
@@ -1782,7 +1782,7 @@
 
 			map2 {
 				trip = <&nspss0_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1809,10 +1809,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&nspss1_alert1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map0 {
+				trip = <&nspss1_alert1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map1 {
 				trip = <&nspss1_alert1>;
@@ -1821,7 +1821,7 @@
 
 			map2 {
 				trip = <&nspss1_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};
@@ -1862,7 +1862,7 @@
 
 			map4 {
 				trip = <&c_bcl_lvl0>;
-				cooling-device = <&cdsp_sw 2 2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
 			map5 {
@@ -1893,13 +1893,13 @@
 		cooling-maps {
 			map0 {
 				trip = <&c_bcl_lvl1>;
-				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
-			//map1 {
-			//	trip = <&c_bcl_lvl1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map1 {
+				trip = <&c_bcl_lvl1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map2 {
 				trip = <&c_bcl_lvl1>;
@@ -1922,10 +1922,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&c_bcl_lvl2>;
-			//	cooling-device = <&cdsp_sw 5 5>;
-			//};
+			map0 {
+				trip = <&c_bcl_lvl2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 		};
 	};
 
@@ -1951,10 +1951,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&video_alert1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map0 {
+				trip = <&video_alert1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map1 {
 				trip = <&video_alert1>;
@@ -1963,7 +1963,7 @@
 
 			map2 {
 				trip = <&video_alert1>;
-				cooling-device = <&msm_gpu 5 5>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 		};
 	};

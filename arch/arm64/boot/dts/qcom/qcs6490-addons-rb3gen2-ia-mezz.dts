@@ -56,6 +56,20 @@
 		enable-active-high;
 		regulator-enable-ramp-delay = <10000>;
 	};
+
+	dp1-connector {
+		compatible = "dp-connector";
+		label = "DP";
+		type = "full-size";
+		hpd-gpios = <&tlmm 104 GPIO_ACTIVE_LOW>;
+
+		port {
+			dp1_connector_in: endpoint {
+				remote-endpoint = <&mdss_dp_out>;
+			};
+		};
+	};
+
 };
 
 &i2c1 {
@@ -372,9 +386,36 @@
 	status = "okay";
 };
 
+&mdss_dp {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp_hot_plug_det>;
+};
+
+&mdss_dp_out {
+	lane-mapping = <1 0 3 2>;
+	remote-endpoint = <&dp1_connector_in>;
+};
+
+&dp_hot_plug_det {
+	pins = "gpio104";
+	function = "gpio";
+	bias-disable;
+};
+
+&pmic_glink {
+	qcom,no-pmic-hpd;
+};
+
+&usb_1_qmpphy_dp_in{
+	/delete-property/ remote-endpoint;
+};
+
+&redriver_ss_in {
+	data-lanes = <0 1 2 3>;
+	remote-endpoint = <&usb_1_qmpphy_out>;
+};
+
 &sound {
-	compatible = "qcom,qcs6490-rb3gen2-ia-sndcard";
-	model = "qcm6490-rb3-ia-snd-card";
 	audio-routing =
 		"SpkrLeft IN", "WSA_SPK1 OUT",
 		"SpkrRight IN", "WSA_SPK2 OUT",
@@ -526,7 +567,7 @@
 
 			map4 {
 				trip = <&b_bcl_lvl0>;
-				cooling-device = <&cdsp_sw 2 2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
 			map5 {
@@ -557,13 +598,13 @@
 		cooling-maps {
 			map0 {
 				trip = <&b_bcl_lvl1>;
-				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
+				cooling-device = <&msm_gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 			};
 
-			//map1 {
-			//	trip = <&b_bcl_lvl1>;
-			//	cooling-device = <&cdsp_sw 4 4>;
-			//};
+			map1 {
+				trip = <&b_bcl_lvl1>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 
 			map2 {
 				trip = <&b_bcl_lvl1>;
@@ -586,10 +627,10 @@
 		};
 
 		cooling-maps {
-			//map0 {
-			//	trip = <&b_bcl_lvl2>;
-			//	cooling-device = <&cdsp_sw 5 5>;
-			//};
+			map0 {
+				trip = <&b_bcl_lvl2>;
+				cooling-device = <&cdsp_sw THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+			};
 		};
 	};
 };

@@ -433,29 +433,39 @@ static int cam_sensor_component_bind(struct device *dev,
 	/* Fill platform device id*/
 	pdev->id = soc_info->index;
 
-	endpoint = of_graph_get_next_endpoint(s_ctrl->of_node, NULL);
-	if (!endpoint) {
-		CAM_DBG(CAM_SENSOR, "No local endpoint found");
-	} else {
-		remote = of_graph_get_remote_port(endpoint);
-		if (!remote) {
-			CAM_ERR(CAM_SENSOR, "No remote endpoint found");
-			of_node_put(endpoint);
-		}
-
-		deser_node = of_get_parent(remote);
-		if (!deser_node) {
-			CAM_ERR(CAM_SENSOR, "No deserializer node found");
-			of_node_put(remote);
-			of_node_put(endpoint);
-		}
-
-		rc = of_property_read_u32(deser_node, "csiphy-sd-index", &csiphy_sd_index);
-		if (rc) {
-			CAM_ERR(CAM_SENSOR, "Failed to read csiphy-sd-index");
+	if (of_graph_is_present(s_ctrl->of_node)) {
+		endpoint = of_graph_get_next_endpoint(s_ctrl->of_node, NULL);
+		if (!endpoint) {
+			CAM_DBG(CAM_SENSOR, "No local endpoint found");
 		} else {
-			CAM_DBG(CAM_SENSOR, "Deserializer csiphy-sd-index: %u", csiphy_sd_index);
+			remote = of_graph_get_remote_port(endpoint);
+			if (!remote) {
+				CAM_ERR(CAM_SENSOR, "No remote endpoint found");
+				of_node_put(endpoint);
+			} else {
+				deser_node = of_get_parent(remote);
+				if (!deser_node) {
+					CAM_ERR(CAM_SENSOR, "No deserializer node found");
+					of_node_put(remote);
+					of_node_put(endpoint);
+				} else {
+					rc = of_property_read_u32(deser_node,
+							"csiphy-sd-index", &csiphy_sd_index);
+					if (rc) {
+						CAM_ERR(CAM_SENSOR,
+							"Failed to read csiphy-sd-index");
+					} else {
+						CAM_DBG(CAM_SENSOR,
+							"Deserializer csiphy-sd-index: %u", csiphy_sd_index);
+					}
+					of_node_put(deser_node);
+					of_node_put(remote);
+					of_node_put(endpoint);
+				}
+			}
 		}
+	} else {
+		CAM_DBG(CAM_SENSOR, "No graph connections present");
 	}
 
 	rc = cam_sensor_init_subdev_params(s_ctrl);

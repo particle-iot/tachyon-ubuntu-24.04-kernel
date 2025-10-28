@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2024, Thundercomm All rights reserved.
+ */
+/dts-v1/;
+/plugin/;
+
+#include "qcm6490-camera-rubikpi3.dtsi"
+#include "qcm6490-camera-sensor-rubikpi3.dtsi"

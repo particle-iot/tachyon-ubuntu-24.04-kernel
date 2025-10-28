@@ -398,7 +398,8 @@ static inline bool dso__is_kcore(const struct dso *dso)
 
 static inline bool dso__is_kallsyms(const struct dso *dso)
 {
-	return dso->kernel && dso->long_name[0] != '/';
+	return dso->binary_type == DSO_BINARY_TYPE__KALLSYMS ||
+	       dso->binary_type == DSO_BINARY_TYPE__GUEST_KALLSYMS;
 }
 
 bool dso__is_object_file(const struct dso *dso);

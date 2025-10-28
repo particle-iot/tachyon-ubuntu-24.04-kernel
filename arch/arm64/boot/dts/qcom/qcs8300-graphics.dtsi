@@ -35,8 +35,6 @@
 		qcom,chipid = <0x06020300>;
 		qcom,gpu-model = "Adreno623";
 
-		qcom,initial-pwrlevel = <0>;
-
 		qcom,min-access-length = <32>;
 
 		qcom,ubwc-mode = <4>;
@@ -65,6 +63,9 @@
 		qcom,bus-table-cnoc =
 			<0>,   /* Off */
 			<100>; /* On */
+
+		nvmem-cells = <&gpu_speed_bin>;
+		nvmem-cell-names = "speed_bin";
 
 		zap-shader {
 			memory-region = <&gpu_microcode_mem>;
@@ -113,53 +114,138 @@
 			};
 		};
 
-		/* Power levels */
-		qcom,gpu-pwrlevels {
+		qcom,gpu-pwrlevel-bins {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			compatible = "qcom,gpu-pwrlevels";
+			compatible = "qcom,gpu-pwrlevel-bins";
 
-			qcom,gpu-pwrlevel@3 {
-				reg = <3>;
-				qcom,gpu-freq = <877000000>;
-				qcom,level = <RPMH_REGULATOR_LEVEL_TURBO_L1>;
+			qcom,gpu-pwrlevels-0 {
+				#address-cells = <1>;
+				#size-cells = <0>;
 
-				qcom,bus-freq = <12>;
-				qcom,bus-min = <12>;
-				qcom,bus-max = <12>;
+				qcom,speed-bin = <0>;
+				qcom,initial-pwrlevel = <3>;
+
+				qcom,gpu-pwrlevel@0 {
+					reg = <0>;
+					qcom,gpu-freq = <877000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_TURBO_L1>;
+
+					qcom,bus-freq = <12>;
+					qcom,bus-min = <12>;
+					qcom,bus-max = <12>;
+				};
+
+				qcom,gpu-pwrlevel@1 {
+					reg = <1>;
+					qcom,gpu-freq = <780000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_TURBO>;
+
+					qcom,bus-freq = <11>;
+					qcom,bus-min = <11>;
+					qcom,bus-max = <12>;
+				};
+
+				qcom,gpu-pwrlevel@2 {
+					reg = <2>;
+					qcom,gpu-freq = <599000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_NOM>;
+
+					qcom,bus-freq = <10>;
+					qcom,bus-min = <10>;
+					qcom,bus-max = <11>;
+				};
+
+				qcom,gpu-pwrlevel@3 {
+					reg = <3>;
+					qcom,gpu-freq = <479000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
+
+					qcom,bus-freq = <7>;
+					qcom,bus-min = <7>;
+					qcom,bus-max = <10>;
+				};
+
 			};
 
-			qcom,gpu-pwrlevel@2 {
-				reg = <2>;
-				qcom,gpu-freq = <780000000>;
-				qcom,level = <RPMH_REGULATOR_LEVEL_TURBO>;
+			qcom,gpu-pwrlevels-1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
 
-				qcom,bus-freq = <11>;
-				qcom,bus-min = <11>;
-				qcom,bus-max = <12>;
+				qcom,speed-bin = <185>;
+				qcom,initial-pwrlevel = <3>;
+
+				qcom,gpu-pwrlevel@0 {
+					reg = <0>;
+					qcom,gpu-freq = <877000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_TURBO_L1>;
+
+					qcom,bus-freq = <12>;
+					qcom,bus-min = <12>;
+					qcom,bus-max = <12>;
+				};
+
+				qcom,gpu-pwrlevel@1 {
+					reg = <1>;
+					qcom,gpu-freq = <780000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_TURBO>;
+
+					qcom,bus-freq = <11>;
+					qcom,bus-min = <11>;
+					qcom,bus-max = <12>;
+				};
+
+				qcom,gpu-pwrlevel@2 {
+					reg = <2>;
+					qcom,gpu-freq = <599000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_NOM>;
+
+					qcom,bus-freq = <10>;
+					qcom,bus-min = <10>;
+					qcom,bus-max = <11>;
+				};
+
+				qcom,gpu-pwrlevel@3 {
+					reg = <3>;
+					qcom,gpu-freq = <479000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
+
+					qcom,bus-freq = <7>;
+					qcom,bus-min = <7>;
+					qcom,bus-max = <10>;
+				};
+
 			};
 
-			qcom,gpu-pwrlevel@1 {
-				reg = <1>;
-				qcom,gpu-freq = <599000000>;
-				qcom,level = <RPMH_REGULATOR_LEVEL_NOM>;
+			qcom,gpu-pwrlevels-2 {
+				#address-cells = <1>;
+				#size-cells = <0>;
 
-				qcom,bus-freq = <10>;
-				qcom,bus-min = <10>;
-				qcom,bus-max = <11>;
+				qcom,speed-bin = <127>;
+				qcom,initial-pwrlevel = <1>;
+
+				qcom,gpu-pwrlevel@0 {
+					reg = <0>;
+					qcom,gpu-freq = <599000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_NOM>;
+
+					qcom,bus-freq = <10>;
+					qcom,bus-min = <10>;
+					qcom,bus-max = <11>;
+				};
+
+				qcom,gpu-pwrlevel@1 {
+					reg = <1>;
+					qcom,gpu-freq = <479000000>;
+					qcom,level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
+
+					qcom,bus-freq = <7>;
+					qcom,bus-min = <7>;
+					qcom,bus-max = <10>;
+				};
+
 			};
-
-			qcom,gpu-pwrlevel@0 {
-				reg = <0>;
-				qcom,gpu-freq = <479000000>;
-				qcom,level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
-
-				qcom,bus-freq = <7>;
-				qcom,bus-min = <7>;
-				qcom,bus-max = <10>;
-			};
-
 		};
 	};
 

@@ -4,7 +4,7 @@
  * tc956xmac_ethtool.c - Ethtool support
  *
  * Copyright (C) 2007-2009  STMicroelectronics Ltd
- * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro Linux driver,
  * and developed or modified for TC956X.
@@ -60,6 +60,10 @@
  *  29 Mar 2024 : 1. Support for without MDIO and without PHY case
  *                2. Added support for 5G and 2.5G EEE activation (applicable for Kernel 6.3 onwards)
  *  VERSION     : 04-00
+ *  31 May 2024 : 1. Modified for TC FPE support
+ *  VERSION     : 05-00
+ *  31 Jan 2025 : 1. Support for w/o MDIO and w/o PHY configuration in cascade network using BDF based module parameter
+ *  VERSION     : 05-00-01
  */
 
 #include <linux/etherdevice.h>
@@ -1564,6 +1568,8 @@ static void tc956xmac_get_wol(struct net_device *dev, struct ethtool_wolinfo *wo
 {
 	struct tc956xmac_priv *priv = netdev_priv(dev);
 
+	if (!priv->phylink)
+		return;
 	if (device_can_wakeup(priv->device))
 		phylink_ethtool_get_wol(priv->phylink, wol);
 }
@@ -1579,6 +1585,8 @@ static int tc956xmac_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol
 
 	if (wol->wolopts & ~support)
 		return -EINVAL;
+	if (!priv->phylink)
+		return 0;
 
 	ret = phylink_ethtool_set_wol(priv->phylink, wol);
 	if (!ret)
@@ -2508,6 +2516,20 @@ static u32 tc956x_get_priv_flag(struct net_device *dev)
 	KPRINT_INFO("tx_crc_pad_state : %x", priv->tx_crc_pad_state);
 	return ret;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+static int tc956x_get_mm(struct net_device *ndev, struct ethtool_mm_state *state)
+{
+	struct tc956xmac_priv *priv = netdev_priv(ndev);
+	u32 reg;
+
+	reg = readl(priv->ioaddr + NCID_OFFSET);
+	if ((reg & NCID_FPE) == NCID_FPE)
+		state->pmac_enabled = 1;
+
+	return 0;
+}
+#endif
 #endif
 
 static const struct ethtool_ops tc956xmac_ethtool_ops = {
@@ -2560,6 +2582,9 @@ static const struct ethtool_ops tc956xmac_ethtool_ops = {
 #ifdef TC956X
 	.set_priv_flags = tc956x_set_priv_flag,
 	.get_priv_flags = tc956x_get_priv_flag,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+	.get_mm = tc956x_get_mm,
+#endif
 #endif
 };
 

@@ -122,11 +122,29 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-addons-rb3gen2-vision-mezz.dtb
 dtb-$(CONFIG_ARCH_QCOM) += qcs6490-addons-rb3gen2-vision-mezz-hsp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-rb3gen2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs6490-rb3gen2-vision-mezzanine.dtb
+
+qcs8275-addons-iq-8275-evk-dtbs:= qcs8275-iq-8275-evk.dtb qcs8275-addons-iq-8275-evk.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-addons-iq-8275-evk.dtb
+
+qcs8275-addons-iq-8275-evk-mezz-dtbs:= qcs8275-addons-iq-8275-evk.dtb qcs8275-addons-iq-8275-evk-mezz.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-addons-iq-8275-evk-mezz.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-iq-8275-evk.dtb
+
+qcs8275-addons-iq-8275-evk-pro-sku-dtbs:= qcs8275-iq-8275-evk-pro-sku.dtb qcs8275-addons-iq-8275-evk-pro-sku.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-addons-iq-8275-evk-pro-sku.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-iq-8275-evk-pro-sku.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-addons-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-addons-aim300-aiot.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-rb5gen2-hdk.dtb
+
+qcs9075-addons-iq-9075-evk-mezz-dtbs:= qcs9075-addons-iq-9075-evk.dtb qcs9075-addons-iq-9075-evk-mezz.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs9075-addons-iq-9075-evk-mezz.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs9075-addons-iq-9075-evk.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs9075-addons-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs9075-addons-ride-r3.dtb
@@ -251,6 +269,9 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-cheza-r1.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-cheza-r2.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-cheza-r3.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-db845c.dtb
+
+sdm845-db845c-navigation-mezzanine-dtbs	:= sdm845-db845c.dtb sdm845-db845c-navigation-mezzanine.dtbo
+
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-db845c-navigation-mezzanine.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-lg-judyln.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-lg-judyp.dtb
@@ -309,6 +330,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-addons-crd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-crd.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-addons-qcp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-qcp.dtb
+dtb-$(CONFIG_ARCH_QCOM) += qcs6490-thundercomm-rubikpi3.dtb
 
 # External overlays
 dtb-$(CONFIG_ARCH_QCOM) += qcs6490-addons-rb3gen2-video-mezz-ovl.dtb
@@ -378,6 +400,23 @@ qcs9075-addons-iq-9075-evk-ovl-dtbs := \
     sa8775p-video.dtbo \
     qcs9100-graphics.dtbo \
     qcs9075-camera-iq-9075-evk.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-ovl.dtb
+qcs8275-addons-iq-8275-evk-ovl-dtbs := \
+    qcs8275-addons-iq-8275-evk.dtb \
+    qcs8275-camera-iq-8275-evk.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-pro-sku-ovl.dtb
+qcs8275-addons-iq-8275-evk-pro-sku-ovl-dtbs := \
+    qcs8275-addons-iq-8275-evk-pro-sku.dtb \
+    qcs8275-camera-iq-8275-evk-pro-sku.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += qcs6490-thundercomm-rubikpi3-ovl.dtb
+qcs6490-thundercomm-rubikpi3-ovl-dtbs := \
+    qcs6490-thundercomm-rubikpi3.dtb \
+    qcm6490-graphics.dtbo \
+    qcm6490-camera-rubikpi3.dtbo \
+    qcm6490-video.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
 

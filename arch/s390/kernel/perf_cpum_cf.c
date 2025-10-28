@@ -438,7 +438,7 @@ static void cpum_cf_make_setsize(enum cpumf_ctr_set ctrset)
 			ctrset_size = 48;
 		else if (cpumf_ctr_info.csvn >= 3 && cpumf_ctr_info.csvn <= 5)
 			ctrset_size = 128;
-		else if (cpumf_ctr_info.csvn == 6 || cpumf_ctr_info.csvn == 7)
+		else if (cpumf_ctr_info.csvn >= 6 && cpumf_ctr_info.csvn <= 8)
 			ctrset_size = 160;
 		break;
 	case CPUMF_CTR_SET_MT_DIAG:
@@ -977,7 +977,7 @@ static int cfdiag_push_sample(struct perf_event *event,
 	if (event->attr.sample_type & PERF_SAMPLE_RAW) {
 		raw.frag.size = cpuhw->usedss;
 		raw.frag.data = cpuhw->stop;
-		perf_sample_save_raw_data(&data, &raw);
+		perf_sample_save_raw_data(&data, event, &raw);
 	}
 
 	overflow = perf_event_overflow(event, &data, &regs);

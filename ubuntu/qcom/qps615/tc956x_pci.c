@@ -4,7 +4,7 @@
  * tc956x_pci.c
  *
  * Copyright (C) 2011-2012  Vayavya Labs Pvt Ltd
- * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro and Synopsys Linux driver,
  * and developed or modified for TC956X.
@@ -200,6 +200,27 @@
  *  29 Mar 2024 : 1. Support for without MDIO and without PHY case
  *                2. Support for TC956x switch to switch connection (upto 2 level) over DSP ports
  *  VERSION     : 04-00
+ *  31 May 2024 : 1. Changes related to module param USXGMII_10G, USXGMII_5G_USXGMII_2.5G added
+ *                2. Version update
+ *  VERSION     : 05-00
+ *  06 Dec 2024 : 1. Modification to support PHY_INTERFACE_MODE_10GBASER interface type
+ *  VERSION     : 04-00-02
+ *  11 Dec 2024 : 1. Modification to support port interface setting overlay from dts.
+ *  VERSION     : 04-00-03
+ *  31 Jan 2025 : 1. Merge of Automotive limited github branches as listed above after 5-00 version
+ *                2. Support for module parameter (array) to configure different ethernet interfaces and
+ *                   associated other mandatory configurations for same ethernet port number in a cascade TC956x setup
+ *                3. Support for w/o MDIO and w/o PHY configuration in cascade network using BDF based module parameter
+ *                4. Modification to support PHY_INTERFACE_MODE_RGMII_ID interface type
+ *                5. Fix for MAC address assignment conflict in Cascade setup
+ *                6. USXGMII (0) made as supported module param for TC956x Rev ID1
+ *                7. Version update
+ *  VERSION     : 05-00-01
+ *  28 Feb 2025 : 1. Support for usp, ep, mac power down, phy pause frames, force config speed , RFA, RFD, MTL Queue size, EEE
+ *                    module parameters (array) to ethernet port number in a cascade TC956x setup
+ *  VERSION     : 05-02-00
+ *  31 Mar 2025 : 1. Version update
+ *  VERSION     : 06-00-00
  */
 
 #include <linux/clk-provider.h>
@@ -255,72 +276,245 @@ static unsigned int pcie_link_speed = 3;
 #endif
 #endif
 
-unsigned int mac0_force_speed_mode = DISABLE;
-unsigned int mac1_force_speed_mode = DISABLE;
-unsigned int mac0_force_config_speed = 3; /* 1Gbps */
-unsigned int mac1_force_config_speed = 3; /* 1Gbps */
+
+#define DEF_FORCE_CONFIG_SPEED	3		/* 1Gbps */
+
+unsigned int macX_force_speed_mode[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_force_config_speed[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED, DEF_FORCE_CONFIG_SPEED,
+	DEF_FORCE_CONFIG_SPEED /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
 
 #if defined(TC956X_SRIOV_PF)
-static unsigned int mac0_interface = ENABLE_XFI_INTERFACE;
-static unsigned int mac1_interface = ENABLE_SGMII_INTERFACE;
 
-unsigned int mac0_filter_phy_pause = DISABLE;
-unsigned int mac1_filter_phy_pause = DISABLE;
-
-static unsigned int mac0_eee_enable = DISABLE;
-static unsigned int mac0_lpi_timer = TC956XMAC_LPIET_600US;
-static unsigned int mac1_eee_enable = DISABLE;
-static unsigned int mac1_lpi_timer = TC956XMAC_LPIET_600US;
-
-static unsigned int mac0_rxq0_size = RX_QUEUE0_SIZE;
-static unsigned int mac0_rxq1_size = RX_QUEUE1_SIZE;
+/* RFA RFD values initalized for CPE configuration and PF/VF configuration */
 #if defined(TC956X_CPE_CONFIG)
-static unsigned int mac0_rxq0_rfd = 24;
-static unsigned int mac0_rxq0_rfa = 24;
-static unsigned int mac0_rxq1_rfd = 24;
-static unsigned int mac0_rxq1_rfa = 24;
+#define RX_QUEUE0_RFD  24
+#define RX_QUEUE0_RFA  24
+#define RX_QUEUE1_RFD  24
+#define RX_QUEUE1_RFA  24
 #else
-static unsigned int mac0_rxq0_rfd = 0xe;
-static unsigned int mac0_rxq0_rfa = 0x3;
-static unsigned int mac0_rxq1_rfd = 5;
-static unsigned int mac0_rxq1_rfa = 5;
-#endif
-static unsigned int mac0_txq0_size = TX_QUEUE0_SIZE;
-static unsigned int mac0_txq1_size = TX_QUEUE1_SIZE;
-
-static unsigned int mac1_rxq0_size = RX_QUEUE0_SIZE;
-static unsigned int mac1_rxq1_size = RX_QUEUE1_SIZE;
-#if defined(TC956X_CPE_CONFIG)
-static unsigned int mac1_rxq0_rfd = 24;
-static unsigned int mac1_rxq0_rfa = 24;
-static unsigned int mac1_rxq1_rfd = 24;
-static unsigned int mac1_rxq1_rfa = 24;
-#else
-static unsigned int mac1_rxq0_rfd = 0xe;
-static unsigned int mac1_rxq0_rfa = 0x3;
-static unsigned int mac1_rxq1_rfd = 5;
-static unsigned int mac1_rxq1_rfa = 5;
-#endif
-static unsigned int mac1_txq0_size = TX_QUEUE0_SIZE;
-static unsigned int mac1_txq1_size = TX_QUEUE1_SIZE;
-
-static unsigned int port0_mdc = TC956XMAC_XGMAC_MDC_CSR_12;
-static int port0_c45_state = 1; /* C45 selected by default */
-
-static unsigned int port1_mdc = TC956XMAC_XGMAC_MDC_CSR_62;
-static int port1_c45_state; /* C22 selected by default */
-
-static unsigned int port0_phyaddr;
-static unsigned int port1_phyaddr;
-unsigned int mac0_link_down_macrst = ENABLE;
-unsigned int mac1_link_down_macrst = DISABLE;
-
+#define RX_QUEUE0_RFD  0xe
+#define RX_QUEUE0_RFA  0x3
+#define RX_QUEUE1_RFD  5
+#define RX_QUEUE1_RFA  5
 #endif
 
-unsigned int mac0_en_lp_pause_frame_cnt = DISABLE;
-unsigned int mac1_en_lp_pause_frame_cnt = DISABLE;
+/* Set initial values for Array Module parameters; Need to increase this when total cascade is increased */
+unsigned int tc956x_eth_ports_bdf[TC956X_TOT_CASCADE_DEV*2] = {
+	0x0000, 0x0000, /* Change this to 0xFFFF, if other module parameters to be taken from array instead of user passed */
+	0x0000, 0x0000,
+	0x0000, 0x0000,
+	0x0000, 0x0000,
+	0x0000, 0x0000,
+	0x0000, 0x0000,
+	0x0000, 0x0000,
+};
+unsigned int macX_interface[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+unsigned int portX_mdc[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
 
-unsigned int mac_power_save_at_link_down = DISABLE;
+unsigned int portX_c45_state[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int portX_phyaddr[(TC956X_TOT_CASCADE_DEV*2) + 1];
+unsigned int macX_link_down_macrst[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF, 0xFF,
+	0xFF /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+unsigned int macX_no_mdio_no_phy[(TC956X_TOT_CASCADE_DEV*2) + 1];
+
+unsigned int macX_rxq0_size[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE, RX_QUEUE0_SIZE,
+	RX_QUEUE0_SIZE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_rxq1_size[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE, RX_QUEUE1_SIZE,
+	RX_QUEUE1_SIZE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_txq0_size[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE, TX_QUEUE0_SIZE,
+	TX_QUEUE0_SIZE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_txq1_size[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE, TX_QUEUE1_SIZE,
+	TX_QUEUE1_SIZE/* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_rxq0_rfd[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD, RX_QUEUE0_RFD,
+	RX_QUEUE0_RFD /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_rxq0_rfa[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA, RX_QUEUE0_RFA,
+	RX_QUEUE0_RFA /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_rxq1_rfd[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD, RX_QUEUE1_RFD,
+	RX_QUEUE1_RFD /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_rxq1_rfa[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA, RX_QUEUE1_RFA,
+	RX_QUEUE1_RFA /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_eee_enable[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_lpi_timer[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US, TC956XMAC_LPIET_600US,
+	TC956XMAC_LPIET_600US /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_filter_phy_pause[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+#endif
+
+unsigned int macX_en_lp_pause_frame_cnt[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int macX_power_save_at_link_down[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE, DISABLE,
+	DISABLE /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
 
 static int mac0_tx_pbl = 16;
 static int mac0_rx_pbl = 16;
@@ -328,8 +522,51 @@ static int mac1_tx_pbl = 16;
 static int mac1_rx_pbl = 16;
 
 #ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
-static unsigned int ep_l0s_delay = EP_L0s_ENTRY_DELAY;
-static unsigned int ep_l1_delay = EP_L1_ENTRY_DELAY;
+
+unsigned int epX_l0s_delay[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY, EP_L0s_ENTRY_DELAY,
+	EP_L0s_ENTRY_DELAY /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int epX_l1_delay[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY, EP_L1_ENTRY_DELAY,
+	EP_L1_ENTRY_DELAY /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int uspX_l0s_delay[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY, USP_L0s_ENTRY_DELAY,
+	USP_L0s_ENTRY_DELAY /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
+unsigned int uspX_l1_delay[(TC956X_TOT_CASCADE_DEV*2) + 1] = {
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY, USP_L1_ENTRY_DELAY,
+	USP_L1_ENTRY_DELAY /* Not in use: This index value to be used when user passed BDF is not matched with probed device's bdf */
+};
+
 #endif
 
 static unsigned int mac0_axi_wr_osr_lmt = 31;
@@ -339,7 +576,7 @@ static unsigned int mac1_axi_rd_osr_lmt = 31;
 
 static unsigned int mac0_axi_blen;
 static unsigned int mac1_axi_blen;
-static const struct tc956x_version tc956x_drv_version = {0, 4, 0, 0, 0, 0};
+static const struct tc956x_version tc956x_drv_version = {0, 6, 0, 0, 0, 0};
 int tc956xmac_pm_usage_counter; /* Device Usage Counter */
 int tc956x_dsp_count;
 #ifdef TC956X_SRIOV_PF
@@ -1065,10 +1302,17 @@ static void xgmac_default_data(struct plat_tc956xmacenet_data *plat)
 	plat->force_thresh_dma_mode  = 0;
 	plat->mdio_bus_data->needs_reset = false;
 	if ((plat->port_interface == ENABLE_USXGMII_INTERFACE) ||
-	   (plat->port_interface == ENABLE_XFI_INTERFACE))
+	   (plat->port_interface == ENABLE_XFI_INTERFACE) || (plat->port_interface == ENABLE_USXGMII_10G_INTERFACE))
 		plat->mac_port_sel_speed = 10000;
 
-	if (plat->port_interface == ENABLE_RGMII_INTERFACE)
+	if (plat->port_interface == ENABLE_USXGMII_5G_INTERFACE)
+		plat->mac_port_sel_speed = 5000;
+
+	if (plat->port_interface == ENABLE_USXGMII_2_5G_INTERFACE)
+		plat->mac_port_sel_speed = 2500;
+
+	if ((plat->port_interface == ENABLE_RGMII_INTERFACE) ||
+		(plat->port_interface == ENABLE_RGMII_ID_INTERFACE))
 		plat->mac_port_sel_speed = 1000;
 
 	if ((plat->port_interface == ENABLE_SGMII_INTERFACE) ||
@@ -1094,8 +1338,7 @@ static void xgmac_default_data(struct plat_tc956xmacenet_data *plat)
 			sizeof(struct tc956xmac_rx_parser_entry));
 #ifndef TC956X_SRIOV_VF
 	/* Over writing the Default FRP table with FRP Table for Filtering PHY pause frames */
-	if ((mac0_filter_phy_pause == ENABLE && plat->port_num == RM_PF0_ID) ||
-	   (mac1_filter_phy_pause == ENABLE && plat->port_num == RM_PF1_ID)) {
+	if (plat->filter_phy_pause == ENABLE) {
 		plat->rxp_cfg.nve = ARRAY_SIZE(snps_rxp_entries_filter_phy_pause_frames);
 		plat->rxp_cfg.npe = ARRAY_SIZE(snps_rxp_entries_filter_phy_pause_frames);
 		memcpy(plat->rxp_cfg.entries, snps_rxp_entries_filter_phy_pause_frames,
@@ -1183,12 +1426,23 @@ static int tc956xmac_xgmac3_default_data(struct pci_dev *pdev,
 	plat->pse = 0;
 
 #ifdef TC956X
-	if (plat->port_interface == ENABLE_USXGMII_INTERFACE) {
+	if ((plat->port_interface == ENABLE_USXGMII_INTERFACE) || (plat->port_interface == ENABLE_USXGMII_10G_INTERFACE)) {
 		plat->interface = PHY_INTERFACE_MODE_USXGMII;
 		plat->max_speed = 10000;
 	}
+
+	if (plat->port_interface == ENABLE_USXGMII_5G_INTERFACE) {
+		plat->interface = PHY_INTERFACE_MODE_USXGMII;
+		plat->max_speed = 5000;
+	}
+
+	if (plat->port_interface == ENABLE_USXGMII_2_5G_INTERFACE) {
+		plat->interface = PHY_INTERFACE_MODE_USXGMII;
+		plat->max_speed = 2500;
+	}
+
 	if (plat->port_interface == ENABLE_XFI_INTERFACE) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0) /* TC956X_Host_Driver-industrial_limited_tested_20241025_V_04-00-01-QPSSW-216.patch */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 		plat->interface = PHY_INTERFACE_MODE_10GBASER;
 #else
 		plat->interface = PHY_INTERFACE_MODE_10GKR;
@@ -1219,10 +1473,10 @@ static int tc956xmac_xgmac3_default_data(struct pci_dev *pdev,
 	 * This is applicable only for fixed phy mode.
 	 */
 	if (plat->port_num == RM_PF0_ID)
-		forced_speed = mac0_force_config_speed;
+		forced_speed = plat->force_config_speed;
 
 	if (plat->port_num == RM_PF1_ID)
-		forced_speed = mac1_force_config_speed;
+		forced_speed = plat->force_config_speed;
 
 	switch (forced_speed) {
 	case 0:
@@ -1660,33 +1914,17 @@ static int tc956xmac_xgmac3_default_data(struct pci_dev *pdev,
 
 #ifndef TC956X_SRIOV_VF
 	/* Rx Queue size and flow control thresholds configuration */
-	if (plat->port_num == RM_PF0_ID) {
-		rxqueue0_size = mac0_rxq0_size;
-		rxqueue1_size = mac0_rxq1_size;
+	rxqueue0_size = macX_rxq0_size[plat->device_num];
+	rxqueue1_size = macX_rxq1_size[plat->device_num];
 
-		queue0_rfd = mac0_rxq0_rfd;
-		queue0_rfa = mac0_rxq0_rfa;
+	queue0_rfd = macX_rxq0_rfd[plat->device_num];
+	queue0_rfa = macX_rxq0_rfa[plat->device_num];
 
-		queue1_rfd = mac0_rxq1_rfd;
-		queue1_rfa = mac0_rxq1_rfa;
+	queue1_rfd = macX_rxq1_rfd[plat->device_num];
+	queue1_rfa = macX_rxq1_rfa[plat->device_num];
 
-		txqueue0_size = mac0_txq0_size;
-		txqueue1_size = mac0_txq1_size;
-	}
-
-	if (plat->port_num == RM_PF1_ID) {
-		rxqueue0_size = mac1_rxq0_size;
-		rxqueue1_size = mac1_rxq1_size;
-
-		queue0_rfd = mac1_rxq0_rfd;
-		queue0_rfa = mac1_rxq0_rfa;
-
-		queue1_rfd = mac1_rxq1_rfd;
-		queue1_rfa = mac1_rxq1_rfa;
-
-		txqueue0_size = mac1_txq0_size;
-		txqueue1_size = mac1_txq1_size;
-	}
+	txqueue0_size = macX_txq0_size[plat->device_num];
+	txqueue1_size = macX_txq1_size[plat->device_num];
 
 	/* Validation of Queue size and Flow control thresholds and configuring local parameters to update registers*/
 	if ((rxqueue0_size + rxqueue1_size) <= MAX_RX_QUEUE_SIZE) {
@@ -2353,7 +2591,7 @@ static void tc956x_pcie_disable_dsp2_port(struct device *dev,
 	DBGPR_FUNC(dev, "-->%s\n", __func__);
 
 	/* Read mode setting register
-	 * Mode settings values 0:Setting A: x4x1x1, 1:Setting B: x2x2x1
+	 * Mode settings values 0:Setting A: x4x1x1, 1 :Setting B: x2x2x1
 	 */
 	reg_data = readl(reg_sfr_base_addr + NMODESTS_OFFSET);
 	pcie_mode = (reg_data & NMODESTS_MODE2) >> NMODESTS_MODE2_SHIFT;
@@ -2542,6 +2780,21 @@ int tc956x_set_pci_speed(struct pci_dev *pdev, u32 speed)
 //#endif /*#ifdef TC956X_PCIE_GEN3_SETTING*/
 #endif /*#ifdef TC956X*/
 
+uint8_t get_tc956x_index(struct pci_dev *pdev)
+{
+	uint8_t index;
+	uint32_t pci_bdf = pci_dev_id(pdev); /* [15:8] Bus number, [7:3] Slot number and [2:0] Function number */
+
+	if (tc956x_eth_ports_bdf[tc956xmac_pm_usage_counter] == 0xFFFF) /* This is required when module parameters cannot be used. Other module parameters should hard coded as per device probe order */
+		return tc956xmac_pm_usage_counter;
+
+
+	for (index = 0; index < (TC956X_TOT_CASCADE_DEV*2); index++) {
+		if (pci_bdf  == tc956x_eth_ports_bdf[index]) /* Compare Bus number, Device number and Function number */
+			return (index);
+	}
+	return 0xFF; /* no match found */
+}
 
 /**
  * tc956xmac_pci_probe
@@ -2573,15 +2826,18 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	uint8_t SgmSigPol = 0;
 #endif
 #endif
-	int ret;
+	int ret, reg;
 	int overlay;
+	u32 offset;
 	char version_str[32];
 #if defined(TC956X_PCIE_DSP_CUT_THROUGH) && defined(TC956X_SRIOV_PF)
 	u32 pcie_mode; /* Read Setting A/B */
 #endif
 	uint16_t sh_mem_offset;
 
-	KPRINT_INFO("%s  >", __func__);
+	NMSGPR_INFO(&pdev->dev, "%s  >", __func__);
+	mutex_lock(&tc956x_pm_suspend_lock);
+	DBGPR_FUNC(&(pdev->dev), "-->%s\n", __func__);
 #ifndef TC956X_SRIOV_VF
 	scnprintf(version_str, sizeof(version_str), "Host Driver Version %d%d-%d%d-%d%d",
 		tc956x_drv_version.rel_dbg,
@@ -2598,19 +2854,25 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	NMSGPR_INFO(&pdev->dev, "%s\n", version_str);
 
 	plat = devm_kzalloc(&pdev->dev, sizeof(*plat), GFP_KERNEL);
-	if (!plat)
-		return -ENOMEM;
+	if (!plat) {
+		ret = -ENOMEM;
+		goto err_out_enb_failed;
+	}
 
 	plat->mdio_bus_data = devm_kzalloc(&pdev->dev,
 					   sizeof(*plat->mdio_bus_data),
 					   GFP_KERNEL);
-	if (!plat->mdio_bus_data)
-		return -ENOMEM;
+	if (!plat->mdio_bus_data) {
+		ret = -ENOMEM;
+		goto err_out_enb_failed;
+	}
 
 	plat->dma_cfg = devm_kzalloc(&pdev->dev, sizeof(*plat->dma_cfg),
 				     GFP_KERNEL);
-	if (!plat->dma_cfg)
-		return -ENOMEM;
+	if (!plat->dma_cfg) {
+		ret = -ENOMEM;
+		goto err_out_enb_failed;
+	}
 
 	/* Enable pci device */
 	ret = pci_enable_device(pdev);
@@ -2637,6 +2899,7 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	}
 
 #endif
+	res.probe_seq_no = tc956xmac_pm_usage_counter;
 #ifdef TC956X_SRIOV_PF
 #ifdef CONFIG_PCI_IOV
 
@@ -2808,27 +3071,99 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 #endif
 #endif /*#ifdef TC956X_SRIOV_VF*/
 
+	/* Get the device index by comparing the user passed BDF (module param) with actual BDF */
+	res.device_num = get_tc956x_index(pdev);
+	dev_info(&(pdev->dev), "tc956x_eth_ports_bdf matched device index for this device is: %d and Port number: %d\n", res.device_num, res.port_num);
+
+	if (res.device_num == 0xFF) {
+		res.device_num = (TC956X_TOT_CASCADE_DEV*2); /* Use the slot at the end of array for non-matching devices */
+
+		dev_info(&(pdev->dev), "Error: Module parameter tc956x_eth_ports_bdf not provided or\
+			value provided in module param not matching with the device BDF.\
+			Use the device number as %d and set other associated module parameter values to default\n", res.device_num);
+
+		macX_interface[res.device_num]					= 0xFF;
+		portX_mdc[res.device_num]						= 0xFF;
+		portX_c45_state[res.device_num]					= 0xFF;
+		portX_phyaddr[res.device_num]					= 0;
+		macX_link_down_macrst[res.device_num]			= 0xFF;
+		macX_no_mdio_no_phy[res.device_num]				= PHY_ON_MDIO_ON;
+
+		macX_rxq0_size[res.device_num]					= RX_QUEUE0_SIZE;
+		macX_rxq1_size[res.device_num]					= RX_QUEUE1_SIZE;
+		macX_rxq0_rfd[res.device_num]					= RX_QUEUE0_RFD;
+		macX_rxq0_rfa[res.device_num]					= RX_QUEUE0_RFA;
+		macX_rxq1_rfd[res.device_num]					= RX_QUEUE1_RFD;
+		macX_rxq1_rfa[res.device_num]					= RX_QUEUE1_RFA;
+		macX_txq0_size[res.device_num]					= TX_QUEUE0_SIZE;
+		macX_txq1_size[res.device_num]					= TX_QUEUE1_SIZE;
+		macX_force_speed_mode[res.device_num]			= DISABLE;
+		macX_force_config_speed[res.device_num]			= DEF_FORCE_CONFIG_SPEED;
+		macX_eee_enable[res.device_num]					= DISABLE;
+		macX_lpi_timer[res.device_num]					= TC956XMAC_LPIET_600US;
+		macX_filter_phy_pause[res.device_num]			= DISABLE;
+		macX_en_lp_pause_frame_cnt[res.device_num]		= DISABLE;
+		macX_power_save_at_link_down[res.device_num]	= DISABLE;
+#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
+		epX_l0s_delay[res.device_num]					= EP_L0s_ENTRY_DELAY;
+		epX_l1_delay[res.device_num]					= EP_L1_ENTRY_DELAY;
+		uspX_l0s_delay[res.device_num]					= USP_L0s_ENTRY_DELAY;
+		uspX_l1_delay[res.device_num]					= USP_L1_ENTRY_DELAY;
+#endif
+
+	}
+
+	plat->device_num = res.device_num;
+
+#if defined(TC956X_SRIOV_PF)
+#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
+	epX_l0s_delay[res.device_num] = ((epX_l0s_delay[res.device_num] <= EP_L0s_ENTRY_DELAY) &&
+	(epX_l0s_delay[res.device_num] > INVALID_L0s_ENTRY_DELAY)) ?  epX_l0s_delay[res.device_num] : EP_L0s_ENTRY_DELAY;
+	plat->ep_l0s_delay = epX_l0s_delay[res.device_num];
+
+	epX_l1_delay[res.device_num] = ((epX_l1_delay[res.device_num] <= EP_L1_ENTRY_DELAY) &&
+	(epX_l1_delay[res.device_num] > INVALID_L1_ENTRY_DELAY)) ? epX_l1_delay[res.device_num] : EP_L1_ENTRY_DELAY;
+	plat->ep_l1_delay = epX_l1_delay[res.device_num];
+
+	uspX_l0s_delay[res.device_num] = ((uspX_l0s_delay[res.device_num] <= USP_L0s_ENTRY_DELAY) &&
+	(uspX_l0s_delay[res.device_num] > INVALID_L0s_ENTRY_DELAY)) ? uspX_l0s_delay[res.device_num] : USP_L0s_ENTRY_DELAY;
+	plat->usp_l0s_delay = uspX_l0s_delay[res.device_num];
+
+	uspX_l1_delay[res.device_num] = ((uspX_l1_delay[res.device_num] <= USP_L1_ENTRY_DELAY) &&
+	(uspX_l1_delay[res.device_num] > INVALID_L1_ENTRY_DELAY)) ? uspX_l1_delay[res.device_num] : USP_L1_ENTRY_DELAY;
+	plat->usp_l1_delay = uspX_l1_delay[res.device_num];
+#endif /*#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL*/
+#endif /*#ifdef TC956X_SRIOV_PF*/
+
 #if defined(TC956X_SRIOV_PF)
 #ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
 	/* 0x4002_C02C SSREG_GLUE_SW_REG_ACCESS_CTRL.sw_port_reg_access_enable for USP Access enable */
 	writel(SW_USP_ENABLE, res.addr + TC956X_GLUE_SW_REG_ACCESS_CTRL);
+
 	/* 0x4002_496C K_PEXCONF_209_205.aspm_l0s_entry_delay in terms of 256ns */
-	writel(USP_L0s_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
-	/* 0x4002_4970 K_PEXCONF_210_219.aspm_L1_entry_delay in terms of 256ns */
-	writel(USP_L1_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
+	reg_val = readl(res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
+	reg_val &= ~(TC956X_PCIE_USP_L0s_ENTRY_MASK);
+	reg_val |= ((plat->usp_l0s_delay << TC956X_PCIE_USP_L0s_ENTRY_SHIFT) & TC956X_PCIE_USP_L0s_ENTRY_MASK);
+	writel(reg_val, res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
+
+	/* 0x4002_4970 K_PEXCONF_219_210.aspm_L1_entry_delay in terms of 256ns */
+	reg_val = readl(res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
+	reg_val &= ~(TC956X_PCIE_USP_L1_ENTRY_MASK);
+	reg_val |= ((plat->usp_l1_delay << TC956X_PCIE_USP_L1_ENTRY_SHIFT) & TC956X_PCIE_USP_L1_ENTRY_MASK);
+	writel(reg_val, res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
 
 	/* 0x4002_C02C SSREG_GLUE_SW_REG_ACCESS_CTRL.sw_port_reg_access_enable for DSP1 Access enable */
 	writel(SW_DSP1_ENABLE, res.addr + TC956X_GLUE_SW_REG_ACCESS_CTRL);
 	/* 0x4002_496C K_PEXCONF_209_205.aspm_l0s_entry_delay in terms of 256ns */
 	writel(DSP1_L0s_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
-	/* 0x4002_4970 K_PEXCONF_210_219.aspm_L1_entry_delay in terms of 256ns */
+	/* 0x4002_4970 K_PEXCONF_219_210.aspm_L1_entry_delay in terms of 256ns */
 	writel(DSP1_L1_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
 
 	/* 0x4002_C02C SSREG_GLUE_SW_REG_ACCESS_CTRL.sw_port_reg_access_enable for DSP2 Access enable */
 	writel(SW_DSP2_ENABLE, res.addr + TC956X_GLUE_SW_REG_ACCESS_CTRL);
 	/* 0x4002_496C K_PEXCONF_209_205.aspm_l0s_entry_delay in terms of 256ns */
 	writel(DSP2_L0s_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
-	/* 0x4002_4970 K_PEXCONF_210_219.aspm_L1_entry_delay in terms of 256ns */
+	/* 0x4002_4970 K_PEXCONF_219_210.aspm_L1_entry_delay in terms of 256ns */
 	writel(DSP2_L1_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
 
 	/* 0x4002_C02C SSREG_GLUE_SW_REG_ACCESS_CTRL.sw_port_reg_access_enable
@@ -2837,7 +3172,7 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	writel(SW_VDSP_ENABLE, res.addr + TC956X_GLUE_SW_REG_ACCESS_CTRL);
 	/* 0x4002_496C K_PEXCONF_209_205.aspm_l0s_entry_delay in terms of 256ns */
 	writel(VDSP_L0s_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L0s_ENTRY_LATENCY);
-	/* 0x4002_4970 K_PEXCONF_210_219.aspm_L1_entry_delay in terms of 256ns */
+	/* 0x4002_4970 K_PEXCONF_219_210.aspm_L1_entry_delay in terms of 256ns */
 	writel(VDSP_L1_ENTRY_DELAY, res.addr + TC956X_PCIE_S_L1_ENTRY_LATENCY);
 
 	/* 0x4002_00D8 Reading PCIE EP Capability setting Register */
@@ -2847,9 +3182,9 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	reg_val &= ~(TC956X_PCIE_EP_L0s_ENTRY_MASK | TC956X_PCIE_EP_L1_ENTRY_MASK);
 
 	/* Updating PCIE EP Capability setting of L0s & L1 entry delays */
-	reg_val |= (((ep_l0s_delay << TC956X_PCIE_EP_L0s_ENTRY_SHIFT) &
+	reg_val |= (((plat->ep_l0s_delay << TC956X_PCIE_EP_L0s_ENTRY_SHIFT) &
 				TC956X_PCIE_EP_L0s_ENTRY_MASK) |
-			((ep_l1_delay << TC956X_PCIE_EP_L1_ENTRY_SHIFT) &
+			((plat->ep_l1_delay  << TC956X_PCIE_EP_L1_ENTRY_SHIFT) &
 				TC956X_PCIE_EP_L1_ENTRY_MASK));
 
 	/* 0x4002_00D8 PCIE EP Capability setting L0S & L1 entry delay in terms of 256ns */
@@ -2911,164 +3246,200 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 
 	plat->port_num = res.port_num;
 
+	reg = readl(res.addr + NCID_OFFSET);
+	KPRINT_INFO("NCID Register value: %x\n", readl(res.addr + NCID_OFFSET));
+	if ((reg & REV_ID_MASK) == REV_ID1)
+		plat->RevID = REV_ID1;
+	else if ((reg & REV_ID_MASK) == REV_ID2)
+		plat->RevID = REV_ID2;
+
+	NMSGPR_INFO(&pdev->dev, "Board Revision ID = %d\n", plat->RevID);
+
 #ifndef TC956X_SRIOV_VF
 	/* User configured/Default Module parameters of TC956x*/
 	NMSGPR_INFO(&pdev->dev, "User Configured/Default Module parameters of TC956x of Port-%d bus number-%x\n", plat->port_num, pdev->bus->number);
-	if (plat->port_num == RM_PF0_ID) {
 #ifdef TC956X_PCIE_GEN3_SETTING
-		NMSGPR_INFO(&pdev->dev, "pcie_link_speed = %d\n", pcie_link_speed);
+	NMSGPR_INFO(&pdev->dev, "pcie_link_speed = %d\n", pcie_link_speed);
 #endif
-		NMSGPR_INFO(&pdev->dev, "mac0_force_speed_mode = %d\n", mac0_force_speed_mode);
-		NMSGPR_INFO(&pdev->dev, "mac0_force_config_speed = %d\n", mac0_force_config_speed);
-		NMSGPR_INFO(&pdev->dev, "mac0_interface = %d\n", mac0_interface);
-		NMSGPR_INFO(&pdev->dev, "mac0_eee_enable = %d\n", mac0_eee_enable);
-		NMSGPR_INFO(&pdev->dev, "mac0_lpi_timer = %d\n", mac0_lpi_timer);
-		NMSGPR_INFO(&pdev->dev, "mac0_filter_phy_pause = %d\n", mac0_filter_phy_pause);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq0_size = %d\n", mac0_rxq0_size);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq1_size = %d\n", mac0_rxq1_size);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq0_rfd  = %d\n", mac0_rxq0_rfd);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq0_rfa  = %d\n", mac0_rxq0_rfa);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq1_rfd  = %d\n", mac0_rxq1_rfd);
-		NMSGPR_INFO(&pdev->dev, "mac0_rxq1_rfa  = %d\n", mac0_rxq1_rfa);
-		NMSGPR_INFO(&pdev->dev, "mac0_txq0_size = %d\n", mac0_txq0_size);
-		NMSGPR_INFO(&pdev->dev, "mac0_txq1_size = %d\n", mac0_txq1_size);
-		NMSGPR_INFO(&pdev->dev, "mac0_en_lp_pause_frame_cnt = %d\n", mac0_en_lp_pause_frame_cnt);
-		NMSGPR_INFO(&pdev->dev, "mac_power_save_at_link_down = %d \n", mac_power_save_at_link_down);
-		NMSGPR_INFO(&pdev->dev, "mac0_link_down_macrst = %d \n", mac0_link_down_macrst);
-	} else if (plat->port_num == RM_PF1_ID) {
-		NMSGPR_INFO(&pdev->dev, "mac1_force_speed_mode = %d\n", mac1_force_speed_mode);
-		NMSGPR_INFO(&pdev->dev, "mac1_force_config_speed = %d\n", mac1_force_config_speed);
-		NMSGPR_INFO(&pdev->dev, "mac1_interface = %d\n", mac1_interface);
-		NMSGPR_INFO(&pdev->dev, "mac1_eee_enable = %d\n", mac1_eee_enable);
-		NMSGPR_INFO(&pdev->dev, "mac1_filter_phy_pause = %d\n", mac1_filter_phy_pause);
-		NMSGPR_INFO(&pdev->dev, "mac1_lpi_timer = %d\n", mac1_lpi_timer);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq0_size = %d\n", mac1_rxq0_size);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq1_size = %d\n", mac1_rxq1_size);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq0_rfd  = %d\n", mac1_rxq0_rfd);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq0_rfa  = %d\n", mac1_rxq0_rfa);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq1_rfd  = %d\n", mac1_rxq1_rfd);
-		NMSGPR_INFO(&pdev->dev, "mac1_rxq1_rfa  = %d\n", mac1_rxq1_rfa);
-		NMSGPR_INFO(&pdev->dev, "mac1_txq0_size = %d\n", mac1_txq0_size);
-		NMSGPR_INFO(&pdev->dev, "mac1_txq1_size = %d\n", mac1_txq1_size);
-		NMSGPR_INFO(&pdev->dev, "mac1_en_lp_pause_frame_cnt = %d\n", mac1_en_lp_pause_frame_cnt);
-		NMSGPR_INFO(&pdev->dev, "mac1_link_down_macrst = %d \n", mac1_link_down_macrst);
-	}
+	NMSGPR_INFO(&pdev->dev, "macX_interface = %d\n", macX_interface[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_link_down_macrst = %d\n", macX_link_down_macrst[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "portX_mdc = 0x%x\n", portX_mdc[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "portX_c45_state = %d\n", portX_c45_state[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "portX_phyaddr = %d\n", portX_phyaddr[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_no_mdio_no_phy = %d\n", macX_no_mdio_no_phy[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_force_speed_mode = %d\n", macX_force_speed_mode[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_force_config_speed = %d\n", macX_force_config_speed[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_eee_enable = %d\n", macX_eee_enable[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_lpi_timer = %d\n", macX_lpi_timer[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_filter_phy_pause = %d\n", macX_filter_phy_pause[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_size = %d\n", macX_rxq0_size[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_size = %d\n", macX_rxq1_size[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_rfd  = %d\n", macX_rxq0_rfd[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_rfa  = %d\n", macX_rxq0_rfa[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_rfd  = %d\n", macX_rxq1_rfd[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_rfa  = %d\n", macX_rxq1_rfa[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_txq0_size = %d\n", macX_txq0_size[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_txq1_size = %d\n", macX_txq1_size[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_en_lp_pause_frame_cnt = %d\n", macX_en_lp_pause_frame_cnt[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "macX_power_save_at_link_down = %d \n", macX_power_save_at_link_down[res.device_num]);
+#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
+	NMSGPR_INFO(&pdev->dev, "epX_l0s_delay = %d\n", epX_l0s_delay[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "epX_l1_delay = %d\n", epX_l1_delay[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "uspX_l0s_delay = %d\n", uspX_l0s_delay[res.device_num]);
+	NMSGPR_INFO(&pdev->dev, "uspX_l1_delay = %d\n", uspX_l1_delay[res.device_num]);
 #endif
+
+	for (offset = 0; offset < TC956X_TOT_CASCADE_DEV*2; offset++)
+		NMSGPR_INFO(&pdev->dev, "tc956x_eth_ports_bdf[%d] = 0x%x\n", offset, tc956x_eth_ports_bdf[offset]);
+#endif
+
 #if defined(TC956X_SRIOV_PF)
-
 	if (res.port_num == RM_PF0_ID) {
-		plat->mdc_clk = port0_mdc;
-		plat->c45_needed = port0_c45_state == 1 ? true : false;
-		plat->start_phy_addr = port0_phyaddr;
-	}
 
-	if (res.port_num == RM_PF1_ID) {
-		plat->mdc_clk = port1_mdc;
-		plat->c45_needed = port1_c45_state == 1 ? true : false;
-		plat->start_phy_addr = port1_phyaddr;
-	}
-
-	if (res.port_num == RM_PF0_ID) {
 		/* Set the PORT0 interface mode to default, in case of invalid input */
-		if ((mac0_interface ==  ENABLE_RGMII_INTERFACE) ||
-		(mac0_interface >  ENABLE_2500BASE_X_INTERFACE))
-			mac0_interface = ENABLE_XFI_INTERFACE;
+		if ((macX_interface[res.device_num] == ENABLE_RGMII_INTERFACE) || (macX_interface[res.device_num] == ENABLE_RGMII_ID_INTERFACE) ||
+			(macX_interface[res.device_num] < ENABLE_USXGMII_INTERFACE) || (macX_interface[res.device_num] > ENABLE_USXGMII_2_5G_INTERFACE)) {
+			macX_interface[res.device_num] = ENABLE_XFI_INTERFACE;
+			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid macX_interface parameter passed. Restoring to default interface %d for the device index: %d\n",
+			__func__, macX_interface[res.device_num], res.device_num);
+		} else if ((macX_interface[res.device_num] > MAX_INTERFACE) && (macX_interface[res.device_num] <= ENABLE_USXGMII_2_5G_INTERFACE)) {
+				macX_interface[res.device_num] = ENABLE_USXGMII_10G_INTERFACE;
+			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Un-supported USXGMII mode passed for macX_interface parameter. Restoring to default interface %d for the device index: %d\n",
+			__func__, macX_interface[res.device_num], res.device_num);
+		}
+		res.port_interface = macX_interface[res.device_num];
 
-		res.port_interface = mac0_interface;
+		portX_mdc[res.device_num] = (portX_mdc[res.device_num] > TC956XMAC_XGMAC_MDC_CSR_202) ? TC956XMAC_XGMAC_MDC_CSR_12 : portX_mdc[res.device_num];
+		plat->mdc_clk = portX_mdc[res.device_num];
+
+		portX_c45_state[res.device_num] = (portX_c45_state[res.device_num] > 1) ? true : portX_c45_state[res.device_num];
+		plat->c45_needed = portX_c45_state[res.device_num];
+
+		macX_link_down_macrst[res.device_num] = (macX_link_down_macrst[res.device_num] > ENABLE) ? ENABLE : macX_link_down_macrst[res.device_num];
+		plat->link_down_macrst = macX_link_down_macrst[res.device_num];
+
 	}
 
 	if (res.port_num == RM_PF1_ID) {
+
 		/* Set the PORT1 interface mode to default, in case of invalid input */
-		if ((mac1_interface < ENABLE_USXGMII_INTERFACE) ||
-		(mac1_interface >  ENABLE_2500BASE_X_INTERFACE))
-			mac1_interface = ENABLE_SGMII_INTERFACE;
-		res.port_interface = mac1_interface;
+		if ((macX_interface[res.device_num] <  ENABLE_USXGMII_INTERFACE) || (macX_interface[res.device_num] > ENABLE_USXGMII_2_5G_INTERFACE)) {
+			macX_interface[res.device_num] = ENABLE_SGMII_INTERFACE;
+			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid macX_interface parameter passed. Restoring to default interface %d for the device index: %d\n",
+			__func__, macX_interface[res.device_num], res.device_num);
+		} else if ((macX_interface[res.device_num] > MAX_INTERFACE) && (macX_interface[res.device_num] <= ENABLE_USXGMII_2_5G_INTERFACE)) {
+			macX_interface[res.device_num] = ENABLE_USXGMII_10G_INTERFACE;
+			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Un-supported USXGMII mode passed for macX_interface parameter. Restoring to default interface %d for the device index: %d\n",
+			__func__, macX_interface[res.device_num], res.device_num);
+		}
+
+		res.port_interface = macX_interface[res.device_num];
+
+		portX_mdc[res.device_num] = (portX_mdc[res.device_num] > TC956XMAC_XGMAC_MDC_CSR_202) ? TC956XMAC_XGMAC_MDC_CSR_62 : portX_mdc[res.device_num];
+		plat->mdc_clk = portX_mdc[res.device_num];
+
+		portX_c45_state[res.device_num] = (portX_c45_state[res.device_num] > 1) ? false : portX_c45_state[res.device_num];
+		plat->c45_needed = portX_c45_state[res.device_num];
+
+		macX_link_down_macrst[res.device_num] = (macX_link_down_macrst[res.device_num] > ENABLE) ? DISABLE : macX_link_down_macrst[res.device_num];
+		plat->link_down_macrst = macX_link_down_macrst[res.device_num];
+
 	}
+
+	macX_filter_phy_pause[res.device_num] = (macX_filter_phy_pause[res.device_num] > ENABLE) ? DISABLE : macX_filter_phy_pause[res.device_num];
+	plat->filter_phy_pause = macX_filter_phy_pause[res.device_num];
+
+	macX_en_lp_pause_frame_cnt[res.device_num] = (macX_en_lp_pause_frame_cnt[res.device_num] > ENABLE) ? DISABLE : macX_en_lp_pause_frame_cnt[res.device_num];
+	plat->en_lp_pause_frame_cnt = macX_en_lp_pause_frame_cnt[res.device_num];
+
+	macX_power_save_at_link_down[res.device_num] = (macX_power_save_at_link_down[res.device_num] > ENABLE) ? DISABLE : macX_power_save_at_link_down[res.device_num];
+	plat->mac_power_save_at_link_down = macX_power_save_at_link_down[res.device_num];
+
+	plat->start_phy_addr = portX_phyaddr[res.device_num] = portX_phyaddr[res.device_num] > PHY_MAX_ADDR ? 0 : portX_phyaddr[res.device_num];
+
+	if (macX_no_mdio_no_phy[res.device_num] != PHY_OFF_MDIO_OFF)
+		macX_no_mdio_no_phy[res.device_num] = PHY_ON_MDIO_ON; /* Currently only PHY OFF and MDIO OFF is supported for SFP+ case, others are invalid */
+
+	plat->mac_no_mdio_no_phy = macX_no_mdio_no_phy[res.device_num];
 
 	overlay = tc956x_platform_port_interface_overlay(&pdev->dev, &res);
 	if (overlay) {
 		plat->mdc_clk = res.mdc_clk;
 		plat->c45_needed = res.c45_state;
-
-		if (res.port_num == RM_PF0_ID) {
-			mac0_link_down_macrst = res.link_down_macrst == 1 ? ENABLE : DISABLE;
-		}
-		if (res.port_num == RM_PF1_ID) {
-			mac1_link_down_macrst = res.link_down_macrst == 1 ? ENABLE : DISABLE;
-		}
+		plat->link_down_macrst = (res.link_down_macrst == 1) ? ENABLE : DISABLE;
 	}
+
 
 	plat->port_interface = res.port_interface;
 
-	if (res.port_num == RM_PF0_ID) {
+	if ((macX_force_speed_mode[res.device_num] != DISABLE) && (macX_force_speed_mode[res.device_num] != ENABLE)) {
+		macX_force_speed_mode[res.device_num] = DISABLE;
+		NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_force_speed_mode parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
+		__func__, macX_force_speed_mode[res.device_num]);
+	}
+	plat->force_speed_mode = macX_force_speed_mode[res.device_num];
 
-		if ((mac0_force_speed_mode != DISABLE) && (mac0_force_speed_mode != ENABLE)) {
-			mac0_force_speed_mode = DISABLE;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac0_force_speed_mode parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
-			__func__, mac0_force_speed_mode);
+	if (macX_force_speed_mode[res.device_num] == ENABLE) {
+		if (macX_force_config_speed[res.device_num] > 5) { /*Configuring default value on error*/
+			macX_force_config_speed[res.device_num] = 3;
+			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_force_config_speed parameter passed. Restoring default to %d. Supported Values are 0 to 5.\n",
+			__func__, macX_force_config_speed[res.device_num]);
 		}
-		if (mac0_force_speed_mode == ENABLE) {
-			if (mac0_force_config_speed > 5) { /*Configuring default value on error*/
-				mac0_force_config_speed = 3;
-				NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac0_force_config_speed parameter passed. Restoring default to %d. Supported Values are 0 to 5.\n",
-				__func__, mac0_force_config_speed);
-			}
-		}
-		if ((mac0_eee_enable != DISABLE) &&
-		(mac0_eee_enable != ENABLE)) {
-			mac0_eee_enable = DISABLE;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac0_eee_enable parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
-			__func__, mac0_eee_enable);
-		}
+	}
+	plat->force_config_speed = macX_force_config_speed[res.device_num];
 
-		if ((mac0_eee_enable == ENABLE) &&
-		(mac0_lpi_timer > TC956X_MAX_LPI_AUTO_ENTRY_TIMER)) {
-			mac0_lpi_timer = TC956XMAC_LPIET_600US;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac0_lpi_timer parameter passed. Restoring default to %d. Supported Values between %d and %d.\n",
-			__func__, mac1_lpi_timer,
-			TC956X_MIN_LPI_AUTO_ENTRY_TIMER, TC956X_MAX_LPI_AUTO_ENTRY_TIMER);
-		}
-		res.eee_enabled = mac0_eee_enable;
-		res.tx_lpi_timer = mac0_lpi_timer;
+	if ((macX_eee_enable[res.device_num] != DISABLE) &&
+	(macX_eee_enable[res.device_num] != ENABLE)) {
+		macX_eee_enable[res.device_num] = DISABLE;
+		NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_eee_enable parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
+		__func__, macX_eee_enable[res.device_num]);
 	}
 
-	if (res.port_num == RM_PF1_ID) {
-
-		if ((mac1_force_speed_mode != DISABLE) && (mac1_force_speed_mode != ENABLE)) {
-			mac1_force_speed_mode = DISABLE;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_force_speed_mode parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
-			__func__, mac1_force_speed_mode);
-		}
-		if (mac1_force_speed_mode == ENABLE) {
-			if (mac1_force_config_speed > 5) { /*Configuring default value on error*/
-				mac1_force_config_speed = 3;
-				NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_force_config_speed parameter passed. Restoring default to %d. Supported Values are 0 to 5.\n",
-				__func__, mac1_force_config_speed);
-			}
-		}
-
-		if ((mac1_eee_enable != DISABLE) &&
-		(mac1_eee_enable != ENABLE)) {
-			mac1_eee_enable = DISABLE;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_eee_enable parameter passed. Restoring default to %d. Supported Values are 0 and 1.\n",
-			__func__, mac1_eee_enable);
-		}
-
-		if ((mac0_eee_enable == ENABLE) &&
-		(mac1_lpi_timer > TC956X_MAX_LPI_AUTO_ENTRY_TIMER)) {
-			mac1_lpi_timer = TC956XMAC_LPIET_600US;
-			NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_lpi_timer parameter passed. Restoring default to %d. Supported Values between %d and %d.\n",
-			__func__, mac1_lpi_timer,
-			TC956X_MIN_LPI_AUTO_ENTRY_TIMER, TC956X_MAX_LPI_AUTO_ENTRY_TIMER);
-		}
-		res.eee_enabled = mac1_eee_enable;
-		res.tx_lpi_timer = mac1_lpi_timer;
+	if ((macX_eee_enable[res.device_num] == ENABLE) &&
+	(macX_lpi_timer[res.device_num] > TC956X_MAX_LPI_AUTO_ENTRY_TIMER)) {
+		macX_lpi_timer[res.device_num] = TC956XMAC_LPIET_600US;
+		NMSGPR_INFO(&(pdev->dev), "%s: ERROR Invalid mac1_lpi_timer parameter passed. Restoring default to %d. Supported Values between %d and %d.\n",
+		__func__, macX_lpi_timer[res.device_num],
+		TC956X_MIN_LPI_AUTO_ENTRY_TIMER, TC956X_MAX_LPI_AUTO_ENTRY_TIMER);
 	}
+	res.eee_enabled = macX_eee_enable[res.device_num];
+	res.tx_lpi_timer = macX_lpi_timer[res.device_num];
+
+
 #endif
 	ret = info->setup(pdev, plat);
 
 	if (ret)
-		return ret;
+		goto err_out_enb_failed;
+
+	NMSGPR_INFO(&pdev->dev, "Re-Configured Module parameters of TC956x of Port-%d bus number-%x\n", plat->port_num, pdev->bus->number);
+	NMSGPR_INFO(&pdev->dev, "macX_interface = %d\n", res.port_interface);
+	NMSGPR_INFO(&pdev->dev, "macX_link_down_macrst = %d\n", plat->link_down_macrst);
+	NMSGPR_INFO(&pdev->dev, "portX_mdc = 0x%x\n", plat->mdc_clk);
+	NMSGPR_INFO(&pdev->dev, "portX_c45_state = %d\n", plat->c45_needed);
+	NMSGPR_INFO(&pdev->dev, "portX_phyaddr = %d\n", plat->start_phy_addr);
+	NMSGPR_INFO(&pdev->dev, "macX_no_mdio_no_phy = %d\n", plat->mac_no_mdio_no_phy);
+	NMSGPR_INFO(&pdev->dev, "macX_force_speed_mode = %d \n", plat->force_speed_mode);
+	NMSGPR_INFO(&pdev->dev, "macX_force_config_speed = %d\n", plat->force_config_speed);
+	NMSGPR_INFO(&pdev->dev, "macX_eee_enable = %d\n", res.eee_enabled);
+	NMSGPR_INFO(&pdev->dev, "macX_lpi_timer = %d\n", res.tx_lpi_timer);
+	NMSGPR_INFO(&pdev->dev, "macX_filter_phy_pause = %d\n", plat->filter_phy_pause);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_size = %d\n", plat->rx_queues_cfg[0].size);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_size = %d\n", plat->rx_queues_cfg[1].size);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_rfd  = %d\n", plat->rx_queues_cfg[0].rfd);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq0_rfa  = %d\n", plat->rx_queues_cfg[0].rfa);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_rfd  = %d\n", plat->rx_queues_cfg[1].rfd);
+	NMSGPR_INFO(&pdev->dev, "macX_rxq1_rfa  = %d\n", plat->rx_queues_cfg[1].rfa);
+	NMSGPR_INFO(&pdev->dev, "macX_txq0_size = %d\n", plat->tx_queues_cfg[0].size);
+	NMSGPR_INFO(&pdev->dev, "macX_txq1_size = %d\n", plat->tx_queues_cfg[1].size);
+	NMSGPR_INFO(&pdev->dev, "macX_en_lp_pause_frame_cnt = %d\n", plat->en_lp_pause_frame_cnt);
+	NMSGPR_INFO(&pdev->dev, "macX_power_save_at_link_down = %d\n", plat->mac_power_save_at_link_down);
+#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
+	NMSGPR_INFO(&pdev->dev, "epX_l0s_delay = %d\n", plat->ep_l0s_delay);
+	NMSGPR_INFO(&pdev->dev, "epX_l1_delay = %d\n", plat->ep_l1_delay);
+	NMSGPR_INFO(&pdev->dev, "uspX_l0s_delay = %d\n", plat->usp_l0s_delay);
+	NMSGPR_INFO(&pdev->dev, "uspX_l1_delay = %d\n", plat->usp_l1_delay);
+#endif
 
 #ifdef TC956X
 #ifndef TC956X_SRIOV_VF
@@ -3185,9 +3556,13 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 		if ((res.port_interface == ENABLE_SGMII_INTERFACE) ||
 			(res.port_interface == ENABLE_2500BASE_X_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_SGMII_2500M;
-		else if ((res.port_interface == ENABLE_USXGMII_INTERFACE) ||
+		else if ((res.port_interface == ENABLE_USXGMII_INTERFACE) || (res.port_interface == ENABLE_USXGMII_10G_INTERFACE) ||
 			(res.port_interface == ENABLE_XFI_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_USXGMII_10G_10G;
+		else if (res.port_interface == ENABLE_USXGMII_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_5G_5G;
+		else if (res.port_interface == ENABLE_USXGMII_2_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_2_5G_2_5G;
 
 		ret &= ~(0x00000040); /* Mask Polarity */
 		if (SgmSigPol == 1)
@@ -3231,9 +3606,13 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 		else if ((res.port_interface == ENABLE_SGMII_INTERFACE) ||
 			(res.port_interface == ENABLE_2500BASE_X_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_SGMII_2500M;
-		else if ((res.port_interface == ENABLE_USXGMII_INTERFACE) ||
+		else if ((res.port_interface == ENABLE_USXGMII_INTERFACE) || (res.port_interface == ENABLE_USXGMII_10G_INTERFACE) ||
 			(res.port_interface == ENABLE_XFI_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_USXGMII_10G_10G;
+		else if (res.port_interface == ENABLE_USXGMII_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_5G_5G;
+		else if (res.port_interface == ENABLE_USXGMII_2_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_2_5G_2_5G;
 
 		ret &= ~(0x00000040); /* Mask Polarity */
 		if (SgmSigPol == 1)
@@ -3256,6 +3635,9 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 	res.lpi_irq = pdev->irq;
 
 	plat->bus_id = ((pdev->bus->number<<4) | res.port_num);
+	res.pci_bdf = pci_dev_id(pdev);
+
+	dev_info(&(pdev->dev), "Port%d Bus%x BDF is 0x%x\n", res.port_num, pdev->bus->number, res.pci_bdf);
 
 	sh_mem_offset = tc956x_get_shared_mem_offset(pdev, pci_dev_id(pdev) & TC956X_PCI_BD_MASK);
 	if (sh_mem_offset < TC956X_TOT_CASCADE_DEV)
@@ -3336,11 +3718,11 @@ static int tc956xmac_pci_probe(struct pci_dev *pdev,
 #endif /* #ifdef TC956X_PCIE_DSP_CUT_THROUGH */
 #endif /* #ifdef TC956X_SRIOV_PF */
 
-	mutex_lock(&tc956x_pm_suspend_lock);
 	/* Increment device usage counter */
-	tc956xmac_pm_usage_counter++;
 	tx956x_pci_shrd_mem[res.pci_bd].pci_dev_active_cnt++;
-	DBGPR_FUNC(&(pdev->dev), "%s : (Device Usage Count = [%d])\n", __func__, tx956x_pci_shrd_mem[res.pci_bd].pci_dev_active_cnt);
+	tc956xmac_pm_usage_counter++;
+	DBGPR_FUNC(&(pdev->dev), "%s : Device Usage Count = [%d] probe sequence number : %d\n", __func__, tx956x_pci_shrd_mem[res.pci_bd].pci_dev_active_cnt, res.probe_seq_no);
+	DBGPR_FUNC(&(pdev->dev), "<--%s\n", __func__);
 	mutex_unlock(&tc956x_pm_suspend_lock);
 
 	return ret;
@@ -3392,6 +3774,9 @@ err_sriov_vf_en_failed:
 err_out_req_reg_failed:
 	pci_disable_device(pdev);
 err_out_enb_failed:
+	DBGPR_FUNC(&(pdev->dev), "<--%s Error return: %d\n", __func__, ret);
+	mutex_unlock(&tc956x_pm_suspend_lock);
+
 	return ret;
 
 }
@@ -3419,6 +3804,7 @@ static void tc956xmac_pci_remove(struct pci_dev *pdev)
 	void *nrst_reg, *nclk_reg;
 	u32 nrst_val, nclk_val;
 #endif
+	mutex_lock(&tc956x_pm_suspend_lock);
 
 	DBGPR_FUNC(&(pdev->dev), "-->%s\n", __func__);
 
@@ -3435,10 +3821,12 @@ static void tc956xmac_pci_remove(struct pci_dev *pdev)
 	 * device is registered as only PCIe device. So skip any
 	 * ethernet device related uninitialization
 	 */
-#ifndef TC956X_WITHOUT_MDIO_WITHOUT_PHY
-	if (priv->plat->phy_addr != -1)
-#endif
+	if (priv->dma_cap.sma_mdio == 1) {
+		if (priv->plat->phy_addr != -1)
+			tc956xmac_dvr_remove(&pdev->dev);
+	} else {
 		tc956xmac_dvr_remove(&pdev->dev);
+	}
 
 	/* Set reset value for CLK control and RESET Control registers */
 	if (priv->port_num == 0) {
@@ -3504,13 +3892,12 @@ static void tc956xmac_pci_remove(struct pci_dev *pdev)
 
 	pci_disable_device(pdev);
 
-	mutex_lock(&tc956x_pm_suspend_lock);
 	/* Decrement device usage counter */
 	tc956xmac_pm_usage_counter--;
 	tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt--;
-	DBGPR_FUNC(&(pdev->dev), "%s : (Device Usage Count = [%d])\n", __func__, tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt);
-	mutex_unlock(&tc956x_pm_suspend_lock);
+	DBGPR_FUNC(&(pdev->dev), "%s : Device Usage Count = [%d] probe sequence number : %d\n", __func__, tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt, priv->probe_seq_no);
 	DBGPR_FUNC(&(pdev->dev), "<--%s\n", __func__);
+	mutex_unlock(&tc956x_pm_suspend_lock);
 }
 
 /*!
@@ -3648,7 +4035,6 @@ static int tc956x_pcie_suspend(struct device *dev)
 	mutex_lock(&tc956x_pm_suspend_lock);
 
 	/* Decrement device usage counter */
-	tc956xmac_pm_usage_counter--;
 	tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt--;
 	DBGPR_FUNC(&(pdev->dev), "%s : (Number of Ports Left to Suspend = [%d])\n", __func__, tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt);
 
@@ -3745,11 +4131,14 @@ static int tc956x_pcie_resume_config(struct pci_dev *pdev)
 	int ret = 0;
 
 	DBGPR_FUNC(&(pdev->dev), "---> %s", __func__);
+
 	/* Skip Config when Port unavailable */
-	if ((priv->plat->phy_addr == -1) || (priv->mii == NULL)) {
-		DBGPR_FUNC(&(pdev->dev), "%s : Invalid PHY Address (%d)\n", __func__, priv->plat->phy_addr);
-		ret = -1;
-		goto err_phy_addr;
+	if (priv->dma_cap.sma_mdio == 1) {
+		if ((priv->plat->phy_addr == -1) || (priv->mii == NULL)) {
+			DBGPR_FUNC(&(pdev->dev), "%s : Invalid PHY Address (%d)\n", __func__, priv->plat->phy_addr);
+			ret = -1;
+			goto err_phy_addr;
+		}
 	}
 
 	if (priv->port_num == RM_PF0_ID) {
@@ -3782,9 +4171,13 @@ static int tc956x_pcie_resume_config(struct pci_dev *pdev)
 		if ((priv->port_interface == ENABLE_SGMII_INTERFACE) ||
 			(priv->port_interface == ENABLE_2500BASE_X_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_SGMII_2500M;
-		else if ((priv->port_interface == ENABLE_USXGMII_INTERFACE) ||
+		else if ((priv->port_interface == ENABLE_USXGMII_INTERFACE) || (priv->port_interface == ENABLE_USXGMII_10G_INTERFACE) ||
 			(priv->port_interface == ENABLE_XFI_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_USXGMII_10G_10G;
+		else if (priv->port_interface == ENABLE_USXGMII_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_5G_5G;
+		else if (priv->port_interface == ENABLE_USXGMII_2_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_2_5G_2_5G;
 
 		ret &= ~(0x00000040); /* Mask Polarity */
 		if (SgmSigPol == 1)
@@ -3828,9 +4221,13 @@ static int tc956x_pcie_resume_config(struct pci_dev *pdev)
 		else if ((priv->port_interface == ENABLE_SGMII_INTERFACE) ||
 			(priv->port_interface == ENABLE_2500BASE_X_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_SGMII_2500M;
-		else if ((priv->port_interface == ENABLE_USXGMII_INTERFACE) ||
+		else if ((priv->port_interface == ENABLE_USXGMII_INTERFACE) || (priv->port_interface == ENABLE_USXGMII_10G_INTERFACE) ||
 			(priv->port_interface == ENABLE_XFI_INTERFACE))
 			ret |= NEMACCTL_SP_SEL_USXGMII_10G_10G;
+		else if (priv->port_interface == ENABLE_USXGMII_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_5G_5G;
+		else if (priv->port_interface == ENABLE_USXGMII_2_5G_INTERFACE)
+			ret |= NEMACCTL_SP_SEL_USXGMII_2_5G_2_5G;
 
 		ret &= ~(0x00000040); /* Mask Polarity */
 		if (SgmSigPol == 1)
@@ -4014,7 +4411,7 @@ static int tc956x_pcie_resume(struct device *dev)
 	/* Call tc956xmac_resume() */
 #ifdef TC956X_SRIOV_PF
 	tc956xmac_resume(&pdev->dev);
-	if ((priv->port_num == RM_PF1_ID) && ((priv->port_interface == ENABLE_RGMII_INTERFACE) ||(priv->port_interface == ENABLE_RGMII_ID_INTERFACE))) {
+	if ((priv->port_num == RM_PF1_ID) && ((priv->port_interface == ENABLE_RGMII_INTERFACE) || (priv->port_interface == ENABLE_RGMII_ID_INTERFACE))) {
 		writel(NEMACTXCDLY_DEFAULT, priv->ioaddr + TC9563_CFG_NEMACTXCDLY);
 		writel(NEMACIOCTL_DEFAULT, priv->ioaddr + TC9563_CFG_NEMACIOCTL);
 	}
@@ -4024,7 +4421,6 @@ static int tc956x_pcie_resume(struct device *dev)
 
 #ifndef TC956X_SRIOV_VF
 	/* Increment device usage counter */
-	tc956xmac_pm_usage_counter++;
 	tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt++;
 	DBGPR_FUNC(&(pdev->dev), "%s : (Number of Ports Resumed = [%d])\n", __func__, tx956x_pci_shrd_mem[priv->pci_bd].pci_dev_active_cnt);
 
@@ -4349,7 +4745,7 @@ static s32 __init tc956x_init_module(void)
 {
 	s32 ret = 0;
 
-	KPRINT_INFO("%s", __func__);
+	KPRINT_INFO("-->%s", __func__);
 	ret = pci_register_driver(&tc956xmac_pci_driver);
 	if (ret) {
 		KPRINT_INFO("TC956X : Driver registration failed");
@@ -4357,7 +4753,7 @@ static s32 __init tc956x_init_module(void)
 	}
 
 	tc956xmac_init();
-	KPRINT_INFO("%s", __func__);
+	KPRINT_INFO("<--%s", __func__);
 	return ret;
 }
 
@@ -4414,238 +4810,6 @@ MODULE_PARM_DESC(pcie_link_speed,
 #endif
 
 #if defined(TC956X_SRIOV_PF)
-module_param(mac0_interface, uint, 0444);
-MODULE_PARM_DESC(mac0_interface,
-		 "PORT0 interface mode TC956X - default is 1,\
-		 [0: USXGMII, 1: XFI, 2: RGMII(not supported), 3: SGMII, 4: 2500Base-X]");
-
-module_param(mac1_interface, uint, 0444);
-MODULE_PARM_DESC(mac1_interface,
-		 "PORT1 interface mode TC956X - default is 3,\
-		 [0: USXGMII, 1: XFI, 2: RGMII, 3: SGMII, 4: 2500Base-X]");
-
-module_param(mac0_filter_phy_pause, uint, 0444);
-MODULE_PARM_DESC(mac0_filter_phy_pause,
-		 "Filter PHY pause frames alone and pass Link partner pause frames to application in PORT0 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac1_filter_phy_pause, uint, 0444);
-MODULE_PARM_DESC(mac1_filter_phy_pause,
-		 "Filter PHY pause frames alone and pass Link partner pause frames to application in PORT1 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac0_eee_enable, uint, 0444);
-MODULE_PARM_DESC(mac0_eee_enable,
-		 "Enable/Disable EEE for Port 0 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac0_lpi_timer, uint, 0444);
-MODULE_PARM_DESC(mac0_lpi_timer,
-		 "LPI Automatic Entry Timer for Port 0 - default is 600 (us),\
-		 [Range Supported : 0..1048568 (us)]");
-
-module_param(mac1_eee_enable, uint, 0444);
-MODULE_PARM_DESC(mac1_eee_enable,
-		 "Enable/Disable EEE for Port 1 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac1_lpi_timer, uint, 0444);
-MODULE_PARM_DESC(mac1_lpi_timer,
-		 "LPI Automatic Entry Timer for Port 1 - default is 600 (us),\
-		 [Range Supported : 0..1048568 (us)]");
-
-module_param(mac0_rxq0_size, uint, 0444);
-MODULE_PARM_DESC(mac0_rxq0_size,
-		 "Rx Queue-0 size of Port 0 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac0_rxq1_size, uint, 0444);
-#ifdef TC956X_CPE_CONFIG
-MODULE_PARM_DESC(mac0_rxq1_size,
-		 "Rx Queue-1 size of Port 0 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-#else
-MODULE_PARM_DESC(mac0_rxq1_size,
-		 "Rx Queue-1 size of Port 0 - default is 4096 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-#endif
-module_param(mac0_rxq0_rfd, uint, 0444);
-MODULE_PARM_DESC(mac0_rxq0_rfd,
-		 "Flow control thresholds for Rx Queue-0 of Port 0  for disable - default is 24 (13KB) \
-		 [Range Supported : 0..84]");
-
-module_param(mac0_rxq1_rfd, uint, 0444);
-MODULE_PARM_DESC(mac0_rxq1_rfd,
-		 "Flow control thresholds for Rx Queue-1 of Port 0 for disable - default is 24 (13KB)\
-		 [Range Supported : 0..84]");
-
-module_param(mac0_rxq0_rfa, uint, 0444);
-MODULE_PARM_DESC(mac0_rxq0_rfa,
-		 "Flow control thresholds for Rx Queue-0 of Port 0 for enable - default is 24 (13KB) \
-		 [Range Supported : 0..84]");
-
-module_param(mac0_rxq1_rfa, uint, 0444);
-MODULE_PARM_DESC(mac0_rxq1_rfa,
-		 "Flow control thresholds for Rx Queue-1 of Port 0 for enable - default is 24 (13KB)\
-		 [Range Supported : 0..84]");
-
-module_param(mac0_txq0_size, uint, 0444);
-MODULE_PARM_DESC(mac0_txq0_size,
-		 "Tx Queue-0 size of Port 0 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac0_txq1_size, uint, 0444);
-#ifdef TC956X_CPE_CONFIG
-MODULE_PARM_DESC(mac0_txq1_size,
-		 "Tx Queue-1 size of Port 0 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-#else
-MODULE_PARM_DESC(mac0_txq1_size,
-		 "Tx Queue-1 size of Port 0 - default is 14336 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-#endif
-module_param(mac1_rxq0_size, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq0_size,
-		 "Rx Queue-0 size of Port 1 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac1_rxq1_size, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq1_size,
-		 "Rx Queue-1 size of Port 1 - default is 4096 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac1_rxq0_rfd, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq0_rfd,
-		 "Flow control thresholds for Rx Queue-0 of Port 1 for disable - default is 24 (13KB) \
-		 [Range Supported : 0..84]");
-
-module_param(mac1_rxq1_rfd, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq1_rfd,
-		 "Flow control thresholds for Rx Queue-1 of Port 1 for disable - default is 24 (13KB)\
-		 [Range Supported : 0..84]");
-
-module_param(mac1_rxq0_rfa, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq0_rfa,
-		 "Flow control thresholds for Rx Queue-0 of Port 1  for enable - default is 24 (13KB) \
-		 [Range Supported : 0..84]");
-
-module_param(mac1_rxq1_rfa, uint, 0444);
-MODULE_PARM_DESC(mac1_rxq1_rfa,
-		 "Flow control thresholds for Rx Queue-1 of Port 1 for enable - default is 24 (13KB)\
-		 [Range Supported : 0..84]");
-
-module_param(mac1_txq0_size, uint, 0444);
-MODULE_PARM_DESC(mac1_txq0_size,
-		 "Tx Queue-0 size of Port 1 - default is 18432 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac1_txq1_size, uint, 0444);
-MODULE_PARM_DESC(mac1_txq1_size,
-		 "Tx Queue-1 size of Port 1 - default is 14336 (bytes),\
-		 [Range Supported : 3072..44032 (bytes)]");
-
-module_param(mac0_en_lp_pause_frame_cnt, uint, 0444);
-MODULE_PARM_DESC(mac0_en_lp_pause_frame_cnt,
-		 "Enable counter to count Link Partner pause frames in PORT0 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac1_en_lp_pause_frame_cnt, uint, 0444);
-MODULE_PARM_DESC(mac1_en_lp_pause_frame_cnt,
-		 "Enable counter to count Link Partner pause frames in PORT1 - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac0_force_speed_mode, uint, 0444);
-MODULE_PARM_DESC(mac0_force_speed_mode,
-		 "Enable MAC0 force speed mode - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac0_force_config_speed, uint, 0444);
-MODULE_PARM_DESC(mac0_force_config_speed,
-		 "Configure MAC0 force speed - default is 3,\
-		 [0: 10G, 1: 5G, 2: 2.5G, 3: 1G, 4: 100M, 5: 10M]");
-
-module_param(mac1_force_speed_mode, uint, 0444);
-MODULE_PARM_DESC(mac1_force_speed_mode,
-		 "Enable MAC1 force speed mode - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac1_force_config_speed, uint, 0444);
-MODULE_PARM_DESC(mac1_force_config_speed,
-		 "Configure MAC1 force speed - default is 3,\
-		 [0: 10G, 1: 5G, 2: 2.5G, 3: 1G, 4: 100M, 5: 10M]");
-
-module_param(mac_power_save_at_link_down, uint, 0444);
-MODULE_PARM_DESC(mac_power_save_at_link_down,
-		 "Enable Power saving during Link down - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(port0_mdc, uint, 0444);
-MODULE_PARM_DESC(port0_mdc,
-		 "PORT0 MDC clock setting - default is 0x4,\
-		 select the value based on the following MDIO clock settings:\
-		 [0x0 - clk_csr_i/4,\
-		 0x1 - clk_csr_i/6,\
-		 0x2 - clk_csr_i/8,\
-		 0x3 - clk_csr_i/10,\
-		 0x4 - clk_csr_i/12,\
-		 0x5 - clk_csr_i/14,\
-		 0x6 - clk_csr_i/16,\
-		 0x7 - clk_csr_i/18,\
-		 0x8 - clk_csr_i/62,\
-		 0x9 - clk_csr_i/102,\
-		 0xA - clk_csr_i/122,\
-		 0xB - clk_csr_i/142,\
-		 0xC - clk_csr_i/162,\
-		 0xD - clk_csr_i/202]");
-
-module_param(port0_c45_state, int, 0444);
-MODULE_PARM_DESC(port0_c45_state,
-		 "PORT0 phy driver clause setting - default is 1 (true),\
-		 [1 - true, 0 - false]");
-
-module_param(port1_mdc, uint, 0444);
-MODULE_PARM_DESC(port1_mdc,
-		 "PORT1 MDC clock setting - default is 0x8,\
-		 select the value based on the following MDIO clock settings:\
-		 [0x0 - clk_csr_i/4,\
-		 0x1 - clk_csr_i/6,\
-		 0x2 - clk_csr_i/8,\
-		 0x3 - clk_csr_i/10,\
-		 0x4 - clk_csr_i/12,\
-		 0x5 - clk_csr_i/14,\
-		 0x6 - clk_csr_i/16,\
-		 0x7 - clk_csr_i/18,\
-		 0x8 - clk_csr_i/62,\
-		 0x9 - clk_csr_i/102,\
-		 0xA - clk_csr_i/122,\
-		 0xB - clk_csr_i/142,\
-		 0xC - clk_csr_i/162,\
-		 0xD - clk_csr_i/202]");
-
-module_param(port1_c45_state, int, 0444);
-MODULE_PARM_DESC(port1_c45_state,
-		 "PORT1 phy driver clause setting - default is 0 (false),\
-		 [1 - true, 0 - false]");
-
-module_param(port0_phyaddr, uint, 0444);
-MODULE_PARM_DESC(port0_phyaddr,
-		 "PORT0 Phy device addr for phy detection, default is 0,\
-		 [0 to 31]");
-
-module_param(port1_phyaddr, uint, 0444);
-MODULE_PARM_DESC(port1_phyaddr,
-		 "PORT1 Phy device addr for phy detection, default is 0,\
-		 [0 to 31]");
-
-module_param(mac0_link_down_macrst, uint, 0444);
-MODULE_PARM_DESC(mac0_link_down_macrst,
-		 "MAC0 reset for PHY Clock loss during Link Down - default is 1,\
-		 [0: DISABLE, 1: ENABLE]");
-
-module_param(mac1_link_down_macrst, uint, 0444);
-MODULE_PARM_DESC(mac1_link_down_macrst,
-		 "MAC1 reset for PHY Clock loss during Link Down - default is 0,\
-		 [0: DISABLE, 1: ENABLE]");
 
 module_param(mac0_tx_pbl, int, 0444);
 MODULE_PARM_DESC(mac0_tx_pbl,
@@ -4666,20 +4830,6 @@ module_param(mac1_rx_pbl, int, 0444);
 MODULE_PARM_DESC(mac1_rx_pbl,
 		"Port-1 Receive Programmable Burst Length, default is 16,\
 		Supports following values: 1, 2, 4, 8, 16, or 32.");
-
-#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
-module_param(ep_l0s_delay, uint, 0444);
-MODULE_PARM_DESC(ep_l0s_delay,
-		"L0s Link state change delay configuration for\
-		Internal Endpoint\
-		Range: 1-31");
-
-module_param(ep_l1_delay, uint, 0444);
-MODULE_PARM_DESC(ep_l1_delay,
-		"L1 Link state change delay configuration for\
-		Internal Endpoint\
-		Range: 1-1023");
-#endif
 
 module_param(mac0_axi_wr_osr_lmt, uint, 0444);
 MODULE_PARM_DESC(mac0_axi_wr_osr_lmt,
@@ -4706,6 +4856,219 @@ module_param(mac1_axi_blen, uint, 0444);
 MODULE_PARM_DESC(mac1_axi_blen,
 		"Port-1 AXI DMA Burst Length\
 		Supported values: 4,8,16,32,64,128,256");
+
+/* From here Module params are supported in array format */
+module_param_array(tc956x_eth_ports_bdf, uint, NULL, 0444);
+MODULE_PARM_DESC(tc956x_eth_ports_bdf,
+		"Array of BDFs (Bus number, Device number and Function number) for which interface configuration is required, default is 0 (None)\
+		which means other associated array module parameters will assign their default values to the TC956x devices in cascade setup\
+		Supported format: 0xBBDF, 'BB': one byte of Bus number, 'DF': one byte of Slot/Device number and Function number encoded as\
+		[7:3] bits for Slot number and [2:0] bits for Function number\
+		This is array module parameter in which maximum of 14 BDFs can be provided in comma seperated format.\
+		Note that this is a mandatory parameter to associate other array module parameters with particular TC956x device in a cascade setup");
+
+module_param_array(macX_interface, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_interface,
+		"Array of MAC Interface arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		Following are supported values according to the port.\
+		PORTX interface supported values, default is 1 (XFI) for Port0 and 4 (SGMII) for Port1\
+		[0: USXGMII, 1: XFI, 2: RGMII*, 3: RGMII_ID*, 4: SGMII, 5: 2500Base-X, 6: USXGMII_10G, 7: USXGMII_5G, 8: USXGMII_2.5G]\
+		* - Not supported for Port0 or Function0.\
+		This is array module parameter in which maximum of 14 interface values can be provided in comma seperated format");
+
+module_param_array(portX_mdc, uint, NULL, 0444);
+MODULE_PARM_DESC(portX_mdc,
+		"Array of MDC values arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		PORTX MDC clock setting supported values - default is 0x4 (clk_csr_i/12) for all Port0 and 0x8 (clk_csr_i/62) for all Port1,\
+		[0x0 - clk_csr_i/4,\
+		0x1 - clk_csr_i/6,\
+		0x2 - clk_csr_i/8,\
+		0x3 - clk_csr_i/10,\
+		0x4 - clk_csr_i/12,\
+		0x5 - clk_csr_i/14,\
+		0x6 - clk_csr_i/16,\
+		0x7 - clk_csr_i/18,\
+		0x8 - clk_csr_i/62,\
+		0x9 - clk_csr_i/102,\
+		0xA - clk_csr_i/122,\
+		0xB - clk_csr_i/142,\
+		0xC - clk_csr_i/162,\
+		0xD - clk_csr_i/202]\
+		Note: Select the value based on the above mentioned MDIO clock settings\
+		This is array module parameter in which maximum of 14 MDC values can be provided in comma seperated format");
+
+
+module_param_array(portX_c45_state, uint, NULL, 0444);
+MODULE_PARM_DESC(portX_c45_state,
+		"Array of C45 state values arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		PORTX phy driver clause setting - default is 1 (true) for all Port0 and 0 (false) for all Port1,\
+		Supported values: [1 - true, 0 - false]\
+		This is array module parameter in which maximum of 14 C45 state can be provided in comma seperated format");
+
+
+module_param_array(portX_phyaddr, uint, NULL, 0444);
+MODULE_PARM_DESC(portX_phyaddr,
+		"Array of Phy device addr arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		PORT0 Phy device addr for phy detection, default is 0 for both Port0 and Port1,\
+		Supported values are [0 to 31]\
+		This is array module parameter in which maximum of 14 Phy device addresses can be provided in comma seperated format");
+
+module_param_array(macX_link_down_macrst, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_link_down_macrst,
+		"Array of MAC Link down reset setting in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		MAC reset for PHY Clock loss during Link Down - default is 1 (ENABLE) for all Port0 and 0 (DISABLE) for all Port1,\
+		Supported values [0: DISABLE, 1: ENABLE]\
+		This is array module parameter in which maximum of 14 MAC link down reset state can be provided in comma seperated format");
+
+module_param_array(macX_no_mdio_no_phy, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_no_mdio_no_phy,
+	"Array of PHY and MDIO configuration in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+	PHY and MDIO configuration - default is 0 (PHY ON and MDIO ON) for both Port0 and Port1,\
+	Supported values [0: PHY ON and MDIO ON, 1: PHY ON and MDIO OFF*, 2: PHY OFF and MDIO ON*, 3: PHY OFF and MDIO OFF]\
+	* - These modes are not supported in current version\
+	This is array module parameter in which maximum of 14 PHY and MDIO configuration state can be provided in comma seperated format");
+
+module_param_array(macX_rxq0_size, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_rxq0_size,
+		"Array of Rx Queue-0 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Rx Queue-0 size of BDfs provided - default is 18432 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+
+module_param_array(macX_txq0_size, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_txq0_size,
+		"Array of Tx Queue-0 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Tx Queue-0 size of BDfs provided - default is 18432 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+
+module_param_array(macX_rxq1_size, uint, NULL, 0444);
+#ifdef TC956X_CPE_CONFIG
+MODULE_PARM_DESC(macX_rxq1_size,
+		"Array of Rx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Rx Queue-1 size of BDfs provided - default is 18432 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+#else
+MODULE_PARM_DESC(macX_rxq1_size,
+		"Array of Rx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Rx Queue-1 size of BDfs provided - default is 4096 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+#endif
+
+module_param_array(macX_txq1_size, uint, NULL, 0444);
+#ifdef TC956X_CPE_CONFIG
+MODULE_PARM_DESC(macX_txq1_size,
+		"Array of Tx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Tx Queue-1 size of BDfs provided - default is 18432 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+#else
+MODULE_PARM_DESC(macX_txq1_size,
+		"Array of Tx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Tx Queue-1 size of BDfs provided - default is 14336 (bytes),\
+		 [Range Supported : 3072..44032 (bytes)]");
+#endif
+
+module_param_array(macX_rxq0_rfd, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_rxq0_rfd,
+		"Array of Flow control thresholds for Rx Queue-0 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Flow control thresholds for Rx Queue-0 of BDfs provided\
+		 for disable - default is 24 (13KB)\
+		 [Range Supported : 0..84]");
+
+module_param_array(macX_rxq1_rfd, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_rxq1_rfd,
+		"Array of Flow control thresholds for Rx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Flow control thresholds for Rx Queue-1 of BDfs provided\
+		 for disable - default is 24 (13KB)\
+		 [Range Supported : 0..84]");
+
+module_param_array(macX_rxq0_rfa, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_rxq0_rfa,
+		"Array of Flow control thresholds for Rx Queue-0 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Flow control thresholds for Rx Queue-0 of BDfs provided\
+		 for enable - default is 24 (13KB)\
+		 [Range Supported : 0..84]");
+
+module_param_array(macX_rxq1_rfa, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_rxq1_rfa,
+		"Array of Flow control thresholds for Rx Queue-1 arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Flow control thresholds for Rx Queue-1 of BDfs provided\
+		 for enable - default is 24 (13KB)\
+		 [Range Supported : 0..84]");
+
+module_param_array(macX_eee_enable, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_eee_enable,
+		"Array of Enable/Disable EEE arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Enable/Disable EEE for BDfs provided - default is 0,\
+		 [0 : DISABLE, 1 : ENABLE]");
+
+module_param_array(macX_lpi_timer, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_lpi_timer,
+		"Array of LPI Automatic Entry Timer arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 LPI Automatic Entry Timer for BDfs provided - default is 600 (us),\
+		 [Range Supported : 0..1048568 (us)]");
+
+module_param_array(macX_filter_phy_pause, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_filter_phy_pause,
+		"Array of Filter PHY pause frames arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Filter PHY pause frames alone and pass Link partner pause frames\
+		 to application for BDfs provided - default is 0,\
+		 [0 : DISABLE, 1 : ENABLE]");
+
+module_param_array(macX_en_lp_pause_frame_cnt, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_en_lp_pause_frame_cnt,
+		"Array of Enable counter to count Link Partner pause frames arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Enable counter to count Link Partner pause frames for BDfs provided - default is 0,\
+		 [0 : DISABLE, 1 : ENABLE]");
+
+module_param_array(macX_force_speed_mode, uint, NULL, 0444);
+MODULE_PARM_DESC(mac0_force_speed_mode,
+		"Array of Enable force speed mode arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Enable force speed mode for BDfs provided - default is 0,\
+		 [0 : DISABLE, 1 : ENABLE]");
+
+module_param_array(macX_force_config_speed, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_force_config_speed,
+		"Array of Configure force speed arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Configure force speed for BDfs provided - default is 3,\
+		 [0 : 10G, 1 : 5G, 2 : 2.5G, 3 : 1G, 4 : 100M, 5 : 10M]");
+
+module_param_array(macX_power_save_at_link_down, uint, NULL, 0444);
+MODULE_PARM_DESC(macX_power_save_at_link_down,
+		"Array of Enable Power saving during Link down arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		 Same value to be assigned for Port-0 and Port-1 of a TC956x device - default is 0\
+		 Note: If Port-0 and Port-1 have different values, power saving is not gauranteed\
+		 [0 : DISABLE, 1 : ENABLE]");
+
+#ifdef TC956X_PCIE_LINK_STATE_LATENCY_CTRL
+
+module_param_array(epX_l0s_delay, uint, NULL, 0444);
+MODULE_PARM_DESC(epX_l0s_delay,
+		"Array of L0s Link state change delay arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		L0s Link state change delay configuration for\
+		Internal Endpoint, Same value to be assigned for Port-0 and Port-1 - default is 31\
+		Range: 1-31");
+
+module_param_array(epX_l1_delay, uint, NULL, 0444);
+MODULE_PARM_DESC(epX_l1_delay,
+		"Array of L1 Link state change delay arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		L1 Link state change delay configuration for\
+		Internal Endpoint, Same value to be assigned for Port-0 and Port-1- default is 1023\
+		Range: 1-1023");
+
+module_param_array(uspX_l0s_delay, uint, NULL, 0444);
+MODULE_PARM_DESC(uspX_l0s_delay,
+		"Array of L0s Link state change delay arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		L0s Link state change delay configuration for\
+		Upstream Port, Same value to be assigned for Port-0 and Port-1 - default is 31\
+		Range: 1-31");
+
+module_param_array(uspX_l1_delay, uint, NULL, 0444);
+MODULE_PARM_DESC(uspX_l1_delay,
+		"Array of L1 Link state change delay arranged in order according to the BDFs provided in module parameter 'tc956x_eth_ports_bdf'\
+		L1 Link state change delay configuration for\
+		Upstream Port, Same value to be assigned for Port-0 and Port-1 - default is 1023\
+		Range: 1-1023");
+
+#endif
 
 #endif
 MODULE_DESCRIPTION("TC956X PCI Express Ethernet Network Driver");

@@ -133,6 +133,7 @@ struct ivpu_device {
 		int reschedule_suspend;
 		int autosuspend;
 		int d0i3_entry_msg;
+		int state_dump_msg;
 	} timeout;
 };
 

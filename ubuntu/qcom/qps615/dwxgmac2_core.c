@@ -4,7 +4,7 @@
  * dwxgmac2_core.c
  *
  * Copyright (C) 2018 Synopsys, Inc. and/or its affiliates.
- * Copyright (C) 2024 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  * This file has been derived from the STMicro and Synopsys Linux driver,
  * and developed or modified for TC956X.
@@ -64,6 +64,17 @@
  *  13 Feb 2024 : 1. Merged CPE and Automotive package
  *                2. Updated with Register Configuration Check.
  *  VERSION     : 04-00
+ *  31 May 2024 : 1. Modified for TC FPE support
+ *  VERSION     : 05-00
+ *  06 Dec 2024 : 1. Modification to support PHY_INTERFACE_MODE_10GBASER interface type
+ *  VERSION     : 04-00-02
+ *  11 Dec 2024 : 1. Modification to support port interface setting overlay from dts.
+ *  VERSION     : 04-00-03
+ *  31 Jan 2025 : 1. Merge of Automotive limited github branches as listed above after 5-00 version
+ *                2. Fix to avoid unbound access of SW MAC table during deletion
+ *  VERSION     : 05-00-01
+ *  28 Feb 2025 : 1. Support for phy pause frames module paramter array
+ *  VERSION     : 05-02-00
  */
 
 #include <linux/bitrev.h>
@@ -72,11 +83,6 @@
 #include "tc956xmac.h"
 #include "tc956xmac_ptp.h"
 #include "dwxgmac2.h"
-
-#ifndef TC956X_SRIOV_VF
-extern unsigned int mac0_filter_phy_pause;
-extern unsigned int mac1_filter_phy_pause;
-#endif
 
 #ifdef TC956X_SRIOV_DEBUG
 void tc956x_filter_debug(struct tc956xmac_priv *priv);
@@ -141,14 +147,15 @@ static void dwxgmac2_core_init(struct tc956xmac_priv *priv,
 		}
 	}
 #ifndef TC956X
-	if ((priv->plat->interface == PHY_INTERFACE_MODE_RGMII) || (priv->plat->interface == PHY_INTERFACE_MODE_RGMII_ID))
+	if ((priv->plat->interface == PHY_INTERFACE_MODE_RGMII) ||
+		(priv->plat->interface == PHY_INTERFACE_MODE_RGMII_ID))
 		tx |= hw->link.speed1000;
 	else if (priv->plat->interface == PHY_INTERFACE_MODE_SGMII)
 		tx |= hw->link.speed2500;
 	else if ((priv->plat->interface == PHY_INTERFACE_MODE_USXGMII) ||
 		(priv->plat->interface == PHY_INTERFACE_MODE_10GKR)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0) /* TC956X_Host_Driver-industrial_limited_tested_20241025_V_04-00-01-QPSSW-216.patch */
-			|| (priv->plat->interface == PHY_INTERFACE_MODE_10GBASER)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+		|| (priv->plat->interface == PHY_INTERFACE_MODE_10GBASER)
 #endif
 			)
 		tx |= hw->link.xgmii.speed10000;
@@ -770,6 +777,7 @@ static void dwxgmac2_set_eee_timer(struct tc956xmac_priv *priv,
 {
 	void __iomem *ioaddr = hw->pcsr;
 	u32 value;
+
 	value = readl(ioaddr + XGMAC_LPI_TIMER_CTRL);
 
 	value &= ~(XGMAC_LPI_TIMER_CTRL_TWT_MASK | XGMAC_LPI_TIMER_CTRL_LST_MASK);
@@ -1068,6 +1076,7 @@ static void tc956x_del_sw_mac_table(struct net_device *dev,
 	u32 mc_filter[2];
 	u32 nr;
 	u32 data1, data2;
+	u32 flag = 0;
 
 	void __iomem *ioaddr = (void __iomem *)dev->base_addr;
 
@@ -1076,37 +1085,41 @@ static void tc956x_del_sw_mac_table(struct net_device *dev,
 		if (mac_table->status == TC956X_MAC_STATE_OCCUPIED) {
 			if (ether_addr_equal(mac, mac_table->mac_address)) {
 				tc956x_del_sw_mac_helper(mac_table, vf);
+				flag = 1;
 				break;
 			}
 		}
 	}
-	if (mac_table->counter == 0) {
-		/* deleting the crc from hast table*/
-		if (priv->l2_filtering_mode == 1) {
-			memset(mc_filter, 0, sizeof(mc_filter));
-			nr = (bitrev32(~crc32_le(~0, mac_table->mac_address, 6)) >> 26);
-			/* The most significant bit determines the register
-			 * to use while the other 5 bits determines the bit
-			 * within the selected register
-			 */
-			mc_filter[nr >> 5] |= (1 << (nr & 0x1F));
 
-			data1 = 0;
-			data1 = readl(ioaddr + XGMAC_HASH_TAB_0_31);
+	if (flag == 1) {
+		if (mac_table->counter == 0) {
+			/* deleting the crc from hast table*/
+			if (priv->l2_filtering_mode == 1) {
+				memset(mc_filter, 0, sizeof(mc_filter));
+				nr = (bitrev32(~crc32_le(~0, mac_table->mac_address, 6)) >> 26);
+				/* The most significant bit determines the register
+				 * to use while the other 5 bits determines the bit
+				 * within the selected register
+				 */
+				mc_filter[nr >> 5] |= (1 << (nr & 0x1F));
 
-			data2 = readl(ioaddr + XGMAC_HASH_TAB_32_63);
+				data1 = 0;
+				data1 = readl(ioaddr + XGMAC_HASH_TAB_0_31);
 
-			data1 &= ~mc_filter[0];
-			data2 &= ~mc_filter[1];
+				data2 = readl(ioaddr + XGMAC_HASH_TAB_32_63);
 
-			writel(data1, ioaddr + XGMAC_HASH_TAB_0_31);
-			writel(data2, ioaddr + XGMAC_HASH_TAB_32_63);
-		}
-		tc956x_del_mac_addr(priv, hw, i, vf);
+				data1 &= ~mc_filter[0];
+				data2 &= ~mc_filter[1];
+
+				writel(data1, ioaddr + XGMAC_HASH_TAB_0_31);
+				writel(data2, ioaddr + XGMAC_HASH_TAB_32_63);
+			}
+			tc956x_del_mac_addr(priv, hw, i, vf);
 #ifdef TC956X_SRIOV_PF
-	} else {
-		tc956x_del_dma_ch(priv, hw, i, vf);
+		} else {
+			tc956x_del_dma_ch(priv, hw, i, vf);
 #endif
+		}
 	}
 }
 
@@ -1365,8 +1378,7 @@ static void dwxgmac2_set_filter(struct tc956xmac_priv *priv, struct mac_device_i
 	value |= XGMAC_FILTER_HPF;
 #ifndef TC956X_SRIOV_VF
 	/* Configuring to Pass all pause frames to application, PHY pause frames will be filtered by FRP */
-	if ((mac0_filter_phy_pause == ENABLE && priv->port_num == RM_PF0_ID) ||
-	   (mac1_filter_phy_pause == ENABLE && priv->port_num == RM_PF1_ID)) {
+	if (priv->plat->filter_phy_pause == ENABLE) {
 		/* setting pcf to 0b10 i.e. pass pause frames of address filter fail to Application */
 		value |= 0x80;
 	}
@@ -3084,7 +3096,6 @@ static int dwxgmac3_est_configure(struct tc956xmac_priv *priv,
 	return 0;
 }
 
-#ifdef TC956X_UNSUPPORTED_UNTESTED_FEATURE
 static void dwxgmac3_fpe_configure(struct tc956xmac_priv *priv,
 				   void __iomem *ioaddr, u32 num_txq,
 				   u32 num_rxq, bool enable)
@@ -3105,11 +3116,24 @@ static void dwxgmac3_fpe_configure(struct tc956xmac_priv *priv,
 	value |= ((num_rxq - 1) << XGMAC_RQ_SHIFT) & XGMAC_RQ;
 	writel(value, ioaddr + XGMAC_RXQ_CTRL1);
 
+	value = readl(priv->ioaddr + XGMAC_MTL_FPE_CTRL_STS);
+	value &= ~(XGMAC_MTL_FPE_PEC_MASK | XGMAC_MTL_FPE_AFSZ_MASK);
+	value |= ((enable << XGMAC_MTL_FPE_PEC_SHIFT) & XGMAC_MTL_FPE_PEC_MASK) |
+			(XGMAC_AFSZ_64BYTES & XGMAC_MTL_FPE_AFSZ_MASK);
+	writel(value, priv->ioaddr + XGMAC_MTL_FPE_CTRL_STS);
+
+	value = readl(priv->ioaddr + XGMAC_MTL_FPE_ADVANCE);
+	value &= ~(XGMAC_MTL_FPE_HOLD_ADVANCE_MASK | XGMAC_MTL_FPE_RELEASE_ADVANCE_MASK);
+	value |= ((XGMAC_RADV << XGMAC_MTL_FPE_ADVANCE_SHIFT) & XGMAC_MTL_FPE_RELEASE_ADVANCE_MASK) |
+			(XGMAC_HADV & XGMAC_MTL_FPE_HOLD_ADVANCE_MASK);
+	writel(value, priv->ioaddr + XGMAC_MTL_FPE_ADVANCE);
+
 	value = readl(ioaddr + XGMAC_FPE_CTRL_STS);
 	value |= XGMAC_EFPE;
 	writel(value, ioaddr + XGMAC_FPE_CTRL_STS);
 }
 
+#ifdef TC956X_UNSUPPORTED_UNTESTED_FEATURE
 static void dwxgmac3_set_ptp_offload(struct tc956xmac_priv *priv,
 					void __iomem *ioaddr, bool en)
 {

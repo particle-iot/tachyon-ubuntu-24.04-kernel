@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -121,7 +121,6 @@ const char *cam_cpas_axi_util_path_type_to_string(
 		return "IFE_PATH_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_axi_util_path_type_to_string);
 
 const char *cam_cpas_axi_util_trans_type_to_string(
 	uint32_t transac_type)
@@ -135,7 +134,6 @@ const char *cam_cpas_axi_util_trans_type_to_string(
 		return "TRANSAC_INVALID";
 	}
 }
-EXPORT_SYMBOL(cam_cpas_axi_util_trans_type_to_string);
 
 bool cam_cpas_is_feature_supported(uint32_t flag, uint32_t hw_map,
 	uint32_t *fuse_val)
@@ -183,7 +181,6 @@ bool cam_cpas_is_feature_supported(uint32_t flag, uint32_t hw_map,
 end:
 	return supported;
 }
-EXPORT_SYMBOL(cam_cpas_is_feature_supported);
 
 int cam_cpas_get_cpas_hw_version(uint32_t *hw_version)
 {
@@ -260,7 +257,6 @@ int cam_cpas_get_hw_info(uint32_t *camera_family,
 
 	return 0;
 }
-EXPORT_SYMBOL(cam_cpas_get_hw_info);
 
 int cam_cpas_reg_write(uint32_t client_handle,
 	enum cam_cpas_reg_base reg_base, uint32_t offset, bool mb,
@@ -295,7 +291,6 @@ int cam_cpas_reg_write(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_reg_write);
 
 int cam_cpas_reg_read(uint32_t client_handle,
 	enum cam_cpas_reg_base reg_base, uint32_t offset, bool mb,
@@ -339,7 +334,6 @@ int cam_cpas_reg_read(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_reg_read);
 
 int cam_cpas_update_axi_vote(uint32_t client_handle,
 	struct cam_axi_vote *axi_vote)
@@ -375,7 +369,6 @@ int cam_cpas_update_axi_vote(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_update_axi_vote);
 
 int cam_cpas_update_ahb_vote(uint32_t client_handle,
 	struct cam_ahb_vote *ahb_vote)
@@ -406,7 +399,6 @@ int cam_cpas_update_ahb_vote(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_update_ahb_vote);
 
 int cam_cpas_stop(uint32_t client_handle)
 {
@@ -434,7 +426,6 @@ int cam_cpas_stop(uint32_t client_handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_stop);
 
 int cam_cpas_start(uint32_t client_handle,
 	struct cam_ahb_vote *ahb_vote, struct cam_axi_vote *axi_vote)
@@ -470,7 +461,6 @@ int cam_cpas_start(uint32_t client_handle,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_start);
 
 void cam_cpas_log_votes(void)
 {
@@ -494,7 +484,6 @@ void cam_cpas_log_votes(void)
 	}
 
 }
-EXPORT_SYMBOL(cam_cpas_log_votes);
 
 int cam_cpas_select_qos_settings(uint32_t selection_mask)
 {
@@ -519,7 +508,6 @@ int cam_cpas_select_qos_settings(uint32_t selection_mask)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_select_qos_settings);
 
 int cam_cpas_notify_event(const char *identifier_string,
 	int32_t identifier_value)
@@ -550,7 +538,6 @@ int cam_cpas_notify_event(const char *identifier_string,
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_notify_event);
 
 int cam_cpas_unregister_client(uint32_t client_handle)
 {
@@ -575,7 +562,6 @@ int cam_cpas_unregister_client(uint32_t client_handle)
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_unregister_client);
 
 int cam_cpas_register_client(
 	struct cam_cpas_register_params *register_params)
@@ -601,7 +587,6 @@ int cam_cpas_register_client(
 
 	return rc;
 }
-EXPORT_SYMBOL(cam_cpas_register_client);
 
 static int cam_cpas_subdev_cmd(struct cam_cpas_intf *cpas_intf,
 	struct cam_control *cmd)

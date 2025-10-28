@@ -1715,8 +1715,7 @@ put_pool:
 freepage:
 	zswap_entry_cache_free(entry);
 reject:
-	if (objcg)
-		obj_cgroup_put(objcg);
+	obj_cgroup_put(objcg);
 	return false;
 
 shrink:

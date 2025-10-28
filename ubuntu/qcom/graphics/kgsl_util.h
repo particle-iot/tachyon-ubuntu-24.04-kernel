@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _KGSL_UTIL_H_
@@ -260,6 +260,14 @@ static inline int qcom_scm_kgsl_set_smmu_lpac_aperture(
 {
        return -EINVAL;
 }
+
+/**
+ * kgsl_get_ddrtype - Type of ddr on the current device
+ *
+ * Return: non-zero positive value on success or negative
+ * error code cast to u64 on failure.
+ */
+u64 kgsl_get_ddrtype(void);
 #endif
 
 /**
@@ -268,13 +276,5 @@ static inline int qcom_scm_kgsl_set_smmu_lpac_aperture(
  * @offset: offset to the SP block
  */
 void isdb_write(void __iomem *base, u32 offset);
-
-/**
- * get_ddrtype - Return the type of ddr on the current device
- *
- * On match, returns a non-zero positive value which matches the ddr type.
- * Otherwise returns -ENOENT or negative value on failure.
- */
-int get_ddrtype(void);
 
 #endif

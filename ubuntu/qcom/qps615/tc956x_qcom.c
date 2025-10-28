@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2021, The Linux Foundation. All rights reserved.
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/kernel.h>
 #include <linux/device.h>
@@ -8,6 +8,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/of_irq.h>
 #include <linux/delay.h>
+
+#include <linux/gpio/consumer.h>
+#include <linux/of_gpio.h>
 
 #include "tc956xmac.h"
 
@@ -18,6 +21,8 @@ struct tc956x_qcom_priv {
 	u32 phy_rst_gpio;
 	u32 phy_rst_delay_us;
 	int wol_irq;
+	bool has_always_on_supplies;
+	struct gpio_desc *phy_rst_gpio_som;
 };
 
 #define to_priv(priv) \
@@ -38,18 +43,21 @@ static int tc956x_phy_power_on(struct tc956xmac_priv *priv)
 	int ret = 0;
 	struct tc956x_qcom_priv *qpriv = to_priv(priv);
 
-	ret = regulator_enable(to_priv(priv)->phy_supply);
-	if (ret) {
-		dev_err(priv->device, "Failed to enable PHY supply with error %d\n", ret);
-		return ret;
-	}
+	if(!qpriv->has_always_on_supplies) {
+		ret = regulator_enable(to_priv(priv)->phy_supply);
+		if (ret) {
+			dev_err(priv->device, "Failed to enable PHY supply with error %d\n", ret);
+			return ret;
+		}
 
-	ret = tc956x_deassert_phy_reset(priv);
-	if (ret) {
-		dev_err(priv->device, "Failed to deassert QPS615 GPIO0%d\n", qpriv->phy_rst_gpio);
-		if (regulator_disable(qpriv->phy_supply))
-			dev_err(priv->device, "Failed to disable regulator\n");
-	}
+		ret = tc956x_deassert_phy_reset(priv);
+		if (ret) {
+			dev_err(priv->device, "Failed to deassert QPS615 GPIO0%d\n", qpriv->phy_rst_gpio);
+			if (regulator_disable(qpriv->phy_supply))
+				dev_err(priv->device, "Failed to disable regulator\n");
+		}
+	} else
+		gpiod_set_value(qpriv->phy_rst_gpio_som, 1);
 
 	dev_dbg(priv->device,"QPS615 PHY out of reset delay %d", qpriv->phy_rst_delay_us);
 	usleep_range(qpriv->phy_rst_delay_us, qpriv->phy_rst_delay_us);
@@ -62,18 +70,21 @@ static int tc956x_phy_power_off(struct tc956xmac_priv *priv)
 	int ret = 0;
 	struct tc956x_qcom_priv *qpriv = to_priv(priv);
 
-	ret = tc956x_assert_phy_reset(priv);
-	if (ret) {
-		dev_err(priv->device, "Failed to assert QPS615 GPIO%02d\n", qpriv->phy_rst_gpio);
-		return ret;
-	}
+	if(!qpriv->has_always_on_supplies) {
+		ret = tc956x_assert_phy_reset(priv);
+		if (ret) {
+			dev_err(priv->device, "Failed to assert QPS615 GPIO%02d\n", qpriv->phy_rst_gpio);
+				return ret;
+		}
 
-	ret = regulator_disable(qpriv->phy_supply);
-	if (ret) {
-		dev_err(priv->device, "Failed to disable PHY supply with error %d\n", ret);
-		if (tc956x_deassert_phy_reset(priv))
-			dev_err(priv->device, "Failed to deassert PHY\n");
-	}
+		ret = regulator_disable(qpriv->phy_supply);
+		if (ret) {
+			dev_err(priv->device, "Failed to disable PHY supply with error %d\n", ret);
+			if (tc956x_deassert_phy_reset(priv))
+				dev_err(priv->device, "Failed to deassert PHY\n");
+		}
+	} else
+		gpiod_set_value(qpriv->phy_rst_gpio_som, 0);
 
 	return ret;
 }
@@ -81,14 +92,26 @@ static int tc956x_phy_power_off(struct tc956xmac_priv *priv)
 static int tc956x_platform_of_parse(struct device *dev,
 				    struct tc956x_qcom_priv *qpriv)
 {
-	if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio-id", &qpriv->phy_rst_gpio)) {
-		dev_err(dev, "Failed to get PHY reset GPIO\n");
-		return -EINVAL;
+	qpriv->has_always_on_supplies = of_property_read_bool(dev->of_node, "qcom,always-on-supply");
+
+	if(!qpriv->has_always_on_supplies) {
+		if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio", &qpriv->phy_rst_gpio)) {
+			if (of_property_read_u32(dev->of_node,"qcom,phy-rst-gpio-id", &qpriv->phy_rst_gpio)) {
+				dev_err(dev, "Failed to get PHY reset GPIO\n");
+				return -EINVAL;
+			}
+		}
+	} else {
+		qpriv->phy_rst_gpio_som = devm_gpiod_get(dev, "phy-rst-som", GPIOD_OUT_LOW);
+		if (IS_ERR(qpriv->phy_rst_gpio_som)) {
+			dev_err(dev, "Failed to get PHY reset GPIO: %ld\n", PTR_ERR(qpriv->phy_rst_gpio_som));
+			return -EINVAL;
+		}
 	}
 
 	if (of_property_read_u32(dev->of_node, "qcom,phy-rst-delay-us", &qpriv->phy_rst_delay_us)) {
 		dev_err(dev, "Failed to get PHY reset delay time\n");
-		return -EINVAL;
+			return -EINVAL;
 	}
 
 	qpriv->wol_irq = of_irq_get_byname(dev->of_node, "wol_irq");
@@ -97,10 +120,12 @@ static int tc956x_platform_of_parse(struct device *dev,
 		return -EINVAL;
 	}
 
-	qpriv->phy_supply = devm_regulator_get(dev, "phy");
-	if (IS_ERR(qpriv->phy_supply)) {
-		dev_err(dev, "Failed to acquire supply 'phy-supply': %ld\n", PTR_ERR(qpriv->phy_supply));
-		return -EINVAL;
+	if(!qpriv->has_always_on_supplies) {
+		qpriv->phy_supply = devm_regulator_get(dev, "phy");
+		if (IS_ERR(qpriv->phy_supply)) {
+			dev_err(dev, "Failed to acquire supply 'phy-supply': %ld\n", PTR_ERR(qpriv->phy_supply));
+			return -EINVAL;
+		}
 	}
 
 	qpriv->pinctrl = devm_pinctrl_get(dev);
@@ -130,6 +155,15 @@ int tc956x_platform_probe(struct tc956xmac_priv *priv,
 	int ret = 0;
 	struct tc956x_qcom_priv *qpriv;
 
+#ifdef RBTC9563_3MA
+#ifdef RBTC9563_3DB
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_12, 0);
+#else
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_12, 1);
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_13, 0);
+#endif
+#endif
+
 	dev_dbg(priv->device, "QPS615 platform probing has started\n");
 
 	qpriv = kzalloc(sizeof(*qpriv), GFP_KERNEL);
@@ -146,11 +180,15 @@ int tc956x_platform_probe(struct tc956xmac_priv *priv,
 		goto err_parse_properties;
 	}
 
-	ret = tc956x_assert_phy_reset(priv);
-	if (ret) {
-		dev_err(priv->device, "Failed to assert the PHY reset with error %d\n", ret);
-		goto err_assert_phy_rst;
-	}
+	if(!qpriv->has_always_on_supplies) {
+
+		ret = tc956x_assert_phy_reset(priv);
+		if (ret) {
+			dev_err(priv->device, "Failed to assert the PHY reset with error %d\n", ret);
+			goto err_assert_phy_rst;
+		}
+	} else
+		gpiod_set_value(qpriv->phy_rst_gpio_som, 0);
 
 	ret = pinctrl_select_state(qpriv->pinctrl, qpriv->pinctrl_default);
 	if (ret) {
@@ -220,6 +258,15 @@ int tc956x_platform_suspend(struct tc956xmac_priv *priv)
 int tc956x_platform_resume(struct tc956xmac_priv *priv)
 {
 	int ret = 0;
+
+#ifdef RBTC9563_3MA
+#ifdef RBTC9563_3DB
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_12, 0);
+#else
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_12, 1);
+	tc956x_GPIO_OutputConfigPin(priv, GPIO_13, 0);
+#endif
+#endif
 
 	if (priv->wolopts) {
 		ret = disable_irq_wake(priv->wol_irq);

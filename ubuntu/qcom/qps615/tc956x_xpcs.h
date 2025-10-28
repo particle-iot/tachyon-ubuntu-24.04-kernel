@@ -3,7 +3,7 @@
  *
  * tc956x_xpcs.h
  *
- * Copyright (C) 2022 Toshiba Electronic Devices & Storage Corporation
+ * Copyright (C) 2025 Toshiba Electronic Devices & Storage Corporation
  *
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,6 +37,9 @@
  *  VERSION     : 01-00-19
  *  25 Feb 2022 : 1. Helper function added for XPCS Rx LPI enable/disable
  *  VERSION     : 01-00-44
+ *  31 May 2024 : 1. Lower speed(1G, 100M, 10M) support added for USXGMII interface
+ *                2. Changed related to module param USXGMII_10G, USXGMII_5G, USXGMII_2.5G support
+ *  VERSION     : 05-00
  */
 
 #ifndef __TC956X_XPCS_H__
@@ -111,10 +114,12 @@
 #define XGMAC_SR_MII_CTRL_SPEED_10G		0x00002040/* SR_MII_CTRL SPEED: 10G */
 #define XGMAC_SR_MII_CTRL_SPEED_5G		0x00002020/* SR_MII_CTRL SPEED: 5G */
 #define XGMAC_SR_MII_CTRL_SPEED_2_5G	0x00000020/* SR_MII_CTRL SPEED: 5G */
+#define XGMAC_SR_MII_CTRL_SPEED_1G		0x00000040/* SR_MII_CTRL SPEED: 1G */
+#define XGMAC_SR_MII_CTRL_SPEED_100M	0x00002000/* SR_MII_CTRL SPEED: 100M */
+#define XGMAC_SR_MII_CTRL_SPEED_10M		0x00000000/* SR_MII_CTRL SPEED: 10M */
+
 #define XGMAC_USRA_RST					0x400/* USRA_RST */
 #define XGMAC_EEE_LRX_EN			BIT(1)		/* LPI Rx Enable */
-
-
 
 #define XPCS_REG_BASE_ADDR				10
 #define XPCS_REG_OFFSET					0x0003FF
@@ -122,6 +127,9 @@
 #define XPCS_SS_SGMII_1G				0x40
 #define XPCS_SS_SGMII_100M				0x2000
 #define XPCS_SS_SGMII_10M				0x0
+
+#define XPCS_USX_5G_MODE				(0x1 << 10)
+#define XPCS_USX_2_5G_MODE				(0x2 << 10)
 
 u32 tc956x_xpcs_read(void __iomem *xpcsaddr, u32 pcs_reg_num);
 u32 tc956x_xpcs_write(void __iomem *xpcsaddr, u32 pcs_reg_num, u32 value);

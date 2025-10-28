@@ -13,6 +13,7 @@
 #include <linux/soc/qcom/pdr.h>
 #include <linux/soc/qcom/pmic_glink.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 
 #define PMIC_GLINK_SEND_TIMEOUT (5 * HZ)
 

@@ -17,6 +17,7 @@ use crate::str::RawFormatter;
 use crate::bindings;
 
 // Called from `vsprintf` with format specifier `%pA`.
+#[allow(clippy::missing_safety_doc)]
 #[no_mangle]
 unsafe extern "C" fn rust_fmt_argument(
     buf: *mut c_char,
