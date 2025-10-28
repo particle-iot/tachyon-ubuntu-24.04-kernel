@@ -537,6 +537,9 @@ CONFIG_DRM_MESON_DW_MIPI_DSI                    policy<{'arm64': '-'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': '-'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': '-'}>
 CONFIG_DRM_PANEL_NOVATEK_NT36672E               policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_VISIONOX_R66451                policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN          policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN_V2       policy<{'arm64': 'm'}>
 CONFIG_DRM_RADEON                               policy<{'arm64': 'n'}>
 CONFIG_DRM_RADEON_USERPTR                       policy<{'arm64': '-'}>
 CONFIG_DRM_RCAR_CMM                             policy<{'arm64': '-'}>
@@ -1415,10 +1418,12 @@ CONFIG_REGULATOR_QCOM_RPMH                      policy<{'arm64': 'y'}>
 CONFIG_REGULATOR_QCOM_SMD_RPM                   policy<{'arm64': 'y'}>
 CONFIG_REGULATOR_QCOM_SPMI                      policy<{'arm64': 'y'}>
 CONFIG_REGULATOR_QPNP_LCDB                      policy<{'arm64': 'y'}>
+CONFIG_REGULATOR_RASPBERRYPI_TOUCHSCREEN_V2     policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_SC2731                         policy<{'arm64': '-'}>
 CONFIG_REGULATOR_STM32_BOOSTER                  policy<{'arm64': '-'}>
 CONFIG_REGULATOR_STM32_PWR                      policy<{'arm64': '-'}>
 CONFIG_REGULATOR_STM32_VREFBUF                  policy<{'arm64': '-'}>
+CONFIG_REGULATOR_WAVESHARE_TOUCHSCREEN          policy<{'arm64': 'm'}>
 CONFIG_RENESAS_DMA                              policy<{'arm64': '-'}>
 CONFIG_RENESAS_ETHER_SWITCH                     policy<{'arm64': '-'}>
 CONFIG_RENESAS_GEN4_PTP                         policy<{'arm64': '-'}>
