@@ -1,3 +1,36 @@
+linux-qcom (6.8.0-1056.57+particle1) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle1
+    - Sync with upstream canonical/master-next @ Ubuntu-qcom-6.8.0-1056.5
+      (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/3)
+    - DSI-related pull from raspberrypi/linux
+      (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/4)
+
+  * Particle: arm64: qcom_defconfig: enable Raspberry and Waveshare display controllers/panels
+  * drivers/gpu/drm/panel : Update display driver
+  * drivers/gpu/drm/panel : Add the device for the Waveshare DSI-TOUCH series panels.
+  * drm: panel: Added waveshare 7.0inch h dsi screen support
+  * drm: panel: Added waveshare 13.3inch panel
+  * drm/panel: Add panel driver for Waveshare DSI touchscreens
+  * drivers/regulator : Adjust power enable sequence
+  * drivers/regulator : Add a regulator to Waveshare DSI-TOUCH series panels
+  * drm/panel-simple: Add a timing for the Raspberry Pi 7" panel
+  * drivers: media: pci: Add wrapper after removal of follow_pfn
+  * regulator: rpi_panel_v2: Add delay on I2C reads
+  * regulator: rpi_panel_v2: Add remove and shutdown hooks
+  * regulator: Add a regulator for the new LCD panels
+  * drm/panel: ilitek-ili9881c: Restore lanes configuration for nwe080 panel
+  * fixup! ILI9881C: Update timings for CFAF7201280A0-050TX
+  * ILI9881C: Update timings for CFAF7201280A0-050TX
+  * Update panel-ilitek-ili9881c.c
+  * drm: panel: ili9881: Add option to reconfigure setup commands
+  * drm: panel: ili9881: Correct symmetry on enable/disable return codes
+  * Extending ili9881c driver support for nwe080 panel
+  * drm/panel: ilitek-ili9881c: Add Startek KD050HDFIA020-C020A support
+  * Sync with upstream canonical/master-next @ Ubuntu-qcom-6.8.0-1056.5
+
+ -- Andrey Tolstoy <andrey@particle.io>  Wed, 29 Oct 2025 15:41:29 +0700
+
 linux-qcom (6.8.0-1056.57) noble; urgency=medium
 
   * noble/linux-qcom: 6.8.0-1056.57 -proposed tracker (LP: #2129199)
