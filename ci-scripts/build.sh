@@ -24,7 +24,7 @@ export MAKEFLAGS="-j$(nproc)"
 
 debian/rules clean
 debian/rules updateconfigs
-debian/rules binary-qcom
+debian/rules binary-particle
 
 mkdir $DIR/debs
 cp ../*.deb $DIR/debs/
