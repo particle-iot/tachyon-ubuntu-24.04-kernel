@@ -84,7 +84,7 @@ Description: Linux kernel version specific tools for version PKGVER-ABINUM
  =HUMAN=.
  You probably want to install linux-tools-PKGVER-ABINUM-<flavour>.
 
-Package: linux-libc-dev-qcom
+Package: linux-libc-dev-particle
 Architecture: all
 Depends: ${misc:Depends}
 Description: Linux Kernel Headers for development

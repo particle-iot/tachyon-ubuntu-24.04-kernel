@@ -1,3 +1,11 @@
+linux-particle (6.8.0-1056.57+particle2) noble; urgency=medium
+  * Particle: 6.8.0-1056.57+particle2
+
+  * input: goodix: Add option to poll instead of relying on IRQ line  
+  * input: goodix: Include I2C details in names for the devices
+
+ -- Andrey Tolstoy <andrey@particle.io>  Fri, 7 Nov 2025 17:36:03 +0800
+
 linux-qcom (6.8.0-1056.57+particle1) noble; urgency=medium
 
   * Particle: 6.8.0-1056.57+particle1
