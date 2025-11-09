@@ -2578,8 +2578,10 @@ static void __audit_log_end(struct sk_buff *skb)
 		/* queue the netlink packet and poke the kauditd thread */
 		skb_queue_tail(&audit_queue, skb);
 		wake_up_interruptible(&kauditd_wait);
-	} else
+	} else {
 		audit_log_lost("rate limit exceeded");
+		kfree_skb(skb);
+	}
 }
 
 /**
