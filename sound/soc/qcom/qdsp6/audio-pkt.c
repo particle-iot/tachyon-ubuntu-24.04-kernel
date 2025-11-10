@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
 
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -58,8 +59,6 @@ do {										\
  * @queue_lock:	synchronization of @queue operations
  * @queue:	incoming message queue
  * @readq:	wait object for incoming queue
- * @dev_name:	/dev/@dev_name for audio_pkt device
- * @ch_name:	audio channel to match to
  * @audio_pkt_major: Major number of audio pkt driver
  * @audio_pkt_class: audio pkt class pointer
  */
@@ -73,9 +72,6 @@ struct audio_pkt_device {
 	spinlock_t queue_lock;
 	struct sk_buff_head queue;
 	wait_queue_head_t readq;
-
-	char dev_name[20];
-	char ch_name[20];
 
 	dev_t audio_pkt_major;
 	struct class *audio_pkt_class;
@@ -127,8 +123,6 @@ int audio_pkt_open(struct inode *inode, struct file *file)
 {
 	struct audio_pkt_device *audpkt_dev = cdev_to_audpkt_dev(inode->i_cdev);
 	struct device *dev = audpkt_dev->dev;
-
-	AUDIO_PKT_ERR("for %s\n", audpkt_dev->ch_name);
 
 	get_device(dev);
 	file->private_data = audpkt_dev;
@@ -446,9 +440,7 @@ static int audio_pkt_probe(gpr_device_t *adev)
 			      PTR_ERR(audpkt_dev->dev));
 		goto err_device;
 	}
-	strscpy(audpkt_dev->dev_name, CHANNEL_NAME, 20);
-	strscpy(audpkt_dev->ch_name, CHANNEL_NAME, 20);
-	dev_set_name(audpkt_dev->dev, audpkt_dev->dev_name);
+	dev_set_name(audpkt_dev->dev, AUDPKT_DRIVER_NAME);
 
 	mutex_init(&audpkt_dev->lock);
 
@@ -466,7 +458,7 @@ static int audio_pkt_probe(gpr_device_t *adev)
 		       MINOR_NUMBER_COUNT);
 	if (ret) {
 		AUDIO_PKT_ERR("cdev_add failed for %s ret:%d\n",
-			      audpkt_dev->dev_name, ret);
+			      AUDPKT_DRIVER_NAME, ret);
 		goto free_dev;
 	}
 
