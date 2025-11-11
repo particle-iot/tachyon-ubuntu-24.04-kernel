@@ -93,44 +93,70 @@ Description: Linux Kernel Headers for development
  libraries. They are NOT meant to be used to build third-party modules for
  your kernel. Use SRCPKGNAME-headers-* packages for that.
 
-Package: linux-image-particle
-Build-Profiles: <!stage1>
+Package: linux-headers-particle-6.8
 Architecture: arm64
 Section: kernel
-Priority: optional
-Depends: ${misc:Depends},
- linux-image-PKGVER-ABINUM-particle | linux-image-unsigned-PKGVER-ABINUM-particle,
- linux-modules-PKGVER-ABINUM-particle
-Recommends: initramfs-tools | linux-initramfs-tool, linux-firmware, grub-efi-arm64 | grub-efi-arm64-signed | flash-kernel
-Description: Linux kernel image (meta package) for particle (arm64)
- This package always depends on the latest Linux kernel image and modules for particle.
+Depends: ${misc:Depends}, linux-headers-PKGVER-ABINUM-particle
+Description: Particle Linux kernel headers
+ This package will always depend on the latest Particle Linux
+ kernel headers available for the 6.8 series.
+
+Package: linux-image-particle-6.8
+Architecture: arm64
+Section: kernel
+Provides: ${dkms:zfs-modules} ${dkms:wireguard-linux-compat-modules}
+Depends: ${misc:Depends}, linux-image-PKGVER-ABINUM-particle | linux-image-unsigned-PKGVER-ABINUM-particle, linux-modules-PKGVER-ABINUM-particle, linux-firmware
+Description: Particle Linux kernel image
+ This package will always depend on the latest Particle Linux
+ kernel image available for the 6.8 series.
+
+Package: linux-tools-particle-6.8
+Architecture: arm64
+Section: kernel
+Provides: linux-tools
+Depends: ${misc:Depends}, linux-tools-PKGVER-ABINUM-particle
+Description: Particle Linux kernel tools
+ This package will always depend on the latest Particle Linux
+ kernel tools available for the 6.8 series.
+
+Package: linux-particle-6.8
+Architecture: arm64
+Section: kernel
+Depends: ${misc:Depends}, linux-image-particle-6.8 (= ${binary:Version}), linux-headers-particle-6.8 (= ${binary:Version})
+Description: Complete Particle Linux kernel and headers
+ This package will always depend on the latest complete Particle Linux
+ kernel and headers available for the 6.8 series.
 
 Package: linux-headers-particle
-Build-Profiles: <!stage1>
-Architecture: arm64
-Section: devel
-Priority: optional
-Depends: ${misc:Depends}, linux-headers-PKGVER-ABINUM-particle
-Description: Linux kernel headers (meta package) for particle (arm64)
- This package always depends on the latest Linux kernel headers for particle.
-
-# Optional: keep only if SRCPKGNAME-tools-PKGVER-ABINUM is built
-Package: linux-tools-particle
-Build-Profiles: <!stage1>
-Architecture: arm64
-Section: devel
-Priority: optional
-Provides: linux-tools
-Depends: ${misc:Depends}, SRCPKGNAME-tools-PKGVER-ABINUM
-Description: Linux kernel tools (meta package) for particle (arm64)
- This package always depends on the latest version-specific kernel tools for particle.
-
-Package: linux-particle
-Build-Profiles: <!stage1>
 Architecture: arm64
 Section: kernel
-Priority: optional
+Depends: ${misc:Depends}, linux-headers-PKGVER-ABINUM-particle
+Description: Particle Linux kernel headers
+ This package will always depend on the latest Particle Linux
+ kernel headers available.
+
+Package: linux-image-particle
+Architecture: arm64
+Section: kernel
+Provides: ${dkms:zfs-modules} ${dkms:wireguard-linux-compat-modules}
+Depends: ${misc:Depends}, linux-image-PKGVER-ABINUM-particle | linux-image-unsigned-PKGVER-ABINUM-particle, linux-modules-PKGVER-ABINUM-particle, linux-firmware
+Description: Particle Linux kernel image
+ This package will always depend on the latest Particle Linux
+ kernel image available.
+
+Package: linux-tools-particle
+Architecture: arm64
+Section: kernel
+Provides: linux-tools
+Depends: ${misc:Depends}, linux-tools-PKGVER-ABINUM-particle
+Description: Particle Linux kernel tools
+ This package will always depend on the latest Particle Linux
+ kernel tools available.
+
+Package: linux-particle
+Architecture: arm64
+Section: kernel
 Depends: ${misc:Depends}, linux-image-particle (= ${binary:Version}), linux-headers-particle (= ${binary:Version})
-Recommends: linux-tools-particle (= ${binary:Version})
-Description: Complete Linux kernel and headers (meta package) for particle (arm64)
- This meta installs the latest particle kernel image, modules, headers, and tools.
+Description: Complete Particle Linux kernel and headers
+ This package will always depend on the latest complete Particle Linux
+ kernel and headers available.

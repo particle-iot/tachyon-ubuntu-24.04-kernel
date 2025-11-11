@@ -572,6 +572,12 @@ linux-qcom (6.8.0-1057.58) noble; urgency=medium
     - net: appletalk: Fix use-after-free in AARP proxy probe
 
  -- Hui Wang <hui.wang@canonical.com>  Tue, 25 Nov 2025 20:25:40 +0800
+linux-particle (6.8.0-1056.57+particle4) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle4
+
+ -- avtolstoy <andrey@particle.io>  Tue, 11 Nov 2025 20:09:37 +0700
+
 linux-particle (6.8.0-1056.57+particle3) noble; urgency=medium
 
   * Particle: 6.8.0-1056.57+particle3
