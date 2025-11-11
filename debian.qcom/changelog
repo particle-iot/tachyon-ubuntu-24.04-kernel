@@ -1,3 +1,11 @@
+linux-particle (6.8.0-1056.57+particle3) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle3
+
+  * Particle: add -particle meta packages to be built as part of the kernel
+
+ -- avtolstoy <andrey@particle.io>  Tue, 11 Nov 2025 18:55:37 +0700
+
 linux-particle (6.8.0-1056.57+particle2) noble; urgency=medium
   * Particle: 6.8.0-1056.57+particle2
 
