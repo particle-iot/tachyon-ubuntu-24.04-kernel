@@ -1702,24 +1702,23 @@ void hrtimer_setup(struct hrtimer *timer, enum hrtimer_restart (*function)(struc
 }
 EXPORT_SYMBOL_GPL(hrtimer_setup);
 
-/**
- * hrtimer_init_on_stack - initialize a timer in stack memory
- * @timer:	The timer to be initialized
- * @clock_id:	The clock to be used
- * @mode:       The timer mode
- *
- * Similar to hrtimer_init(), except that this one must be used if struct hrtimer is in stack
- * memory.
- */
-void hrtimer_init_on_stack(struct hrtimer *timer, clockid_t clock_id,
-			   enum hrtimer_mode mode)
-{
-	debug_init_on_stack(timer, clock_id, mode);
-	__hrtimer_init(timer, clock_id, mode);
-}
-EXPORT_SYMBOL_GPL(hrtimer_init_on_stack);
+// /**
+//  * hrtimer_init_on_stack - initialize a timer in stack memory
+//  * @timer:	The timer to be initialized
+//  * @clock_id:	The clock to be used
+//  * @mode:       The timer mode
+//  *
+//  * Similar to hrtimer_init(), except that this one must be used if struct hrtimer is in stack
+//  * memory.
+//  */
+// void hrtimer_init_on_stack(struct hrtimer *timer, clockid_t clock_id,
+// 			   enum hrtimer_mode mode)
+// {
+// 	debug_init_on_stack(timer, clock_id, mode);
+// 	__hrtimer_init(timer, clock_id, mode);
+// }
+// EXPORT_SYMBOL_GPL(hrtimer_init_on_stack);
 
->>>>>>> 908a1d775422 (hrtimers: Introduce hrtimer_setup() to replace hrtimer_init())
 /*
  * A timer is active, when it is enqueued into the rbtree or the
  * callback function is running or it's in the state of being migrated
