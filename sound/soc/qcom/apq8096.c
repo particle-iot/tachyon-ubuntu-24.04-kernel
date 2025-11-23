@@ -12,6 +12,7 @@
 #define SLIM_MAX_TX_PORTS 16
 #define SLIM_MAX_RX_PORTS 16
 #define WCD9335_DEFAULT_MCLK_RATE	9600000
+#define ES8328_MCLK_RATE		12288000
 
 static int apq8096_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				      struct snd_pcm_hw_params *params)
@@ -64,12 +65,31 @@ static const struct snd_soc_ops apq8096_ops = {
 	.hw_params = msm_snd_hw_params,
 };
 
+static const struct snd_soc_dapm_widget apq8096_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphones", NULL),
+	SND_SOC_DAPM_SPK("Speakers", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+};
+
 static int apq8096_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
+	struct snd_soc_component *component = codec_dai->component;
+	const char *codec_name = component->name;
+	int ret;
+
+	/* Check if this is an ES8328/ES8388 I2S codec */
+	if (strstr(codec_name, "es8328") || strstr(codec_name, "es8388")) {
+		/* ES8328 requires 12.288MHz MCLK for 48kHz audio */
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, ES8328_MCLK_RATE,
+					     SNDRV_PCM_STREAM_PLAYBACK);
+		if (ret < 0)
+			pr_err("%s: failed to set ES8328 sysclk: %d\n", __func__, ret);
+		return ret;
+	}
 
 	/*
-	 * Codec SLIMBUS configuration
+	 * WCD9335 SLIMBUS codec configuration
 	 * RX1, RX2, RX3, RX4, RX5, RX6, RX7, RX8, RX9, RX10, RX11, RX12, RX13
 	 * TX1, TX2, TX3, TX4, TX5, TX6, TX7, TX8, TX9, TX10, TX11, TX12, TX13
 	 * TX14, TX15, TX16
@@ -116,6 +136,8 @@ static int apq8096_platform_probe(struct platform_device *pdev)
 	card->driver_name = "apq8096";
 	card->dev = dev;
 	card->owner = THIS_MODULE;
+	card->dapm_widgets = apq8096_dapm_widgets;
+	card->num_dapm_widgets = ARRAY_SIZE(apq8096_dapm_widgets);
 	dev_set_drvdata(dev, card);
 	ret = qcom_snd_parse_of(card);
 	if (ret)

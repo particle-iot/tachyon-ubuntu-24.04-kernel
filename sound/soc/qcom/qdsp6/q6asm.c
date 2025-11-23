@@ -273,6 +273,7 @@ struct audio_client {
 	wait_queue_head_t cmd_wait;
 	struct aprv2_ibasic_rsp_result_t result;
 	int perf_mode;
+	int stream_id;
 	struct q6asm *q6asm;
 	struct device *dev;
 };
@@ -675,7 +676,6 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
 		if (ac->io_mode & ASM_SYNC_IO_MODE) {
 			phys_addr_t phys;
 			unsigned long flags;
-			int token = hdr->token & ASM_WRITE_TOKEN_MASK;
 
 			spin_lock_irqsave(&ac->lock, flags);
 
@@ -687,12 +687,12 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
 				goto done;
 			}
 
-			phys = port->buf[token].phys;
+			phys = port->buf[hdr->token].phys;
 
 			if (lower_32_bits(phys) != result->opcode ||
 			    upper_32_bits(phys) != result->status) {
 				dev_err(ac->dev, "Expected addr %pa\n",
-					&port->buf[token].phys);
+					&port->buf[hdr->token].phys);
 				spin_unlock_irqrestore(&ac->lock, flags);
 				ret = -EINVAL;
 				goto done;
@@ -867,6 +867,7 @@ struct audio_client *q6asm_audio_client_alloc(struct device *dev, q6asm_cb cb,
 	ac->priv = priv;
 	ac->io_mode = ASM_SYNC_IO_MODE;
 	ac->perf_mode = perf_mode;
+	ac->stream_id = 1;  /* Default stream ID for 5.4 API compatibility */
 	ac->adev = a->adev;
 	kref_init(&ac->refcount);
 
@@ -924,9 +925,8 @@ err:
  *
  * Return: Will be an negative value on error or zero on success
  */
-int q6asm_open_write(struct audio_client *ac, uint32_t stream_id,
-		     uint32_t format, u32 codec_profile,
-		     uint16_t bits_per_sample, bool is_gapless)
+int q6asm_open_write(struct audio_client *ac, uint32_t format,
+		     uint16_t bits_per_sample)
 {
 	struct asm_stream_cmd_open_write_v3 *open;
 	struct apr_pkt *pkt;
@@ -941,13 +941,11 @@ int q6asm_open_write(struct audio_client *ac, uint32_t stream_id,
 
 	pkt = p;
 	open = p + APR_HDR_SIZE;
-	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, true, stream_id);
+	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, true, ac->stream_id);
 
 	pkt->hdr.opcode = ASM_STREAM_CMD_OPEN_WRITE_V3;
 	open->mode_flags = 0x00;
 	open->mode_flags |= ASM_LEGACY_STREAM_SESSION;
-	if (is_gapless)
-		open->mode_flags |= BIT(ASM_SHIFT_GAPLESS_MODE_FLAG);
 
 	/* source endpoint : matrix */
 	open->sink_endpointype = ASM_END_POINT_DEVICE_MATRIX;
@@ -960,33 +958,6 @@ int q6asm_open_write(struct audio_client *ac, uint32_t stream_id,
 		break;
 	case FORMAT_LINEAR_PCM:
 		open->dec_fmt_id = ASM_MEDIA_FMT_MULTI_CHANNEL_PCM_V2;
-		break;
-	case SND_AUDIOCODEC_FLAC:
-		open->dec_fmt_id = ASM_MEDIA_FMT_FLAC;
-		break;
-	case SND_AUDIOCODEC_WMA:
-		switch (codec_profile) {
-		case SND_AUDIOPROFILE_WMA9:
-			open->dec_fmt_id = ASM_MEDIA_FMT_WMA_V9;
-			break;
-		case SND_AUDIOPROFILE_WMA10:
-		case SND_AUDIOPROFILE_WMA9_PRO:
-		case SND_AUDIOPROFILE_WMA9_LOSSLESS:
-		case SND_AUDIOPROFILE_WMA10_LOSSLESS:
-			open->dec_fmt_id = ASM_MEDIA_FMT_WMA_V10;
-			break;
-		default:
-			dev_err(ac->dev, "Invalid codec profile 0x%x\n",
-				codec_profile);
-			rc = -EINVAL;
-			goto err;
-		}
-		break;
-	case SND_AUDIOCODEC_ALAC:
-		open->dec_fmt_id = ASM_MEDIA_FMT_ALAC;
-		break;
-	case SND_AUDIOCODEC_APE:
-		open->dec_fmt_id = ASM_MEDIA_FMT_APE;
 		break;
 	default:
 		dev_err(ac->dev, "Invalid format 0x%x\n", format);
@@ -1006,9 +977,8 @@ err:
 }
 EXPORT_SYMBOL_GPL(q6asm_open_write);
 
-static int __q6asm_run(struct audio_client *ac, uint32_t stream_id,
-		       uint32_t flags, uint32_t msw_ts, uint32_t lsw_ts,
-		       bool wait)
+static int __q6asm_run(struct audio_client *ac, uint32_t flags,
+		       uint32_t msw_ts, uint32_t lsw_ts, bool wait)
 {
 	struct asm_session_cmd_run_v2 *run;
 	struct apr_pkt *pkt;
@@ -1023,7 +993,7 @@ static int __q6asm_run(struct audio_client *ac, uint32_t stream_id,
 	pkt = p;
 	run = p + APR_HDR_SIZE;
 
-	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, true, stream_id);
+	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, true, ac->stream_id);
 
 	pkt->hdr.opcode = ASM_SESSION_CMD_RUN_V2;
 	run->flags = flags;
@@ -1052,10 +1022,10 @@ static int __q6asm_run(struct audio_client *ac, uint32_t stream_id,
  *
  * Return: Will be an negative value on error or zero on success
  */
-int q6asm_run(struct audio_client *ac, uint32_t stream_id, uint32_t flags,
+int q6asm_run(struct audio_client *ac, uint32_t flags,
 	      uint32_t msw_ts, uint32_t lsw_ts)
 {
-	return __q6asm_run(ac, stream_id, flags, msw_ts, lsw_ts, true);
+	return __q6asm_run(ac, flags, msw_ts, lsw_ts, true);
 }
 EXPORT_SYMBOL_GPL(q6asm_run);
 
@@ -1070,10 +1040,10 @@ EXPORT_SYMBOL_GPL(q6asm_run);
  *
  * Return: Will be an negative value on error or zero on success
  */
-int q6asm_run_nowait(struct audio_client *ac, uint32_t stream_id,
-		     uint32_t flags, uint32_t msw_ts, uint32_t lsw_ts)
+int q6asm_run_nowait(struct audio_client *ac, uint32_t flags,
+		     uint32_t msw_ts, uint32_t lsw_ts)
 {
-	return __q6asm_run(ac, stream_id, flags, msw_ts, lsw_ts, false);
+	return __q6asm_run(ac, flags, msw_ts, lsw_ts, false);
 }
 EXPORT_SYMBOL_GPL(q6asm_run_nowait);
 
@@ -1570,7 +1540,7 @@ EXPORT_SYMBOL_GPL(q6asm_open_read);
  *
  * Return: Will be an negative value on error or zero on success
  */
-int q6asm_write_async(struct audio_client *ac, uint32_t stream_id, uint32_t len,
+int q6asm_write_async(struct audio_client *ac, uint32_t len,
 		      uint32_t msw_ts, uint32_t lsw_ts, uint32_t wflags)
 {
 	struct asm_data_cmd_write_v2 *write;
@@ -1592,10 +1562,10 @@ int q6asm_write_async(struct audio_client *ac, uint32_t stream_id, uint32_t len,
 
 	spin_lock_irqsave(&ac->lock, flags);
 	port = &ac->port[SNDRV_PCM_STREAM_PLAYBACK];
-	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, false, stream_id);
+	q6asm_add_hdr(ac, &pkt->hdr, pkt_size, false, ac->stream_id);
 
 	ab = &port->buf[port->dsp_buf];
-	pkt->hdr.token = port->dsp_buf | (len << ASM_WRITE_TOKEN_LEN_SHIFT);
+	pkt->hdr.token = port->dsp_buf;
 	pkt->hdr.opcode = ASM_DATA_CMD_WRITE_V2;
 	write->buf_addr_lsw = lower_32_bits(ab->phys);
 	write->buf_addr_msw = upper_32_bits(ab->phys);
@@ -1606,7 +1576,10 @@ int q6asm_write_async(struct audio_client *ac, uint32_t stream_id, uint32_t len,
 	write->mem_map_handle =
 	    ac->port[SNDRV_PCM_STREAM_PLAYBACK].mem_map_handle;
 
-	write->flags = wflags;
+	if (wflags == NO_TIMESTAMP)
+		write->flags = (wflags & 0x800000FF);
+	else
+		write->flags = (0x80000000 | wflags);
 
 	port->dsp_buf++;
 

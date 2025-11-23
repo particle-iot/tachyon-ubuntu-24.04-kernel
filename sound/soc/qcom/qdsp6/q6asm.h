@@ -19,9 +19,9 @@
 #define ASM_CLIENT_EVENT_CMD_RUN_DONE		0x1008
 #define ASM_CLIENT_EVENT_DATA_WRITE_DONE	0x1009
 #define ASM_CLIENT_EVENT_DATA_READ_DONE		0x100a
-#define ASM_WRITE_TOKEN_MASK			GENMASK(15, 0)
-#define ASM_WRITE_TOKEN_LEN_MASK		GENMASK(31, 16)
-#define ASM_WRITE_TOKEN_LEN_SHIFT		16
+
+/* Flag value for NO_TIMESTAMP (from q6apm.h) */
+#define NO_TIMESTAMP				0xFF00
 
 enum {
 	LEGACY_PCM_MODE = 0,
@@ -95,11 +95,10 @@ struct audio_client *q6asm_audio_client_alloc(struct device *dev,
 					      q6asm_cb cb, void *priv,
 					      int session_id, int perf_mode);
 void q6asm_audio_client_free(struct audio_client *ac);
-int q6asm_write_async(struct audio_client *ac, uint32_t stream_id, uint32_t len,
+int q6asm_write_async(struct audio_client *ac, uint32_t len,
 		      uint32_t msw_ts, uint32_t lsw_ts, uint32_t wflags);
-int q6asm_open_write(struct audio_client *ac, uint32_t stream_id,
-		     uint32_t format, u32 codec_profile,
-		     uint16_t bits_per_sample, bool is_gapless);
+int q6asm_open_write(struct audio_client *ac, uint32_t format,
+		     uint16_t bits_per_sample);
 
 int q6asm_open_read(struct audio_client *ac, uint32_t stream_id,
 		    uint32_t format, uint16_t bits_per_sample);
@@ -130,10 +129,10 @@ int q6asm_stream_media_format_block_alac(struct audio_client *ac,
 int q6asm_stream_media_format_block_ape(struct audio_client *ac,
 					uint32_t stream_id,
 					struct q6asm_ape_cfg *cfg);
-int q6asm_run(struct audio_client *ac, uint32_t stream_id, uint32_t flags,
+int q6asm_run(struct audio_client *ac, uint32_t flags,
 	      uint32_t msw_ts, uint32_t lsw_ts);
-int q6asm_run_nowait(struct audio_client *ac, uint32_t stream_id,
-		     uint32_t flags, uint32_t msw_ts, uint32_t lsw_ts);
+int q6asm_run_nowait(struct audio_client *ac, uint32_t flags,
+		     uint32_t msw_ts, uint32_t lsw_ts);
 int q6asm_stream_remove_initial_silence(struct audio_client *ac,
 					uint32_t stream_id,
 					uint32_t initial_samples);

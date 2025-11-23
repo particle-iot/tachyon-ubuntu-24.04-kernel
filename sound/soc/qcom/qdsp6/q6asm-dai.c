@@ -188,7 +188,7 @@ static void event_handler(uint32_t opcode, uint32_t token,
 	switch (opcode) {
 	case ASM_CLIENT_EVENT_CMD_RUN_DONE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 				   prtd->pcm_count, 0, 0, 0);
 		break;
 	case ASM_CLIENT_EVENT_CMD_EOS_DONE:
@@ -198,7 +198,7 @@ static void event_handler(uint32_t opcode, uint32_t token,
 		prtd->pcm_irq_pos += prtd->pcm_count;
 		snd_pcm_period_elapsed(substream);
 		if (prtd->state == Q6ASM_STREAM_RUNNING)
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					   prtd->pcm_count, 0, 0, 0);
 
 		break;
@@ -259,9 +259,9 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		ret = q6asm_open_write(prtd->audio_client, prtd->stream_id,
+		ret = q6asm_open_write(prtd->audio_client,
 				       FORMAT_LINEAR_PCM,
-				       0, prtd->bits_per_sample, false);
+				       prtd->bits_per_sample);
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		ret = q6asm_open_read(prtd->audio_client, prtd->stream_id,
 				      FORMAT_LINEAR_PCM,
@@ -326,7 +326,7 @@ static int q6asm_dai_trigger(struct snd_soc_component *component,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = q6asm_run_nowait(prtd->audio_client, prtd->stream_id,
+		ret = q6asm_run_nowait(prtd->audio_client,
 				       0, 0, 0);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -517,7 +517,7 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 						    prtd->stream_id,
 						    prtd->initial_samples_drop);
 
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					  prtd->pcm_count, 0, 0, 0);
 			prtd->bytes_sent += prtd->pcm_count;
 		}
@@ -555,7 +555,8 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 	case ASM_CLIENT_EVENT_DATA_WRITE_DONE:
 		spin_lock_irqsave(&prtd->lock, flags);
 
-		bytes_written = token >> ASM_WRITE_TOKEN_LEN_SHIFT;
+		/* In 5.4 API, token is just buffer index, not encoded with length */
+		bytes_written = prtd->pcm_count;
 		prtd->copied_total += bytes_written;
 		snd_compr_fragment_elapsed(substream);
 
@@ -581,7 +582,7 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 						     prtd->trailing_samples_drop);
 			}
 
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					  bytes_to_write, 0, 0, wflags);
 
 			prtd->bytes_sent += bytes_to_write;
@@ -897,9 +898,8 @@ static int q6asm_dai_compr_set_params(struct snd_soc_component *component,
 	prtd->bits_per_sample = 16;
 
 	if (dir == SND_COMPRESS_PLAYBACK) {
-		ret = q6asm_open_write(prtd->audio_client, prtd->stream_id, params->codec.id,
-				params->codec.profile, prtd->bits_per_sample,
-				true);
+		ret = q6asm_open_write(prtd->audio_client, params->codec.id,
+				prtd->bits_per_sample);
 
 		if (ret < 0) {
 			dev_err(dev, "q6asm_open_write failed\n");
@@ -955,11 +955,8 @@ static int q6asm_dai_compr_set_metadata(struct snd_soc_component *component,
 		prtd->initial_samples_drop = metadata->value[0];
 		if (prtd->next_track_stream_id) {
 			ret = q6asm_open_write(prtd->audio_client,
-					       prtd->next_track_stream_id,
 					       prtd->codec.id,
-					       prtd->codec.profile,
-					       prtd->bits_per_sample,
-				       true);
+					       prtd->bits_per_sample);
 			if (ret < 0) {
 				dev_err(component->dev, "q6asm_open_write failed\n");
 				return ret;
@@ -999,7 +996,7 @@ static int q6asm_dai_compr_trigger(struct snd_soc_component *component,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = q6asm_run_nowait(prtd->audio_client, prtd->stream_id,
+		ret = q6asm_run_nowait(prtd->audio_client,
 				       0, 0, 0);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -1106,7 +1103,7 @@ static int q6asm_compr_copy(struct snd_soc_component *component,
 		if (avail < prtd->pcm_count)
 			bytes_to_write = avail;
 
-		q6asm_write_async(prtd->audio_client, prtd->stream_id,
+		q6asm_write_async(prtd->audio_client,
 				  bytes_to_write, 0, 0, wflags);
 		prtd->bytes_sent += bytes_to_write;
 	}
