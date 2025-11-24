@@ -248,16 +248,26 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 					 substream->stream);
 	}
 
+	pr_emerg("[AUDIO_DEBUG] About to map memory: phys=0x%llx size=%zu periods=%d\n",
+		prtd->phys, prtd->pcm_size / prtd->periods, prtd->periods);
+	msleep(10); /* Ensure log is flushed */
+
 	ret = q6asm_map_memory_regions(substream->stream, prtd->audio_client,
 				       prtd->phys,
 				       (prtd->pcm_size / prtd->periods),
 				       prtd->periods);
+
+	pr_emerg("[AUDIO_DEBUG] Memory map returned: %d\n", ret);
+	msleep(10); /* Ensure log is flushed */
 
 	if (ret < 0) {
 		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",
 							ret);
 		return -ENOMEM;
 	}
+
+	pr_emerg("[AUDIO_DEBUG] About to call q6asm_open_write\n");
+	msleep(10);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_open_write(prtd->audio_client,
@@ -268,6 +278,9 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 				      FORMAT_LINEAR_PCM,
 				      prtd->bits_per_sample);
 	}
+
+	pr_emerg("[AUDIO_DEBUG] q6asm_open_write returned: %d\n", ret);
+	msleep(10);
 
 	if (ret < 0) {
 		dev_err(dev, "%s: q6asm_open_write failed\n", __func__);
@@ -281,6 +294,9 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 		dev_err(dev, "%s: stream reg failed ret:%d\n", __func__, ret);
 		goto routing_err;
 	}
+
+	pr_emerg("[AUDIO_DEBUG] About to set media format\n");
+	msleep(10);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_media_format_block_multi_ch_pcm(
@@ -299,10 +315,16 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 			q6asm_read(prtd->audio_client, prtd->stream_id);
 
 	}
+	pr_emerg("[AUDIO_DEBUG] Media format returned: %d\n", ret);
+	msleep(10);
+
 	if (ret < 0)
 		dev_info(dev, "%s: CMD Format block failed\n", __func__);
 	else
 		prtd->state = Q6ASM_STREAM_RUNNING;
+
+	pr_emerg("[AUDIO_DEBUG] Prepare completed successfully\n");
+	msleep(10);
 
 	return ret;
 
