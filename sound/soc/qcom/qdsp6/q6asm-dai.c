@@ -188,14 +188,17 @@ static void event_handler(uint32_t opcode, uint32_t token,
 
 	switch (opcode) {
 	case ASM_CLIENT_EVENT_CMD_RUN_DONE:
+		pr_emerg("[AUDIO_DEBUG] Event: RUN_DONE, starting first write\n");
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			q6asm_write_async(prtd->audio_client,
 				   prtd->pcm_count, 0, 0, 0);
 		break;
 	case ASM_CLIENT_EVENT_CMD_EOS_DONE:
+		pr_emerg("[AUDIO_DEBUG] Event: EOS_DONE\n");
 		prtd->state = Q6ASM_STREAM_STOPPED;
 		break;
 	case ASM_CLIENT_EVENT_DATA_WRITE_DONE: {
+		pr_emerg("[AUDIO_DEBUG] Event: WRITE_DONE, pos=%zu\n", prtd->pcm_irq_pos);
 		prtd->pcm_irq_pos += prtd->pcm_count;
 		snd_pcm_period_elapsed(substream);
 		if (prtd->state == Q6ASM_STREAM_RUNNING)
@@ -250,7 +253,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 
 	pr_emerg("[AUDIO_DEBUG] About to map memory: phys=0x%llx size=%zu periods=%d\n",
 		prtd->phys, prtd->pcm_size / prtd->periods, prtd->periods);
-	msleep(10); /* Ensure log is flushed */
 
 	ret = q6asm_map_memory_regions(substream->stream, prtd->audio_client,
 				       prtd->phys,
@@ -258,7 +260,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 				       prtd->periods);
 
 	pr_emerg("[AUDIO_DEBUG] Memory map returned: %d\n", ret);
-	msleep(10); /* Ensure log is flushed */
 
 	if (ret < 0) {
 		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",
@@ -267,7 +268,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	}
 
 	pr_emerg("[AUDIO_DEBUG] About to call q6asm_open_write\n");
-	msleep(10);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_open_write(prtd->audio_client,
@@ -280,7 +280,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	}
 
 	pr_emerg("[AUDIO_DEBUG] q6asm_open_write returned: %d\n", ret);
-	msleep(10);
 
 	if (ret < 0) {
 		dev_err(dev, "%s: q6asm_open_write failed\n", __func__);
@@ -296,7 +295,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	}
 
 	pr_emerg("[AUDIO_DEBUG] About to set media format\n");
-	msleep(10);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_media_format_block_multi_ch_pcm(
@@ -316,7 +314,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 
 	}
 	pr_emerg("[AUDIO_DEBUG] Media format returned: %d\n", ret);
-	msleep(10);
 
 	if (ret < 0)
 		dev_info(dev, "%s: CMD Format block failed\n", __func__);
@@ -324,7 +321,6 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 		prtd->state = Q6ASM_STREAM_RUNNING;
 
 	pr_emerg("[AUDIO_DEBUG] Prepare completed successfully\n");
-	msleep(10);
 
 	return ret;
 
@@ -345,12 +341,16 @@ static int q6asm_dai_trigger(struct snd_soc_component *component,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct q6asm_dai_rtd *prtd = runtime->private_data;
 
+	pr_emerg("[AUDIO_DEBUG] Trigger cmd=%d\n", cmd);
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		pr_emerg("[AUDIO_DEBUG] Starting playback stream\n");
 		ret = q6asm_run_nowait(prtd->audio_client,
 				       0, 0, 0);
+		pr_emerg("[AUDIO_DEBUG] q6asm_run_nowait returned %d\n", ret);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		prtd->state = Q6ASM_STREAM_STOPPED;
@@ -470,19 +470,27 @@ static int q6asm_dai_close(struct snd_soc_component *component,
 	struct snd_soc_pcm_runtime *soc_prtd = snd_soc_substream_to_rtd(substream);
 	struct q6asm_dai_rtd *prtd = runtime->private_data;
 
+	pr_emerg("[AUDIO_DEBUG] Close called, state=%d\n", prtd->state);
+
 	if (prtd->audio_client) {
-		if (prtd->state)
+		if (prtd->state) {
+			pr_emerg("[AUDIO_DEBUG] Sending CMD_CLOSE, stream_id=%d\n", prtd->stream_id);
 			q6asm_cmd(prtd->audio_client, prtd->stream_id,
 				  CMD_CLOSE);
+		}
 
+		pr_emerg("[AUDIO_DEBUG] Unmapping memory regions\n");
 		q6asm_unmap_memory_regions(substream->stream,
 					   prtd->audio_client);
+		pr_emerg("[AUDIO_DEBUG] Freeing audio client\n");
 		q6asm_audio_client_free(prtd->audio_client);
 		prtd->audio_client = NULL;
 	}
+	pr_emerg("[AUDIO_DEBUG] Closing routing stream\n");
 	q6routing_stream_close(soc_prtd->dai_link->id,
 						substream->stream);
 	kfree(prtd);
+	pr_emerg("[AUDIO_DEBUG] Close completed\n");
 	return 0;
 }
 

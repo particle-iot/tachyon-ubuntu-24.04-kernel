@@ -398,6 +398,9 @@ int q6asm_unmap_memory_regions(unsigned int dir, struct audio_client *ac)
 	int rc = 0;
 
 	port = &ac->port[dir];
+	pr_emerg("[AUDIO_DEBUG] q6asm_unmap: handle=0x%x phys=0x%llx\n",
+		 port->mem_map_handle, port->buf ? port->buf[dir].phys : 0);
+
 	if (!port->buf) {
 		rc = -EINVAL;
 		goto err;
@@ -414,6 +417,8 @@ int q6asm_unmap_memory_regions(unsigned int dir, struct audio_client *ac)
 	}
 
 	q6asm_audio_client_free_buf(ac, port);
+	pr_emerg("[AUDIO_DEBUG] q6asm_unmap: completed, handle now=0x%x\n",
+		 port->mem_map_handle);
 
 err:
 	return rc;
@@ -472,7 +477,6 @@ static int __q6asm_memory_map_regions(struct audio_client *ac, int dir,
 	port = &ac->port[dir];
 
 	pr_emerg("[AUDIO_DEBUG] q6asm: Mapping %d regions, buf_sz=%d (aligned)\n", num_regions, buf_sz);
-	msleep(10);
 
 	for (i = 0; i < num_regions; i++) {
 		ab = &port->buf[i];
@@ -481,19 +485,16 @@ static int __q6asm_memory_map_regions(struct audio_client *ac, int dir,
 		mregions->mem_size_bytes = buf_sz;
 		pr_emerg("[AUDIO_DEBUG] q6asm: Region[%d] phys=0x%llx size=%d\n",
 			 i, ab->phys, buf_sz);
-		msleep(10);
 		++mregions;
 	}
 	spin_unlock_irqrestore(&ac->lock, flags);
 
 	pr_emerg("[AUDIO_DEBUG] q6asm: About to send APR MEM_MAP command\n");
-	msleep(10);
 
 	rc = q6asm_apr_send_session_pkt(a, ac, pkt,
 					ASM_CMDRSP_SHARED_MEM_MAP_REGIONS);
 
 	pr_emerg("[AUDIO_DEBUG] q6asm: APR MEM_MAP returned %d\n", rc);
-	msleep(10);
 
 	kfree(pkt);
 
@@ -978,12 +979,10 @@ int q6asm_open_write(struct audio_client *ac, uint32_t format,
 	}
 
 	pr_emerg("[AUDIO_DEBUG] q6asm_open_write: About to send OPEN_WRITE cmd, stream_id=%d\n", ac->stream_id);
-	msleep(10);
 
 	rc = q6asm_ac_send_cmd_sync(ac, pkt);
 
 	pr_emerg("[AUDIO_DEBUG] q6asm_open_write: OPEN_WRITE returned %d\n", rc);
-	msleep(10);
 	if (rc < 0)
 		goto err;
 
@@ -1119,12 +1118,10 @@ int q6asm_media_format_block_multi_ch_pcm(struct audio_client *ac,
 	}
 
 	pr_emerg("[AUDIO_DEBUG] q6asm_media_format: About to send format cmd, rate=%d ch=%d\n", rate, channels);
-	msleep(10);
 
 	rc = q6asm_ac_send_cmd_sync(ac, pkt);
 
 	pr_emerg("[AUDIO_DEBUG] q6asm_media_format: Format cmd returned %d\n", rc);
-	msleep(10);
 
 err:
 	kfree(pkt);
@@ -1599,6 +1596,9 @@ int q6asm_write_async(struct audio_client *ac, uint32_t len,
 	write->timestamp_msw = msw_ts;
 	write->mem_map_handle =
 	    ac->port[SNDRV_PCM_STREAM_PLAYBACK].mem_map_handle;
+
+	pr_emerg("[AUDIO_DEBUG] q6asm_write: phys=0x%llx len=%d handle=0x%x seq=%d\n",
+		 ab->phys, len, write->mem_map_handle, write->seq_id);
 
 	if (wflags == NO_TIMESTAMP)
 		write->flags = (wflags & 0x800000FF);
