@@ -16,6 +16,7 @@
 #include <sound/compress_driver.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+#include <linux/of_reserved_mem.h>
 #include <sound/pcm_params.h>
 #include "q6asm.h"
 #include "q6routing.h"
@@ -1291,6 +1292,16 @@ static int q6asm_dai_probe(struct platform_device *pdev)
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
+
+	/* Initialize reserved memory region specified in device tree */
+	rc = of_reserved_mem_device_init(dev);
+	if (rc) {
+		/* Not fatal - will use general system memory instead */
+		dev_warn(dev, "No reserved memory region, using system memory (rc=%d)\n", rc);
+		/* Don't return error - allow probe to continue */
+	} else {
+		dev_info(dev, "Using reserved memory region for audio DMA\n");
+	}
 
 	rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
 	if (rc < 0)
