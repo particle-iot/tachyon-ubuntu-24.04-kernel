@@ -1634,8 +1634,10 @@ int q6asm_write_async(struct audio_client *ac, uint32_t len,
 	write->mem_map_handle =
 	    ac->port[SNDRV_PCM_STREAM_PLAYBACK].mem_map_handle;
 
-	pr_emerg("[AUDIO_DEBUG] q6asm_write: phys=0x%llx len=%d handle=0x%x seq=%d\n",
-		 ab->phys, len, write->mem_map_handle, write->seq_id);
+	pr_emerg("[AUDIO_DEBUG] q6asm_write: phys=0x%llx len=%d handle=0x%x seq=%d buf_addr_msw=0x%x\n",
+		 ab->phys, len, write->mem_map_handle, write->seq_id, write->buf_addr_msw);
+	pr_emerg("[AUDIO_DEBUG] q6asm_write: timestamps=(0x%x,0x%x) flags=0x%x wflags=0x%x\n",
+		 write->timestamp_msw, write->timestamp_lsw, write->flags, wflags);
 
 	if (wflags == NO_TIMESTAMP)
 		write->flags = (wflags & 0x800000FF);
@@ -1648,7 +1650,11 @@ int q6asm_write_async(struct audio_client *ac, uint32_t len,
 		port->dsp_buf = 0;
 
 	spin_unlock_irqrestore(&ac->lock, flags);
+
+	pr_emerg("[AUDIO_DEBUG] q6asm_write: About to send APR write packet, size=%d\n", pkt_size);
 	rc = apr_send_pkt(ac->adev, pkt);
+	pr_emerg("[AUDIO_DEBUG] q6asm_write: apr_send_pkt returned %d (expected %d)\n", rc, pkt_size);
+
 	if (rc == pkt_size)
 		rc = 0;
 
