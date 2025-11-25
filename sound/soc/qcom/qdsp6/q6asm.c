@@ -84,6 +84,10 @@ struct avs_cmd_shared_mem_unmap_regions {
 	u32 mem_map_handle;
 } __packed;
 
+struct asm_cmdrsp_shared_mem_map_regions {
+	u32 mem_map_handle;
+} __packed;
+
 struct asm_data_cmd_media_fmt_update_v2 {
 	u32 fmt_blk_size;
 } __packed;
@@ -299,9 +303,17 @@ static int q6asm_apr_send_session_pkt(struct q6asm *a, struct audio_client *ac,
 	mutex_lock(&ac->cmd_lock);
 	ac->result.opcode = 0;
 	ac->result.status = 0;
+
+	pr_emerg("[AUDIO_DEBUG] Sending APR cmd=0x%x expecting_rsp=0x%x pkt_size=%d\n",
+		 hdr->opcode, rsp_opcode, hdr->pkt_size);
+
 	rc = apr_send_pkt(a->adev, pkt);
-	if (rc < 0)
+	if (rc < 0) {
+		pr_emerg("[AUDIO_DEBUG] apr_send_pkt failed: %d\n", rc);
 		goto err;
+	}
+
+	pr_emerg("[AUDIO_DEBUG] Waiting for response (timeout=5s)...\n");
 
 	if (rsp_opcode)
 		rc = wait_event_timeout(a->mem_wait,
@@ -314,12 +326,19 @@ static int q6asm_apr_send_session_pkt(struct q6asm *a, struct audio_client *ac,
 					5 * HZ);
 
 	if (!rc) {
+		pr_emerg("[AUDIO_DEBUG] TIMEOUT waiting for response to cmd 0x%x\n", hdr->opcode);
 		dev_err(a->dev, "CMD %x timeout\n", hdr->opcode);
 		rc = -ETIMEDOUT;
 	} else if (ac->result.status > 0) {
+		pr_emerg("[AUDIO_DEBUG] DSP error: status=0x%x opcode=0x%x\n",
+			 ac->result.status, ac->result.opcode);
 		dev_err(a->dev, "DSP returned error[%x]\n",
 			ac->result.status);
 		rc = -EINVAL;
+	} else {
+		pr_emerg("[AUDIO_DEBUG] Response received: opcode=0x%x status=0x%x\n",
+			 ac->result.opcode, ac->result.status);
+		rc = 0;
 	}
 
 err:
@@ -800,12 +819,30 @@ static int q6asm_srvc_callback(struct apr_device *adev,
 			break;
 		}
 		goto done;
-	case ASM_CMDRSP_SHARED_MEM_MAP_REGIONS:
+	case ASM_CMDRSP_SHARED_MEM_MAP_REGIONS: {
+		struct asm_cmdrsp_shared_mem_map_regions *rsp = data->payload;
+		u32 *payload_u32 = (u32 *)data->payload;
+
+		pr_emerg("[AUDIO_DEBUG] MEM_MAP response received:\n");
+		pr_emerg("[AUDIO_DEBUG]   hdr->opcode = 0x%x\n", hdr->opcode);
+		pr_emerg("[AUDIO_DEBUG]   result->opcode = 0x%x\n", result->opcode);
+		pr_emerg("[AUDIO_DEBUG]   result->status = 0x%x\n", result->status);
+		pr_emerg("[AUDIO_DEBUG]   rsp->mem_map_handle = 0x%x\n", rsp->mem_map_handle);
+		pr_emerg("[AUDIO_DEBUG]   payload[0] = 0x%x\n", payload_u32[0]);
+		pr_emerg("[AUDIO_DEBUG]   payload[1] = 0x%x\n", payload_u32[1]);
+		pr_emerg("[AUDIO_DEBUG]   data->payload_size = %d\n", data->payload_size);
+
 		ac->result.status = 0;
 		ac->result.opcode = hdr->opcode;
+
+		/* Use 5.4 kernel method for old ADSP firmware */
 		port->mem_map_handle = result->opcode;
+		pr_emerg("[AUDIO_DEBUG]   Assigned handle = 0x%x (5.4 method)\n",
+			 port->mem_map_handle);
+
 		wake_up(&a->mem_wait);
 		break;
+	}
 	case ASM_CMD_SHARED_MEM_UNMAP_REGIONS:
 		ac->result.opcode = hdr->opcode;
 		ac->result.status = 0;

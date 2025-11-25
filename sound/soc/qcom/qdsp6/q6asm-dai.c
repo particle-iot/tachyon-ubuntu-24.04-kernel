@@ -244,6 +244,7 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	/* rate and channels are sent to audio driver */
 	if (prtd->state) {
 		/* clear the previous setup if any  */
+		pr_emerg("[AUDIO_DEBUG] PREPARE: Cleaning up previous state=%d\n", prtd->state);
 		q6asm_cmd(prtd->audio_client, prtd->stream_id, CMD_CLOSE);
 		q6asm_unmap_memory_regions(substream->stream,
 					   prtd->audio_client);
@@ -459,6 +460,11 @@ static int q6asm_dai_open(struct snd_soc_component *component,
 		prtd->phys = substream->dma_buffer.addr;
 	else
 		prtd->phys = substream->dma_buffer.addr | (pdata->sid << 32);
+
+	pr_emerg("[AUDIO_DEBUG] OPEN: DMA buffer addr=0x%llx size=%zu phys=0x%llx sid=%d\n",
+		 (unsigned long long)substream->dma_buffer.addr,
+		 substream->dma_buffer.bytes,
+		 prtd->phys, pdata->sid);
 
 	return 0;
 }
