@@ -1284,19 +1284,17 @@ static int q6asm_dai_pcm_new(struct snd_soc_component *component,
 				 i == SNDRV_PCM_STREAM_PLAYBACK ? "playback" : "capture",
 				 (unsigned long long)phys, bytes);
 
-			/* Check if buffer exceeds ADSP MPU limit */
-			if (phys >= ADSP_MAX_PHYS_ADDR) {
-				dev_err(dev, "FATAL: PCM buffer @ 0x%llx exceeds ADSP MPU limit (0x%llx)\n",
-					(unsigned long long)phys,
-					(unsigned long long)ADSP_MAX_PHYS_ADDR);
-				dev_err(dev, "ADSP firmware WILL CRASH on audio playback!\n");
-				dev_err(dev, "Check device tree memory-region configuration\n");
-				return -ENOMEM;
-			} else if (phys >= ADSP_WARN_PHYS_ADDR) {
-				dev_warn(dev, "PCM buffer @ 0x%llx is high (>2.5GB), may cause issues\n",
+			/*
+			 * Log buffer address for debugging.
+			 * Ubuntu 20.04 uses 0xf1800000 (3.773GB) successfully with
+			 * identical ADSP firmware, so the earlier 3GB limit was incorrect.
+			 * Keep logging but don't block registration.
+			 */
+			if (phys >= ADSP_WARN_PHYS_ADDR) {
+				dev_info(dev, "PCM buffer @ 0x%llx (high memory, >2.5GB)\n",
 					 (unsigned long long)phys);
 			} else {
-				dev_info(dev, "PCM buffer @ 0x%llx is in safe range for ADSP MPU\n",
+				dev_info(dev, "PCM buffer @ 0x%llx (low memory, <2.5GB)\n",
 					 (unsigned long long)phys);
 			}
 		}
