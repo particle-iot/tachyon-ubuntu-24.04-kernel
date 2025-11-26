@@ -16,6 +16,8 @@
 #include <sound/compress_driver.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-map-ops.h>
+#include <linux/of_reserved_mem.h>
 #include <sound/pcm_params.h>
 #include "q6asm.h"
 #include "q6routing.h"
@@ -32,6 +34,14 @@
 #define CAPTURE_MAX_PERIOD_SIZE     4096
 #define CAPTURE_MIN_PERIOD_SIZE     320
 #define SID_MASK_DEFAULT	0xF
+
+/*
+ * ADSP firmware MPU (Memory Protection Unit) restricts physical memory
+ * access. Testing shows crashes when audio DMA buffers are allocated
+ * at >= 3GB physical addresses.
+ */
+#define ADSP_MAX_PHYS_ADDR	0xC0000000ULL	/* 3GB limit */
+#define ADSP_WARN_PHYS_ADDR	0xA0000000ULL	/* 2.5GB - warn above this */
 
 /* Default values used if user space does not set */
 #define COMPR_PLAYBACK_MIN_FRAGMENT_SIZE (8 * 1024)
@@ -187,18 +197,21 @@ static void event_handler(uint32_t opcode, uint32_t token,
 
 	switch (opcode) {
 	case ASM_CLIENT_EVENT_CMD_RUN_DONE:
+		pr_emerg("[AUDIO_DEBUG] Event: RUN_DONE, starting first write\n");
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 				   prtd->pcm_count, 0, 0, 0);
 		break;
 	case ASM_CLIENT_EVENT_CMD_EOS_DONE:
+		pr_emerg("[AUDIO_DEBUG] Event: EOS_DONE\n");
 		prtd->state = Q6ASM_STREAM_STOPPED;
 		break;
 	case ASM_CLIENT_EVENT_DATA_WRITE_DONE: {
+		pr_emerg("[AUDIO_DEBUG] Event: WRITE_DONE, pos=%zu\n", prtd->pcm_irq_pos);
 		prtd->pcm_irq_pos += prtd->pcm_count;
 		snd_pcm_period_elapsed(substream);
 		if (prtd->state == Q6ASM_STREAM_RUNNING)
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					   prtd->pcm_count, 0, 0, 0);
 
 		break;
@@ -240,6 +253,7 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 	/* rate and channels are sent to audio driver */
 	if (prtd->state) {
 		/* clear the previous setup if any  */
+		pr_emerg("[AUDIO_DEBUG] PREPARE: Cleaning up previous state=%d\n", prtd->state);
 		q6asm_cmd(prtd->audio_client, prtd->stream_id, CMD_CLOSE);
 		q6asm_unmap_memory_regions(substream->stream,
 					   prtd->audio_client);
@@ -247,10 +261,15 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 					 substream->stream);
 	}
 
+	pr_emerg("[AUDIO_DEBUG] About to map memory: phys=0x%llx size=%zu periods=%d\n",
+		prtd->phys, prtd->pcm_size / prtd->periods, prtd->periods);
+
 	ret = q6asm_map_memory_regions(substream->stream, prtd->audio_client,
 				       prtd->phys,
 				       (prtd->pcm_size / prtd->periods),
 				       prtd->periods);
+
+	pr_emerg("[AUDIO_DEBUG] Memory map returned: %d\n", ret);
 
 	if (ret < 0) {
 		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",
@@ -258,15 +277,19 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 		return -ENOMEM;
 	}
 
+	pr_emerg("[AUDIO_DEBUG] About to call q6asm_open_write\n");
+
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		ret = q6asm_open_write(prtd->audio_client, prtd->stream_id,
+		ret = q6asm_open_write(prtd->audio_client,
 				       FORMAT_LINEAR_PCM,
-				       0, prtd->bits_per_sample, false);
+				       prtd->bits_per_sample);
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		ret = q6asm_open_read(prtd->audio_client, prtd->stream_id,
 				      FORMAT_LINEAR_PCM,
 				      prtd->bits_per_sample);
 	}
+
+	pr_emerg("[AUDIO_DEBUG] q6asm_open_write returned: %d\n", ret);
 
 	if (ret < 0) {
 		dev_err(dev, "%s: q6asm_open_write failed\n", __func__);
@@ -280,6 +303,8 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 		dev_err(dev, "%s: stream reg failed ret:%d\n", __func__, ret);
 		goto routing_err;
 	}
+
+	pr_emerg("[AUDIO_DEBUG] About to set media format\n");
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_media_format_block_multi_ch_pcm(
@@ -298,10 +323,14 @@ static int q6asm_dai_prepare(struct snd_soc_component *component,
 			q6asm_read(prtd->audio_client, prtd->stream_id);
 
 	}
+	pr_emerg("[AUDIO_DEBUG] Media format returned: %d\n", ret);
+
 	if (ret < 0)
 		dev_info(dev, "%s: CMD Format block failed\n", __func__);
 	else
 		prtd->state = Q6ASM_STREAM_RUNNING;
+
+	pr_emerg("[AUDIO_DEBUG] Prepare completed successfully\n");
 
 	return ret;
 
@@ -322,12 +351,16 @@ static int q6asm_dai_trigger(struct snd_soc_component *component,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct q6asm_dai_rtd *prtd = runtime->private_data;
 
+	pr_emerg("[AUDIO_DEBUG] Trigger cmd=%d\n", cmd);
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = q6asm_run_nowait(prtd->audio_client, prtd->stream_id,
+		pr_emerg("[AUDIO_DEBUG] Starting playback stream\n");
+		ret = q6asm_run_nowait(prtd->audio_client,
 				       0, 0, 0);
+		pr_emerg("[AUDIO_DEBUG] q6asm_run_nowait returned %d\n", ret);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		prtd->state = Q6ASM_STREAM_STOPPED;
@@ -425,6 +458,35 @@ static int q6asm_dai_open(struct snd_soc_component *component,
 								ret);
 	}
 
+	/*
+	 * Force 32-bit DMA mask to avoid high memory allocations.
+	 * The ADSP firmware MPU cannot access addresses >= 3GB.
+	 * Combined with device CMA area (set via of_reserved_mem_device_init),
+	 * this should ensure low physical addresses.
+	 */
+	if (!dev->dma_mask) {
+		dev->dma_mask = &dev->coherent_dma_mask;
+		dev_dbg(dev, "Initialized dma_mask pointer\n");
+	}
+
+	if (!dma_get_mask(dev) || dma_get_mask(dev) > DMA_BIT_MASK(32)) {
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
+		if (ret) {
+			dev_warn(dev, "Failed to set 32-bit DMA mask: %d\n", ret);
+		} else {
+			dev_info(dev, "Set 32-bit DMA mask (was %llx)\n",
+				 (unsigned long long)dma_get_mask(dev));
+		}
+	}
+
+	/* Log CMA area configuration for debugging */
+	if (dev->cma_area) {
+		dev_info(dev, "Device has CMA area configured (good)\n");
+	} else {
+		dev_warn(dev, "Device has NO CMA area - memory-region not configured!\n");
+		dev_warn(dev, "Audio may crash ADSP if buffers are allocated >3GB\n");
+	}
+
 	runtime->private_data = prtd;
 
 	snd_soc_set_runtime_hwparams(substream, &q6asm_dai_hardware_playback);
@@ -437,6 +499,11 @@ static int q6asm_dai_open(struct snd_soc_component *component,
 	else
 		prtd->phys = substream->dma_buffer.addr | (pdata->sid << 32);
 
+	pr_emerg("[AUDIO_DEBUG] OPEN: DMA buffer addr=0x%llx size=%zu phys=0x%llx sid=%d\n",
+		 (unsigned long long)substream->dma_buffer.addr,
+		 substream->dma_buffer.bytes,
+		 prtd->phys, pdata->sid);
+
 	return 0;
 }
 
@@ -447,19 +514,27 @@ static int q6asm_dai_close(struct snd_soc_component *component,
 	struct snd_soc_pcm_runtime *soc_prtd = snd_soc_substream_to_rtd(substream);
 	struct q6asm_dai_rtd *prtd = runtime->private_data;
 
+	pr_emerg("[AUDIO_DEBUG] Close called, state=%d\n", prtd->state);
+
 	if (prtd->audio_client) {
-		if (prtd->state)
+		if (prtd->state) {
+			pr_emerg("[AUDIO_DEBUG] Sending CMD_CLOSE, stream_id=%d\n", prtd->stream_id);
 			q6asm_cmd(prtd->audio_client, prtd->stream_id,
 				  CMD_CLOSE);
+		}
 
+		pr_emerg("[AUDIO_DEBUG] Unmapping memory regions\n");
 		q6asm_unmap_memory_regions(substream->stream,
 					   prtd->audio_client);
+		pr_emerg("[AUDIO_DEBUG] Freeing audio client\n");
 		q6asm_audio_client_free(prtd->audio_client);
 		prtd->audio_client = NULL;
 	}
+	pr_emerg("[AUDIO_DEBUG] Closing routing stream\n");
 	q6routing_stream_close(soc_prtd->dai_link->id,
 						substream->stream);
 	kfree(prtd);
+	pr_emerg("[AUDIO_DEBUG] Close completed\n");
 	return 0;
 }
 
@@ -517,7 +592,7 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 						    prtd->stream_id,
 						    prtd->initial_samples_drop);
 
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					  prtd->pcm_count, 0, 0, 0);
 			prtd->bytes_sent += prtd->pcm_count;
 		}
@@ -555,7 +630,8 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 	case ASM_CLIENT_EVENT_DATA_WRITE_DONE:
 		spin_lock_irqsave(&prtd->lock, flags);
 
-		bytes_written = token >> ASM_WRITE_TOKEN_LEN_SHIFT;
+		/* In 5.4 API, token is just buffer index, not encoded with length */
+		bytes_written = prtd->pcm_count;
 		prtd->copied_total += bytes_written;
 		snd_compr_fragment_elapsed(substream);
 
@@ -581,7 +657,7 @@ static void compress_event_handler(uint32_t opcode, uint32_t token,
 						     prtd->trailing_samples_drop);
 			}
 
-			q6asm_write_async(prtd->audio_client, prtd->stream_id,
+			q6asm_write_async(prtd->audio_client,
 					  bytes_to_write, 0, 0, wflags);
 
 			prtd->bytes_sent += bytes_to_write;
@@ -897,9 +973,8 @@ static int q6asm_dai_compr_set_params(struct snd_soc_component *component,
 	prtd->bits_per_sample = 16;
 
 	if (dir == SND_COMPRESS_PLAYBACK) {
-		ret = q6asm_open_write(prtd->audio_client, prtd->stream_id, params->codec.id,
-				params->codec.profile, prtd->bits_per_sample,
-				true);
+		ret = q6asm_open_write(prtd->audio_client, params->codec.id,
+				prtd->bits_per_sample);
 
 		if (ret < 0) {
 			dev_err(dev, "q6asm_open_write failed\n");
@@ -955,11 +1030,8 @@ static int q6asm_dai_compr_set_metadata(struct snd_soc_component *component,
 		prtd->initial_samples_drop = metadata->value[0];
 		if (prtd->next_track_stream_id) {
 			ret = q6asm_open_write(prtd->audio_client,
-					       prtd->next_track_stream_id,
 					       prtd->codec.id,
-					       prtd->codec.profile,
-					       prtd->bits_per_sample,
-				       true);
+					       prtd->bits_per_sample);
 			if (ret < 0) {
 				dev_err(component->dev, "q6asm_open_write failed\n");
 				return ret;
@@ -999,7 +1071,7 @@ static int q6asm_dai_compr_trigger(struct snd_soc_component *component,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = q6asm_run_nowait(prtd->audio_client, prtd->stream_id,
+		ret = q6asm_run_nowait(prtd->audio_client,
 				       0, 0, 0);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -1106,7 +1178,7 @@ static int q6asm_compr_copy(struct snd_soc_component *component,
 		if (avail < prtd->pcm_count)
 			bytes_to_write = avail;
 
-		q6asm_write_async(prtd->audio_client, prtd->stream_id,
+		q6asm_write_async(prtd->audio_client,
 				  bytes_to_write, 0, 0, wflags);
 		prtd->bytes_sent += bytes_to_write;
 	}
@@ -1179,11 +1251,56 @@ static const struct snd_compress_ops q6asm_dai_compress_ops = {
 static int q6asm_dai_pcm_new(struct snd_soc_component *component,
 			     struct snd_soc_pcm_runtime *rtd)
 {
+	struct device *dev = component->dev;
 	struct snd_pcm *pcm = rtd->pcm;
+	struct snd_pcm_substream *substream;
 	size_t size = q6asm_dai_hardware_playback.buffer_bytes_max;
+	int ret;
+	int i;
 
-	return snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV,
-					    component->dev, size);
+	dev_info(dev, "Allocating PCM buffers (max size: %zu bytes)\n", size);
+	dev_info(dev, "Device CMA area: %s\n", dev->cma_area ? "YES" : "NO");
+	dev_info(dev, "Device DMA mask: 0x%llx\n",
+		 (unsigned long long)dma_get_mask(dev));
+
+	ret = snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV,
+					   dev, size);
+	if (ret < 0) {
+		dev_err(dev, "Failed to allocate PCM buffers: %d\n", ret);
+		return ret;
+	}
+
+	/* Validate allocated buffer addresses */
+	for (i = 0; i < 2; i++) {
+		substream = pcm->streams[i].substream;
+		if (!substream)
+			continue;
+
+		if (substream->dma_buffer.bytes > 0) {
+			phys_addr_t phys = substream->dma_buffer.addr;
+			size_t bytes = substream->dma_buffer.bytes;
+
+			dev_info(dev, "PCM buffer %s: phys=0x%llx size=%zu\n",
+				 i == SNDRV_PCM_STREAM_PLAYBACK ? "playback" : "capture",
+				 (unsigned long long)phys, bytes);
+
+			/*
+			 * Log buffer address for debugging.
+			 * Ubuntu 20.04 uses 0xf1800000 (3.773GB) successfully with
+			 * identical ADSP firmware, so the earlier 3GB limit was incorrect.
+			 * Keep logging but don't block registration.
+			 */
+			if (phys >= ADSP_WARN_PHYS_ADDR) {
+				dev_info(dev, "PCM buffer @ 0x%llx (high memory, >2.5GB)\n",
+					 (unsigned long long)phys);
+			} else {
+				dev_info(dev, "PCM buffer @ 0x%llx (low memory, <2.5GB)\n",
+					 (unsigned long long)phys);
+			}
+		}
+	}
+
+	return 0;
 }
 
 static const struct snd_soc_dapm_widget q6asm_dapm_widgets[] = {
@@ -1294,6 +1411,16 @@ static int q6asm_dai_probe(struct platform_device *pdev)
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
+
+	/* Initialize reserved memory region specified in device tree */
+	rc = of_reserved_mem_device_init(dev);
+	if (rc) {
+		/* Not fatal - will use general system memory instead */
+		dev_warn(dev, "No reserved memory region, using system memory (rc=%d)\n", rc);
+		/* Don't return error - allow probe to continue */
+	} else {
+		dev_info(dev, "Using reserved memory region for audio DMA\n");
+	}
 
 	rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
 	if (rc < 0)

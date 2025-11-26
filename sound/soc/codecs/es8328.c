@@ -562,6 +562,13 @@ static int es8328_set_sysclk(struct snd_soc_dai *codec_dai,
 		es8328->sysclk_constraints = NULL;
 		es8328->mclk_ratios = NULL;
 		break;
+	case 9600000:
+		/* Qualcomm machine drivers set 9.6MHz, map to 12.288MHz constraints */
+		dev_info(component->dev,
+			"Mapping Qualcomm 9.6MHz sysclk to 12.288MHz constraints\n");
+		es8328->sysclk_constraints = &constraints_12288;
+		es8328->mclk_ratios = ratios_12288;
+		break;
 	case 22579200:
 		mclkdiv2 = 1;
 		fallthrough;
