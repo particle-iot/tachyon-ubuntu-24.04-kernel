@@ -16,6 +16,7 @@
 #include <sound/compress_driver.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-map-ops.h>
 #include <linux/of_reserved_mem.h>
 #include <sound/pcm_params.h>
 #include "q6asm.h"
@@ -33,6 +34,14 @@
 #define CAPTURE_MAX_PERIOD_SIZE     4096
 #define CAPTURE_MIN_PERIOD_SIZE     320
 #define SID_MASK_DEFAULT	0xF
+
+/*
+ * ADSP firmware MPU (Memory Protection Unit) restricts physical memory
+ * access. Testing shows crashes when audio DMA buffers are allocated
+ * at >= 3GB physical addresses.
+ */
+#define ADSP_MAX_PHYS_ADDR	0xC0000000ULL	/* 3GB limit */
+#define ADSP_WARN_PHYS_ADDR	0xA0000000ULL	/* 2.5GB - warn above this */
 
 /* Default values used if user space does not set */
 #define COMPR_PLAYBACK_MIN_FRAGMENT_SIZE (8 * 1024)
@@ -447,6 +456,35 @@ static int q6asm_dai_open(struct snd_soc_component *component,
 	if (ret < 0) {
 		dev_err(dev, "constraint for buffer bytes step ret = %d\n",
 								ret);
+	}
+
+	/*
+	 * Force 32-bit DMA mask to avoid high memory allocations.
+	 * The ADSP firmware MPU cannot access addresses >= 3GB.
+	 * Combined with device CMA area (set via of_reserved_mem_device_init),
+	 * this should ensure low physical addresses.
+	 */
+	if (!dev->dma_mask) {
+		dev->dma_mask = &dev->coherent_dma_mask;
+		dev_dbg(dev, "Initialized dma_mask pointer\n");
+	}
+
+	if (!dma_get_mask(dev) || dma_get_mask(dev) > DMA_BIT_MASK(32)) {
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
+		if (ret) {
+			dev_warn(dev, "Failed to set 32-bit DMA mask: %d\n", ret);
+		} else {
+			dev_info(dev, "Set 32-bit DMA mask (was %llx)\n",
+				 (unsigned long long)dma_get_mask(dev));
+		}
+	}
+
+	/* Log CMA area configuration for debugging */
+	if (dev->cma_area) {
+		dev_info(dev, "Device has CMA area configured (good)\n");
+	} else {
+		dev_warn(dev, "Device has NO CMA area - memory-region not configured!\n");
+		dev_warn(dev, "Audio may crash ADSP if buffers are allocated >3GB\n");
 	}
 
 	runtime->private_data = prtd;
@@ -1213,11 +1251,58 @@ static const struct snd_compress_ops q6asm_dai_compress_ops = {
 static int q6asm_dai_pcm_new(struct snd_soc_component *component,
 			     struct snd_soc_pcm_runtime *rtd)
 {
+	struct device *dev = component->dev;
 	struct snd_pcm *pcm = rtd->pcm;
+	struct snd_pcm_substream *substream;
 	size_t size = q6asm_dai_hardware_playback.buffer_bytes_max;
+	int ret;
+	int i;
 
-	return snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV,
-					    component->dev, size);
+	dev_info(dev, "Allocating PCM buffers (max size: %zu bytes)\n", size);
+	dev_info(dev, "Device CMA area: %s\n", dev->cma_area ? "YES" : "NO");
+	dev_info(dev, "Device DMA mask: 0x%llx\n",
+		 (unsigned long long)dma_get_mask(dev));
+
+	ret = snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV,
+					   dev, size);
+	if (ret < 0) {
+		dev_err(dev, "Failed to allocate PCM buffers: %d\n", ret);
+		return ret;
+	}
+
+	/* Validate allocated buffer addresses */
+	for (i = 0; i < 2; i++) {
+		substream = pcm->streams[i].substream;
+		if (!substream)
+			continue;
+
+		if (substream->dma_buffer.bytes > 0) {
+			phys_addr_t phys = substream->dma_buffer.addr;
+			size_t bytes = substream->dma_buffer.bytes;
+
+			dev_info(dev, "PCM buffer %s: phys=0x%llx size=%zu\n",
+				 i == SNDRV_PCM_STREAM_PLAYBACK ? "playback" : "capture",
+				 (unsigned long long)phys, bytes);
+
+			/* Check if buffer exceeds ADSP MPU limit */
+			if (phys >= ADSP_MAX_PHYS_ADDR) {
+				dev_err(dev, "FATAL: PCM buffer @ 0x%llx exceeds ADSP MPU limit (0x%llx)\n",
+					(unsigned long long)phys,
+					(unsigned long long)ADSP_MAX_PHYS_ADDR);
+				dev_err(dev, "ADSP firmware WILL CRASH on audio playback!\n");
+				dev_err(dev, "Check device tree memory-region configuration\n");
+				return -ENOMEM;
+			} else if (phys >= ADSP_WARN_PHYS_ADDR) {
+				dev_warn(dev, "PCM buffer @ 0x%llx is high (>2.5GB), may cause issues\n",
+					 (unsigned long long)phys);
+			} else {
+				dev_info(dev, "PCM buffer @ 0x%llx is in safe range for ADSP MPU\n",
+					 (unsigned long long)phys);
+			}
+		}
+	}
+
+	return 0;
 }
 
 static const struct snd_soc_dapm_widget q6asm_dapm_widgets[] = {
