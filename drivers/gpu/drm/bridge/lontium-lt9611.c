@@ -804,6 +804,15 @@ lt9611_bridge_atomic_enable(struct drm_bridge *bridge,
 	mode = &crtc_state->adjusted_mode;
 
 	lt9611_mipi_input_digital(lt9611, mode);
+
+	if (lt9611->fixed_mode &&
+		mode->hdisplay == 3840 &&
+		mode->vdisplay == 2160 &&
+		drm_mode_vrefresh(mode) == 30) {
+		regmap_write(lt9611->regmap, 0x8302, 0x10);
+		regmap_write(lt9611->regmap, 0x8306, 0x10);
+	}
+
 	lt9611_pll_setup(lt9611, mode, &postdiv);
 	lt9611_mipi_video_setup(lt9611, mode);
 	lt9611_pcr_setup(lt9611, mode, postdiv);
