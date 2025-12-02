@@ -1296,6 +1296,7 @@ CONFIG_POWER_SEQUENCING_QCOM_WCN                policy<{'arm64': 'm'}>
 CONFIG_PRU_REMOTEPROC                           policy<{'arm64': '-'}>
 CONFIG_PTP_QCOM_CLOCK_TSC                       policy<{'arm64': 'n'}>
 CONFIG_PWC_RZV2M                                policy<{'arm64': '-'}>
+CONFIG_PWM_GPIO                                 policy<{'arm64': 'y'}>
 CONFIG_PWM_APPLE                                policy<{'arm64': '-'}>
 CONFIG_PWM_BERLIN                               policy<{'arm64': '-'}>
 CONFIG_PWM_HIBVT                                policy<{'arm64': '-'}>
