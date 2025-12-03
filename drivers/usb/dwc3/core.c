@@ -171,8 +171,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 	if (!desired_dr_role)
 		goto out;
 
-	if (!dwc->cable_disconnected)
-		dwc3_notify_set_mode(dwc, desired_dr_role);
+	dwc3_notify_set_mode(dwc, desired_dr_role);
 
 	if (desired_dr_role == dwc->current_dr_role)
 		goto out;
