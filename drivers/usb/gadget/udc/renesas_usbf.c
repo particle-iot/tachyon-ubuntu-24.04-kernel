@@ -3381,7 +3381,7 @@ static struct platform_driver udc_driver = {
 		.of_match_table = usbf_match,
 	},
 	.probe          = usbf_probe,
-	.remove         = usbf_remove,
+	.remove_new     = usbf_remove,
 };
 
 module_platform_driver(udc_driver);

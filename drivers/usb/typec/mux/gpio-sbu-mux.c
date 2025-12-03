@@ -155,7 +155,7 @@ MODULE_DEVICE_TABLE(of, gpio_sbu_mux_match);
 
 static struct platform_driver gpio_sbu_mux_driver = {
 	.probe = gpio_sbu_mux_probe,
-	.remove = gpio_sbu_mux_remove,
+	.remove_new = gpio_sbu_mux_remove,
 	.driver = {
 		.name = "gpio_sbu_mux",
 		.of_match_table = gpio_sbu_mux_match,

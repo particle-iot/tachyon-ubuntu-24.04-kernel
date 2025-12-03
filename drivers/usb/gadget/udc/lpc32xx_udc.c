@@ -3256,7 +3256,7 @@ MODULE_DEVICE_TABLE(of, lpc32xx_udc_of_match);
 
 static struct platform_driver lpc32xx_udc_driver = {
 	.probe		= lpc32xx_udc_probe,
-	.remove		= lpc32xx_udc_remove,
+	.remove_new	= lpc32xx_udc_remove,
 	.shutdown	= lpc32xx_udc_shutdown,
 	.suspend	= lpc32xx_udc_suspend,
 	.resume		= lpc32xx_udc_resume,

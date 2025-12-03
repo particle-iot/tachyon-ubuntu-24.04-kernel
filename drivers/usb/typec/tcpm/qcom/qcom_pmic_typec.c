@@ -345,7 +345,7 @@ static struct platform_driver qcom_pmic_typec_driver = {
 		.of_match_table = qcom_pmic_typec_table,
 	},
 	.probe = qcom_pmic_typec_probe,
-	.remove = qcom_pmic_typec_remove,
+	.remove_new = qcom_pmic_typec_remove,
 };
 
 module_platform_driver(qcom_pmic_typec_driver);

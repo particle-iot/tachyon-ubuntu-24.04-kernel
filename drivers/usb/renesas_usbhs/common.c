@@ -828,7 +828,7 @@ static struct platform_driver renesas_usbhs_driver = {
 		.of_match_table = usbhs_of_match,
 	},
 	.probe		= usbhs_probe,
-	.remove		= usbhs_remove,
+	.remove_new	= usbhs_remove,
 };
 
 module_platform_driver(renesas_usbhs_driver);
