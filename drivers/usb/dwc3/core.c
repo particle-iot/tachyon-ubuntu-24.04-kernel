@@ -139,28 +139,6 @@ void dwc3_set_prtcap(struct dwc3 *dwc, u32 mode, bool ignore_susphy)
 	unsigned int hw_mode;
 	u32 reg;
 
-	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
-	if (enable && !dwc->dis_u3_susphy_quirk)
-		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
-	else
-		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
-
-	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
-
-	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
-	if (enable && !dwc->dis_u2_susphy_quirk)
-		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
-	else
-		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
-
-	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
-}
-
-void dwc3_set_prtcap(struct dwc3 *dwc, u32 mode, bool ignore_susphy)
-{
-	unsigned int hw_mode;
-	u32 reg;
-
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 
 	 /*
@@ -688,8 +666,6 @@ static int dwc3_core_ulpi_init(struct dwc3 *dwc)
 static int dwc3_ss_phy_setup(struct dwc3 *dwc, int index)
 {
 	u32 reg;
-
-	hw_mode = DWC3_GHWPARAMS0_MODE(dwc->hwparams.hwparams0);
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(index));
 
