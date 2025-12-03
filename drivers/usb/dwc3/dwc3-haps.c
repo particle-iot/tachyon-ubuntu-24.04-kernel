@@ -138,7 +138,7 @@ static struct pci_driver dwc3_haps_driver = {
 	.name		= "dwc3-haps",
 	.id_table	= dwc3_haps_id_table,
 	.probe		= dwc3_haps_probe,
-	.remove_new		= dwc3_haps_remove,
+	.remove		= dwc3_haps_remove,
 };
 
 MODULE_AUTHOR("Thinh Nguyen <thinhn@synopsys.com>");

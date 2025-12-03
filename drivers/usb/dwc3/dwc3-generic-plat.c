@@ -150,7 +150,7 @@ MODULE_DEVICE_TABLE(of, dwc3_generic_of_match);
 
 static struct platform_driver dwc3_generic_driver = {
 	.probe		= dwc3_generic_probe,
-	.remove_new		= dwc3_generic_remove,
+	.remove		= dwc3_generic_remove,
 	.driver		= {
 		.name	= "dwc3-generic-plat",
 		.of_match_table = dwc3_generic_of_match,

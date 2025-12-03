@@ -845,7 +845,7 @@ MODULE_DEVICE_TABLE(of, dwc3_qcom_of_match);
 
 static struct platform_driver dwc3_qcom_driver = {
 	.probe		= dwc3_qcom_probe,
-	.remove_new		= dwc3_qcom_remove,
+	.remove		= dwc3_qcom_remove,
 	.shutdown	= dwc3_qcom_remove,
 	.driver		= {
 		.name	= "dwc3-qcom",
