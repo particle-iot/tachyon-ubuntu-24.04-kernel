@@ -655,7 +655,7 @@ static void ucsi_unregister_altmodes(struct ucsi_connector *con, u8 recipient)
 static int ucsi_get_connector_status(struct ucsi_connector *con, bool conn_ack)
 {
 	u64 command = UCSI_GET_CONNECTOR_STATUS | UCSI_CONNECTOR_NUMBER(con->num);
-	size_t size = min(sizeof(con->status),
+	size_t size = umin(sizeof(con->status),
 			  UCSI_MAX_DATA_LENGTH(con->ucsi));
 	int ret;
 
@@ -756,7 +756,7 @@ static struct usb_power_delivery_capabilities *ucsi_get_pd_caps(struct ucsi_conn
 static int ucsi_get_pd_message(struct ucsi_connector *con, u8 recipient,
 			       size_t bytes, void *data, u8 type)
 {
-	size_t len = min(bytes, UCSI_MAX_DATA_LENGTH(con->ucsi));
+	size_t len = umin(bytes, UCSI_MAX_DATA_LENGTH(con->ucsi));
 	u64 command;
 	u8 offset;
 	int ret;
