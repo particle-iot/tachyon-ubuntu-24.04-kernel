@@ -1120,7 +1120,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 
 	if (ret) {
 		dev_err(dev, "failed to register DWC3 Core, err=%d\n", ret);
-		goto clk_disable;
+		goto depopulate;
 	}
 
 	ret = dwc3_qcom_interconnect_init(qcom);
