@@ -21,6 +21,7 @@
 enum qcom_battmgr_variant {
 	QCOM_BATTMGR_SM8350,
 	QCOM_BATTMGR_SC8280XP,
+	QCOM_BATTMGR_QCM6490,
 };
 
 #define BATTMGR_BAT_STATUS		0x1
@@ -842,6 +843,34 @@ static int qcom_battmgr_usb_sm8350_update(struct qcom_battmgr *battmgr,
 	return ret;
 }
 
+static const u8 qcm6490_usb_prop_map[] = {
+	[POWER_SUPPLY_PROP_ONLINE] = USB_ONLINE,
+	[POWER_SUPPLY_PROP_VOLTAGE_NOW] = USB_VOLT_NOW,
+	[POWER_SUPPLY_PROP_VOLTAGE_MAX] = USB_VOLT_MAX,
+	[POWER_SUPPLY_PROP_CURRENT_NOW] = USB_CURR_NOW,
+	[POWER_SUPPLY_PROP_CURRENT_MAX] = USB_CURR_MAX,
+	[POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT] = USB_INPUT_CURR_LIMIT,
+	[POWER_SUPPLY_PROP_USB_TYPE] = USB_ADAP_TYPE,
+};
+
+static int qcom_battmgr_usb_qcm6490_update(struct qcom_battmgr *battmgr,
+					  enum power_supply_property psp)
+{
+	unsigned int prop;
+	int ret;
+
+	if (psp >= ARRAY_SIZE(qcm6490_usb_prop_map))
+		return -EINVAL;
+
+	prop = qcm6490_usb_prop_map[psp];
+
+	mutex_lock(&battmgr->lock);
+	ret = qcom_battmgr_request_property(battmgr, BATTMGR_USB_PROPERTY_GET, prop, 0);
+	mutex_unlock(&battmgr->lock);
+
+	return ret;
+}
+
 static int usb_psy_set_icl(struct qcom_battmgr *battmgr, u32 prop_id, int val)
 {
 	u32 temp;
@@ -899,6 +928,8 @@ static int qcom_battmgr_usb_get_property(struct power_supply *psy,
 
 	if (battmgr->variant == QCOM_BATTMGR_SC8280XP)
 		ret = qcom_battmgr_bat_sc8280xp_update(battmgr, psp);
+	else if (battmgr->variant == QCOM_BATTMGR_QCM6490)
+		ret = qcom_battmgr_usb_qcm6490_update(battmgr, psp);
 	else
 		ret = qcom_battmgr_usb_sm8350_update(battmgr, psp);
 	if (ret)
@@ -1415,6 +1446,7 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
 			battmgr->usb.current_limit = le32_to_cpu(resp->intval.value);
 			break;
 		case USB_TYPE:
+		case USB_ADAP_TYPE:
 			battmgr->usb.usb_type = le32_to_cpu(resp->intval.value);
 			break;
 		default:
@@ -1656,6 +1688,7 @@ static void qcom_battmgr_pdr_notify(void *priv, int state)
 static const struct of_device_id qcom_battmgr_of_variants[] = {
 	{ .compatible = "qcom,sc8180x-pmic-glink", .data = (void *)QCOM_BATTMGR_SC8280XP },
 	{ .compatible = "qcom,sc8280xp-pmic-glink", .data = (void *)QCOM_BATTMGR_SC8280XP },
+	{ .compatible = "qcom,qcm6490-pmic-glink", .data = (void *)QCOM_BATTMGR_QCM6490 },
 	/* Unmatched devices falls back to QCOM_BATTMGR_SM8350 */
 	{}
 };
