@@ -154,7 +154,7 @@ static void __dwc3_set_mode(struct work_struct *work)
 {
 	struct dwc3 *dwc = work_to_dwc(work);
 	unsigned long flags;
-	int ret = 0;
+	int ret;
 	u32 reg;
 	u32 desired_dr_role;
 
