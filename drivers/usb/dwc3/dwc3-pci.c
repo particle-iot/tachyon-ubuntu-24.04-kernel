@@ -538,7 +538,7 @@ static struct pci_driver dwc3_pci_driver = {
 	.name		= "dwc3-pci",
 	.id_table	= dwc3_pci_id_table,
 	.probe		= dwc3_pci_probe,
-	.remove		= dwc3_pci_remove,
+	.remove_new		= dwc3_pci_remove,
 	.driver		= {
 		.pm	= &dwc3_pci_dev_pm_ops,
 	}
