@@ -1952,14 +1952,20 @@ static struct power_supply *dwc3_get_usb_power_supply(struct dwc3 *dwc)
 	return usb_psy;
 }
 
-int dwc3_probe(struct dwc3 *dwc,
+struct dwc3 *dwc3_probe(struct platform_device *pdev,
 			struct dwc3_glue_data *glue_data)
 {
-	struct platform_device	*pdev = to_platform_device(dwc->dev);
-	struct device		*dev = dwc->dev;
+	struct device		*dev = &pdev->dev;
 	struct resource		*res, dwc_res;
 	void __iomem		*regs;
+	struct dwc3		*dwc;
 	int			ret;
+
+	dwc = devm_kzalloc(dev, sizeof(*dwc), GFP_KERNEL);
+	if (!dwc)
+		return ERR_PTR(-ENOMEM);
+
+	dwc->dev = dev;
 
 	if (glue_data) {
 		dwc->glue_data = glue_data->glue_data;
@@ -1969,7 +1975,7 @@ int dwc3_probe(struct dwc3 *dwc,
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "missing memory resource\n");
-		return -ENODEV;
+		return ERR_PTR(-ENODEV);
 	}
 
 	dwc->xhci_resources[0].start = res->start;
@@ -1999,8 +2005,8 @@ int dwc3_probe(struct dwc3 *dwc,
 	}
 
 	regs = devm_ioremap_resource(dev, &dwc_res);
-	if (!regs)
-		return -EINVAL;
+	if (IS_ERR(regs))
+		return ERR_CAST(regs);
 
 	dwc->regs	= regs;
 	dwc->regs_size	= resource_size(&dwc_res);
@@ -2078,6 +2084,9 @@ int dwc3_probe(struct dwc3 *dwc,
 		goto err_free_event_buffers;
 	}
 
+	if (!glue_data)
+		platform_set_drvdata(pdev, dwc);
+
 	dwc3_check_params(dwc);
 	dwc3_debugfs_init(dwc);
 
@@ -2089,7 +2098,7 @@ int dwc3_probe(struct dwc3 *dwc,
 
 	dma_set_max_seg_size(dev, UINT_MAX);
 
-	return 0;
+	return dwc;
 
 err_exit_debugfs:
 	dwc3_debugfs_exit(dwc);
@@ -2113,7 +2122,7 @@ err_put_psy:
 	if (dwc->usb_psy)
 		power_supply_put(dwc->usb_psy);
 
-	return ret;
+	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL_GPL(dwc3_probe);
 
@@ -2121,14 +2130,13 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 {
 	struct dwc3 *dwc;
 
-	dwc = devm_kzalloc(&pdev->dev, sizeof(*dwc), GFP_KERNEL);
-	if (!dwc)
-		return -ENOMEM;
+	dwc = dwc3_probe(pdev, NULL);
+	if (IS_ERR(dwc))
+		return PTR_ERR(dwc);
 
-	dwc->dev = &pdev->dev;
 	platform_set_drvdata(pdev, dwc);
 
-	return dwc3_probe(dwc, NULL);
+	return 0;
 }
 
 void dwc3_remove(struct dwc3 *dwc)
