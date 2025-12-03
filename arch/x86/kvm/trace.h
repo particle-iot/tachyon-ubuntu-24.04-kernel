@@ -1675,7 +1675,7 @@ TRACE_EVENT(kvm_nested_vmenter_failed,
 	),
 
 	TP_fast_assign(
-		__assign_str(msg);
+		__assign_str(msg, msg);
 		__entry->err = err;
 	),
 

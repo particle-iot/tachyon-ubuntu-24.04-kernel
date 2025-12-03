@@ -740,8 +740,8 @@ TRACE_EVENT(hfi1_sdma_state,
 		__string(newstate, nstate)
 	    ),
 	    TP_fast_assign(DD_DEV_ASSIGN(sde->dd);
-		__assign_str(curstate);
-		__assign_str(newstate);
+		__assign_str(curstate, cstate);
+		__assign_str(newstate, nstate);
 	    ),
 	    TP_printk("[%s] current state %s new state %s",
 		      __get_str(dev),
