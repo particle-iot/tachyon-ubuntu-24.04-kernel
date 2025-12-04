@@ -975,6 +975,21 @@ linux-qcom (6.8.0-1057.58) noble; urgency=medium
 
  -- Hui Wang <hui.wang@canonical.com>  Tue, 25 Nov 2025 20:25:40 +0800
 
+linux-particle (6.8.0-1056.57+particle5) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle5
+  * rpmsg: glink_native: remove duplicate code for rpmsg device remove
+  * rpmsg: glink_native: fix rpmsg device leak
+  * Particle: Add CONFIG_PWM_GPIO
+  * hrtimers: Introduce hrtimer_setup() to replace hrtimer_init()
+  * pwm: Provide wrappers for storing and getting driver private data
+  * pwm: Provide pwmchip_alloc() function and a devm variant of it
+  * pwm: gpio: Switch to use hrtimer_setup()
+  * pwm: Add GPIO PWM driver
+  * dt-bindings: pwm: Add pwm-gpio
+
+ -- Particle, Inc <hello@particle.io>  Thu, 04 Dec 2025 05:04:50 +0000
+
 linux-particle (6.8.0-1056.57+particle4) noble; urgency=medium
 
   * Particle: 6.8.0-1056.57+particle4
