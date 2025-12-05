@@ -1505,11 +1505,20 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 	/* Power domain */
 
 	if (res->vfe.pd_name) {
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: trying name-based attach with pd_name='%s'\n",
+			 id, res->vfe.pd_name);
 		vfe->genpd = dev_pm_domain_attach_by_name(camss->dev,
 							  res->vfe.pd_name);
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: dev_pm_domain_attach_by_name returned %px\n",
+			 id, vfe->genpd);
 		if (IS_ERR(vfe->genpd)) {
 			ret = PTR_ERR(vfe->genpd);
+			dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: name-based attach failed with error %d\n",
+				id, ret);
 			return ret;
+		}
+		if (vfe->genpd) {
+			dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: name-based attach succeeded\n", id);
 		}
 	}
 

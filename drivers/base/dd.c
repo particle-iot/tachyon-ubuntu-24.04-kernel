@@ -287,16 +287,24 @@ __setup("deferred_probe_timeout=", deferred_probe_timeout_setup);
  */
 int driver_deferred_probe_check_state(struct device *dev)
 {
+	pr_info("DEFER_DEBUG: %s: called for dev=%s\n", __func__, dev_name(dev));
+	pr_info("DEFER_DEBUG: %s: CONFIG_MODULES=%d, initcalls_done=%d, driver_deferred_probe_timeout=%d\n",
+		__func__, IS_ENABLED(CONFIG_MODULES), initcalls_done,
+		driver_deferred_probe_timeout);
+
 	if (!IS_ENABLED(CONFIG_MODULES) && initcalls_done) {
 		dev_warn(dev, "ignoring dependency for device, assuming no driver\n");
+		pr_info("DEFER_DEBUG: %s: returning -ENODEV\n", __func__);
 		return -ENODEV;
 	}
 
 	if (!driver_deferred_probe_timeout && initcalls_done) {
 		dev_warn(dev, "deferred probe timeout, ignoring dependency\n");
+		pr_info("DEFER_DEBUG: %s: returning -ETIMEDOUT\n", __func__);
 		return -ETIMEDOUT;
 	}
 
+	pr_info("DEFER_DEBUG: %s: returning -EPROBE_DEFER\n", __func__);
 	return -EPROBE_DEFER;
 }
 EXPORT_SYMBOL_GPL(driver_deferred_probe_check_state);

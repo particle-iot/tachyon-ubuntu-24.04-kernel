@@ -2341,18 +2341,46 @@ static struct generic_pm_domain *genpd_xlate_onecell(
 {
 	struct genpd_onecell_data *genpd_data = data;
 	unsigned int idx = genpdspec->args[0];
+	int i;
 
-	if (genpdspec->args_count != 1)
+	pr_info("GENPD_DEBUG: %s: entry with idx=%u, args_count=%u\n",
+		__func__, idx, genpdspec->args_count);
+
+	if (genpdspec->args_count != 1) {
+		pr_err("GENPD_DEBUG: %s: args_count != 1\n", __func__);
 		return ERR_PTR(-EINVAL);
+	}
+
+	pr_info("GENPD_DEBUG: %s: num_domains=%u\n", __func__, genpd_data->num_domains);
 
 	if (idx >= genpd_data->num_domains) {
 		pr_err("%s: invalid domain index %u\n", __func__, idx);
 		return ERR_PTR(-EINVAL);
 	}
 
-	if (!genpd_data->domains[idx])
-		return ERR_PTR(-ENOENT);
+	pr_info("GENPD_DEBUG: %s: checking domains[%u], ptr=%px\n",
+		__func__, idx, genpd_data->domains[idx]);
 
+	/* Dump all domain pointers for debugging */
+	pr_info("GENPD_DEBUG: %s: dumping all domains:\n", __func__);
+	for (i = 0; i < genpd_data->num_domains; i++) {
+		if (genpd_data->domains[i]) {
+			pr_info("GENPD_DEBUG:   domains[%d] = %px (%s)\n",
+				i, genpd_data->domains[i],
+				genpd_data->domains[i]->name);
+		} else {
+			pr_info("GENPD_DEBUG:   domains[%d] = NULL\n", i);
+		}
+	}
+
+	if (!genpd_data->domains[idx]) {
+		pr_err("GENPD_DEBUG: %s: domains[%u] is NULL, returning -ENOENT\n",
+			__func__, idx);
+		return ERR_PTR(-ENOENT);
+	}
+
+	pr_info("GENPD_DEBUG: %s: returning domain %s\n",
+		__func__, genpd_data->domains[idx]->name);
 	return genpd_data->domains[idx];
 }
 
@@ -2367,19 +2395,28 @@ static int genpd_add_provider(struct device_node *np, genpd_xlate_t xlate,
 {
 	struct of_genpd_provider *cp;
 
+	pr_info("GENPD_DEBUG: %s: entry for node %pOF, xlate=%px, data=%px\n",
+		__func__, np, xlate, data);
+
 	cp = kzalloc(sizeof(*cp), GFP_KERNEL);
-	if (!cp)
+	if (!cp) {
+		pr_err("GENPD_DEBUG: %s: kzalloc failed\n", __func__);
 		return -ENOMEM;
+	}
 
 	cp->node = of_node_get(np);
 	cp->data = data;
 	cp->xlate = xlate;
 	fwnode_dev_initialized(&np->fwnode, true);
 
+	pr_info("GENPD_DEBUG: %s: allocated provider cp=%px, node=%pOF\n",
+		__func__, cp, cp->node);
+
 	mutex_lock(&of_genpd_mutex);
 	list_add(&cp->link, &of_genpd_providers);
 	mutex_unlock(&of_genpd_mutex);
-	pr_debug("Added domain provider from %pOF\n", np);
+	pr_info("GENPD_DEBUG: %s: Added domain provider from %pOF to global list\n",
+		__func__, np);
 
 	return 0;
 }
@@ -2462,26 +2499,62 @@ int of_genpd_add_provider_onecell(struct device_node *np,
 	unsigned int i;
 	int ret = -EINVAL;
 
-	if (!np || !data)
-		return -EINVAL;
+	pr_info("GENPD_DEBUG: %s: entry for node %pOF\n", __func__, np);
+	pr_info("GENPD_DEBUG: %s: data=%px, num_domains=%u\n",
+		__func__, data, data ? data->num_domains : 0);
 
-	if (!data->xlate)
+	if (!np || !data) {
+		pr_err("GENPD_DEBUG: %s: np=%px or data=%px is NULL\n",
+			__func__, np, data);
+		return -EINVAL;
+	}
+
+	if (!data->xlate) {
+		pr_info("GENPD_DEBUG: %s: setting xlate to genpd_xlate_onecell\n",
+			__func__);
 		data->xlate = genpd_xlate_onecell;
+	}
+
+	pr_info("GENPD_DEBUG: %s: processing %u domains:\n",
+		__func__, data->num_domains);
+	for (i = 0; i < data->num_domains; i++) {
+		if (data->domains[i]) {
+			pr_info("GENPD_DEBUG: %s:   [%u] = %px (%s)\n",
+				__func__, i, data->domains[i],
+				data->domains[i]->name);
+		} else {
+			pr_info("GENPD_DEBUG: %s:   [%u] = NULL\n", __func__, i);
+		}
+	}
 
 	for (i = 0; i < data->num_domains; i++) {
 		genpd = data->domains[i];
 
-		if (!genpd)
+		if (!genpd) {
+			pr_info("GENPD_DEBUG: %s: domains[%u] is NULL, skipping\n",
+				__func__, i);
 			continue;
-		if (!genpd_present(genpd))
+		}
+
+		pr_info("GENPD_DEBUG: %s: processing domain[%u] = %s\n",
+			__func__, i, genpd->name);
+
+		if (!genpd_present(genpd)) {
+			pr_err("GENPD_DEBUG: %s: domain[%u] (%s) is not present!\n",
+				__func__, i, genpd->name);
 			goto error;
+		}
 
 		genpd->dev.of_node = np;
 
 		/* Parse genpd OPP table */
 		if (!genpd_is_opp_table_fw(genpd) && genpd->set_performance_state) {
+			pr_info("GENPD_DEBUG: %s: adding OPP table for domain[%u] (%s)\n",
+				__func__, i, genpd->name);
 			ret = dev_pm_opp_of_add_table_indexed(&genpd->dev, i);
 			if (ret) {
+				pr_err("GENPD_DEBUG: %s: OPP table add failed for domain[%u], ret=%d\n",
+					__func__, i, ret);
 				dev_err_probe(&genpd->dev, ret,
 					      "Failed to add OPP table for index %d\n", i);
 				goto error;
@@ -2497,12 +2570,21 @@ int of_genpd_add_provider_onecell(struct device_node *np,
 
 		genpd->provider = &np->fwnode;
 		genpd->has_provider = true;
+		pr_info("GENPD_DEBUG: %s: domain[%u] (%s) configured successfully\n",
+			__func__, i, genpd->name);
 	}
 
+	pr_info("GENPD_DEBUG: %s: calling genpd_add_provider for node %pOF\n",
+		__func__, np);
 	ret = genpd_add_provider(np, data->xlate, data);
-	if (ret < 0)
+	pr_info("GENPD_DEBUG: %s: genpd_add_provider returned %d\n", __func__, ret);
+	if (ret < 0) {
+		pr_err("GENPD_DEBUG: %s: genpd_add_provider failed!\n", __func__);
 		goto error;
+	}
 
+	pr_info("GENPD_DEBUG: %s: SUCCESS - provider registered for node %pOF\n",
+		__func__, np);
 	return 0;
 
 error:
@@ -2583,22 +2665,47 @@ static struct generic_pm_domain *genpd_get_from_provider(
 {
 	struct generic_pm_domain *genpd = ERR_PTR(-ENOENT);
 	struct of_genpd_provider *provider;
+	int provider_count = 0;
+	bool found = false;
 
-	if (!genpdspec)
+	if (!genpdspec) {
+		pr_err("GENPD_DEBUG: %s: genpdspec is NULL\n", __func__);
 		return ERR_PTR(-EINVAL);
+	}
+
+	pr_info("GENPD_DEBUG: %s: looking for provider node %pOF\n",
+		__func__, genpdspec->np);
 
 	mutex_lock(&of_genpd_mutex);
 
 	/* Check if we have such a provider in our array */
 	list_for_each_entry(provider, &of_genpd_providers, link) {
-		if (provider->node == genpdspec->np)
+		pr_info("GENPD_DEBUG: %s: checking provider[%d] node=%pOF (looking for %pOF)\n",
+			__func__, provider_count, provider->node, genpdspec->np);
+
+		provider_count++;
+
+		if (provider->node == genpdspec->np) {
+			found = true;
+			pr_info("GENPD_DEBUG: %s: FOUND matching provider! Calling xlate...\n",
+				__func__);
 			genpd = provider->xlate(genpdspec, provider->data);
+			pr_info("GENPD_DEBUG: %s: xlate returned %px (IS_ERR=%d, PTR_ERR=%ld)\n",
+				__func__, genpd, IS_ERR(genpd),
+				IS_ERR(genpd) ? PTR_ERR(genpd) : 0);
+		}
 		if (!IS_ERR(genpd))
 			break;
 	}
 
 	mutex_unlock(&of_genpd_mutex);
 
+	if (!found) {
+		pr_err("GENPD_DEBUG: %s: NO matching provider found! Checked %d providers\n",
+			__func__, provider_count);
+	}
+
+	pr_info("GENPD_DEBUG: %s: returning %px\n", __func__, genpd);
 	return genpd;
 }
 
@@ -2824,21 +2931,44 @@ static int __genpd_dev_pm_attach(struct device *dev, struct device *base_dev,
 	int pstate;
 	int ret;
 
+	pr_info("GENPD_DEBUG: %s: called for dev=%s, index=%u, power_on=%d\n",
+		__func__, dev_name(dev), index, power_on);
+	pr_info("GENPD_DEBUG: %s: dev->of_node=%pOF\n", __func__, dev->of_node);
+
 	ret = of_parse_phandle_with_args(dev->of_node, "power-domains",
 				"#power-domain-cells", index, &pd_args);
-	if (ret < 0)
+	pr_info("GENPD_DEBUG: %s: of_parse_phandle_with_args returned %d\n",
+		__func__, ret);
+	if (ret < 0) {
+		pr_err("GENPD_DEBUG: %s: failed to parse phandle, ret=%d\n",
+			__func__, ret);
 		return ret;
+	}
+
+	pr_info("GENPD_DEBUG: %s: pd_args.np=%pOF (phandle=%x), args_count=%d, args[0]=%u\n",
+		__func__, pd_args.np, pd_args.np->phandle,
+		pd_args.args_count, pd_args.args[0]);
 
 	mutex_lock(&gpd_list_lock);
 	pd = genpd_get_from_provider(&pd_args);
 	of_node_put(pd_args.np);
+
+	pr_info("GENPD_DEBUG: %s: genpd_get_from_provider returned %px\n",
+		__func__, pd);
+
 	if (IS_ERR(pd)) {
 		mutex_unlock(&gpd_list_lock);
+		pr_err("GENPD_DEBUG: %s: failed to find PM domain: %ld\n",
+			__func__, PTR_ERR(pd));
 		dev_dbg(dev, "%s() failed to find PM domain: %ld\n",
 			__func__, PTR_ERR(pd));
-		return driver_deferred_probe_check_state(base_dev);
+		ret = driver_deferred_probe_check_state(base_dev);
+		pr_err("GENPD_DEBUG: %s: driver_deferred_probe_check_state returned %d\n",
+			__func__, ret);
+		return ret;
 	}
 
+	pr_info("GENPD_DEBUG: %s: found PM domain '%s'\n", __func__, pd->name);
 	dev_dbg(dev, "adding to PM domain %s\n", pd->name);
 
 	ret = genpd_add_device(pd, dev, base_dev);
@@ -2941,34 +3071,60 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	int num_domains;
 	int ret;
 
-	if (!dev->of_node)
+	pr_info("GENPD_DEBUG: %s: called for dev=%s, index=%u\n",
+		__func__, dev_name(dev), index);
+
+	if (!dev->of_node) {
+		pr_err("GENPD_DEBUG: %s: dev->of_node is NULL\n", __func__);
 		return NULL;
+	}
+
+	pr_info("GENPD_DEBUG: %s: dev->of_node=%pOF\n", __func__, dev->of_node);
 
 	/* Verify that the index is within a valid range. */
 	num_domains = of_count_phandle_with_args(dev->of_node, "power-domains",
 						 "#power-domain-cells");
-	if (index >= num_domains)
+	pr_info("GENPD_DEBUG: %s: num_domains=%d, requested index=%u\n",
+		__func__, num_domains, index);
+
+	if (index >= num_domains) {
+		pr_err("GENPD_DEBUG: %s: index %u >= num_domains %d\n",
+			__func__, index, num_domains);
 		return NULL;
+	}
 
 	/* Allocate and register device on the genpd bus. */
 	virt_dev = kzalloc(sizeof(*virt_dev), GFP_KERNEL);
-	if (!virt_dev)
+	if (!virt_dev) {
+		pr_err("GENPD_DEBUG: %s: kzalloc failed\n", __func__);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	dev_set_name(virt_dev, "genpd:%u:%s", index, dev_name(dev));
 	virt_dev->bus = &genpd_bus_type;
 	virt_dev->release = genpd_release_dev;
 	virt_dev->of_node = of_node_get(dev->of_node);
 
+	pr_info("GENPD_DEBUG: %s: created virt_dev=%s, of_node=%pOF\n",
+		__func__, dev_name(virt_dev), virt_dev->of_node);
+
 	ret = device_register(virt_dev);
 	if (ret) {
+		pr_err("GENPD_DEBUG: %s: device_register failed, ret=%d\n",
+			__func__, ret);
 		put_device(virt_dev);
 		return ERR_PTR(ret);
 	}
 
+	pr_info("GENPD_DEBUG: %s: calling __genpd_dev_pm_attach\n", __func__);
 	/* Try to attach the device to the PM domain at the specified index. */
 	ret = __genpd_dev_pm_attach(virt_dev, dev, index, false);
+	pr_info("GENPD_DEBUG: %s: __genpd_dev_pm_attach returned %d\n",
+		__func__, ret);
+
 	if (ret < 1) {
+		pr_err("GENPD_DEBUG: %s: attach failed, ret=%d, unregistering device\n",
+			__func__, ret);
 		device_unregister(virt_dev);
 		return ret ? ERR_PTR(ret) : NULL;
 	}
@@ -2976,6 +3132,8 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	pm_runtime_enable(virt_dev);
 	genpd_queue_power_off_work(dev_to_genpd(virt_dev));
 
+	pr_info("GENPD_DEBUG: %s: SUCCESS, returning virt_dev=%s\n",
+		__func__, dev_name(virt_dev));
 	return virt_dev;
 }
 EXPORT_SYMBOL_GPL(genpd_dev_pm_attach_by_id);
@@ -2993,14 +3151,29 @@ struct device *genpd_dev_pm_attach_by_name(struct device *dev, const char *name)
 {
 	int index;
 
-	if (!dev->of_node)
+	pr_info("GENPD_DEBUG: %s: called for dev=%s, name='%s'\n",
+		__func__, dev_name(dev), name);
+
+	if (!dev->of_node) {
+		pr_err("GENPD_DEBUG: %s: dev->of_node is NULL\n", __func__);
 		return NULL;
+	}
+
+	pr_info("GENPD_DEBUG: %s: dev->of_node=%pOF\n", __func__, dev->of_node);
 
 	index = of_property_match_string(dev->of_node, "power-domain-names",
 					 name);
-	if (index < 0)
-		return NULL;
+	pr_info("GENPD_DEBUG: %s: of_property_match_string returned index=%d\n",
+		__func__, index);
 
+	if (index < 0) {
+		pr_err("GENPD_DEBUG: %s: name '%s' not found in power-domain-names\n",
+			__func__, name);
+		return NULL;
+	}
+
+	pr_info("GENPD_DEBUG: %s: calling genpd_dev_pm_attach_by_id(dev, %d)\n",
+		__func__, index);
 	return genpd_dev_pm_attach_by_id(dev, index);
 }
 

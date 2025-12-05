@@ -494,15 +494,34 @@ int gdsc_register(struct gdsc_desc *desc,
 	}
 
 	data->num_domains = num;
+	dev_info(dev, "GDSC_DEBUG: registering %zu domains\n", num);
+
 	for (i = 0; i < num; i++) {
-		if (!scs[i])
+		if (!scs[i]) {
+			dev_info(dev, "GDSC_DEBUG: scs[%d] is NULL, skipping\n", i);
 			continue;
+		}
+		dev_info(dev, "GDSC_DEBUG: initializing scs[%d] = %s\n", i, scs[i]->pd.name);
 		scs[i]->regmap = regmap;
 		scs[i]->rcdev = rcdev;
 		ret = gdsc_init(scs[i]);
-		if (ret)
+		if (ret) {
+			dev_err(dev, "GDSC_DEBUG: gdsc_init failed for scs[%d], ret=%d\n", i, ret);
 			return ret;
+		}
 		data->domains[i] = &scs[i]->pd;
+		dev_info(dev, "GDSC_DEBUG: data->domains[%d] = %px (%s)\n",
+			 i, data->domains[i], data->domains[i]->name);
+	}
+
+	dev_info(dev, "GDSC_DEBUG: dumping final domains array:\n");
+	for (i = 0; i < num; i++) {
+		if (data->domains[i]) {
+			dev_info(dev, "GDSC_DEBUG:   domains[%d] = %px (%s)\n",
+				 i, data->domains[i], data->domains[i]->name);
+		} else {
+			dev_info(dev, "GDSC_DEBUG:   domains[%d] = NULL\n", i);
+		}
 	}
 
 	/* Add subdomains */
@@ -525,7 +544,11 @@ int gdsc_register(struct gdsc_desc *desc,
 		}
 	}
 
-	return of_genpd_add_provider_onecell(dev->of_node, data);
+	dev_info(dev, "GDSC_DEBUG: calling of_genpd_add_provider_onecell for node %pOF\n",
+		 dev->of_node);
+	ret = of_genpd_add_provider_onecell(dev->of_node, data);
+	dev_info(dev, "GDSC_DEBUG: of_genpd_add_provider_onecell returned %d\n", ret);
+	return ret;
 }
 
 void gdsc_unregister(struct gdsc_desc *desc)
