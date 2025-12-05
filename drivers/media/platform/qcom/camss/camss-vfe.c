@@ -1496,8 +1496,12 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 	int i, j;
 	int ret;
 
-	if (!res->vfe.line_num)
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: msm_vfe_subdev_init ENTRY\n", id);
+
+	if (!res->vfe.line_num) {
+		dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: line_num is 0, returning -EINVAL\n", id);
 		return -EINVAL;
+	}
 
 	vfe->res = &res->vfe;
 	vfe->res->hw_ops->subdev_init(dev, vfe);
@@ -1541,53 +1545,82 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 
 	/* Memory */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: attempting ioremap for resource '%s'\n",
+		 id, res->reg[0]);
 	vfe->base = devm_platform_ioremap_resource_byname(pdev, res->reg[0]);
 	if (IS_ERR(vfe->base)) {
-		dev_err(dev, "could not map memory\n");
+		dev_err(dev, "CAMSS_DEBUG: VFE%d: could not map memory '%s': %ld\n",
+			id, res->reg[0], PTR_ERR(vfe->base));
 		return PTR_ERR(vfe->base);
 	}
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: ioremap succeeded\n", id);
 
 	/* Interrupt */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: attempting to get IRQ '%s'\n",
+		 id, res->interrupt[0]);
 	ret = platform_get_irq_byname(pdev, res->interrupt[0]);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: platform_get_irq_byname failed for '%s': %d\n",
+			id, res->interrupt[0], ret);
 		return ret;
+	}
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: got IRQ %d\n", id, ret);
 
 	vfe->irq = ret;
 	snprintf(vfe->irq_name, sizeof(vfe->irq_name), "%s_%s%d",
 		 dev_name(dev), MSM_VFE_NAME, id);
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: IRQ name = '%s'\n", id, vfe->irq_name);
+
 	if (vfe->res->hw_ops->isr) {
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: requesting IRQ\n", id);
 		ret = devm_request_irq(dev, vfe->irq, vfe->res->hw_ops->isr,
 				       IRQF_TRIGGER_RISING, vfe->irq_name, vfe);
 		if (ret < 0) {
-			dev_err(dev, "request_irq failed: %d\n", ret);
+			dev_err(dev, "CAMSS_DEBUG: VFE%d: request_irq failed: %d\n", id, ret);
 			return ret;
 		}
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: IRQ request succeeded\n", id);
 	}
 
 	/* Clocks */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: starting clock setup\n", id);
 	vfe->nclocks = 0;
 	while (res->clock[vfe->nclocks])
 		vfe->nclocks++;
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: found %d clocks\n", id, vfe->nclocks);
 
 	vfe->clock = devm_kcalloc(dev, vfe->nclocks, sizeof(*vfe->clock),
 				  GFP_KERNEL);
-	if (!vfe->clock)
+	if (!vfe->clock) {
+		dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: clock allocation failed\n", id);
 		return -ENOMEM;
+	}
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: clock array allocated\n", id);
 
 	for (i = 0; i < vfe->nclocks; i++) {
 		struct camss_clock *clock = &vfe->clock[i];
 
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: getting clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
 		clock->clk = devm_clk_get(dev, res->clock[i]);
-		if (IS_ERR(clock->clk))
+		if (IS_ERR(clock->clk)) {
+			dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: devm_clk_get failed for '%s': %ld\n",
+				id, res->clock[i], PTR_ERR(clock->clk));
 			return PTR_ERR(clock->clk);
+		}
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: got clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
 
 		clock->name = res->clock[i];
 
 		clock->nfreqs = 0;
 		while (res->clock_rate[i][clock->nfreqs])
 			clock->nfreqs++;
+
+		dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: clock[%d] '%s' has %d frequencies\n",
+			 id, i, res->clock[i], clock->nfreqs);
 
 		if (!clock->nfreqs) {
 			clock->freq = NULL;
@@ -1598,13 +1631,18 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 					   clock->nfreqs,
 					   sizeof(*clock->freq),
 					   GFP_KERNEL);
-		if (!clock->freq)
+		if (!clock->freq) {
+			dev_err(camss->dev, "CAMSS_DEBUG: VFE%d: clock freq allocation failed for '%s'\n",
+				id, res->clock[i]);
 			return -ENOMEM;
+		}
 
 		for (j = 0; j < clock->nfreqs; j++)
 			clock->freq[j] = res->clock_rate[i][j];
 	}
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: all clocks configured\n", id);
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: initializing mutexes and locks\n", id);
 	mutex_init(&vfe->power_lock);
 	vfe->power_count = 0;
 
@@ -1616,7 +1654,9 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 	vfe->camss = camss;
 	vfe->id = id;
 	vfe->reg_update = 0;
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: basic initialization done\n", id);
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: initializing %d lines\n", id, vfe->res->line_num);
 	for (i = VFE_LINE_RDI0; i < vfe->res->line_num; i++) {
 		struct vfe_line *l = &vfe->line[i];
 
@@ -1634,10 +1674,12 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
 			l->formats = res->vfe.formats_rdi->formats;
 		}
 	}
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: lines initialized\n", id);
 
 	init_completion(&vfe->reset_complete);
 	init_completion(&vfe->halt_complete);
 
+	dev_info(camss->dev, "CAMSS_DEBUG: VFE%d: msm_vfe_subdev_init SUCCEEDED\n", id);
 	return 0;
 }
 
