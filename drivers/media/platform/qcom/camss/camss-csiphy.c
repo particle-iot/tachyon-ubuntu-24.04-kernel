@@ -581,6 +581,8 @@ int msm_csiphy_subdev_init(struct camss *camss,
 	int i, j, k;
 	int ret;
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: msm_csiphy_subdev_init ENTRY\n", id);
+
 	csiphy->camss = camss;
 	csiphy->id = id;
 	csiphy->cfg.combo_mode = 0;
@@ -588,9 +590,17 @@ int msm_csiphy_subdev_init(struct camss *camss,
 
 	/* Memory */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: attempting ioremap for resource '%s'\n",
+		 id, res->reg[0]);
+
 	csiphy->base = devm_platform_ioremap_resource_byname(pdev, res->reg[0]);
-	if (IS_ERR(csiphy->base))
+	if (IS_ERR(csiphy->base)) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: could not map memory '%s': %ld\n",
+			id, res->reg[0], PTR_ERR(csiphy->base));
 		return PTR_ERR(csiphy->base);
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: ioremap succeeded\n", id);
 
 	if (camss->res->version == CAMSS_8x16 ||
 	    camss->res->version == CAMSS_8x96) {
@@ -604,53 +614,88 @@ int msm_csiphy_subdev_init(struct camss *camss,
 
 	/* Interrupt */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: attempting to get IRQ '%s'\n",
+		 id, res->interrupt[0]);
+
 	ret = platform_get_irq_byname(pdev, res->interrupt[0]);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: platform_get_irq_byname failed for '%s': %d\n",
+			id, res->interrupt[0], ret);
 		return ret;
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: got IRQ %d\n", id, ret);
 
 	csiphy->irq = ret;
 	snprintf(csiphy->irq_name, sizeof(csiphy->irq_name), "%s_%s%d",
 		 dev_name(dev), MSM_CSIPHY_NAME, csiphy->id);
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: IRQ name = '%s'\n", id, csiphy->irq_name);
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: requesting IRQ\n", id);
+
 	ret = devm_request_irq(dev, csiphy->irq, csiphy->res->hw_ops->isr,
 			       IRQF_TRIGGER_RISING | IRQF_NO_AUTOEN,
 			       csiphy->irq_name, csiphy);
 	if (ret < 0) {
-		dev_err(dev, "request_irq failed: %d\n", ret);
+		dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: request_irq failed: %d\n", id, ret);
 		return ret;
 	}
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: IRQ request succeeded\n", id);
+
 	/* Clocks */
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: starting clock setup\n", id);
 
 	csiphy->nclocks = 0;
 	while (res->clock[csiphy->nclocks])
 		csiphy->nclocks++;
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: found %d clocks\n", id, csiphy->nclocks);
+
 	csiphy->clock = devm_kcalloc(dev,
 				     csiphy->nclocks, sizeof(*csiphy->clock),
 				     GFP_KERNEL);
-	if (!csiphy->clock)
+	if (!csiphy->clock) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: clock array allocation failed\n", id);
 		return -ENOMEM;
+	}
 
 	csiphy->rate_set = devm_kcalloc(dev,
 					csiphy->nclocks,
 					sizeof(*csiphy->rate_set),
 					GFP_KERNEL);
-	if (!csiphy->rate_set)
+	if (!csiphy->rate_set) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: rate_set array allocation failed\n", id);
 		return -ENOMEM;
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: clock arrays allocated\n", id);
 
 	for (i = 0; i < csiphy->nclocks; i++) {
 		struct camss_clock *clock = &csiphy->clock[i];
 
+		dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: getting clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
+
 		clock->clk = devm_clk_get(dev, res->clock[i]);
-		if (IS_ERR(clock->clk))
+		if (IS_ERR(clock->clk)) {
+			dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: devm_clk_get failed for '%s': %ld\n",
+				id, res->clock[i], PTR_ERR(clock->clk));
 			return PTR_ERR(clock->clk);
+		}
+
+		dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: got clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
 
 		clock->name = res->clock[i];
 
 		clock->nfreqs = 0;
 		while (res->clock_rate[i][clock->nfreqs])
 			clock->nfreqs++;
+
+		dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: clock[%d] '%s' has %d frequencies\n",
+			 id, i, res->clock[i], clock->nfreqs);
 
 		if (!clock->nfreqs) {
 			clock->freq = NULL;
@@ -661,8 +706,10 @@ int msm_csiphy_subdev_init(struct camss *camss,
 					   clock->nfreqs,
 					   sizeof(*clock->freq),
 					   GFP_KERNEL);
-		if (!clock->freq)
+		if (!clock->freq) {
+			dev_err(camss->dev, "CAMSS_DEBUG: CSIPHY%d: clock freq array allocation failed\n", id);
 			return -ENOMEM;
+		}
 
 		for (j = 0; j < clock->nfreqs; j++)
 			clock->freq[j] = res->clock_rate[i][j];
@@ -685,6 +732,9 @@ int msm_csiphy_subdev_init(struct camss *camss,
 				break;
 		}
 	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: all clocks configured\n", id);
+	dev_info(camss->dev, "CAMSS_DEBUG: CSIPHY%d: msm_csiphy_subdev_init SUCCEEDED\n", id);
 
 	return 0;
 }

@@ -1019,6 +1019,8 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 	int i, j;
 	int ret;
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: msm_csid_subdev_init ENTRY\n", id);
+
 	csid->camss = camss;
 	csid->id = id;
 	csid->res = &res->csid;
@@ -1031,6 +1033,9 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 	csid->res->hw_ops->subdev_init(csid);
 
 	/* Memory */
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: attempting ioremap for resource '%s'\n",
+		 id, res->reg[0]);
+
 	if (camss->res->version == CAMSS_8250) {
 		/* for titan 480, CSID registers are inside the VFE region,
 		 * between the VFE "top" and "bus" registers. this requires
@@ -1042,10 +1047,15 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 		else
 			csid->base = csid->res->parent_dev_ops->get_base_address(camss, id)
 				 + VFE_480_CSID_OFFSET;
+		dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: using VFE base + offset for CSID\n", id);
 	} else {
 		csid->base = devm_platform_ioremap_resource_byname(pdev, res->reg[0]);
-		if (IS_ERR(csid->base))
+		if (IS_ERR(csid->base)) {
+			dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: could not map memory '%s': %ld\n",
+				id, res->reg[0], PTR_ERR(csid->base));
 			return PTR_ERR(csid->base);
+		}
+		dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: ioremap succeeded\n", id);
 
 		/* CSID "top" is a new function in new version HW,
 		 * CSID can connect to VFE & SFE(Sensor Front End).
@@ -1063,44 +1073,78 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 
 	/* Interrupt */
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: attempting to get IRQ '%s'\n",
+		 id, res->interrupt[0]);
+
 	ret = platform_get_irq_byname(pdev, res->interrupt[0]);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: platform_get_irq_byname failed for '%s': %d\n",
+			id, res->interrupt[0], ret);
 		return ret;
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: got IRQ %d\n", id, ret);
 
 	csid->irq = ret;
 	snprintf(csid->irq_name, sizeof(csid->irq_name), "%s_%s%d",
 		 dev_name(dev), MSM_CSID_NAME, csid->id);
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: IRQ name = '%s'\n", id, csid->irq_name);
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: requesting IRQ\n", id);
+
 	ret = devm_request_irq(dev, csid->irq, csid->res->hw_ops->isr,
 			       IRQF_TRIGGER_RISING | IRQF_NO_AUTOEN,
 			       csid->irq_name, csid);
 	if (ret < 0) {
-		dev_err(dev, "request_irq failed: %d\n", ret);
+		dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: request_irq failed: %d\n", id, ret);
 		return ret;
 	}
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: IRQ request succeeded\n", id);
+
 	/* Clocks */
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: starting clock setup\n", id);
 
 	csid->nclocks = 0;
 	while (res->clock[csid->nclocks])
 		csid->nclocks++;
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: found %d clocks\n", id, csid->nclocks);
+
 	csid->clock = devm_kcalloc(dev, csid->nclocks, sizeof(*csid->clock),
 				    GFP_KERNEL);
-	if (!csid->clock)
+	if (!csid->clock) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: clock array allocation failed\n", id);
 		return -ENOMEM;
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: clock array allocated\n", id);
 
 	for (i = 0; i < csid->nclocks; i++) {
 		struct camss_clock *clock = &csid->clock[i];
 
+		dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: getting clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
+
 		clock->clk = devm_clk_get(dev, res->clock[i]);
-		if (IS_ERR(clock->clk))
+		if (IS_ERR(clock->clk)) {
+			dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: devm_clk_get failed for '%s': %ld\n",
+				id, res->clock[i], PTR_ERR(clock->clk));
 			return PTR_ERR(clock->clk);
+		}
+
+		dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: got clock[%d] '%s'\n",
+			 id, i, res->clock[i]);
 
 		clock->name = res->clock[i];
 
 		clock->nfreqs = 0;
 		while (res->clock_rate[i][clock->nfreqs])
 			clock->nfreqs++;
+
+		dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: clock[%d] '%s' has %d frequencies\n",
+			 id, i, res->clock[i], clock->nfreqs);
 
 		if (!clock->nfreqs) {
 			clock->freq = NULL;
@@ -1118,19 +1162,25 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 			clock->freq[j] = res->clock_rate[i][j];
 	}
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: all clocks configured\n", id);
+
 	/* Regulator */
 	for (i = 0; i < ARRAY_SIZE(res->regulators); i++) {
 		if (res->regulators[i])
 			csid->num_supplies++;
 	}
 
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: found %d regulators\n", id, csid->num_supplies);
+
 	if (csid->num_supplies) {
 		csid->supplies = devm_kmalloc_array(camss->dev,
 						    csid->num_supplies,
 						    sizeof(*csid->supplies),
 						    GFP_KERNEL);
-		if (!csid->supplies)
+		if (!csid->supplies) {
+			dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: regulator array allocation failed\n", id);
 			return -ENOMEM;
+		}
 	}
 
 	for (i = 0; i < csid->num_supplies; i++)
@@ -1138,10 +1188,16 @@ int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 
 	ret = devm_regulator_bulk_get(camss->dev, csid->num_supplies,
 				      csid->supplies);
-	if (ret)
+	if (ret) {
+		dev_err(camss->dev, "CAMSS_DEBUG: CSID%d: devm_regulator_bulk_get failed: %d\n", id, ret);
 		return ret;
+	}
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: regulators configured\n", id);
 
 	init_completion(&csid->reset_complete);
+
+	dev_info(camss->dev, "CAMSS_DEBUG: CSID%d: msm_csid_subdev_init SUCCEEDED\n", id);
 
 	return 0;
 }
