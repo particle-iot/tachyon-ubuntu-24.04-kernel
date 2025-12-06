@@ -1627,7 +1627,7 @@ static const struct camss_subdev_resources csid_res_7280[] = {
 	{
 		.regulators = { "vdda-phy", "vdda-pll" },
 
-		.clock = { "csi3", "vfe0_lite_cphy_rx", "vfe0_lite", "soc_ahb"},
+		.clock = { "csi3", "vfe_lite0_cphy_rx", "vfe0_lite", "soc_ahb"},
 		.clock_rate = {
 			{ 300000000, 0, 320000000, 0},
 			{ 400000000, 0, 400000000, 0},
@@ -1648,7 +1648,7 @@ static const struct camss_subdev_resources csid_res_7280[] = {
 	{
 		.regulators = { "vdda-phy", "vdda-pll" },
 
-		.clock = { "csi3", "vfe0_lite_cphy_rx", "vfe0_lite", "soc_ahb"},
+		.clock = { "csi3", "vfe_lite1_cphy_rx", "vfe1_lite", "soc_ahb"},
 		.clock_rate = {
 			{ 300000000, 0, 320000000, 0},
 			{ 400000000, 0, 400000000, 0},
