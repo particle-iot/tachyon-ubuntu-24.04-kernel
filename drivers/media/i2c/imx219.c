@@ -129,8 +129,8 @@
 #define IMX219_REG_TP_WINDOW_WIDTH	CCI_REG16(0x0624)
 #define IMX219_REG_TP_WINDOW_HEIGHT	CCI_REG16(0x0626)
 
-/* External clock frequency is 24.0M */
-#define IMX219_XCLK_FREQ		24000000
+/* External clock frequency is 19.2M (Qualcomm CAMCC) */
+#define IMX219_XCLK_FREQ		19200000
 
 /* Pixel rate is fixed for all the modes */
 #define IMX219_PIXEL_RATE		182400000
@@ -169,14 +169,14 @@ static const struct cci_reg_sequence imx219_common_regs[] = {
 	{ CCI_REG8(0x30eb), 0x05 },
 	{ CCI_REG8(0x30eb), 0x09 },
 
-	/* PLL Clock Table */
+	/* PLL Clock Table - Tuned for 19.2MHz XCLK (Qualcomm CAMCC) */
 	{ IMX219_REG_VTPXCK_DIV, 5 },
 	{ IMX219_REG_VTSYCK_DIV, 1 },
-	{ IMX219_REG_PREPLLCK_VT_DIV, 3 },	/* 0x03 = AUTO set */
-	{ IMX219_REG_PREPLLCK_OP_DIV, 3 },	/* 0x03 = AUTO set */
-	{ IMX219_REG_PLL_VT_MPY, 57 },
+	{ IMX219_REG_PREPLLCK_VT_DIV, 4 },	/* Changed from 3 for 19.2MHz */
+	{ IMX219_REG_PREPLLCK_OP_DIV, 2 },	/* Changed from 3 for 19.2MHz */
+	{ IMX219_REG_PLL_VT_MPY, 95 },		/* Changed from 57 for 19.2MHz */
 	{ IMX219_REG_OPSYCK_DIV, 1 },
-	{ IMX219_REG_PLL_OP_MPY, 114 },
+	{ IMX219_REG_PLL_OP_MPY, 95 },		/* Changed from 114 for 19.2MHz */
 
 	/* Undocumented registers */
 	{ CCI_REG8(0x455e), 0x00 },
