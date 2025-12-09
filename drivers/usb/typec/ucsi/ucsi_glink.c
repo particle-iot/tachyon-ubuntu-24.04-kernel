@@ -104,20 +104,6 @@ static char *offset_to_name(unsigned int offset)
 	return type;
 }
 
-static void ucsi_log(const char *prefix, unsigned int offset, u8 *buf,
-				size_t len)
-{
-	char str[256] = { 0 };
-	u32 i, pos = 0;
-
-	for (i = 0; i < len && pos < sizeof(str) - 1; i++)
-		pos += scnprintf(str + pos, sizeof(str) - pos, "%02x ", buf[i]);
-
-	str[pos] = '\0';
-
-	trace_ucsi_glink(prefix, offset_to_name(offset), str);
-}
-
 static int pmic_glink_ucsi_read(struct ucsi *__ucsi, unsigned int offset,
 				void *val, size_t val_len)
 {
@@ -148,7 +134,6 @@ static int pmic_glink_ucsi_read(struct ucsi *__ucsi, unsigned int offset,
 	}
 
 	memcpy(val, &ucsi->read_buf[offset], val_len);
-	ucsi_log("read:", offset, (u8 *)val, val_len);
 
 	ret = 0;
 

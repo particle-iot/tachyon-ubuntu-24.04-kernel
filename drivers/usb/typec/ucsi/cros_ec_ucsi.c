@@ -333,7 +333,7 @@ static struct platform_driver cros_ucsi_driver = {
 	},
 	.id_table = cros_ucsi_id,
 	.probe = cros_ucsi_probe,
-	.remove = cros_ucsi_remove,
+	.remove_new = cros_ucsi_remove,
 };
 
 module_platform_driver(cros_ucsi_driver);
