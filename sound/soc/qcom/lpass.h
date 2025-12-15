@@ -395,6 +395,11 @@ struct lpass_variant {
 struct lpass_pcm_data {
 	int dma_ch;
 	int i2s_port;
+
+	/* Fake DMA state (when lpass_dma_enabled=0) */
+	unsigned int fake_dma_position;
+	ktime_t fake_dma_start_time;
+	bool fake_dma_timer_started;
 };
 
 /* register the platform driver from the CPU DAI driver */

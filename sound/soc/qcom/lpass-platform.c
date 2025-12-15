@@ -19,6 +19,18 @@
 
 #define DRV_NAME "lpass-platform"
 
+/*
+ * HACK: Disable DMA to prevent crashes when ADSP is not compatible.
+ * Set to 1 to enable DMA, 0 to disable (fake success without DMA).
+ *
+ * Fake DMA state is now stored per-stream in lpass_pcm_data to support
+ * multiple concurrent audio streams.
+ */
+static int lpass_dma_enabled = 0;
+module_param(lpass_dma_enabled, int, 0644);
+MODULE_PARM_DESC(lpass_dma_enabled,
+		"Enable LPASS DMA transfers (0=disabled/fake, 1=enabled/real)");
+
 #define LPASS_PLATFORM_BUFFER_SIZE	(24 *  2 * 1024)
 #define LPASS_PLATFORM_PERIODS		2
 #define LPASS_RXTX_CDC_DMA_LPM_BUFF_SIZE (8 * 1024)
@@ -611,6 +623,19 @@ static int lpass_platform_pcmops_prepare(struct snd_soc_component *component,
 
 	ch = pcm_data->dma_ch;
 
+	/*
+	 * HACK: If DMA is disabled, pretend we succeeded but don't actually
+	 * configure any DMA registers. This keeps the audio device functional
+	 * for enumeration/testing without crashing on bad DMA transfers.
+	 */
+	if (!lpass_dma_enabled) {
+		dev_info(soc_runtime->dev, "LPASS DMA disabled - skipping DMA setup\n");
+		pcm_data->fake_dma_position = 0;
+		pcm_data->fake_dma_timer_started = false;
+		pcm_data->fake_dma_start_time = 0;  /* Reset to avoid stale timestamps */
+		return 0;
+	}
+
 	dmactl = __lpass_get_dmactl_handle(substream, component);
 	id = __lpass_get_id(substream, component);
 	map = __lpass_get_regmap_handle(substream, component);
@@ -675,6 +700,29 @@ static int lpass_platform_pcmops_trigger(struct snd_soc_component *component,
 	unsigned int dai_id = cpu_dai->driver->id;
 
 	ch = pcm_data->dma_ch;
+
+	/*
+	 * HACK: If DMA is disabled, pretend trigger succeeded.
+	 * Start the fake timer on START, stop it on STOP.
+	 */
+	if (!lpass_dma_enabled) {
+		dev_dbg(soc_runtime->dev, "LPASS DMA disabled - faking trigger cmd=%d\n", cmd);
+		switch (cmd) {
+		case SNDRV_PCM_TRIGGER_START:
+		case SNDRV_PCM_TRIGGER_RESUME:
+		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+			pcm_data->fake_dma_start_time = ktime_get();
+			pcm_data->fake_dma_timer_started = true;
+			break;
+		case SNDRV_PCM_TRIGGER_STOP:
+		case SNDRV_PCM_TRIGGER_SUSPEND:
+		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+			pcm_data->fake_dma_timer_started = false;
+			break;
+		}
+		return 0;
+	}
+
 	dmactl = __lpass_get_dmactl_handle(substream, component);
 	id = __lpass_get_id(substream, component);
 	map = __lpass_get_regmap_handle(substream, component);
@@ -873,6 +921,69 @@ static snd_pcm_uframes_t lpass_platform_pcmops_pointer(
 
 	map = __lpass_get_regmap_handle(substream, component);
 	ch = pcm_data->dma_ch;
+
+	/*
+	 * HACK: If DMA is disabled, return fake position based on elapsed time.
+	 * This provides accurate position tracking regardless of callback frequency.
+	 *
+	 * Position = (elapsed_time_ns * sample_rate * frame_bytes) / 1000000000
+	 *
+	 * NOTE: State is now per-stream (in pcm_data), supporting multiple
+	 * concurrent audio streams without interference.
+	 */
+	if (!lpass_dma_enabled) {
+		struct snd_pcm_runtime *runtime = substream->runtime;
+		unsigned int buffer_bytes;
+		unsigned int sample_rate;
+		unsigned int frame_bytes;
+		ktime_t now;
+		s64 elapsed_ns;
+		u64 bytes_elapsed;
+
+		/* Defensive: Check runtime is valid */
+		if (!runtime) {
+			dev_err(soc_runtime->dev, "LPASS fake DMA: runtime is NULL\n");
+			return 0;
+		}
+
+		buffer_bytes = snd_pcm_lib_buffer_bytes(substream);
+		if (buffer_bytes == 0) {
+			dev_err(soc_runtime->dev, "LPASS fake DMA: buffer_bytes is 0\n");
+			return 0;
+		}
+
+		if (!pcm_data->fake_dma_timer_started) {
+			/* Not playing, return current position */
+			return bytes_to_frames(runtime, pcm_data->fake_dma_position);
+		}
+
+		/* Calculate position based on elapsed time */
+		sample_rate = runtime->rate;
+		frame_bytes = frames_to_bytes(runtime, 1);
+
+		/* Defensive: Check for invalid parameters */
+		if (sample_rate == 0 || frame_bytes == 0) {
+			dev_err(soc_runtime->dev,
+				"LPASS fake DMA: invalid params (rate=%u, frame_bytes=%u)\n",
+				sample_rate, frame_bytes);
+			return 0;
+		}
+
+		now = ktime_get();
+		elapsed_ns = ktime_to_ns(ktime_sub(now, pcm_data->fake_dma_start_time));
+
+		/* Clamp elapsed time to prevent overflow (max ~24 hours) */
+		if (elapsed_ns > 86400000000000LL) /* 24 hours in nanoseconds */
+			elapsed_ns = 86400000000000LL;
+
+		/* bytes_elapsed = (elapsed_ns * sample_rate * frame_bytes) / 1000000000 */
+		bytes_elapsed = div64_u64((u64)elapsed_ns * sample_rate * frame_bytes, 1000000000ULL);
+
+		/* Wrap at buffer boundary */
+		pcm_data->fake_dma_position = (unsigned int)(bytes_elapsed % buffer_bytes);
+
+		return bytes_to_frames(runtime, pcm_data->fake_dma_position);
+	}
 
 	ret = regmap_read(map,
 			LPAIF_DMABASE_REG(v, ch, dir, dai_id), &base_addr);
