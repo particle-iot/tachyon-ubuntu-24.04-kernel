@@ -447,8 +447,6 @@ static int dwc3_usb_role_switch_set(struct usb_role_switch *sw,
 	u32 mode;
 	int ret = 0;
 
-	dwc->cable_disconnected = false;
-
 	switch (role) {
 	case USB_ROLE_HOST:
 		mode = DWC3_GCTL_PRTCAP_HOST;
