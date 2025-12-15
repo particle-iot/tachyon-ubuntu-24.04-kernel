@@ -228,11 +228,6 @@ static void __dwc3_set_mode(struct work_struct *work)
 
 	switch (desired_dr_role) {
 	case DWC3_GCTL_PRTCAP_HOST:
-		if (dwc->dwc3_guctl_resbwhseps_quirk) {
-			reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
-			reg |= DWC3_GUCTL_RESBWHSEPS;
-			dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
-		}
 		ret = dwc3_host_init(dwc);
 		if (ret) {
 			dev_err(dwc->dev, "failed to initialize host\n");
@@ -269,9 +264,6 @@ static void __dwc3_set_mode(struct work_struct *work)
 	default:
 		break;
 	}
-
-	if (!ret)
-		dwc3_notify_mode_changed(dwc, dwc->current_dr_role);
 
 out:
 	pm_runtime_mark_last_busy(dwc->dev);
@@ -1502,11 +1494,6 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
 		phy_set_mode(dwc->usb3_generic_phy, PHY_MODE_USB_HOST);
 
-		if (dwc->dwc3_guctl_resbwhseps_quirk) {
-			reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
-			reg |= DWC3_GUCTL_RESBWHSEPS;
-			dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
-		}
 		ret = dwc3_host_init(dwc);
 		if (ret)
 			return dev_err_probe(dev, ret, "failed to initialize host\n");
@@ -1678,9 +1665,6 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 				"snps,parkmode-disable-hs-quirk");
 	dwc->gfladj_refclk_lpm_sel = device_property_read_bool(dev,
 				"snps,gfladj-refclk-lpm-sel-quirk");
-	dwc->dwc3_guctl_resbwhseps_quirk = device_property_read_bool(dev,
-				"snps,dwc3_guctl_resbwhseps_quirk");
-
 	dwc->tx_de_emphasis_quirk = device_property_read_bool(dev,
 				"snps,tx_de_emphasis_quirk");
 	device_property_read_u8(dev, "snps,tx_de_emphasis",
@@ -2135,7 +2119,7 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dwc);
 	dwc->glue_ops = NULL;
 
-	return dwc3_probe(dwc, NULL);
+	return dwc3_probe(dwc);
 }
 
 void dwc3_remove(struct dwc3 *dwc)
