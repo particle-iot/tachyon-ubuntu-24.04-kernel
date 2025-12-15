@@ -742,154 +742,11 @@ static const struct software_node dwc3_qcom_swnode = {
 	.properties = dwc3_qcom_acpi_properties,
 };
 
-static int dwc3_xhci_event_notifier(struct notifier_block *nb,
-				    unsigned long event, void *ptr)
-{
-	struct usb_device *udev = ptr;
-
-	if (event != USB_DEVICE_ADD)
-		return NOTIFY_DONE;
-
-	/*
-	 * If this is a roothub corresponding to this controller, enable autosuspend
-	 */
-	if (!udev->parent) {
-		pm_runtime_use_autosuspend(&udev->dev);
-		pm_runtime_set_autosuspend_delay(&udev->dev, 1000);
-	}
-
-	usb_mark_last_busy(udev);
-
-	return NOTIFY_DONE;
-}
-
-static int dwc3_qcom_handle_cable_disconnect(void *data)
-{
-	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
-	struct dwc3 *dwc = &qcom->dwc;
-	struct usb_role_switch *sw;
-	int ret = 0;
-
-	/*
-	 * HW sequence mandates a Vbus toggle to be performed during eud
-	 * enable/disable when in HS mode. If disconnect is issued in eud
-	 * Vbus OFF context process it only when in HS mode. USB enumeration
-	 * should remain undisturbed in other speeds.
-	 */
-	sw = usb_role_switch_get(dwc->dev);
-	if (IS_REACHABLE(CONFIG_USB_QCOM_EUD)) {
-		if (qcom_eud_vbus_control(sw) && dwc->speed != DWC3_DSTS_HIGHSPEED) {
-			usb_role_switch_put(sw);
-			return 0;
-		}
-	}
-	usb_role_switch_put(sw);
-
-	/*
-	 * If we are in device mode and get a cable disconnect,
-	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
-	 * The next set_mode to default role can be ignored.
-	 */
-	if (qcom->current_role == USB_ROLE_DEVICE) {
-		ret = pm_runtime_get_sync(qcom->dev);
-		if ((ret < 0) || (qcom->is_suspended))
-			return ret;
-		dwc3_qcom_vbus_override_enable(qcom, false);
-		pm_runtime_put_autosuspend(qcom->dev);
-	} else if (qcom->current_role == USB_ROLE_HOST) {
-		dwc3_qcom_vbus_regulator_enable(qcom, false);
-		usb_unregister_notify(&qcom->xhci_nb);
-	}
-
-	pm_runtime_mark_last_busy(qcom->dev);
-	qcom->current_role = USB_ROLE_NONE;
-
-	return 0;
-}
-
-static void dwc3_qcom_handle_set_mode(void *data, u32 desired_dr_role)
-{
-	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
-
-	/*
-	 * If we are in device mode and get a cable disconnect,
-	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
-	 * The next set_mode to default role can be ignored and
-	 * so the OTG_VBUS_VALID should be set iff the current role
-	 * is NONE and we need to enter DEVICE mode.
-	 */
-	if ((qcom->current_role == USB_ROLE_NONE) &&
-	    (desired_dr_role == DWC3_GCTL_PRTCAP_DEVICE)) {
-		dwc3_qcom_vbus_override_enable(qcom, true);
-		qcom->current_role = USB_ROLE_DEVICE;
-	} else if ((desired_dr_role == DWC3_GCTL_PRTCAP_HOST) &&
-		   (qcom->current_role != USB_ROLE_HOST)) {
-		qcom->xhci_nb.notifier_call = dwc3_xhci_event_notifier;
-		usb_register_notify(&qcom->xhci_nb);
-		qcom->current_role = USB_ROLE_HOST;
-		dwc3_qcom_vbus_regulator_enable(qcom, true);
-	}
-
-	pm_runtime_mark_last_busy(qcom->dev);
-}
-
-static void dwc3_qcom_handle_mode_changed(void *data, u32 current_dr_role)
-{
-	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
-
-	/*
-	 * XHCI platform device is allocated upon host init.
-	 * So ensure we are in host mode before enabling autosuspend.
-	 */
-	if ((current_dr_role == DWC3_GCTL_PRTCAP_HOST) &&
-	    (qcom->current_role == USB_ROLE_HOST)) {
-		pm_runtime_use_autosuspend(&qcom->dwc.xhci->dev);
-		pm_runtime_set_autosuspend_delay(&qcom->dwc.xhci->dev, 0);
-	}
-}
-
-static void dwc3_post_conndone_notification(void *data)
-{
-	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
-
-	qcom->dwc.cable_disconnected = false;
-	qcom->current_role = USB_ROLE_DEVICE;
-}
-
-static void dwc3_qcom_handle_run_stop_notification(void *data, bool enable)
-{
-	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
-
-	if (enable)
-		dwc3_qcom_vbus_override_enable(qcom, true);
-}
-
-struct dwc3_glue_ops dwc3_qcom_glue_hooks = {
-	.notify_cable_disconnect = dwc3_qcom_handle_cable_disconnect,
-	.set_mode = dwc3_qcom_handle_set_mode,
-	.mode_changed = dwc3_qcom_handle_mode_changed,
-	.notify_run_stop = dwc3_qcom_handle_run_stop_notification,
-	.post_conndone = dwc3_post_conndone_notification,
-};
-
 static int dwc3_qcom_probe_core(struct platform_device *pdev, struct dwc3_qcom *qcom)
 {
 	int ret;
 
-	struct dwc3_glue_data qcom_glue_data = {
-		.glue_data	= qcom,
-		.ops		= &dwc3_qcom_glue_hooks,
-		.ignore_resets  = true,
-	};
-
-	/*
-	 * Always pass glue data to dwc3_probe as the runtime PM support is now
-	 * required for all platforms using the flattened implementation of this
-	 * driver. The conditional flag enable_rt was removed as it's no longer
-	 * needed.
-	 */
-
-	ret = dwc3_probe(&qcom->dwc, &qcom_glue_data);
+	ret = dwc3_probe(&qcom->dwc);
 	if (ret)
 		return ret;
 
@@ -1220,6 +1077,11 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		ret = dwc3_qcom_register_extcon(qcom);
 		if (ret)
 			goto interconnect_exit;
+
+		if (qcom->mode == USB_DR_MODE_HOST) {
+			dwc3_qcom_vbus_regulator_enable(qcom, true);
+			qcom->is_vbus_enabled = true;
+		}
 	}
 
 	wakeup_source = of_property_read_bool(dev->of_node, "wakeup-source");
