@@ -873,7 +873,7 @@ static void dwc3_qcom_vbus_regulator_get(struct dwc3_qcom *qcom)
 
 static void dwc3_qcom_set_role_notifier(struct dwc3 *dwc, enum usb_role next_role)
 {
-	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
+	struct dwc3_qcom *qcom = get_dwc3_qcom(dwc->dev);
 
 	if (qcom->current_role == next_role)
 		return;
@@ -900,7 +900,7 @@ static void dwc3_qcom_set_role_notifier(struct dwc3 *dwc, enum usb_role next_rol
 
 static void dwc3_qcom_run_stop_notifier(struct dwc3 *dwc, bool is_on)
 {
-	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
+	struct dwc3_qcom *qcom = get_dwc3_qcom(dwc->dev);
 
 	/*
 	 * When autosuspend is enabled and controller goes to suspend
