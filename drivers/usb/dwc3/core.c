@@ -171,9 +171,6 @@ static void __dwc3_set_mode(struct work_struct *work)
 	if (!desired_dr_role)
 		goto out;
 
-	if (!dwc->cable_disconnected)
-		dwc3_notify_set_mode(dwc, desired_dr_role);
-
 	if (desired_dr_role == dwc->current_dr_role)
 		goto out;
 
@@ -1967,19 +1964,13 @@ static struct power_supply *dwc3_get_usb_power_supply(struct dwc3 *dwc)
 	return usb_psy;
 }
 
-int dwc3_probe(struct dwc3 *dwc,
-			struct dwc3_glue_data *glue_data)
+int dwc3_probe(struct dwc3 *dwc)
 {
 	struct platform_device	*pdev = to_platform_device(dwc->dev);
 	struct device		*dev = dwc->dev;
 	struct resource		*res, dwc_res;
 	void __iomem		*regs;
 	int			ret;
-
-	if (glue_data) {
-		dwc->glue_data = glue_data->glue_data;
-		dwc->glue_ops = glue_data->ops;
-	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -2149,9 +2140,6 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 
 void dwc3_remove(struct dwc3 *dwc)
 {
-	dwc->glue_data = NULL;
-	dwc->glue_ops = NULL;
-
 	pm_runtime_get_sync(dwc->dev);
 
 	dwc3_core_exit_mode(dwc);
