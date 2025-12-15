@@ -235,7 +235,6 @@ static int pmic_glink_ucsi_async_control(struct ucsi *__ucsi, u64 command)
 	int ret;
 
 	mutex_lock(&ucsi->lock);
-	ucsi_log("async_write:", offset, (u8 *)val, val_len);
 	ret = pmic_glink_ucsi_locked_write(ucsi, UCSI_CONTROL, &command, sizeof(command));
 	mutex_unlock(&ucsi->lock);
 
