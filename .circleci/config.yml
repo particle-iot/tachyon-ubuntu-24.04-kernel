@@ -47,6 +47,7 @@ jobs:
       image: ubuntu-2004:2024.11.1
     resource_class: arm.medium
     steps:
+      - checkout
       - attach_workspace:
           at: /tmp/deb
       - run:
@@ -54,7 +55,6 @@ jobs:
           command: |
             mkdir -p debs
             mv /tmp/deb/*.deb debs/
-      - run: git clone -b "$CIRCLE_BRANCH$CIRCLE_TAG" "$CIRCLE_REPOSITORY_URL" --depth=1 ./
       - run:
           name: Post PR comment with artifact links
           command: |
