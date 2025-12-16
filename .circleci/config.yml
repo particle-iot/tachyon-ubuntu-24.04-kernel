@@ -41,6 +41,25 @@ jobs:
     resource_class: arm.xlarge
     steps:
       - build-kernel-packages
+
+  post-pr-comment:
+    machine:
+      image: ubuntu-2004:2024.11.1
+    resource_class: arm.medium
+    steps:
+      - attach_workspace:
+          at: /tmp/deb
+      - run:
+          name: Prepare artifacts
+          command: |
+            mkdir -p debs
+            mv /tmp/deb/*.deb debs/
+      - run: git clone -b "$CIRCLE_BRANCH$CIRCLE_TAG" "$CIRCLE_REPOSITORY_URL" --depth=1 ./
+      - run:
+          name: Post PR comment with artifact links
+          command: |
+            bash ci-scripts/post-pr-comment.sh
+
   upload-deb:
     machine:
       image: ubuntu-2004:2024.11.1
@@ -71,6 +90,14 @@ workflows:
           context:
             - linux-build-secrets
           <<: *tag_filters
+      - post-pr-comment:
+          requires:
+            - build-kernel
+          context:
+            - linux-build-secrets
+          filters:
+            branches:
+              ignore: main
       - upload-deb:
           <<: *tag_filters
           requires:
