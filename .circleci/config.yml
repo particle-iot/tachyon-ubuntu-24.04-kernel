@@ -11,6 +11,16 @@ orbs:
   aws-cli: circleci/aws-cli@4.1.2
   docker: circleci/docker@2
 
+parameters:
+  s3_bucket:
+    description: "S3 bucket for artifacts"
+    type: string
+    default: "tachyon-ci-particle-io-20241217204603468000000002"
+  cloudfront_url:
+    description: "CloudFront URL for artifacts"
+    type: string
+    default: "https://linux-dist.particle.io"
+
 commands:
   build-kernel-packages:
     steps:
@@ -27,12 +37,77 @@ commands:
           docker-password: DOCKERHUB_PASSWORD
       - run: docker run -v $(pwd):/build --rm ubuntu:24.04 /bin/bash -c '/build/ci-scripts/build.sh'
       - run: ls -la debs/ || true
+      - aws-cli/setup:
+          role_arn: arn:aws:iam::713073884108:role/circleci-deploy-tachyon-ci
+          region: us-east-1
+      - run:
+          name: Upload artifacts to S3 and generate metadata
+          command: |
+            S3_BUCKET="<< pipeline.parameters.s3_bucket >>"
+            CLOUDFRONT_URL="<< pipeline.parameters.cloudfront_url >>"
+            COMMIT_SHORT=$(git rev-parse --short HEAD)
+
+            # Determine build type and path
+            # Prerelease artifacts are tagged for 7-day TTL via S3 lifecycle policy
+            if [ -n "$CIRCLE_TAG" ]; then
+              BUILD_TYPE="release"
+              ARTIFACT_BASE_PATH="kernel/release/${CIRCLE_TAG}"
+            elif [ -n "$CIRCLE_PULL_REQUEST" ]; then
+              BUILD_TYPE="prerelease"
+              BUILD_NAME="build-${CIRCLE_BUILD_NUM}-${COMMIT_SHORT}"
+              ARTIFACT_BASE_PATH="kernel/prerelease/${BUILD_NAME}"
+            elif [ "$CIRCLE_BRANCH" = "main" ]; then
+              BUILD_TYPE="release"
+              ARTIFACT_BASE_PATH="kernel/main/build-${CIRCLE_BUILD_NUM}-${COMMIT_SHORT}"
+            else
+              BUILD_TYPE="prerelease"
+              BUILD_NAME="build-${CIRCLE_BUILD_NUM}-${COMMIT_SHORT}"
+              ARTIFACT_BASE_PATH="kernel/prerelease/${BUILD_NAME}"
+            fi
+
+            echo "Uploading to S3 path: $ARTIFACT_BASE_PATH"
+
+            # Create metadata directory
+            mkdir -p artifact_metadata
+
+            # Upload each .deb file and record its URL
+            echo "[]" > artifact_metadata/packages.json
+            for deb_file in debs/*.deb; do
+              if [ -f "$deb_file" ]; then
+                filename=$(basename "$deb_file")
+                S3_PATH="${ARTIFACT_BASE_PATH}/${filename}"
+
+                echo "Uploading $filename to s3://$S3_BUCKET/$S3_PATH"
+                aws s3 cp "$deb_file" "s3://$S3_BUCKET/$S3_PATH"
+
+                # Tag prerelease artifacts for lifecycle management
+                if [ "$BUILD_TYPE" = "prerelease" ]; then
+                  aws s3api put-object-tagging --bucket "$S3_BUCKET" --key "$S3_PATH" \
+                    --tagging 'TagSet=[{Key=lifecycle,Value=prerelease}]'
+                fi
+
+                # URL-encode the path and create CloudFront URL
+                ARTIFACT_PATH_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$S3_PATH'''))")
+                ARTIFACT_URL="${CLOUDFRONT_URL}/${ARTIFACT_PATH_ENCODED}"
+
+                # Add to metadata JSON
+                TMP_JSON=$(mktemp)
+                jq --arg filename "$filename" --arg url "$ARTIFACT_URL" \
+                  '. += [{"filename": $filename, "url": $url}]' \
+                  artifact_metadata/packages.json > "$TMP_JSON"
+                mv "$TMP_JSON" artifact_metadata/packages.json
+              fi
+            done
+
+            echo "Artifact metadata generated:"
+            cat artifact_metadata/packages.json
       - store_artifacts:
           path: ./debs
       - persist_to_workspace:
-          root: ./debs
+          root: .
           paths:
-            - "*.deb"
+            - "debs/*.deb"
+            - "artifact_metadata/packages.json"
 
 jobs:
   build-kernel:
@@ -49,12 +124,18 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /tmp/deb
+          at: /tmp/workspace
       - run:
-          name: Prepare artifacts
+          name: Prepare artifacts and metadata
           command: |
-            mkdir -p debs
-            mv /tmp/deb/*.deb debs/
+            mkdir -p debs artifact_metadata
+            mv /tmp/workspace/debs/*.deb debs/ || true
+            mv /tmp/workspace/artifact_metadata/packages.json artifact_metadata/ || true
+
+            echo "Packages found:"
+            ls -la debs/
+            echo "Metadata:"
+            cat artifact_metadata/packages.json || echo "No metadata found"
       - run:
           name: Post PR comment with artifact links
           command: |

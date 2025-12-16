@@ -25,9 +25,10 @@ fi
 
 echo "Generating comment for PR #$PR_NUMBER from build #$CIRCLE_BUILD_NUM"
 
-# Get list of artifacts
-if [ ! -d "debs" ]; then
-    echo "ERROR: debs directory not found"
+# Check for metadata file
+METADATA_FILE="artifact_metadata/packages.json"
+if [ ! -f "$METADATA_FILE" ]; then
+    echo "ERROR: Metadata file not found at $METADATA_FILE"
     exit 1
 fi
 
@@ -43,33 +44,36 @@ Built from commit \`$(git rev-parse --short HEAD)\` • Build [#${CIRCLE_BUILD_N
 
 EOF
 
-# List all .deb files with link to artifacts page
-ARTIFACTS_URL="https://app.circleci.com/pipelines/github/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${CIRCLE_BUILD_NUM}/workflows/${CIRCLE_WORKFLOW_ID}/jobs/${CIRCLE_BUILD_NUM}/artifacts"
+# Parse metadata and create links for each package
+# Also identify the key packages for installation example
+IMAGE_URL=""
+MODULES_URL=""
 
-for deb_file in debs/*.deb; do
-    if [ -f "$deb_file" ]; then
-        filename=$(basename "$deb_file")
-        echo "- \`$filename\`" >> "$COMMENT_FILE"
+while IFS= read -r line; do
+    filename=$(echo "$line" | jq -r '.filename')
+    url=$(echo "$line" | jq -r '.url')
+
+    if [ -n "$filename" ] && [ "$filename" != "null" ]; then
+        echo "- [\`$filename\`]($url)" >> "$COMMENT_FILE"
+
+        # Capture URLs for installation example
+        if [[ "$filename" =~ ^linux-image-[0-9].*\.deb$ ]]; then
+            IMAGE_URL="$url"
+        elif [[ "$filename" =~ ^linux-modules-[0-9].*\.deb$ ]]; then
+            MODULES_URL="$url"
+        fi
     fi
-done
-
-echo "" >> "$COMMENT_FILE"
-echo "📦 **[Download Artifacts]($ARTIFACTS_URL)**" >> "$COMMENT_FILE"
+done < <(jq -c '.[]' "$METADATA_FILE")
 
 cat >> "$COMMENT_FILE" << EOF
 
 ### Installation
 
-Download the artifacts, then install via ADB:
+Install via ADB using the artifact URLs:
 \`\`\`bash
 ./install.sh --adb -s <device_serial> install \\
-    <path-to-linux-image.deb> \\
-    <path-to-linux-modules.deb>
-\`\`\`
-
-Or install from local files after building:
-\`\`\`bash
-./install.sh --adb install
+    $IMAGE_URL \\
+    $MODULES_URL
 \`\`\`
 EOF
 
@@ -80,9 +84,15 @@ cat "$COMMENT_FILE"
 echo "================"
 echo ""
 
-# Post comment using gh CLI
+# Install required tools
+if ! command -v jq &> /dev/null; then
+    echo "Installing jq..."
+    sudo apt update
+    sudo apt install -y jq
+fi
+
 if ! command -v gh &> /dev/null; then
-    echo "ERROR: gh CLI not found. Installing..."
+    echo "Installing gh CLI..."
     # For Ubuntu/Debian
     type -p curl >/dev/null || sudo apt install curl -y
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
