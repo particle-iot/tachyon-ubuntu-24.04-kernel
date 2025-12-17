@@ -1,3 +1,130 @@
+linux-particle (6.8.0-1056.57+particle6) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle6
+  * Post the artifacts on a PR build. Add in build and install scripts
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/15)
+  * USB backports, role switch and power fixes v1 (#14)
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/14)
+    - particle: usbc: typec: usb: cherry-pick artifacts
+    - usb: dwc3: Set SUSPENDENABLE soon after phy init
+    - cherry-pick issues
+    - Revert "PENDING: usb: dwc3: qcom: Introduce post-connection done vendor hook"
+    - Revert "FROMLIST: usb: dwc3: core: Register vendor hooks for dwc3-qcom"
+    - usb: dwc3: qcom: Implement glue callbacks to facilitate runtime suspend
+    - usb: dwc3: core: Introduce glue callbacks for flattened implementations
+    - particle: fix cherry-pick artifacts
+    - usb: typec: class: add typec_get_data_role symbol
+    - usb: typec: Make active on port altmode writable
+    - usb: typec: Add attribute file showing the USB Modes of the partner
+    - usb: typec: Add attribute file showing the supported USB modes of the port
+    - usb: typec: Update sysfs when setting ops
+    - usb: typec: altmodes: add svdm version info for typec cables
+    - usb: typec: altmodes: add typec_cable_ops to typec_altmode
+    - usb: typec: ucsi: Add support for SET_PDOS command
+    - usb: typec: ucsi: Add support for message out data structure
+    - usb: typec: ucsi: Update UCSI structure to have message in and message out fields
+    - usb: typec: ucsi: Set orientation_aware if UCSI version is 2.x and above
+    - usb: typec: ucsi: Add support for orientation
+    - usb: typec: ucsi: Add SET_POWER_LEVEL UCSI command to debugfs
+    - usb: typec: ucsi_glink: Increase buffer size to support UCSI v2
+    - usb: typec: ucsi_glink: Update request/response buffers to be packed
+    - soc: qcom: pmic_glink: Add support for SOCCP remoteproc channels
+    - usb: typec: ucsi: Report power supply change on sink path change
+    - usb: typec: ucsi: Report power supply changes on power opmode changes
+    - usb: typec: ucsi: psy: Add power supply status
+    - usb: typec: ucsi: Handle incorrect num_connectors capability
+    - rpmsg: Use strscpy() instead of strscpy_pad()
+    - usb: typec: ucsi: Add check for UCSI version
+    - usb: typec: ucsi: Add support for READ_POWER_LEVEL command
+    - usb: typec: ucsi: Update power_supply on power role change
+    - usb: typec: ucsi: psy: Set current max to 100mA for BC 1.2 and Default
+    - soc: qcom: pmic_glink: fix OF node leak
+    - usb: typec: ucsi: add recipient arg to update_altmodes() callback
+    - usb: typec: ucsi: displayport: Fix deadlock
+    - usb: typec: ucsi: fix Clang -Wsign-conversion warning
+    - usb: typec: ucsi: Add the UCSI commands in debugfs
+    - acpi: typec: ucsi: Introduce a ->poll_cci method
+    - soc: qcom: pmic_glink: Drop redundant pg assignment before taking lock
+    - usb: typec: ucsi: return CCI and message from sync_control callback
+    - usb: typec: ucsi: Enable UCSI commands in debugfs
+    - usb: typec: ucsi: Rename SET_UOM UCSI command to SET_CCOM
+    - usb: typec: ucsi: Add a macro definition for UCSI v1.0
+    - soc: qcom: pmic_glink_altmode: simplify locking with guard()
+    - usb: typec: ucsi: Set orientation as none when connector is unplugged
+    - soc: qcom: pmic_glink: simplify locking with guard()
+    - usb: typec: ucsi: Fix connector status writing past buffer size
+    - usb: typec: ucsi: Fix completion notifications
+    - usb: typec: ucsi: Convert connector specific commands to bitmaps
+    - usb: typec: ucsi: Helper for Get Connector Status command
+    - soc: qcom: pmic_glink: Handle GLINK intent allocation rejections
+    - usb: typec: ucsi: Add support for the partner USB Modes
+    - usb: typec: ucsi: Supply the USB capabilities to the ports
+    - usb: typec: ucsi: UCSI2.0 Set Sink Path command support
+    - usb: typec: ucsi: Fix busy loop on ASUS VivoBooks
+    - usb: typec: ucsi: Fix cable registration
+    - usb: typec: ucsi: Fix the partner PD revision
+    - usb: typec: ucsi: Remove useless error check from ucsi_read_error()
+    - usb: typec: ucsi: Call CANCEL from single location
+    - usb: typec: ucsi: Common function for the GET_PD_MESSAGE command
+    - usb: typec: ucsi: Only assign the identity structure if the PPM supports it
+    - usb: typec: ucsi: Don't truncate the reads
+    - usb: typec: ucsi: Remove unused fields from struct ucsi_connector_status
+    - usb: typec: ucsi: Add DATA_RESET option of Connector Reset command
+    - usb: typec: ucsi: Fix the return value of ucsi_run_command()
+    - usb: typec: ucsi: Fix a deadlock in ucsi_send_command_common()
+    - usb: typec: ucsi: glink: Remove unnecessary semicolon
+    - power: supply: qcom_battmgr: Ignore extra __le32 in info payload
+    - power: supply: qcom_battmgr: Enable battery support on x1e80100
+    - usb: typec: ucsi: reorder operations in ucsi_run_command()
+    - usb: typec: ucsi: extract common code for command handling
+    - usb: typec: ucsi: inline ucsi_read_message_in
+    - usb: typec: ucsi: rework command execution functions
+    - usb: typec: ucsi: split read operation
+    - usb: typec: ucsi: simplify command sending API
+    - ucsi_ccg: Refine the UCSI Interrupt handling
+    - usb: typec: ucsi_acpi: Add LG Gram quirk
+    - usb: typec: ucsi_acpi: Remove Dell quirk
+    - usb: typec: ucsi: move ucsi_acknowledge() from ucsi_read_error()
+    - usb: typec: ucsi: UCSI2.0 Get Error Status changes
+    - usb: typec: ucsi: UCSI2.0 Get Error Status data structure changes
+    - usb: typec: ucsi: Only set number of plug altmodes after registration
+    - usb: typec: ucsi: psy: Add support for the charge type property
+    - usb: typec: ucsi: Changing the driver data type to void
+    - usb: typec: ucsi: don't retrieve PDOs if not supported
+    - usb: typec: ucsi: Enable UCSI v2.0 notifications
+    - usb: typec: ucsi: Add new capability bits
+    - usb: typec: ucsi: Always set number of alternate modes
+    - usb: typec: ucsi: Delay alternate mode discovery
+    - usb: typec: ucsi: Add new notification bits
+    - usb: typec: ucsi: glink: increase max ports for x1e80100
+    - soc: qcom: pmic_glink: Increase max ports to 3
+    - rpmsg: qcom_glink_ssr: fix module autoloading
+    - usb: typec: ucsi: glink: use typec_set_orientation
+    - usb: typec: ucsi_glink: drop NO_PARTNER_PDOS quirk for sm8550 / sm8650
+    - usb: typec: ucsi_glink: enable the UCSI_DELAY_DEVICE_PDOS quirk on qcm6490
+    - usb: typec: ucsi: Wait 20ms before reading CCI after a reset
+    - soc: qcom: pmic_glink: enable UCSI on sc8180x
+    - soc: qcom: pmic_glink: reenable UCSI on sc8280xp
+    - usb: typec: ucsi_glink: enable the UCSI_DELAY_DEVICE_PDOS quirk
+    - usb: typec: ucsi: support delaying GET_PDOS for device
+    - usb: typec: ucsi: extract code to read PD caps
+    - usb: typec: ucsi: properly register partner's PD device
+    - usb: typec: ucsi: limit the UCSI_NO_PARTNER_PDOS even further
+    - usb: typec: ucsi: Only enable supported notifications
+    - usb: typec: ucsi: Check capabilities before cable and identity discovery
+    - usb: typec: ucsi: Register SOP' alternate modes with cable plug
+    - usb: typec: ucsi: Register SOP/SOP' Discover Identity Responses
+    - usb: typec: ucsi: Register cables based on GET_CABLE_PROPERTY
+    - usb: typec: ucsi: Get PD revision for partner
+    - usb: typec: ucsi: Update connector cap and status
+    - power: qcom: add USB_ADAP_TYPE handling in battmgr for qcm6490
+  * Add support for IMX519 (#16)
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/16)
+  * Change ISP clocks to support the mainline definitions
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/13)
+
+ -- Andrey Tolstoy <andrey@particle.io>  Wed, 17 Dec 2025 11:02:31 +0700
+
 linux-particle (6.8.0-1056.57+particle5) noble; urgency=medium
 
   * Particle: 6.8.0-1056.57+particle5
