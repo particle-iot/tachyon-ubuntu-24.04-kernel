@@ -37,8 +37,15 @@ commands:
           docker-password: DOCKERHUB_PASSWORD
       - run: docker run -v $(pwd):/build --rm ubuntu:24.04 /bin/bash -c '/build/ci-scripts/build.sh'
       - run: ls -la debs/ || true
+      - run:
+          name: Install jq for metadata generation
+          command: |
+            if ! command -v jq &> /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y jq
+            fi
       - aws-cli/setup:
-          role_arn: arn:aws:iam::713073884108:role/circleci-deploy-tachyon-ci
+          role_arn: ${AWS_ROLE_ARN}
           region: us-east-1
       - run:
           name: Upload artifacts to S3 and generate metadata
@@ -106,8 +113,8 @@ commands:
       - persist_to_workspace:
           root: .
           paths:
-            - "debs/*.deb"
-            - "artifact_metadata/packages.json"
+            - "debs"
+            - "artifact_metadata"
 
 jobs:
   build-kernel:
@@ -128,9 +135,9 @@ jobs:
       - run:
           name: Prepare artifacts and metadata
           command: |
-            mkdir -p debs artifact_metadata
-            mv /tmp/workspace/debs/*.deb debs/ || true
-            mv /tmp/workspace/artifact_metadata/packages.json artifact_metadata/ || true
+            # Workspace contains debs/ and artifact_metadata/ directories
+            cp -r /tmp/workspace/debs . || mkdir -p debs
+            cp -r /tmp/workspace/artifact_metadata . || mkdir -p artifact_metadata
 
             echo "Packages found:"
             ls -la debs/

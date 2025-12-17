@@ -25,6 +25,24 @@ fi
 
 echo "Generating comment for PR #$PR_NUMBER from build #$CIRCLE_BUILD_NUM"
 
+# Install required tools first
+if ! command -v jq &> /dev/null; then
+    echo "Installing jq..."
+    sudo apt update
+    sudo apt install -y jq
+fi
+
+if ! command -v gh &> /dev/null; then
+    echo "Installing gh CLI..."
+    # For Ubuntu/Debian
+    type -p curl >/dev/null || sudo apt install curl -y
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+    sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    sudo apt update
+    sudo apt install gh -y
+fi
+
 # Check for metadata file
 METADATA_FILE="artifact_metadata/packages.json"
 if [ ! -f "$METADATA_FILE" ]; then
@@ -83,24 +101,6 @@ echo "================"
 cat "$COMMENT_FILE"
 echo "================"
 echo ""
-
-# Install required tools
-if ! command -v jq &> /dev/null; then
-    echo "Installing jq..."
-    sudo apt update
-    sudo apt install -y jq
-fi
-
-if ! command -v gh &> /dev/null; then
-    echo "Installing gh CLI..."
-    # For Ubuntu/Debian
-    type -p curl >/dev/null || sudo apt install curl -y
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt update
-    sudo apt install gh -y
-fi
 
 # Authenticate gh CLI - try multiple common token variable names
 # CircleCI might provide the token as GH_TOKEN, GITHUB_TOKEN, or CIRCLE_TOKEN
