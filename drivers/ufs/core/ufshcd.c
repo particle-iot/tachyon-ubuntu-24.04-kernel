@@ -3150,7 +3150,11 @@ static int ufshcd_clear_cmd(struct ufs_hba *hba, u32 task_tag)
 		return 0;
 	}
 
-	mask = 1U << task_tag;
+	/* Prevent shift overflow for task_tag >= 32 */
+	if (WARN_ON(task_tag >= BITS_PER_LONG))
+		return -EINVAL;
+
+	mask = 1UL << task_tag;
 
 	/* clear outstanding transaction before retry */
 	spin_lock_irqsave(hba->host->host_lock, flags);
@@ -3232,7 +3236,7 @@ static int ufshcd_wait_for_dev_cmd(struct ufs_hba *hba,
 	int err;
 
 retry:
-	time_left = wait_for_completion_timeout(hba->dev_cmd.complete,
+	time_left = wait_for_completion_timeout(&hba->dev_cmd.complete,
 						time_left);
 
 	if (likely(time_left)) {
@@ -3241,7 +3245,6 @@ retry:
 		 * this function still owns the @lrbp tag so the code below does
 		 * not trigger any race conditions.
 		 */
-		hba->dev_cmd.complete = NULL;
 		err = ufshcd_get_tr_ocs(lrbp, NULL);
 		if (!err)
 			err = ufshcd_dev_cmd_completion(hba, lrbp);
@@ -3255,7 +3258,6 @@ retry:
 			/* successfully cleared the command, retry if needed */
 			if (ufshcd_clear_cmd(hba, lrbp->task_tag) == 0)
 				err = -EAGAIN;
-			hba->dev_cmd.complete = NULL;
 			return err;
 		}
 
@@ -3272,7 +3274,6 @@ retry:
 			pending = test_bit(lrbp->task_tag,
 					   &hba->outstanding_reqs);
 			if (pending) {
-				hba->dev_cmd.complete = NULL;
 				__clear_bit(lrbp->task_tag,
 					    &hba->outstanding_reqs);
 			}
@@ -3293,8 +3294,6 @@ retry:
 			spin_lock_irqsave(&hba->outstanding_lock, flags);
 			pending = test_bit(lrbp->task_tag,
 					   &hba->outstanding_reqs);
-			if (pending)
-				hba->dev_cmd.complete = NULL;
 			spin_unlock_irqrestore(&hba->outstanding_lock, flags);
 
 			if (!pending) {
@@ -3341,7 +3340,7 @@ static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 	if (unlikely(err))
 		goto out;
 
-	hba->dev_cmd.complete = &wait;
+	reinit_completion(&hba->dev_cmd.complete);
 
 	ufshcd_add_query_upiu_trace(hba, UFS_QUERY_SEND, lrbp->ucd_req_ptr);
 
@@ -5639,13 +5638,11 @@ void ufshcd_compl_one_cqe(struct ufs_hba *hba, int task_tag,
 		scsi_done(cmd);
 	} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 		   lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
-		if (hba->dev_cmd.complete) {
-			if (cqe) {
-				ocs = le32_to_cpu(cqe->status) & MASK_OCS;
-				lrbp->utr_descriptor_ptr->header.ocs = ocs;
-			}
-			complete(hba->dev_cmd.complete);
+		if (cqe) {
+			ocs = le32_to_cpu(cqe->status) & MASK_OCS;
+			lrbp->utr_descriptor_ptr->header.ocs = ocs;
 		}
+		complete(&hba->dev_cmd.complete);
 	}
 }
 
@@ -7330,7 +7327,7 @@ static int ufshcd_issue_devman_upiu_cmd(struct ufs_hba *hba,
 
 	memset(lrbp->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
 
-	hba->dev_cmd.complete = &wait;
+	reinit_completion(&hba->dev_cmd.complete);
 
 	ufshcd_add_query_upiu_trace(hba, UFS_QUERY_SEND, lrbp->ucd_req_ptr);
 
@@ -7507,7 +7504,7 @@ int ufshcd_advanced_rpmb_req_handler(struct ufs_hba *hba, struct utp_upiu_req *r
 
 	memset(lrbp->ucd_rsp_ptr, 0, sizeof(struct utp_upiu_rsp));
 
-	hba->dev_cmd.complete = &wait;
+	reinit_completion(&hba->dev_cmd.complete);
 
 	ufshcd_send_command(hba, tag, hba->dev_cmd_queue);
 
@@ -10750,6 +10747,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	/* Initialize mutex for device management commands */
 	mutex_init(&hba->dev_cmd.lock);
+	init_completion(&hba->dev_cmd.complete);
 
 	/* Initialize mutex for exception event control */
 	mutex_init(&hba->ee_ctrl_mutex);

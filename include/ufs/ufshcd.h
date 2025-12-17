@@ -239,13 +239,13 @@ struct ufs_query {
  * struct ufs_dev_cmd - all assosiated fields with device management commands
  * @type: device management command type - Query, NOP OUT
  * @lock: lock to allow one command at a time
- * @complete: internal commands completion
+ * @complete: internal commands completion (embedded to avoid TOCTOU races)
  * @query: Device management query information
  */
 struct ufs_dev_cmd {
 	enum dev_cmd_type type;
 	struct mutex lock;
-	struct completion *complete;
+	struct completion complete;
 	struct ufs_query query;
 };
 

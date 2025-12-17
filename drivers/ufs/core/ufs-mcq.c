@@ -495,7 +495,7 @@ static int ufshcd_mcq_sq_start(struct ufs_hba *hba, struct ufs_hw_queue *hwq)
 int ufshcd_mcq_sq_cleanup(struct ufs_hba *hba, int task_tag)
 {
 	struct ufshcd_lrb *lrbp = &hba->lrb[task_tag];
-	struct scsi_cmnd *cmd = lrbp->cmd;
+	struct scsi_cmnd *cmd;
 	struct ufs_hw_queue *hwq;
 	void __iomem *reg, *opr_sqd_base;
 	u32 nexus, id, val, rtc;
@@ -505,6 +505,11 @@ int ufshcd_mcq_sq_cleanup(struct ufs_hba *hba, int task_tag)
 		return -ETIMEDOUT;
 
 	if (task_tag != hba->nutrs - UFSHCD_NUM_RESERVED) {
+		/*
+		 * Use READ_ONCE() to prevent racing with command completion
+		 * which can set lrbp->cmd to NULL between check and use
+		 */
+		cmd = READ_ONCE(lrbp->cmd);
 		if (!cmd)
 			return -EINVAL;
 		hwq = ufshcd_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
