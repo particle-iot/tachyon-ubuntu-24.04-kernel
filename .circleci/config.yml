@@ -179,7 +179,11 @@ workflows:
       - build-kernel:
           context:
             - linux-build-secrets
-          <<: *tag_filters
+          filters:
+            tags:
+              only: /.+/
+            branches:
+              only: /.+/
       - post-pr-comment:
           requires:
             - build-kernel
