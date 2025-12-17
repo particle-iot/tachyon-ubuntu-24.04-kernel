@@ -8,10 +8,9 @@ cd "$DIR"
 
 export DEBIAN_FRONTEND=noninteractive
 
-# install dependencies
-apt-get update -y
-apt-get upgrade -y
-apt-get install -y devscripts equivs gcc-aarch64-linux-gnu git sudo
+# Install kernel-specific build dependencies
+# Note: Base packages (gcc, devscripts, etc.) are pre-installed in Docker image
+# Only mk-build-deps is needed to install kernel-specific dependencies
 debian/rules clean
 mk-build-deps --install --remove --root-cmd sudo -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes'
 git config --global --add safe.directory $DIR
@@ -25,12 +24,13 @@ export MAKEFLAGS="-j$(nproc)"
 debian/rules clean
 debian/rules updateconfigs
 
-# Apply CI-fast config for PR builds (not for tags or main branch)
-# This disables debug info and sanitizers for faster compilation
-if [ -n "$CIRCLE_PULL_REQUEST" ] || [ -n "$CI_FAST_BUILD" ]; then
+# Apply CI-fast config for non-release builds
+# - RELEASE builds (tags): Full debug symbols and sanitizers enabled
+# - PR/branch builds: Fast build with debug info and sanitizers disabled
+if [ -z "$CIRCLE_TAG" ]; then
     echo "========================================="
     echo "CI-FAST BUILD MODE ENABLED"
-    echo "  Reason: PR build detected"
+    echo "  Build type: PR or branch build"
     echo "  Disabling: DEBUG_INFO, KASAN, UBSAN"
     echo "  Expected: 40-50% faster build"
     echo "========================================="
@@ -45,7 +45,7 @@ if [ -n "$CIRCLE_PULL_REQUEST" ] || [ -n "$CI_FAST_BUILD" ]; then
 else
     echo "========================================="
     echo "FULL DEBUG BUILD MODE"
-    echo "  Reason: Tag or main branch build"
+    echo "  Build type: Release (tag: $CIRCLE_TAG)"
     echo "  Including: Full debug symbols, sanitizers"
     echo "========================================="
 fi
