@@ -5,6 +5,8 @@ tag_filters: &tag_filters
     tags:
       only:
         - /.+/
+    branches:
+      ignore: /.*/
 
 orbs:
   particle-artifact: particle/particle-artifact@1
@@ -154,12 +156,12 @@ jobs:
     resource_class: arm.medium
     steps:
       - attach_workspace:
-          at: /tmp/deb
+          at: /tmp/workspace
       - run:
           name: Move .deb to expected location
           command: |
             mkdir -p deb
-            mv /tmp/deb/*.deb deb/
+            cp /tmp/workspace/debs/*.deb deb/
       - particle-artifact/import-gpg-keys
       - particle-artifact/upload-apt-to-s3:
           architecture: "arm64"
