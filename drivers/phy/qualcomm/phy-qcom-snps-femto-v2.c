@@ -461,8 +461,16 @@ static int qcom_snps_hsphy_init(struct phy *phy)
 	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_HS_PHY_CTRL2,
 					USB2_SUSPEND_N_SEL, 0);
 
+	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_UTMI_CTRL0, OPMODE_MASK, OPMODE_NORMAL);
+	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_UTMI_CTRL0, TERMSEL, 0);
+	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_UTMI_CTRL1, XCVRSEL, 0);
+
 	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_CFG0,
-					UTMI_PHY_CMN_CTRL_OVERRIDE_EN, 0);
+                                        UTMI_PHY_CMN_CTRL_OVERRIDE_EN, 0);
+
+	qcom_snps_hsphy_write_mask(hsphy->base, USB2_PHY_USB_PHY_CFG0,
+                                       UTMI_PHY_DATAPATH_CTRL_OVERRIDE_EN, 0);
+
 
 	hsphy->phy_initialized = true;
 
