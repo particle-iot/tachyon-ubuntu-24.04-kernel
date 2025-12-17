@@ -915,8 +915,20 @@ static void dwc3_qcom_run_stop_notifier(struct dwc3 *dwc, bool is_on)
 	pm_runtime_mark_last_busy(qcom->dev);
 }
 
+static void dwc3_qcom_between_roles_notifier(struct dwc3 *dwc)
+{
+	// Reset HS USB PHY
+	phy_power_off(dwc->usb2_generic_phy);
+	phy_exit(dwc->usb2_generic_phy);
+	msleep(20);
+	phy_init(dwc->usb2_generic_phy);
+	phy_power_on(dwc->usb2_generic_phy);
+	msleep(20);
+}
+
 struct dwc3_glue_ops dwc3_qcom_glue_ops = {
 	.pre_set_role	= dwc3_qcom_set_role_notifier,
+	.between_roles  = dwc3_qcom_between_roles_notifier,
 	.pre_run_stop	= dwc3_qcom_run_stop_notifier,
 };
 
