@@ -996,6 +996,7 @@ struct dwc3_scratchpad_array {
  */
 struct dwc3_glue_ops {
 	void	(*pre_set_role)(struct dwc3 *dwc, enum usb_role role);
+	void    (*between_roles)(struct dwc3 *dwc);
 	void	(*pre_run_stop)(struct dwc3 *dwc, bool is_on);
 };
 
@@ -1614,6 +1615,12 @@ static inline void dwc3_pre_set_role(struct dwc3 *dwc, enum usb_role role)
 {
 	if (dwc->glue_ops && dwc->glue_ops->pre_set_role)
 		dwc->glue_ops->pre_set_role(dwc, role);
+}
+
+static inline void dwc3_between_roles(struct dwc3 *dwc)
+{
+       if (dwc->glue_ops && dwc->glue_ops->between_roles)
+               dwc->glue_ops->between_roles(dwc);
 }
 
 static inline void dwc3_pre_run_stop(struct dwc3 *dwc, bool is_on)

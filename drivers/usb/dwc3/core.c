@@ -220,6 +220,8 @@ static void __dwc3_set_mode(struct work_struct *work)
 		dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 	}
 
+	dwc3_between_roles(dwc);
+
 	spin_lock_irqsave(&dwc->lock, flags);
 
 	dwc3_set_prtcap(dwc, desired_dr_role, false);
