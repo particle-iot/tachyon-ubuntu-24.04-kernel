@@ -10,7 +10,8 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Install kernel-specific build dependencies
 # Note: Base packages (gcc, devscripts, etc.) are pre-installed in Docker image
-# Only mk-build-deps is needed to install kernel-specific dependencies
+# apt-get update is needed because Docker image clears package cache to reduce size
+apt-get update -y
 debian/rules clean
 mk-build-deps --install --remove --root-cmd sudo -t 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes'
 git config --global --add safe.directory $DIR
