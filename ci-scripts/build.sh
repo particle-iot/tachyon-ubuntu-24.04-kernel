@@ -24,7 +24,7 @@ export MAKEFLAGS="-j$(nproc)"
 
 debian/rules clean
 debian/rules updateconfigs
-debian/rules binary-particle meta-particle binary-indep
+debian/rules binary-particle meta-particle binary-indep binary-perarch
 
 mkdir $DIR/debs
 cp ../*.deb $DIR/debs/
