@@ -37,7 +37,7 @@ commands:
       - docker/check:
           docker-username: DOCKERHUB_USERNAME
           docker-password: DOCKERHUB_PASSWORD
-      - run: docker run -v $(pwd):/build --rm ubuntu:24.04 /bin/bash -c '/build/ci-scripts/build.sh'
+      - run: docker run -v $(pwd):/build --rm particle/tachyon-kernel-builder:v1 /bin/bash -c '/build/ci-scripts/build.sh'
       - run: ls -la debs/ || true
       - run:
           name: Install jq for metadata generation

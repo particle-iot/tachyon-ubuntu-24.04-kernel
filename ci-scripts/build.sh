@@ -24,6 +24,32 @@ export MAKEFLAGS="-j$(nproc)"
 
 debian/rules clean
 debian/rules updateconfigs
+
+# Apply CI-fast config for PR builds (not for tags or main branch)
+# This disables debug info and sanitizers for faster compilation
+if [ -n "$CIRCLE_PULL_REQUEST" ] || [ -n "$CI_FAST_BUILD" ]; then
+    echo "========================================="
+    echo "CI-FAST BUILD MODE ENABLED"
+    echo "  Reason: PR build detected"
+    echo "  Disabling: DEBUG_INFO, KASAN, UBSAN"
+    echo "  Expected: 40-50% faster build"
+    echo "========================================="
+
+    # Find all generated .config files and apply overrides
+    for config in debian/build/build-*/.config; do
+        if [ -f "$config" ]; then
+            echo "Applying CI-fast overrides to: $config"
+            $DIR/ci-scripts/apply-ci-fast-config.sh "$config"
+        fi
+    done
+else
+    echo "========================================="
+    echo "FULL DEBUG BUILD MODE"
+    echo "  Reason: Tag or main branch build"
+    echo "  Including: Full debug symbols, sanitizers"
+    echo "========================================="
+fi
+
 debian/rules binary-particle meta-particle binary-indep binary-perarch
 
 mkdir $DIR/debs
