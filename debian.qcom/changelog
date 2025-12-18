@@ -1,3 +1,10 @@
+linux-particle (6.8.0-1057.58+particle1) noble; urgency=medium
+
+  * Particle: 6.8.0-1056.57+particle1
+    - Sync with upstream canonical/master-next @ Ubuntu-qcom-6.8.0-1057.58
+
+-- Andrey Tolstoy <andrey@particle.io>  Fri, 19 Dec 2025 02:03:15 +0700
+
 linux-qcom (6.8.0-1057.58) noble; urgency=medium
 
   * noble/linux-qcom: 6.8.0-1057.58 -proposed tracker (LP: #2132319)
@@ -572,6 +579,7 @@ linux-qcom (6.8.0-1057.58) noble; urgency=medium
     - net: appletalk: Fix use-after-free in AARP proxy probe
 
  -- Hui Wang <hui.wang@canonical.com>  Tue, 25 Nov 2025 20:25:40 +0800
+
 linux-particle (6.8.0-1056.57+particle6) noble; urgency=medium
 
   * Particle: 6.8.0-1056.57+particle6
