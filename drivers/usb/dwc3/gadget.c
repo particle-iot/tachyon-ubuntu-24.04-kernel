@@ -2650,6 +2650,8 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 	if (saved_config)
 		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 
+	dwc3_notify_run_stop(dwc, is_on);
+
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
 		if (DWC3_VER_IS_WITHIN(DWC3, ANY, 187A)) {
@@ -2669,7 +2671,6 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 		dwc->pullups_connected = false;
 	}
 
-	dwc3_pre_run_stop(dwc, is_on);
 	dwc3_gadget_dctl_write_safe(dwc, reg);
 
 	do {
@@ -4260,6 +4261,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		reg &= ~DWC3_DCTL_HIRD_THRES_MASK;
 		dwc3_gadget_dctl_write_safe(dwc, reg);
 	}
+
+	dwc3_notify_post_conndone(dwc);
 
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, DWC3_DEPCFG_ACTION_MODIFY);

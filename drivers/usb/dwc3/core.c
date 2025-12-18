@@ -171,6 +171,9 @@ static void __dwc3_set_mode(struct work_struct *work)
 	if (!desired_dr_role)
 		goto out;
 
+	if (!dwc->cable_disconnected)
+		dwc3_notify_set_mode(dwc, desired_dr_role);
+
 	if (desired_dr_role == dwc->current_dr_role)
 		goto out;
 
@@ -228,6 +231,11 @@ static void __dwc3_set_mode(struct work_struct *work)
 
 	switch (desired_dr_role) {
 	case DWC3_GCTL_PRTCAP_HOST:
+		if (dwc->dwc3_guctl_resbwhseps_quirk) {
+			reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
+			reg |= DWC3_GUCTL_RESBWHSEPS;
+			dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
+		}
 		ret = dwc3_host_init(dwc);
 		if (ret) {
 			dev_err(dwc->dev, "failed to initialize host\n");
@@ -264,6 +272,9 @@ static void __dwc3_set_mode(struct work_struct *work)
 	default:
 		break;
 	}
+
+	if (!ret)
+		dwc3_notify_mode_changed(dwc, dwc->current_dr_role);
 
 out:
 	pm_runtime_mark_last_busy(dwc->dev);
@@ -770,25 +781,6 @@ static int dwc3_phy_init(struct dwc3 *dwc)
 	ret = phy_init(dwc->usb3_generic_phy);
 	if (ret < 0)
 		goto err_exit_usb2_phy;
-
-	/*
-	 * Above DWC_usb3.0 1.94a, it is recommended to set
-	 * DWC3_GUSB3PIPECTL_SUSPHY and DWC3_GUSB2PHYCFG_SUSPHY to '0' during
-	 * coreConsultant configuration. So default value will be '0' when the
-	 * core is reset. Application needs to set it to '1' after the core
-	 * initialization is completed.
-	 *
-	 * Certain phy requires to be in P0 power state during initialization.
-	 * Make sure GUSB3PIPECTL.SUSPENDENABLE and GUSB2PHYCFG.SUSPHY are clear
-	 * prior to phy init to maintain in the P0 state.
-	 *
-	 * After phy initialization, some phy operations can only be executed
-	 * while in lower P states. Ensure GUSB3PIPECTL.SUSPENDENABLE and
-	 * GUSB2PHYCFG.SUSPHY are set soon after initialization to avoid
-	 * blocking phy ops.
-	 */
-	if (!DWC3_VER_IS_WITHIN(DWC3, ANY, 194A))
-		dwc3_enable_susphy(dwc, true);
 
 	return 0;
 
@@ -1513,6 +1505,11 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 		phy_set_mode(dwc->usb2_generic_phy, PHY_MODE_USB_HOST);
 		phy_set_mode(dwc->usb3_generic_phy, PHY_MODE_USB_HOST);
 
+		if (dwc->dwc3_guctl_resbwhseps_quirk) {
+			reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
+			reg |= DWC3_GUCTL_RESBWHSEPS;
+			dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
+		}
 		ret = dwc3_host_init(dwc);
 		if (ret)
 			return dev_err_probe(dev, ret, "failed to initialize host\n");
@@ -1684,6 +1681,9 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 				"snps,parkmode-disable-hs-quirk");
 	dwc->gfladj_refclk_lpm_sel = device_property_read_bool(dev,
 				"snps,gfladj-refclk-lpm-sel-quirk");
+	dwc->dwc3_guctl_resbwhseps_quirk = device_property_read_bool(dev,
+				"snps,dwc3_guctl_resbwhseps_quirk");
+
 	dwc->tx_de_emphasis_quirk = device_property_read_bool(dev,
 				"snps,tx_de_emphasis_quirk");
 	device_property_read_u8(dev, "snps,tx_de_emphasis",
@@ -1967,13 +1967,19 @@ static struct power_supply *dwc3_get_usb_power_supply(struct dwc3 *dwc)
 	return usb_psy;
 }
 
-int dwc3_probe(struct dwc3 *dwc)
+int dwc3_probe(struct dwc3 *dwc,
+			struct dwc3_glue_data *glue_data)
 {
 	struct platform_device	*pdev = to_platform_device(dwc->dev);
 	struct device		*dev = dwc->dev;
 	struct resource		*res, dwc_res;
 	void __iomem		*regs;
 	int			ret;
+
+	if (glue_data) {
+		dwc->glue_data = glue_data->glue_data;
+		dwc->glue_ops = glue_data->ops;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -2138,13 +2144,15 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 
 	dwc->dev = &pdev->dev;
 	platform_set_drvdata(pdev, dwc);
-	dwc->glue_ops = NULL;
 
-	return dwc3_probe(dwc);
+	return dwc3_probe(dwc, NULL);
 }
 
 void dwc3_remove(struct dwc3 *dwc)
 {
+	dwc->glue_data = NULL;
+	dwc->glue_ops = NULL;
+
 	pm_runtime_get_sync(dwc->dev);
 
 	dwc3_core_exit_mode(dwc);
