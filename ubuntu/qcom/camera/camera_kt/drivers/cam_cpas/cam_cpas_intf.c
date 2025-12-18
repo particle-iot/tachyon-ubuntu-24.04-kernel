@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/of.h>
@@ -886,6 +886,8 @@ static int cam_cpas_dev_component_bind(struct device *dev,
 		hw_caps->cpas_version.major, hw_caps->cpas_version.minor,
 		hw_caps->cpas_version.incr, hw_caps->camera_capability);
 
+	cam_ddr_info_create_sysfs();
+
 	return rc;
 
 error_hw_remove:
@@ -906,6 +908,7 @@ static void cam_cpas_dev_component_unbind(struct device *dev,
 		return;
 	}
 
+	cam_ddr_info_remove_sysfs();
 	mutex_lock(&g_cpas_intf->intf_lock);
 	g_cpas_intf->probe_done = false;
 	cam_unregister_subdev(&g_cpas_intf->subdev);

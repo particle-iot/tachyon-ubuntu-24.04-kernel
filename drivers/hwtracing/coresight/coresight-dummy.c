@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/coresight.h>
@@ -12,6 +12,7 @@
 
 #include "coresight-priv.h"
 #include "coresight-trace-id.h"
+#include "coresight-common.h"
 
 struct dummy_drvdata {
 	struct device			*dev;
@@ -25,8 +26,13 @@ DEFINE_CORESIGHT_DEVLIST(sink_devs, "dummy_sink");
 static int dummy_source_enable(struct coresight_device *csdev,
 			       struct perf_event *event, enum cs_mode mode)
 {
-	if (!coresight_take_mode(csdev, mode))
-		return -EBUSY;
+	struct dummy_drvdata *drvdata =
+		 dev_get_drvdata(csdev->dev.parent);
+	int ret;
+
+	ret = coresight_csr_set_etr_atid(csdev, drvdata->traceid, true);
+	if (ret)
+		dev_dbg(csdev->dev.parent, "Failed to set ETR ATID: %d\n", ret);
 
 	dev_dbg(csdev->dev.parent, "Dummy source enabled\n");
 
@@ -36,7 +42,14 @@ static int dummy_source_enable(struct coresight_device *csdev,
 static void dummy_source_disable(struct coresight_device *csdev,
 				 struct perf_event *event)
 {
-	coresight_set_mode(csdev, CS_MODE_DISABLED);
+	struct dummy_drvdata *drvdata =
+		 dev_get_drvdata(csdev->dev.parent);
+	int ret;
+
+	ret = coresight_csr_set_etr_atid(csdev, drvdata->traceid, false);
+	if (ret)
+		dev_dbg(csdev->dev.parent, "Failed to clear ETR ATID: %d\n", ret);
+
 	dev_dbg(csdev->dev.parent, "Dummy source disabled\n");
 }
 

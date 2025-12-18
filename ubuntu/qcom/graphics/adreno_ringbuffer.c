@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/interconnect.h>
@@ -16,6 +17,7 @@
 #include "adreno_ringbuffer.h"
 #include "adreno_trace.h"
 #include "kgsl_trace.h"
+#include "kgsl_util.h"
 
 
 #define RB_HOSTPTR(_rb, _pos) \
@@ -156,7 +158,7 @@ int adreno_ringbuffer_setup(struct adreno_device *adreno_dev,
 
 void adreno_preemption_timer(struct timer_list *t)
 {
-	struct adreno_preemption *preempt = from_timer(preempt, t, timer);
+	struct adreno_preemption *preempt = timer_container_of(preempt, t, timer);
 	struct adreno_device *adreno_dev = container_of(preempt,
 						struct adreno_device, preempt);
 

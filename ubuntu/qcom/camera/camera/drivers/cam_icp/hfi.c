@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/io.h>
@@ -507,13 +507,13 @@ int hfi_cmd_ubwc_config_ext(int client_handle, uint32_t *ubwc_ipe_cfg,
 	dbg_prop->size = size;
 	dbg_prop->pkt_type = HFI_CMD_SYS_SET_PROPERTY;
 	dbg_prop->num_prop = 1;
-	dbg_prop->prop_data[0] = HFI_PROP_SYS_UBWC_CONFIG_EX;
-	dbg_prop->prop_data[1] = ubwc_bps_cfg[0];
-	dbg_prop->prop_data[2] = ubwc_bps_cfg[1];
-	dbg_prop->prop_data[3] = ubwc_ipe_cfg[0];
-	dbg_prop->prop_data[4] = ubwc_ipe_cfg[1];
-	dbg_prop->prop_data[5] = ubwc_ofe_cfg[0];
-	dbg_prop->prop_data[6] = ubwc_ofe_cfg[1];
+	dbg_prop->prop_data_flex[0] = HFI_PROP_SYS_UBWC_CONFIG_EX;
+	dbg_prop->prop_data_flex[1] = ubwc_bps_cfg[0];
+	dbg_prop->prop_data_flex[2] = ubwc_bps_cfg[1];
+	dbg_prop->prop_data_flex[3] = ubwc_ipe_cfg[0];
+	dbg_prop->prop_data_flex[4] = ubwc_ipe_cfg[1];
+	dbg_prop->prop_data_flex[5] = ubwc_ofe_cfg[0];
+	dbg_prop->prop_data_flex[6] = ubwc_ofe_cfg[1];
 	hfi_write_cmd(client_handle, prop);
 	kfree(prop);
 
@@ -599,15 +599,15 @@ int hfi_set_fw_dump_levels(int client_handle, uint32_t hang_dump_lvl,
 	fw_dump_level_switch_prop->size = size;
 	fw_dump_level_switch_prop->pkt_type = HFI_CMD_SYS_SET_PROPERTY;
 	fw_dump_level_switch_prop->num_prop = 1;
-	fw_dump_level_switch_prop->prop_data[0] = HFI_PROP_SYS_FW_DUMP_CFG;
-	fw_dump_level_switch_prop->prop_data[1] = hang_dump_lvl;
+	fw_dump_level_switch_prop->prop_data_flex[0] = HFI_PROP_SYS_FW_DUMP_CFG;
+	fw_dump_level_switch_prop->prop_data_flex[1] = hang_dump_lvl;
 
 	/* Write hang dump level */
 	hfi_write_cmd(client_handle, prop);
 
 	/* Update and write ramdump level */
-	fw_dump_level_switch_prop->prop_data[0] = HFI_PROP_SYS_ICP_RAMDUMP_MODE;
-	fw_dump_level_switch_prop->prop_data[1] = ram_dump_lvl;
+	fw_dump_level_switch_prop->prop_data_flex[0] = HFI_PROP_SYS_ICP_RAMDUMP_MODE;
+	fw_dump_level_switch_prop->prop_data_flex[1] = ram_dump_lvl;
 
 	hfi_write_cmd(client_handle, prop);
 	CAM_DBG(CAM_HFI,

@@ -228,7 +228,8 @@ int tc956x_platform_remove(struct tc956xmac_priv *priv)
 	if (ret)
 		dev_err(priv->device, "Failed to power off PHY with error %d\n", ret);
 
-	devm_regulator_put(qpriv->phy_supply);
+	if (!qpriv->has_always_on_supplies)
+		devm_regulator_put(qpriv->phy_supply);
 
 	devm_pinctrl_put(qpriv->pinctrl);
 	kfree(priv->plat_priv);

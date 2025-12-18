@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_ISP_HW_MGR_INTF_H_
@@ -531,6 +531,10 @@ struct cam_isp_hw_cmd_args {
 		uint32_t                         ctx_type;
 		uint64_t                         last_cdm_done;
 		int64_t                          req_id;
+		struct {
+			uint64_t                 type;
+			bool                     bubble_recover_dis;
+		} ctx_info;
 		struct {
 			uint32_t                     packet_op_code;
 			uint32_t                     hw_mgr_ctx_id;

@@ -27,6 +27,8 @@
 #define USB_CONN_IRQF	\
 	(IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
 
+static atomic_t device_counter = ATOMIC_INIT(0);
+
 struct usb_conn_info {
 	struct device *dev;
 	struct usb_role_switch *role_sw;
@@ -60,7 +62,7 @@ struct usb_conn_info {
  *
  * In case we have only one of these signals:
  * - VBUS only - we want to distinguish between [1] and [2], so ID is always 1
- * - ID only - we want to distinguish between [1] and [4], so VBUS = ID
+ * - ID only - we want to distinguish between [2] and [3], so VBUS = !ID
  */
 static void usb_conn_detect_cable(struct work_struct *work)
 {
@@ -75,7 +77,7 @@ static void usb_conn_detect_cable(struct work_struct *work)
 	id = info->id_gpiod ?
 		gpiod_get_value_cansleep(info->id_gpiod) : 1;
 	vbus = info->vbus_gpiod ?
-		gpiod_get_value_cansleep(info->vbus_gpiod) : id;
+		gpiod_get_value_cansleep(info->vbus_gpiod) : !id;
 
 	if (!id)
 		role = USB_ROLE_HOST;
@@ -160,7 +162,9 @@ static int usb_conn_psy_register(struct usb_conn_info *info)
 		.of_node = dev->of_node,
 	};
 
-	desc->name = "usb-charger";
+	desc->name = devm_kmalloc(dev, sizeof(*desc), GFP_KERNEL);
+	snprintf((char *)desc->name, sizeof(*desc), "usb-charger%d", atomic_read(&device_counter));
+	atomic_inc(&device_counter);
 	desc->properties = usb_charger_properties;
 	desc->num_properties = ARRAY_SIZE(usb_charger_properties);
 	desc->get_property = usb_charger_get_property;

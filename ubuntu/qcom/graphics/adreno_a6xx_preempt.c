@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "adreno.h"
 #include "adreno_a6xx.h"
 #include "adreno_pm4types.h"
 #include "adreno_trace.h"
+#include "kgsl_util.h"
 
 #define PREEMPT_RECORD(_field) \
 		offsetof(struct a6xx_cp_preemption_record, _field)
@@ -135,7 +136,7 @@ static void _a6xx_preemption_done(struct adreno_device *adreno_dev)
 	 */
 	_power_collapse_set(adreno_dev, false);
 
-	del_timer_sync(&adreno_dev->preempt.timer);
+	kgsl_delete_timer_sync(&adreno_dev->preempt.timer);
 
 	kgsl_regread(device,  A6XX_CP_CONTEXT_SWITCH_LEVEL_STATUS, &status);
 
@@ -270,7 +271,7 @@ void a6xx_preemption_trigger(struct adreno_device *adreno_dev, bool atomic)
 	}
 
 	/* Turn off the dispatcher timer */
-	del_timer(&adreno_dev->dispatcher.timer);
+	kgsl_delete_timer(&adreno_dev->dispatcher.timer);
 
 	/*
 	 * This is the most critical section - we need to take care not to race
@@ -396,7 +397,7 @@ void a6xx_preemption_trigger(struct adreno_device *adreno_dev, bool atomic)
 	if (a6xx_fenced_write(adreno_dev, A6XX_CP_CONTEXT_SWITCH_CNTL, cntl,
 					FENCE_STATUS_WRITEDROPPED1_MASK)) {
 		adreno_dev->next_rb = NULL;
-		del_timer(&adreno_dev->preempt.timer);
+		kgsl_delete_timer(&adreno_dev->preempt.timer);
 		goto err;
 	}
 
@@ -451,7 +452,7 @@ void a6xx_preemption_callback(struct adreno_device *adreno_dev, int bit)
 	 */
 	_power_collapse_set(adreno_dev, false);
 
-	del_timer(&adreno_dev->preempt.timer);
+	kgsl_delete_timer(&adreno_dev->preempt.timer);
 
 	kgsl_regread(device, A6XX_CP_CONTEXT_SWITCH_LEVEL_STATUS, &status);
 

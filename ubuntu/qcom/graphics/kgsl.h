@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __KGSL_H
 #define __KGSL_H
@@ -200,6 +200,10 @@ struct kgsl_driver {
 	struct workqueue_struct *workqueue;
 	/* @lockless_workqueue: Pointer to a workqueue handler which doesn't hold device mutex */
 	struct workqueue_struct *lockless_workqueue;
+	/** @pool_shrinker: Pointer to a shrinker that resizes the kgsl page pools */
+	struct shrinker *pool_shrinker;
+	/** @reclaim_shrinker: Pointer to a shrinker that reclaims kgsl memory */
+	struct shrinker *reclaim_shrinker;
 };
 
 extern struct kgsl_driver kgsl_driver;
@@ -561,7 +565,7 @@ enum kgsl_mmutype kgsl_mmu_get_mmutype(struct kgsl_device *device);
 
 /* Helper functions */
 int kgsl_request_irq(struct platform_device *pdev, const  char *name,
-		irq_handler_t handler, void *data);
+	const  char *alt_name, int index, irq_handler_t handler, void *data);
 
 int __init kgsl_core_init(void);
 void kgsl_core_exit(void);

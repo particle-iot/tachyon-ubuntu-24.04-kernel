@@ -186,8 +186,8 @@ struct cam_sync_ev_header {
 struct cam_sync_ev_header_v2 {
 	__s32 sync_obj;
 	__s32 status;
-	uint32_t version;
-	uint32_t evt_param[CAM_SYNC_EVENT_MAX];
+	__u32 version;
+	__u32 evt_param[CAM_SYNC_EVENT_MAX];
 };
 
 /**
@@ -248,7 +248,7 @@ struct cam_sync_userpayload_info {
 struct cam_sync_wait {
 	__s32    sync_obj;
 	__u32    reserved;
-	uint64_t timeout_ms;
+	__u64 timeout_ms;
 };
 
 /**

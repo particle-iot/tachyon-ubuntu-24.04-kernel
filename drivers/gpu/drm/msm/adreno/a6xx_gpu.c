@@ -525,6 +525,20 @@ static void a6xx_calc_ubwc_config(struct adreno_gpu *gpu)
 	if (adreno_is_a619_holi(gpu))
 		gpu->ubwc_config.highest_bank_bit = 13;
 
+	if (adreno_is_a621(gpu)) {
+		gpu->ubwc_config.highest_bank_bit = 13;
+		gpu->ubwc_config.amsbc = 1;
+		gpu->ubwc_config.uavflagprd_inv = 2;
+	}
+
+	if (adreno_is_a623(gpu)) {
+		gpu->ubwc_config.highest_bank_bit = 16;
+		gpu->ubwc_config.amsbc = 1;
+		gpu->ubwc_config.rgb565_predicator = 1;
+		gpu->ubwc_config.uavflagprd_inv = 2;
+		gpu->ubwc_config.macrotile_mode = 1;
+	}
+
 	if (adreno_is_a640_family(gpu))
 		gpu->ubwc_config.amsbc = 1;
 
@@ -1002,6 +1016,9 @@ static int hw_init(struct msm_gpu *gpu)
 	if (adreno_gpu->info->a6xx->prim_fifo_threshold)
 		gpu_write(gpu, REG_A6XX_PC_DBG_ECO_CNTL,
 			  adreno_gpu->info->a6xx->prim_fifo_threshold);
+
+	if (adreno_is_a621(adreno_gpu) || adreno_is_a623(adreno_gpu))
+		gpu_write(gpu, REG_A6XX_PC_DBG_ECO_CNTL, 0x00010000);
 
 	/* Set the AHB default slave response to "ERROR" */
 	gpu_write(gpu, REG_A6XX_CP_AHB_CNTL, 0x1);

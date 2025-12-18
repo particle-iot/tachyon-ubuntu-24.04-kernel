@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_DEBUG_UTIL_H_
@@ -371,6 +371,22 @@ int cam_debugfs_create_subdir(const char *name, struct dentry **subdir);
  * @return: 0 on success, negative on failure
  */
 int cam_debugfs_lookup_subdir(const char *name, struct dentry **subdir);
+
+/**
+ * cam_ddr_info_create_sysfs()
+ *
+ * @brief:  create a directory within the kernel for ddr_type
+ *
+ * @return: 0 on success, negative on failure
+ */
+int cam_ddr_info_create_sysfs(void);
+
+/**
+ * cam_ddr_info_remove_sysfs()
+ *
+ * @brief:  removes directory within the kernel for ddr_type
+ */
+void cam_ddr_info_remove_sysfs(void);
 
 /**
  * cam_debugfs_available()

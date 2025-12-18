@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __SOC_QCOM_SOCINFO_H__
@@ -10,6 +10,7 @@
 #include <linux/types.h>
 
 enum feature_code {
+#if (KERNEL_VERSION(6, 11, 0) > LINUX_VERSION_CODE)
 	/* External feature code */
 	SOCINFO_FC_UNKNOWN = 0x0,
 	SOCINFO_FC_AA,
@@ -21,6 +22,7 @@ enum feature_code {
 	SOCINFO_FC_AG,
 	SOCINFO_FC_AH,
 	SOCINFO_FC_EXT_RESERVE,
+#endif
 
 	/* Internal feature code */
 	SOCINFO_FC_Y0 = 0xf1,

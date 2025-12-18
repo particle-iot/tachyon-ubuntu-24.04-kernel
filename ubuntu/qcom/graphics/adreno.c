@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/component.h>
 #include <linux/delay.h>
@@ -10,6 +10,7 @@
 #include <linux/interconnect.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_fdt.h>
 #include <linux/module.h>
@@ -17,11 +18,20 @@
 #include <linux/regulator/consumer.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/soc/qcom/llcc-qcom.h>
+#include <linux/soc/qcom/mdt_loader.h>
 #include <linux/trace.h>
 #include <linux/version.h>
+#if (KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE)
+#include <linux/firmware/qcom/qcom_scm.h>
+#else
+#include <linux/qcom_scm.h>
+#endif
 #include <soc/qcom/dcvs.h>
 #include <soc/qcom/socinfo.h>
 #include <linux/suspend.h>
+#if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
+#include <linux/soc/qcom/socinfo.h>
+#endif
 
 #include "adreno.h"
 #include "adreno_a3xx.h"
@@ -68,6 +78,28 @@ static u32 get_ucode_version(const u32 *data)
 	return  version | ((data[3] & 0xfff000) >> 12);
 }
 
+int adreno_request_firmware(const struct firmware **fw, const char *name,
+		struct device *device, bool log_error)
+{
+	int ret;
+	char *newname;
+
+	if (!firmware_request_nowarn(fw, name, device))
+		return 0;
+
+	newname = kasprintf(GFP_KERNEL, "qcom/%s", name);
+	if (!newname)
+		return -ENOMEM;
+
+	ret = firmware_request_nowarn(fw, newname, device);
+	if (ret && log_error)
+		pr_err("Firmware request for %s failed with error %d\n",
+				name, ret);
+	kfree(newname);
+
+	return ret;
+}
+
 int adreno_get_firmware(struct adreno_device *adreno_dev,
 		const char *fwfile, struct adreno_firmware *firmware)
 {
@@ -78,13 +110,10 @@ int adreno_get_firmware(struct adreno_device *adreno_dev,
 	if (!IS_ERR_OR_NULL(firmware->memdesc))
 		return 0;
 
-	ret = request_firmware(&fw, fwfile, &device->pdev->dev);
+	ret = adreno_request_firmware(&fw, fwfile, &device->pdev->dev, true);
 
-	if (ret) {
-		dev_err(device->dev, "request_firmware(%s) failed: %d\n",
-				fwfile, ret);
+	if (ret)
 		return ret;
-	}
 
 	firmware->memdesc = kgsl_allocate_global(device, fw->size - 4, 0,
 				KGSL_MEMFLAGS_GPUREADONLY, KGSL_MEMDESC_UCODE,
@@ -101,17 +130,108 @@ int adreno_get_firmware(struct adreno_device *adreno_dev,
 	return ret;
 }
 
+/*
+ * The PASID has stayed consistent across all targets thus far so we are
+ * cautiously optimistic that we can hard code it
+ */
+#define GPU_PASID 13
 
 int adreno_zap_shader_load(struct adreno_device *adreno_dev,
 		const char *name)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	struct device_node *np, *mem_np;
+	struct device *dev = &device->pdev->dev;
+	const char *firmware_name;
+	const struct firmware *fw;
+	void *mem_region = NULL;
+	phys_addr_t mem_phys;
+	struct resource res;
+	ssize_t mem_size;
 	int ret;
 
-	if (!name || adreno_dev->zap_loaded || IS_ENABLED(CONFIG_QCOM_KVM_ENABLED))
+	/* Skip loading zap if already done or if KVM is enabled */
+	if (adreno_dev->zap_loaded || IS_ENABLED(CONFIG_QCOM_KVM_ENABLED))
 		return 0;
 
-	ret = kgsl_zap_shader_load(&device->pdev->dev, name);
+	np = of_get_child_by_name(dev->of_node, "zap-shader");
+
+	/*
+	 * While loading the zap firmware, follow the priority order below to determine
+	 * the firmware name:
+	 * 1. Check the "firmware-name" property in the device tree to identify the
+	 * firmware path.
+	 * 2. If not specified, fall back to the zap entry defined in the GPU list.
+	 * 3. If both are missing, skip zap fw loading and use direct register write
+	 * to switch secure state.
+	 */
+	if (np)
+		of_property_read_string(np, "firmware-name", &firmware_name);
+	firmware_name = firmware_name ?: name;
+
+	if (!firmware_name) {
+		of_node_put(np);
+		return 0;
+	}
+
+	if (!np) {
+		dev_err(device->dev, "zap-shader node not found. Please update the device tree\n");
+		of_node_put(np);
+		return -ENODEV;
+	}
+
+	mem_np = of_parse_phandle(np, "memory-region", 0);
+	of_node_put(np);
+	if (!mem_np) {
+		dev_err(dev, "Couldn't parse the mem-region from the zap-shader node\n");
+		return -EINVAL;
+	}
+
+	ret = of_address_to_resource(mem_np, 0, &res);
+	of_node_put(mem_np);
+	if (ret)
+		return ret;
+
+	ret = request_firmware(&fw, firmware_name, dev);
+	if (ret) {
+		dev_err(dev, "Couldn't load the firmware %s\n", firmware_name);
+		return ret;
+	}
+
+	mem_size = qcom_mdt_get_size(fw);
+	if (mem_size < 0) {
+		ret = mem_size;
+		goto out;
+	}
+
+	if (mem_size > resource_size(&res)) {
+		ret = -E2BIG;
+		goto out;
+	}
+
+	mem_phys = res.start;
+
+	mem_region = memremap(mem_phys, mem_size, MEMREMAP_WC);
+	if (!mem_region) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	ret = qcom_mdt_load(dev, fw, firmware_name, GPU_PASID, mem_region,
+		mem_phys, mem_size, NULL);
+	if (ret) {
+		dev_err(dev, "Error %d while loading the MDT\n", ret);
+		goto out;
+	}
+
+	ret = qcom_scm_pas_auth_and_reset(GPU_PASID);
+
+out:
+	if (mem_region)
+		memunmap(mem_region);
+
+	release_firmware(fw);
+
 	if (!ret)
 		adreno_dev->zap_loaded = true;
 
@@ -125,8 +245,10 @@ static void adreno_zap_shader_unload(struct adreno_device *adreno_dev)
 	int ret;
 
 	if (adreno_dev->zap_loaded) {
-		ret = kgsl_zap_shader_unload(&device->pdev->dev);
-		if (!ret)
+		ret = qcom_scm_pas_shutdown_retry(GPU_PASID);
+		if (ret)
+			dev_err(&device->pdev->dev, "Error %d while PAS shutdown\n", ret);
+		else
 			adreno_dev->zap_loaded = false;
 	}
 }
@@ -452,10 +574,44 @@ static inline bool _rev_match(unsigned int id, unsigned int entry)
 }
 
 static const struct adreno_gpu_core *
+_get_gpu_core_standard(struct platform_device *pdev, u32 *chipid)
+{
+	const char *compat;
+	u32 core, major, minor, patchid;
+	int i;
+
+	if (of_property_read_string_index(pdev->dev.of_node, "compatible", 0, &compat)) {
+		dev_err(&pdev->dev, "Failed to read compatible string\n");
+		return NULL;
+	}
+
+	/*
+	 * Match "qcom,adreno-<core><major><minor>.<patch>" or version-style
+	 * "qcom,adreno-<chipid>"; Extract chip ID and search the GPU list entry.
+	 */
+	if (sscanf(compat, "qcom,adreno-%1u%1u%1u.%u", &core, &major, &minor, &patchid) == 4)
+		*chipid = (core << 24) | (major << 16) | (minor << 8) | patchid;
+	else if (sscanf(compat, "qcom,adreno-%08x", chipid) != 1)
+		return NULL;
+
+	for (i = 0; i < ARRAY_SIZE(adreno_gpulist); i++) {
+		if (adreno_gpulist[i]->chipid == *chipid)
+			return adreno_gpulist[i];
+	}
+
+	return NULL;
+}
+
+static const struct adreno_gpu_core *
 _get_gpu_core(struct platform_device *pdev, u32 *chipid)
 {
 	int i;
 	struct device_node *node;
+	const struct adreno_gpu_core *core;
+
+	core = _get_gpu_core_standard(pdev, chipid);
+	if (core)
+		return core;
 
 	/*
 	 * When "qcom,gpu-models" is defined, use gpu model node to match
@@ -589,6 +745,44 @@ static const struct of_device_id adreno_match_table[] = {
 
 MODULE_DEVICE_TABLE(of, adreno_match_table);
 
+static u32 fuse_to_supp_hw(const struct adreno_gpu_core *gpucore, u32 fuse)
+{
+	int i;
+
+	if (!gpucore->speedbins)
+		return UINT_MAX;
+
+	for (i = 0; gpucore->speedbins[i].fuse != SHRT_MAX; i++)
+		if (gpucore->speedbins[i].fuse == fuse)
+			return BIT(gpucore->speedbins[i].speedbin);
+
+	return UINT_MAX;
+}
+
+static int adreno_set_support_hw(struct kgsl_device *device, int speedbin)
+{
+	struct device *dev = &device->pdev->dev;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	const struct adreno_gpu_core *gpucore = adreno_dev->gpucore;
+	u32 supp_hw;
+	int ret;
+
+	supp_hw = fuse_to_supp_hw(gpucore, speedbin);
+
+	if (supp_hw == UINT_MAX) {
+		dev_err(dev,
+			"missing support for speed-bin: %u. Some OPPs may not be supported by hardware\n",
+			speedbin);
+		supp_hw = BIT(0); /* Default */
+	}
+
+	ret = devm_pm_opp_set_supported_hw(dev, &supp_hw, 1);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 /* Dynamically build the OPP table for the GPU device */
 static void adreno_build_opp_table(struct device *dev, struct kgsl_pwrctrl *pwr)
 {
@@ -603,7 +797,7 @@ static void adreno_build_opp_table(struct device *dev, struct kgsl_pwrctrl *pwr)
 		dev_pm_opp_add(dev, pwr->pwrlevels[i].gpu_freq, 0);
 }
 
-static int adreno_of_parse_pwrlevels(struct adreno_device *adreno_dev,
+static int adreno_of_parse_legacy_pwrlevels(struct adreno_device *adreno_dev,
 		struct device_node *node)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
@@ -750,7 +944,7 @@ static int adreno_of_get_legacy_pwrlevels(struct adreno_device *adreno_dev,
 		return -EINVAL;
 	}
 
-	ret = adreno_of_parse_pwrlevels(adreno_dev, node);
+	ret = adreno_of_parse_legacy_pwrlevels(adreno_dev, node);
 
 	if (!ret) {
 		adreno_of_get_initial_pwrlevels(&device->pwrctrl, parent);
@@ -761,7 +955,128 @@ static int adreno_of_get_legacy_pwrlevels(struct adreno_device *adreno_dev,
 	return ret;
 }
 
-static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
+static int adreno_parse_ib_votes(struct kgsl_device *device,
+		struct dev_pm_opp *opp, struct kgsl_pwrlevel *level)
+{
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	struct device_node *child;
+	u32 bus_freq;
+	int ret, i;
+
+	child = dev_pm_opp_get_of_node(opp);
+
+	/* Initialize bus_freq, bus_min, and bus_max using "qcom,bus-freq" if available.
+	 * If not, fall back to "opp-peak-kBps" and map it to ddr_table index.
+	 * Return error if neither property is found or if mapping fails.
+	 */
+	ret = kgsl_of_property_read_ddrtype(child, "qcom,bus-freq", &bus_freq);
+	if (!ret) {
+		level->bus_freq = bus_freq;
+		level->bus_min = bus_freq;
+		kgsl_of_property_read_ddrtype(child, "qcom,bus-min", &level->bus_min);
+		level->bus_max = bus_freq;
+		kgsl_of_property_read_ddrtype(child, "qcom,bus-max", &level->bus_max);
+
+		of_node_put(child);
+		return 0;
+	}
+
+	ret = of_property_read_u32(child, "opp-peak-kBps", &bus_freq);
+	if (!ret) {
+		for (i = 0; i < pwr->ddr_table_count && pwr->ddr_table[i] != bus_freq; i++)
+			;
+
+		if (i == pwr->ddr_table_count) {
+			dev_err(device->dev, "%pOF: bus_freq %u not found in ddr_table\n",
+				child, bus_freq);
+			return -EINVAL;
+		}
+
+		level->bus_freq = i;
+		level->bus_min = i;
+		level->bus_max = i;
+
+		of_node_put(child);
+		return 0;
+	}
+
+	/* Neither "qcom,bus-freq" nor "opp-peak-kBps" was found */
+	dev_err(device->dev, "%pOF: Missing bus frequency properties\n", child);
+	of_node_put(child);
+	return -EINVAL;
+}
+
+static int adreno_parse_opp_node(struct kgsl_device *device,
+		struct dev_pm_opp *opp, struct kgsl_pwrlevel *level)
+{
+	int ret;
+
+	level->voltage_level = dev_pm_opp_get_level(opp);
+	dev_pm_opp_put(opp);
+
+	level->cx_level = 0xffffffff;
+	of_property_read_u32(dev_pm_opp_get_of_node(opp), "qcom,opp-acd-level", &level->acd_level);
+
+	ret = adreno_parse_ib_votes(device, opp, level);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int adreno_of_parse_pwrlevels(struct adreno_device *adreno_dev)
+{
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	struct device *dev = &device->pdev->dev;
+	struct dev_pm_opp *opp;
+	u32 index = 0, count = 0, i;
+	unsigned long freq = ULONG_MAX;
+	int ret;
+
+	ret = devm_pm_opp_of_add_table(&device->pdev->dev);
+	if (ret) {
+		dev_err(&device->pdev->dev, "Unable to initialize opp table from device tree\n");
+		return ret;
+	}
+
+	count = dev_pm_opp_get_opp_count(dev);
+	if (count <= 0) {
+		dev_err(dev, "No OPPs found for device\n");
+		return -ENODEV;
+	}
+
+	for (i = 0; i < count && index < KGSL_MAX_PWRLEVELS; i++) {
+		struct kgsl_pwrlevel *level = &pwr->pwrlevels[index];
+
+		opp = dev_pm_opp_find_freq_floor(dev, &freq);
+		if (IS_ERR(opp))
+			break;
+
+		level->gpu_freq = (u32)freq;
+		adreno_parse_opp_node(device, opp, level);
+
+		dev_pm_opp_put(opp);
+		freq--;
+		index++;
+	}
+
+	pwr->num_pwrlevels = index;
+
+	/* Set the initial power level */
+	pwr->active_pwrlevel = pwr->num_pwrlevels - 1;
+	pwr->default_pwrlevel = pwr->num_pwrlevels - 1;
+
+	/* Set the max power level */
+	pwr->max_pwrlevel = 0;
+
+	/* Set the min power level */
+	pwr->min_pwrlevel = pwr->num_pwrlevels - 1;
+
+	return 0;
+}
+
+static int adreno_of_get_legacy_pwrlevels_bins(struct adreno_device *adreno_dev,
 		struct device_node *parent)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
@@ -816,7 +1131,7 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 		if (match) {
 			int ret;
 
-			ret = adreno_of_parse_pwrlevels(adreno_dev, child);
+			ret = adreno_of_parse_legacy_pwrlevels(adreno_dev, child);
 			if (ret) {
 				of_node_put(child);
 				return ret;
@@ -887,9 +1202,18 @@ static int adreno_of_get_power(struct adreno_device *adreno_dev,
 		struct platform_device *pdev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	struct device_node *node;
 	int ret;
 
-	ret = adreno_of_get_pwrlevels(adreno_dev, pdev->dev.of_node);
+	node = of_parse_phandle(pdev->dev.of_node, "operating-points-v2", 0);
+
+	if (node && of_device_is_compatible(node, "operating-points-v2")) {
+		ret = adreno_of_parse_pwrlevels(adreno_dev);
+		if (!ret)
+			adreno_of_get_limits(adreno_dev, node);
+	} else
+		ret = adreno_of_get_legacy_pwrlevels_bins(adreno_dev, pdev->dev.of_node);
+
 	if (ret)
 		return ret;
 
@@ -906,10 +1230,11 @@ static void adreno_cx_misc_probe(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct resource *res;
 
-	res = platform_get_resource_byname(device->pdev, IORESOURCE_MEM,
-					   "cx_misc");
-
-	if (res == NULL)
+	/* Try to get the "cx_mem" resource, fallback to legacy "cx_misc" if not found */
+	res = platform_get_resource_byname(device->pdev, IORESOURCE_MEM, "cx_mem");
+	if (!res)
+		res = platform_get_resource_byname(device->pdev, IORESOURCE_MEM, "cx_misc");
+	if (!res)
 		return;
 
 	adreno_dev->cx_misc_len = resource_size(res);
@@ -1191,16 +1516,52 @@ static const struct of_device_id adreno_component_match[] = {
 	{ .compatible = "qcom,gen7-gmu" },
 	{ .compatible = "qcom,gpu-gmu" },
 	{ .compatible = "qcom,gpu-rgmu" },
+	/* Legacy components for kgsl-smmu */
 	{ .compatible = "qcom,kgsl-smmu-v2" },
 	{ .compatible = "qcom,smmu-kgsl-cb" },
 	{},
 };
+
+static void validate_pwrlevels(struct kgsl_device *device)
+{
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	int i, count = pwr->ddr_table_count;
+
+	for (i = 0; i < pwr->num_pwrlevels - 1; i++) {
+		struct kgsl_pwrlevel *pwrlevel = &pwr->pwrlevels[i];
+
+		if (pwrlevel->bus_freq >= count) {
+			dev_err(device->dev, "Bus setting for GPU freq %d is out of bounds\n",
+				pwrlevel->gpu_freq);
+			pwrlevel->bus_freq = count - 1;
+		}
+
+		if (pwrlevel->bus_max >= count) {
+			dev_err(device->dev, "Bus max for GPU freq %d is out of bounds\n",
+				pwrlevel->gpu_freq);
+			pwrlevel->bus_max = count - 1;
+		}
+
+		if (pwrlevel->bus_min >= count) {
+			dev_err(device->dev, "Bus min for GPU freq %d is out of bounds\n",
+				pwrlevel->gpu_freq);
+			pwrlevel->bus_min = count - 1;
+		}
+
+		if (pwrlevel->bus_min > pwrlevel->bus_max) {
+			dev_err(device->dev, "Bus min is bigger than bus max for GPU freq %d\n",
+				pwrlevel->gpu_freq);
+			pwrlevel->bus_min = pwrlevel->bus_max;
+		}
+	}
+}
 
 int adreno_device_probe(struct platform_device *pdev,
 		struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct device *dev = &pdev->dev;
+	struct device_node *node;
 	unsigned int priv = 0;
 	int status;
 	u32 size;
@@ -1222,13 +1583,22 @@ int adreno_device_probe(struct platform_device *pdev,
 
 	device->speed_bin = status;
 
-	status = adreno_of_get_power(adreno_dev, pdev);
-	if (status)
-		goto err;
+	node = of_parse_phandle(pdev->dev.of_node, "operating-points-v2", 0);
+	if (node) {
+		status = adreno_set_support_hw(device, device->speed_bin);
+		if (status)
+			goto err;
+	}
 
 	status = kgsl_bus_init(device, pdev);
 	if (status)
 		goto err;
+
+	status = adreno_of_get_power(adreno_dev, pdev);
+	if (status)
+		goto err;
+
+	validate_pwrlevels(device);
 
 	status = kgsl_regmap_init(pdev, &device->regmap, "kgsl_3d0_reg_memory",
 		&adreno_regmap_ops, device);
@@ -1285,7 +1655,13 @@ int adreno_device_probe(struct platform_device *pdev,
 	if (status)
 		goto err_remove_llcc;
 
-	status = kgsl_request_irq(pdev, "kgsl_3d0_irq", adreno_irq_handler, device);
+	/*
+	 * Try to get the irq based on gpu irq name (i.e. "kgsl_3d0_irq") else fall back
+	 * to requesting it by index.
+	 * Note: kgsl_3d0_irq should always be the first in the gpu irq list.
+	 */
+	status = kgsl_request_irq(pdev, "kgsl_3d0_irq", NULL, 0, adreno_irq_handler, device);
+
 	if (status < 0)
 		goto err_unbind;
 
@@ -1319,6 +1695,19 @@ int adreno_device_probe(struct platform_device *pdev,
 		kgsl_device_platform_remove(device);
 		goto err_unbind;
 	}
+
+	/* Initialize UBWC mode and mal */
+	if (adreno_dev->gpucore->ubwc_mode)
+		adreno_dev->ubwc_mode = adreno_dev->gpucore->ubwc_mode;
+	else
+		of_property_read_u32(device->pdev->dev.of_node,
+			"qcom,ubwc-mode", &adreno_dev->ubwc_mode);
+
+	if (adreno_dev->gpucore->mal)
+		adreno_dev->mal = adreno_dev->gpucore->mal;
+	else if (of_property_read_u32(device->pdev->dev.of_node,
+			"qcom,min-access-length", &adreno_dev->mal))
+		adreno_dev->mal = 32;
 
 	/* Initialize the snapshot engine */
 	size = adreno_dev->gpucore->snapshot_size;
@@ -1921,9 +2310,9 @@ static int _adreno_start(struct adreno_device *adreno_dev)
 
 	/*
 	 * There is a possible deadlock scenario during kgsl firmware reading
-	 * (request_firmware) and devfreq update calls. During first boot, kgsl
-	 * device mutex is held and then request_firmware is called for reading
-	 * firmware. request_firmware internally takes dev_pm_qos_mtx lock.
+	 * (firmware_request_nowarn) and devfreq update calls. During first boot, kgsl
+	 * device mutex is held and then firmware_request_nowarn is called for reading
+	 * firmware. firmware_request_nowarn internally takes dev_pm_qos_mtx lock.
 	 * Whereas in case of devfreq update calls triggered by thermal/bcl or
 	 * devfreq sysfs, it first takes the same dev_pm_qos_mtx lock and then
 	 * tries to take kgsl device mutex as part of get_dev_status/target
@@ -2098,7 +2487,7 @@ static int adreno_prop_gpu_model(struct kgsl_device *device,
 	struct kgsl_gpu_model model = {0};
 
 	strscpy(model.gpu_model, adreno_get_gpu_model(device),
-		sizeof(model.gpu_model));
+			sizeof(model.gpu_model));
 
 	return copy_prop(param, &model, sizeof(model));
 }
@@ -2214,11 +2603,9 @@ static int adreno_prop_u32(struct kgsl_device *device,
 	if (param->type == KGSL_PROP_HIGHEST_BANK_BIT) {
 		val = adreno_dev->highest_bank_bit;
 	} else if (param->type == KGSL_PROP_MIN_ACCESS_LENGTH)
-		of_property_read_u32(device->pdev->dev.of_node,
-			"qcom,min-access-length", &val);
+		val = adreno_dev->mal;
 	else if (param->type == KGSL_PROP_UBWC_MODE)
-		of_property_read_u32(device->pdev->dev.of_node,
-			"qcom,ubwc-mode", &val);
+		val = adreno_dev->ubwc_mode;
 	else if (param->type == KGSL_PROP_DEVICE_BITNESS)
 		val = adreno_support_64bit(adreno_dev) ? 48 : 32;
 	else if (param->type == KGSL_PROP_SPEED_BIN)
@@ -3461,12 +3848,19 @@ static int adreno_probe(struct platform_device *pdev)
 			&adreno_ops, match);
 }
 
+#if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
+static void adreno_remove(struct platform_device *pdev)
+{
+	component_master_del(&pdev->dev, &adreno_ops);
+}
+#else
 static int adreno_remove(struct platform_device *pdev)
 {
 	component_master_del(&pdev->dev, &adreno_ops);
 
 	return 0;
 }
+#endif
 
 #if IS_ENABLED(CONFIG_QCOM_KGSL_HIBERNATION)
 #if IS_ENABLED(CONFIG_QCOM_SECURE_BUFFER)
@@ -3727,6 +4121,8 @@ module_exit(kgsl_3d_exit);
 MODULE_DESCRIPTION("3D Graphics driver");
 MODULE_LICENSE("GPL v2");
 MODULE_SOFTDEP("pre: arm_smmu nvmem_qfprom socinfo");
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
+#if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
+MODULE_IMPORT_NS("DMA_BUF");
+#elif (KERNEL_VERSION(5, 18, 0) <= LINUX_VERSION_CODE)
 MODULE_IMPORT_NS(DMA_BUF);
 #endif

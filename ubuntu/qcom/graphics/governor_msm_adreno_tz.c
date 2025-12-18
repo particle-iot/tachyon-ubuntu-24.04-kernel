@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2010-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/errno.h>
 #include <linux/devfreq.h>
@@ -20,7 +20,7 @@
 #else
 #include <linux/qcom_scm.h>
 #endif
-#ifdef CONFIG_QCOM_KGSL_UPSTREAM
+#if IS_ENABLED(CONFIG_QCOM_SCM_ADDON)
 #include <linux/firmware/qcom/qcom_scm_addon.h>
 #endif
 #include <asm/cacheflush.h>
@@ -604,7 +604,8 @@ static int tz_handler(struct devfreq *devfreq, unsigned int event, void *data)
 	struct device_node *node = devfreq->dev.parent->of_node;
 
 	if (!(of_device_is_compatible(node, "qcom,kgsl-3d0") ||
-		of_device_is_compatible(node, "qcom,kgsl")))
+		of_device_is_compatible(node, "qcom,kgsl") ||
+		of_device_is_compatible(node, "qcom,adreno")))
 		return -EINVAL;
 
 	switch (event) {

@@ -1430,7 +1430,7 @@
 		>;
 
 		lt,cts_n_normal;
-
+		lt,fixed-mode;
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;

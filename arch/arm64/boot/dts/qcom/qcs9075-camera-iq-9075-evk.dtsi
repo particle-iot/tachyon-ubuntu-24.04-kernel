@@ -815,7 +815,7 @@
 	cam_csiphy0: qcom,csiphy0@ac9c000 {
 		cell-index = <0>;
 		aggregator-rx;
-		compatible = "qcom,csiphy-v1.3.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v1.3.1", "qcom,csiphy";
 		reg = <0x0 0x0ac9c000 0x0 0x2000>;
 		reg-names = "csiphy";
 		operating-points-v2 = <&csiphy0_opp_table>;
@@ -856,7 +856,7 @@
 	cam_csiphy1: qcom,csiphy1@ac9e000 {
 		cell-index = <1>;
 		aggregator-rx;
-		compatible = "qcom,csiphy-v1.3.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v1.3.1", "qcom,csiphy";
 		reg = <0x0 0xac9e000 0x0 0x2000>;
 		reg-names = "csiphy";
 		operating-points-v2 = <&csiphy1_opp_table>;
@@ -897,7 +897,7 @@
 	cam_csiphy2: qcom,csiphy2@aca0000 {
 		cell-index = <2>;
 		aggregator-rx;
-		compatible = "qcom,csiphy-v1.3.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v1.3.1", "qcom,csiphy";
 		reg = <0x0 0xaca0000 0x0 0x2000>;
 		reg-names = "csiphy";
 		operating-points-v2 = <&csiphy2_opp_table>;
@@ -938,7 +938,7 @@
 	cam_csiphy3: qcom,csiphy3@aca2000 {
 		cell-index = <3>;
 		aggregator-rx;
-		compatible = "qcom,csiphy-v1.3.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v1.3.1", "qcom,csiphy";
 		reg = <0x0 0xaca2000 0x0 0x2000>;
 		reg-names = "csiphy";
 		operating-points-v2 = <&csiphy3_opp_table>;

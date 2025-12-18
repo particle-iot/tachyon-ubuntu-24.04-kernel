@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -1146,7 +1146,7 @@ end:
 int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	void *arg)
 {
-	int rc = 0, pkt_opcode = 0;
+	int rc = 0, rc1 = 0, pkt_opcode = 0;
 	struct cam_control *cmd = (struct cam_control *)arg;
 	struct cam_sensor_power_ctrl_t *power_info = NULL;
 	struct timespec64 ts;
@@ -1231,15 +1231,14 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		if (s_ctrl->i2c_data.reg_bank_unlock_settings.is_settings_valid) {
 			rc = cam_sensor_apply_settings(s_ctrl, 0,
 				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_UNLOCK);
-			if (rc < 0) {
+			rc1 = delete_request(&(s_ctrl->i2c_data.reg_bank_unlock_settings));
+			if (rc < 0 || rc1 < 0) {
+				if (rc1 < 0) {
+					rc = rc1;
+					CAM_ERR(CAM_SENSOR,
+						"failed while deleting REG_bank unlock settings");
+				}
 				CAM_ERR(CAM_SENSOR, "REG_bank unlock failed");
-				cam_sensor_power_down(s_ctrl);
-				goto free_power_settings;
-			}
-			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_unlock_settings));
-			if (rc < 0) {
-				CAM_ERR(CAM_SENSOR,
-					"failed while deleting REG_bank unlock settings");
 				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}
@@ -1261,15 +1260,14 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		if (s_ctrl->i2c_data.reg_bank_lock_settings.is_settings_valid) {
 			rc = cam_sensor_apply_settings(s_ctrl, 0,
 				CAM_SENSOR_PACKET_OPCODE_SENSOR_REG_BANK_LOCK);
-			if (rc < 0) {
+			rc1 = delete_request(&(s_ctrl->i2c_data.reg_bank_lock_settings));
+			if (rc < 0 || rc1 < 0) {
+				if (rc1 < 0) {
+					rc = rc1;
+					CAM_ERR(CAM_SENSOR,
+						"failed while deleting REG_bank lock settings");
+				}
 				CAM_ERR(CAM_SENSOR, "REG_bank lock failed");
-				cam_sensor_power_down(s_ctrl);
-				goto free_power_settings;
-			}
-			rc = delete_request(&(s_ctrl->i2c_data.reg_bank_lock_settings));
-			if (rc < 0) {
-				CAM_ERR(CAM_SENSOR,
-					"failed while deleting REG_bank lock settings");
 				cam_sensor_power_down(s_ctrl);
 				goto free_power_settings;
 			}

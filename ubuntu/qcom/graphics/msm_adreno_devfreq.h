@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef MSM_ADRENO_DEVFREQ_H
@@ -107,6 +107,54 @@ static inline int32_t qtee_shmbridge_allocate_shm(size_t size, struct qtee_shm *
 	return -EINVAL;
 }
 static inline void qtee_shmbridge_free_shm(struct qtee_shm *shm) { }
+#endif
+
+#if IS_ENABLED(CONFIG_QCOM_KGSL_UPSTREAM) && !IS_ENABLED(CONFIG_QCOM_SCM_ADDON)
+static inline int qcom_scm_io_reset(void)
+{
+	return -EINVAL;
+}
+
+static inline int qcom_scm_dcvs_reset(void)
+{
+	return -EINVAL;
+}
+
+static inline int qcom_scm_dcvs_update(int level, s64 total_time, s64 busy_time)
+{
+	return -EINVAL;
+}
+
+static inline int qcom_scm_dcvs_update_v2(int level, s64 total_time, s64 busy_time)
+{
+	return -EINVAL;
+}
+
+static inline int qcom_scm_dcvs_update_ca_v2(int level, s64 total_time, s64 busy_time,
+				      int context_count)
+{
+	return -EINVAL;
+}
+
+static inline bool qcom_scm_dcvs_core_available(void)
+{
+	return false;
+}
+
+static inline int qcom_scm_dcvs_init_v2(phys_addr_t addr, size_t size, int *version)
+{
+	return -EINVAL;
+}
+
+static inline bool qcom_scm_dcvs_ca_available(void)
+{
+	return false;
+}
+
+static inline int qcom_scm_dcvs_init_ca_v2(phys_addr_t addr, size_t size)
+{
+	return -EINVAL;
+}
 #endif
 
 #endif

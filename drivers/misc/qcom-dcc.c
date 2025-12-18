@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 /*
@@ -1674,8 +1675,7 @@ sram_alloc_err:
 
 static int dcc_suspend(struct device *dev)
 {
-	if (pm_suspend_target_state == PM_SUSPEND_MEM
-		|| pm_suspend_target_state == PM_SUSPEND_TO_IDLE)
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		return dcc_state_store(dev);
 
 	return 0;
@@ -1683,8 +1683,7 @@ static int dcc_suspend(struct device *dev)
 
 static int dcc_resume(struct device *dev)
 {
-	if (pm_suspend_target_state == PM_SUSPEND_MEM
-		|| pm_suspend_target_state == PM_SUSPEND_TO_IDLE)
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		return dcc_state_restore(dev);
 
 	return 0;

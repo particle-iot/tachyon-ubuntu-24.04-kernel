@@ -69,6 +69,7 @@
 
 		zap-shader {
 			memory-region = <&gpu_microcode_mem>;
+			firmware-name = "qcom/qcs8300/a623_zap.mbn";
 		};
 
 		qcom,gpu-mempools {

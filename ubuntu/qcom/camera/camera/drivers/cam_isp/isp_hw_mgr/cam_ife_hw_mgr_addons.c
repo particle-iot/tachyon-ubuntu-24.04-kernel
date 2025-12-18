@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/slab.h>
@@ -220,6 +220,14 @@ int cam_ife_mgr_check_start_processing(void *hw_mgr_priv,
 			if (!run_hw_mgr_ctx->ctx_in_use)
 				CAM_ERR(CAM_ISP, "UNUSED CONTEXT %d",
 						c_elem->ctx_idx);
+			if (ife_hw_mgr->offline_outport_sync &&
+				(c_ctx->num_acq_vfe_out != run_hw_mgr_ctx->in_ports->num_out_res)) {
+				CAM_DBG(CAM_ISP,
+					"#REJECT#: Running ctx Outport %d is not same as actual hw ctx %d",
+					run_hw_mgr_ctx->in_ports->num_out_res,
+					c_ctx->num_acq_vfe_out);
+				continue;
+			}
 			run_hw_mgr_ctx->concr_ctx = c_ctx;
 			c_elem->prepare.ctxt_to_hw_map = run_hw_mgr_ctx;
 			c_elem->cfg.ctxt_to_hw_map = run_hw_mgr_ctx;
@@ -377,14 +385,15 @@ int cam_ife_mgr_required_hw(void *hw_mgr_priv, bool stop)
 	cnt = 0;
 	for (i = 0; i < CAM_IFE_CTX_MAX; i++) {
 		if (ife_hw_mgr->virt_ctx_pool[i].ctx_in_use &&
-				ife_hw_mgr->virt_ctx_pool[i].is_offline) {
+				ife_hw_mgr->virt_ctx_pool[i].is_offline &&
+				(!ife_hw_mgr->virt_ctx_pool[i].stop_done)) {
 			current_bw = cam_ife_mgr_calc_bw(
 				&ife_hw_mgr->virt_ctx_pool[i].bw_data);
 			if (current_bw > max_bw)
 				max_bw = current_bw;
 			total_bw += current_bw;
 			cnt++;
-	}
+		}
 	}
 
 	/* If only one context presents - we need to stop all HW*/

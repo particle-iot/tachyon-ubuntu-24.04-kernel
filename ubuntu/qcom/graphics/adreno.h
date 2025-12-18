@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __ADRENO_H
 #define __ADRENO_H
 
+#include <linux/firmware.h>
 #include <linux/iopoll.h>
 #include <linux/of.h>
 #include "adreno_coresight.h"
@@ -461,6 +462,22 @@ struct adreno_gpu_core {
 	u32 bus_width;
 	/** @snapshot_size: Size of the static snapshot region in bytes */
 	u32 snapshot_size;
+	/**
+	 * @chipid: Optional GPU chip ID for publically released chipsets; required when
+	 * using standard devicetree bindings.
+	 */
+	u32 chipid;
+	/**
+	 * @speedbins: Optional table of fuse to speedbin mappings
+	 *
+	 * Consists of pairs of fuse, index mappings, terminated with
+	 * {SHRT_MAX, 0} sentinel.
+	 */
+	struct kgsl_speedbin *speedbins;
+	/** @ubwc_mode: Supported UBWC mode */
+	u32 ubwc_mode;
+	/** @mal: Minimum access length */
+	u32 mal;
 };
 
 /**
@@ -632,6 +649,10 @@ struct adreno_device {
 	uint32_t ifpc_count;
 
 	unsigned int highest_bank_bit;
+	/** @ubwc_mode: Supported UBWC mode */
+	u32 ubwc_mode;
+	/** @mal: Minimum access length */
+	u32 mal;
 	unsigned int quirks;
 
 #ifdef CONFIG_QCOM_KGSL_CORESIGHT
@@ -1757,6 +1778,21 @@ static inline u32 adreno_get_level(struct kgsl_context *context)
 	return min_t(u32, level, KGSL_PRIORITY_MAX_RB_LEVELS - 1);
 }
 
+/**
+ * adreno_request_firmware - Helper function for requesting firmware
+ * @fw: Pointer to firmware image
+ * @name: Name of firmware file
+ * @device: Device for which firmware is being loaded
+ * @log_error: If true, logs an error message on failure
+ *
+ * Request for firmware with the name passed. If firmware is not
+ * available at /lib/firmware/, try /lib/firmware/qcom path by
+ * adding qcom/ prefix to the firmware name.
+ *
+ * Return: 0 on success or negative on failure
+ */
+int adreno_request_firmware(const struct firmware **fw,
+		const char *name, struct device *device, bool log_error);
 
 /**
  * adreno_get_firwmare - Load firmware into a adreno_firmware struct

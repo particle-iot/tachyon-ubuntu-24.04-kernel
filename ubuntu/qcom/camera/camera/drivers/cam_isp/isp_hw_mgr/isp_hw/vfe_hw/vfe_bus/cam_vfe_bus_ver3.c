@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 
@@ -1324,13 +1324,13 @@ static int cam_vfe_bus_ver3_res_update_config_wm(
 
 	switch (rsrc_data->en_cfg) {
 	case 0x1:
-		strscpy(wm_mode, "line-based", sizeof(wm_mode));
+		strscpy(wm_mode, "line-based", wm_mode_size);
 		break;
 	case ((0x1 << 16) | 0x1):
-		strscpy(wm_mode, "frame-based", sizeof(wm_mode));
+		strscpy(wm_mode, "frame-based", wm_mode_size);
 		break;
 	case ((0x2 << 16) | 0x1):
-		strscpy(wm_mode, "index-based", sizeof(wm_mode));
+		strscpy(wm_mode, "index-based", wm_mode_size);
 		break;
 	}
 

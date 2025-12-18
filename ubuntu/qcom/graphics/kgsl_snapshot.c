@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/of.h>
 #include <linux/panic_notifier.h>
 #include <linux/slab.h>
 #include <linux/utsname.h>
+#include <linux/vmalloc.h>
 
 #include "adreno_cp_parser.h"
 #include "kgsl_device.h"
@@ -745,9 +746,15 @@ static int snapshot_release(struct kgsl_device *device,
 }
 
 /* Dump the sysfs binary data to the user */
+#if (KERNEL_VERSION(6, 16, 0) > LINUX_VERSION_CODE)
 static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off,
 	size_t count)
+#else
+static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
+	const struct bin_attribute *attr, char *buf, loff_t off,
+	size_t count)
+#endif
 {
 	struct kgsl_device *device = kobj_to_device(kobj);
 	struct kgsl_snapshot *snapshot;
@@ -867,9 +874,10 @@ static ssize_t force_panic_show(struct kgsl_device *device, char *buf)
 static ssize_t force_panic_store(struct kgsl_device *device, const char *buf,
 	size_t count)
 {
-	if (kstrtobool(buf, &device->force_panic))
-		return -EINVAL;
-	return count;
+	int ret;
+
+	ret = kstrtobool(buf, &device->force_panic);
+	return ret ? ret : count;
 }
 
 /* Show the break_ib request status */
@@ -900,10 +908,10 @@ static ssize_t prioritize_unrecoverable_show(
 static ssize_t prioritize_unrecoverable_store(
 		struct kgsl_device *device, const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->prioritize_unrecoverable))
-		return -EINVAL;
+	int ret;
 
-	return count;
+	ret = kstrtobool(buf, &device->prioritize_unrecoverable);
+	return ret ? ret : count;
 }
 
 /* Show the snapshot_crashdumper request status */
@@ -917,9 +925,10 @@ static ssize_t snapshot_crashdumper_show(struct kgsl_device *device, char *buf)
 static ssize_t snapshot_crashdumper_store(struct kgsl_device *device,
 	const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->snapshot_crashdumper))
-		return -EINVAL;
-	return count;
+	int ret;
+
+	ret = kstrtobool(buf, &device->snapshot_crashdumper);
+	return ret ? ret : count;
 }
 
 /* Show the timestamp of the last collected snapshot */
@@ -941,10 +950,10 @@ static ssize_t snapshot_legacy_show(struct kgsl_device *device, char *buf)
 static ssize_t snapshot_legacy_store(struct kgsl_device *device,
 	const char *buf, size_t count)
 {
-	if (kstrtobool(buf, &device->snapshot_legacy))
-		return -EINVAL;
+	int ret;
 
-	return count;
+	ret = kstrtobool(buf, &device->snapshot_legacy);
+	return ret ? ret : count;
 }
 
 static struct bin_attribute snapshot_attr = {

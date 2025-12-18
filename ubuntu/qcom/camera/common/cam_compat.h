@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_COMPAT_H_
@@ -19,6 +19,7 @@
 #include "cam_csiphy_dev.h"
 #include "cam_cpastop_hw.h"
 #include "cam_smmu_api.h"
+#include "cam_soc_info.h"
 
 #include <linux/qcom-dma-mapping.h>
 #include <linux/i3c/master.h>
@@ -55,6 +56,7 @@ void cam_compat_util_put_dmabuf_va(struct dma_buf *dmabuf, void *vaddr);
 void cam_smmu_util_iommu_custom(struct device *dev,
 	dma_addr_t discard_start, size_t discard_length);
 int cam_get_ddr_type(void);
+int cam_get_ddr_info(struct ddrinfo *ddr);
 
 int cam_req_mgr_ordered_list_cmp(void *priv,
 	const struct list_head *head_1, const struct list_head *head_2);

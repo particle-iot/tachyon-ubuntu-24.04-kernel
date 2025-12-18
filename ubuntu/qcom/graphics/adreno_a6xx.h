@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _ADRENO_A6XX_H_
@@ -57,7 +57,10 @@ struct adreno_a6xx_core {
 	const char *sqefw_name;
 	/** @gmufw_name: Name of the GMU firmware file */
 	const char *gmufw_name;
-	/** @zap_name: Name of the CPZ zap file */
+	/**
+	 * @zap_name: Specifies the name of the CPZ zap file. This field is deprecated.
+	 * Use the 'firmware-name' device tree property instead.
+	 */
 	const char *zap_name;
 	/** @hwcg: List of registers and values to write for HWCG */
 	const struct kgsl_regmap_list *hwcg;

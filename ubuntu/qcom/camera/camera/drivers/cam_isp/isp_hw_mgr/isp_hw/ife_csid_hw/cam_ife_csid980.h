@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_IFE_CSID_980_H_
@@ -1716,7 +1716,7 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.rst_mode_shift_val                      = 0,
 	.epoch_factor                            = 50,
 	.global_reset                            = 1,
-	.rup_supported                           = 1,
+	.aup_rup_supported                       = 1,
 	.only_master_rup                         = 1,
 	.format_measure_height_mask_val          = 0xFFFF,
 	.format_measure_height_shift_val         = 0x10,

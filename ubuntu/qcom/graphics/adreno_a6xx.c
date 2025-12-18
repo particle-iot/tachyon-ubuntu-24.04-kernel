@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk/qcom.h>
@@ -562,11 +562,13 @@ void a6xx_start(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	const struct adreno_a6xx_core *a6xx_core = to_a6xx_core(adreno_dev);
-	unsigned int mal, mode, hbb_hi = 0, hbb_lo = 0;
+	unsigned int hbb_hi = 0, hbb_lo = 0;
 	unsigned int uavflagprd_inv;
 	unsigned int amsbc = 0;
 	unsigned int rgb565_predicator = 0;
 	unsigned int level2_swizzling_dis = 0;
+	u32 mal = adreno_dev->mal;
+	u32 mode = adreno_dev->ubwc_mode;
 
 	/* Enable 64 bit addressing */
 	kgsl_regwrite(device, A6XX_CP_ADDR_MODE_CNTL, 0x1);
@@ -681,14 +683,6 @@ void a6xx_start(struct adreno_device *adreno_dev)
 		/* For CP IPC interrupt */
 		kgsl_regwrite(device, A6XX_RBBM_INT_2_MASK, 0x00000010);
 	}
-
-	if (of_property_read_u32(device->pdev->dev.of_node,
-		"qcom,min-access-length", &mal))
-		mal = 32;
-
-	if (of_property_read_u32(device->pdev->dev.of_node,
-		"qcom,ubwc-mode", &mode))
-		mode = 0;
 
 	switch (mode) {
 	case KGSL_UBWC_1_0:
@@ -2106,7 +2100,7 @@ u64 a6xx_read_alwayson(struct adreno_device *adreno_dev)
 static void a6xx_remove(struct adreno_device *adreno_dev)
 {
 	if (adreno_preemption_feature_set(adreno_dev))
-		del_timer(&adreno_dev->preempt.timer);
+		kgsl_delete_timer(&adreno_dev->preempt.timer);
 }
 
 static void a6xx_read_bus_stats(struct kgsl_device *device,

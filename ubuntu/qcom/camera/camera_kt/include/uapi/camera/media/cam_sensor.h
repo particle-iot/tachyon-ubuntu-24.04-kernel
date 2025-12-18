@@ -200,10 +200,10 @@ struct cam_cmd_power {
 	__u8                        reserved;
 	__u8                        cmd_type;
 	__u16                       more_reserved;
-    union {
-        struct cam_power_settings   power_settings[1];
-        __DECLARE_FLEX_ARRAY(struct cam_power_settings, power_settings_flex);
-    };
+	union {
+		struct cam_power_settings   power_settings[1];
+		__DECLARE_FLEX_ARRAY(struct cam_power_settings, power_settings_flex);
+	};
 } __attribute__((packed));
 
 /**
@@ -243,10 +243,10 @@ struct i2c_random_wr_payload {
  */
 struct cam_cmd_i2c_random_wr {
 	struct i2c_rdwr_header       header;
-    union {
-        struct i2c_random_wr_payload random_wr_payload[1];
-        __DECLARE_FLEX_ARRAY(struct i2c_random_wr_payload, random_wr_payload_flex);
-    };
+	union {
+		struct i2c_random_wr_payload random_wr_payload[1];
+		__DECLARE_FLEX_ARRAY(struct i2c_random_wr_payload, random_wr_payload_flex);
+	};
 } __attribute__((packed));
 
 /**
@@ -268,10 +268,10 @@ struct cam_cmd_read {
 struct cam_cmd_i2c_continuous_wr {
 	struct i2c_rdwr_header header;
 	__u32                  reg_addr;
-    union {
-        struct cam_cmd_read    data_read[1];
-        __DECLARE_FLEX_ARRAY(struct cam_cmd_read, data_read_flex);
-    };
+	union {
+		struct cam_cmd_read    data_read[1];
+		__DECLARE_FLEX_ARRAY(struct cam_cmd_read, data_read_flex);
+	};
 } __attribute__((packed));
 
 /**
@@ -281,10 +281,10 @@ struct cam_cmd_i2c_continuous_wr {
  */
 struct cam_cmd_i2c_random_rd {
 	struct i2c_rdwr_header header;
-    union {
-        struct cam_cmd_read    data_read[1];
-        __DECLARE_FLEX_ARRAY(struct cam_cmd_read, data_read_flex);
-    };
+	union {
+		struct cam_cmd_read    data_read[1];
+		__DECLARE_FLEX_ARRAY(struct cam_cmd_read, data_read_flex);
+	};
 } __attribute__((packed));
 
 /**
@@ -510,7 +510,7 @@ struct cam_flash_query_cap_info {
  */
 
 struct cam_ir_led_query_cap_info {
-       uint32_t    slot_info;
+	__u32    slot_info;
 } __attribute__ ((packed));
 
 /**
@@ -526,11 +526,15 @@ struct cam_ir_led_query_cap_info {
  */
 
  struct cam_ir_led_set_on_off {
-       uint8_t     opcode;
-       uint8_t     cmd_type;
-       uint32_t    ir_led_intensity;
-       uint32_t    pwm_duty_on_ns;
-       uint32_t    pwm_period_ns;
-       uint8_t     brightness;
+	 __u8     opcode;
+	 __u8     cmd_type;
+	 __u32    ir_led_intensity;
+	 __u32    pwm_duty_on_ns;
+	 __u32    pwm_period_ns;
+	 __u8     brightness;
 } __attribute__((packed));
+
+#define VIDIOC_MSM_CCI_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct cam_cci_ctrl)
+
 #endif

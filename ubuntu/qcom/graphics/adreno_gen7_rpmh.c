@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/types.h>
@@ -454,6 +454,12 @@ static void build_bw_table_cmd(struct hfi_bwtable_cmd *cmd,
 
 #define GEN7_9_0_DDR_NOM_IDX 6
 
+/* Use hardcoded CNOC table when not defined in device tree */
+static const u32 default_cnoc_table[] = {
+	0,    /* Off */
+	100,  /* On */
+};
+
 static int build_bw_table(struct adreno_device *adreno_dev)
 {
 	struct gen7_gmu_device *gmu = to_gen7_gmu(adreno_dev);
@@ -464,7 +470,7 @@ static int build_bw_table(struct adreno_device *adreno_dev)
 	u32 perfmode_vote = gen7_core->acv_perfmode_vote;
 	u32 perfmode_lvl = adreno_is_gen7_9_x(adreno_dev) ? GEN7_9_0_DDR_NOM_IDX : 1;
 	u32 *cnoc_table;
-	u32 count;
+	u32 count = 0;
 	int ret;
 
 	/* If perfmode vote is not defined, use default value as 0x8 */
@@ -479,11 +485,17 @@ static int build_bw_table(struct adreno_device *adreno_dev)
 	cnoc_table = kgsl_bus_get_table(device->pdev, "qcom,bus-table-cnoc",
 		&count);
 
-	if (count > 0)
-		cnoc = build_rpmh_bw_votes(gen7_cnoc_bcms,
-			ARRAY_SIZE(gen7_cnoc_bcms), cnoc_table, count, 0, 0);
+	/* Use hardcoded CNOC table */
+	if (!count) {
+		cnoc_table = (u32 *)default_cnoc_table;
+		count = ARRAY_SIZE(default_cnoc_table);
+	}
 
-	kfree(cnoc_table);
+	cnoc = build_rpmh_bw_votes(gen7_cnoc_bcms,
+		ARRAY_SIZE(gen7_cnoc_bcms), cnoc_table, count, 0, 0);
+
+	if (cnoc_table != default_cnoc_table)
+		kfree(cnoc_table);
 
 	if (IS_ERR(cnoc)) {
 		free_rpmh_bw_votes(ddr);

@@ -73,6 +73,7 @@
 
 	zap-shader {
 		memory-region = <&gpu_microcode_mem>;
+		firmware-name = "qcom/qcm6490/a660_zap.mbn";
 	};
 
 	qcom,gpu-mempools {

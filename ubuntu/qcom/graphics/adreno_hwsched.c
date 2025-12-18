@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/dma-fence-array.h>
@@ -1677,8 +1677,7 @@ static void _print_syncobj(struct adreno_device *adreno_dev, struct kgsl_drawobj
 			bool signaled = test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fences[j]->flags);
 			char value[32] = "unknown";
 
-			if (fences[j]->ops->timeline_value_str)
-				fences[j]->ops->timeline_value_str(fences[j], value, sizeof(value));
+			kgsl_fences_timeline_value_str(fences[j], value, sizeof(value));
 
 			dev_err(device->dev,
 				"dma fence[%d] signaled:%d kgsl:%d ctx:%llu seqno:%llu value:%s\n",

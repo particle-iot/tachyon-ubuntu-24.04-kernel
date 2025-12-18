@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundataion. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/io.h>
@@ -11,6 +11,7 @@
 #include "cam_trace.h"
 
 #include "cam_debug_util.h"
+#include "cam_compat.h"
 
 unsigned long long debug_mdl;
 module_param(debug_mdl, ullong, 0644);
@@ -27,6 +28,20 @@ module_param(debug_drv, uint, 0644);
 
 uint debug_bypass_drivers;
 module_param(debug_bypass_drivers, uint, 0644);
+
+static struct kobject *ddr_info_kobj;
+static struct ddrinfo g_ddr_info;
+
+static ssize_t cam_device_type_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+static ssize_t cam_num_channels_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+static ssize_t cam_num_ranks_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+
+static struct kobj_attribute device_type_attr =
+	__ATTR(device_type, 0444, cam_device_type_show, NULL);
+static struct kobj_attribute num_channels_attr =
+	__ATTR(num_channels, 0444, cam_num_channels_show, NULL);
+static struct kobj_attribute num_ranks_attr =
+	__ATTR(num_ranks, 0444, cam_num_ranks_show, NULL);
 
 struct camera_debug_settings cam_debug;
 
@@ -348,4 +363,79 @@ void cam_print_log(int type, int module, int tag, const char *func,
 		CAM_LOG_TAG_NAME(tag), CAM_DBG_MOD_NAME(module), func,
 		line, buf);
 	va_end(args);
+}
+
+static ssize_t cam_device_type_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int ret = 0;
+
+	ret = cam_get_ddr_info(&g_ddr_info);
+	if (ret)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", g_ddr_info.device_type);
+}
+
+static ssize_t cam_num_channels_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int ret = 0;
+
+	ret = cam_get_ddr_info(&g_ddr_info);
+	if (ret)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", g_ddr_info.num_channels);
+}
+
+static ssize_t cam_num_ranks_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int ret = 0;
+
+	ret = cam_get_ddr_info(&g_ddr_info);
+	if (ret)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%u %u\n",
+			g_ddr_info.num_ranks[0], g_ddr_info.num_ranks[1]);
+}
+
+int cam_ddr_info_create_sysfs(void)
+{
+	int rc = 0;
+
+	ddr_info_kobj = kobject_create_and_add("ddr_info", kernel_kobj);
+	if (!ddr_info_kobj) {
+		CAM_ERR(CAM_UTIL, "Failed to create ddr_info kobject");
+		return -ENOMEM;
+	}
+
+	rc = sysfs_create_file(ddr_info_kobj, &device_type_attr.attr);
+	if (rc)
+		goto fail;
+
+	rc = sysfs_create_file(ddr_info_kobj, &num_channels_attr.attr);
+	if (rc)
+		goto fail;
+
+	rc = sysfs_create_file(ddr_info_kobj, &num_ranks_attr.attr);
+	if (rc)
+		goto fail;
+
+	return 0;
+
+fail:
+	CAM_ERR(CAM_UTIL, "Failed to create sysfs file, rc=%d", rc);
+	kobject_put(ddr_info_kobj);
+	ddr_info_kobj = NULL;
+	return rc;
+}
+
+void cam_ddr_info_remove_sysfs(void)
+{
+	if (!ddr_info_kobj)
+		return;
+	sysfs_remove_file(ddr_info_kobj, &device_type_attr.attr);
+	sysfs_remove_file(ddr_info_kobj, &num_channels_attr.attr);
+	sysfs_remove_file(ddr_info_kobj, &num_ranks_attr.attr);
+	kobject_put(ddr_info_kobj);
 }

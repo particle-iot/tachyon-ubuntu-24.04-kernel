@@ -3,6 +3,8 @@
  * sc7280 SoC device tree source
  *
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <dt-bindings/clock/qcom,camcc-sc7280.h>
 #include <dt-bindings/clock/qcom,dispcc-sc7280.h>
@@ -2391,12 +2393,10 @@
 			reg = <0 0x01c0e000 0 0x1000>;
 			clocks = <&gcc GCC_PCIE_1_AUX_CLK>,
 				 <&gcc GCC_PCIE_1_CFG_AHB_CLK>,
-				 <&gcc GCC_PCIE_CLKREF_EN>,
 				 <&gcc GCC_PCIE1_PHY_RCHNG_CLK>,
 				 <&gcc GCC_PCIE_1_PIPE_CLK>;
 			clock-names = "aux",
 				      "cfg_ahb",
-				      "ref",
 				      "refgen",
 				      "pipe";
 
@@ -2958,6 +2958,26 @@
 			lpass_wsa_swr_data: wsa-swr-data-state {
 				pins = "gpio11";
 				function = "wsa_swr_data";
+			};
+
+			mi2s5_data0: mi2s5-data0-state {
+				pins = "gpio12";
+				function = "i2s2_data";
+			};
+
+			mi2s5_data1: mi2s5-data1-state {
+				pins = "gpio13";
+				function = "i2s2_data";
+			};
+
+			mi2s5_sclk: mi2s5-sclk-state {
+				pins = "gpio10";
+				function = "i2s2_clk";
+			};
+
+			mi2s5_ws: mi2s5-ws-state {
+				pins = "gpio11";
+				function = "i2s2_ws";
 			};
 		};
 

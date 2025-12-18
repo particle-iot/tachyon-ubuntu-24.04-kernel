@@ -66,6 +66,7 @@ struct lt9611 {
 	int num_sleep_regs;
 
 	bool cts_n_normal;
+	bool fixed_mode;
 };
 
 #define LT9611_PAGE_CONTROL	0xff
@@ -89,6 +90,40 @@ static const struct regmap_config lt9611_regmap_config = {
 	.max_register = 0xffff,
 	.ranges = lt9611_ranges,
 	.num_ranges = ARRAY_SIZE(lt9611_ranges),
+};
+
+struct lt9611_mode {
+	u16 hdisplay;
+	u16 htotal;
+	u16 vdisplay;
+	u16 vtotal;
+	u8 vrefresh;
+};
+
+/*
+ * Use a fixed set of modes.
+ * Enumerate them here to check whether the mode is supported.
+ */
+static struct lt9611_mode lt9611_modes[] = {
+	{ 3840, 4400, 2160, 2250, 30 },
+	{ 2560, 2720, 1440, 1481, 60 },
+	{ 1920, 2200, 1080, 1125, 60 },
+	{ 1920, 2200, 1080, 1125, 30 },
+	{ 1920, 2640, 1080, 1125, 25 },
+	{ 1366, 1792, 768, 798, 60 },
+	{ 1360, 1792, 768, 795, 60 },
+	{ 1280, 1688, 1024, 1066, 60 },
+	{ 1280, 1680, 800, 831, 60 },
+	{ 1280, 1650, 720, 750, 60 },
+	{ 1280, 1980, 720, 750, 50 },
+	{ 1280, 3300, 720, 750, 30 },
+	{ 1152, 1600, 864, 900, 60 },
+	{ 1024, 1344, 768, 806, 60 },
+	{ 1024, 1312, 600, 624, 60 },
+	{ 800, 1056, 600, 628, 60 },
+	{ 720, 864, 576, 625, 50 },
+	{ 720, 858, 480, 525, 60 },
+	{ 640, 800, 480, 525, 60 },
 };
 
 static struct lt9611 *bridge_to_lt9611(struct drm_bridge *bridge)
@@ -769,6 +804,15 @@ lt9611_bridge_atomic_enable(struct drm_bridge *bridge,
 	mode = &crtc_state->adjusted_mode;
 
 	lt9611_mipi_input_digital(lt9611, mode);
+
+	if (lt9611->fixed_mode &&
+		mode->hdisplay == 3840 &&
+		mode->vdisplay == 2160 &&
+		drm_mode_vrefresh(mode) == 30) {
+		regmap_write(lt9611->regmap, 0x8302, 0x10);
+		regmap_write(lt9611->regmap, 0x8306, 0x10);
+	}
+
 	lt9611_pll_setup(lt9611, mode, &postdiv);
 	lt9611_mipi_video_setup(lt9611, mode);
 	lt9611_pcr_setup(lt9611, mode, postdiv);
@@ -853,11 +897,32 @@ static int lt9611_bridge_attach(struct drm_bridge *bridge,
 				 bridge, flags);
 }
 
+static struct lt9611_mode *lt9611_find_mode(const struct drm_display_mode *mode)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(lt9611_modes); i++) {
+		if (lt9611_modes[i].hdisplay == mode->hdisplay &&
+			lt9611_modes[i].htotal == mode->htotal &&
+			lt9611_modes[i].vdisplay == mode->vdisplay &&
+			lt9611_modes[i].vtotal == mode->vtotal &&
+			lt9611_modes[i].vrefresh == drm_mode_vrefresh(mode)) {
+			return &lt9611_modes[i];
+		}
+	}
+
+	return NULL;
+}
+
 static enum drm_mode_status lt9611_bridge_mode_valid(struct drm_bridge *bridge,
 						     const struct drm_display_info *info,
 						     const struct drm_display_mode *mode)
 {
 	struct lt9611 *lt9611 = bridge_to_lt9611(bridge);
+	struct lt9611_mode *lt9611_mode = lt9611_find_mode(mode);
+
+	if (lt9611->fixed_mode)
+		return lt9611_mode ? MODE_OK : MODE_BAD;
 
 	if (mode->hdisplay > 3840)
 		return MODE_BAD_HVALUE;
@@ -996,6 +1061,8 @@ static int lt9611_parse_dt(struct device *dev,
 	}
 
 	lt9611->cts_n_normal = of_property_read_bool(dev->of_node, "lt,cts_n_normal");
+
+	lt9611->fixed_mode = of_property_read_bool(dev->of_node, "lt,fixed-mode");
 
 	return drm_of_find_panel_or_bridge(dev->of_node, 2, -1, NULL, &lt9611->next_bridge);
 }

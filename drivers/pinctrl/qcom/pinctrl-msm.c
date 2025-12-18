@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2013, Sony Mobile Communications AB.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/delay.h>
@@ -1518,10 +1519,14 @@ static int msm_pinctrl_save_hw_ctx(struct msm_pinctrl *pctrl)
 {
 	const struct msm_pingroup *pgroup;
 	const struct msm_pinctrl_soc_data *soc = pctrl->soc;
+	unsigned long *valid_mask = pctrl->chip.valid_mask;
 	u32 i;
 
 	/* All normal gpios will have common registers, first save them */
 	for (i = 0; i < soc->ngpios; i++) {
+		if (valid_mask && !test_bit(i, valid_mask))
+			continue;
+
 		pgroup = &soc->groups[i];
 
 		pctrl->gpio_regs[i].ctl_reg =
@@ -1554,12 +1559,16 @@ static int msm_pinctrl_restore_hw_ctx(struct msm_pinctrl *pctrl)
 	u32 i;
 	const struct msm_pingroup *pgroup;
 	const struct msm_pinctrl_soc_data *soc = pctrl->soc;
+	unsigned long *valid_mask = pctrl->chip.valid_mask;
 
 	if (!pctrl->gpio_regs)
 		return -EINVAL;
 
 	/* Restore normal gpios */
 	for (i = 0; i < soc->ngpios; i++) {
+		if (valid_mask && !test_bit(i, valid_mask))
+			continue;
+
 		pgroup = &soc->groups[i];
 
 		msm_writel_ctl(pctrl->gpio_regs[i].ctl_reg, pctrl, pgroup);

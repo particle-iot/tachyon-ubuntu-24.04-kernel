@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/uaccess.h>
@@ -1728,10 +1728,10 @@ static int cam_icp_mgr_device_resume(struct cam_icp_hw_mgr *hw_mgr,
 	case CAM_ICP_DEV_IPE:
 		fallthrough;
 	case CAM_ICP_DEV_BPS:
-		dbg_prop->prop_data[0] = HFI_PROP_SYS_IPEBPS_PC;
+		dbg_prop->prop_data_flex[0] = HFI_PROP_SYS_IPEBPS_PC;
 		break;
 	case CAM_ICP_DEV_OFE:
-		dbg_prop->prop_data[0] = HFI_PROP_SYS_OFE_PC;
+		dbg_prop->prop_data_flex[0] = HFI_PROP_SYS_OFE_PC;
 		break;
 	default:
 		CAM_ERR(CAM_ICP, "%s Invalid hw dev type: %u",
@@ -1740,8 +1740,8 @@ static int cam_icp_mgr_device_resume(struct cam_icp_hw_mgr *hw_mgr,
 		goto free_dbg_prop;
 	}
 
-	dbg_prop->prop_data[1] = hw_mgr->dev_pc_flag;
-	dbg_prop->prop_data[2] = core_info_mask;
+	dbg_prop->prop_data_flex[1] = hw_mgr->dev_pc_flag;
+	dbg_prop->prop_data_flex[2] = core_info_mask;
 
 	hfi_write_cmd(hw_mgr->hfi_handle, dbg_prop);
 
@@ -7382,20 +7382,20 @@ static int cam_icp_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		CAM_TRACE(CAM_ICP,
 			"%s: Acquired, out_res[0] : format=%d, widht=%d, height=%d, fps=%d",
 			ctx_data->ctx_id_string,
-			ctx_data->icp_dev_acquire_info->out_res[0].format,
-			ctx_data->icp_dev_acquire_info->out_res[0].width,
-			ctx_data->icp_dev_acquire_info->out_res[0].height,
-			ctx_data->icp_dev_acquire_info->out_res[0].fps);
+			ctx_data->icp_dev_acquire_info->out_res_flex[0].format,
+			ctx_data->icp_dev_acquire_info->out_res_flex[0].width,
+			ctx_data->icp_dev_acquire_info->out_res_flex[0].height,
+			ctx_data->icp_dev_acquire_info->out_res_flex[0].fps);
 	}
 
 	if (ctx_data->icp_dev_acquire_info->num_out_res > 1) {
 		CAM_TRACE(CAM_ICP,
 			"%s: Acquired, out_res[1] : format=%d, widht=%d, height=%d, fps=%d",
 			ctx_data->ctx_id_string,
-			ctx_data->icp_dev_acquire_info->out_res[1].format,
-			ctx_data->icp_dev_acquire_info->out_res[1].width,
-			ctx_data->icp_dev_acquire_info->out_res[1].height,
-			ctx_data->icp_dev_acquire_info->out_res[1].fps);
+			ctx_data->icp_dev_acquire_info->out_res_flex[1].format,
+			ctx_data->icp_dev_acquire_info->out_res_flex[1].width,
+			ctx_data->icp_dev_acquire_info->out_res_flex[1].height,
+			ctx_data->icp_dev_acquire_info->out_res_flex[1].fps);
 	}
 
 	return 0;

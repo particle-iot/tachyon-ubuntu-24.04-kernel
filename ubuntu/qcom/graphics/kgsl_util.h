@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _KGSL_UTIL_H_
@@ -164,27 +164,6 @@ static inline int kgsl_scm_gpu_init_regs(struct device *dev, u32 gpu_req)
 }
 #endif
 
-/**
- * kgsl_zap_shader_load - Load a zap shader
- * @dev: Pointer to the struct device for the GPU platform device
- * @name: Basename of the zap shader to load (without the postfix)
- *
- * Load and install the zap shader named @name. Name should be specified without
- * the extension for example "a660_zap" instead of "a660_zap.mdt".
- *
- * Return: 0 on success or negative on failure
- */
-int kgsl_zap_shader_load(struct device *dev, const char *name);
-
-/**
- * kgsl_zap_shader_unload - Unload a zap shader
- * @dev: Pointer to the struct device for the GPU platform device
- *
- * Unload zap_shader and shutdown the peripheral
- * Return: 0 on success or negative on failure
- */
-int kgsl_zap_shader_unload(struct device *dev);
-
 #if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
 /**
  * kgsl_add_to_minidump - Add a physically contiguous section to minidump
@@ -264,10 +243,17 @@ static inline int qcom_scm_kgsl_set_smmu_lpac_aperture(
 /**
  * kgsl_get_ddrtype - Type of ddr on the current device
  *
- * Return: non-zero positive value on success or negative
- * error code cast to u64 on failure.
+ * Return: ddr type on success or negative error on failure.
  */
-u64 kgsl_get_ddrtype(void);
+int kgsl_get_ddrtype(void);
+
+#if !IS_ENABLED(CONFIG_QCOM_SCM_ADDON)
+static inline int qcom_scm_kgsl_init_regs(u32 gpu_req)
+{
+	return -EOPNOTSUPP;
+}
+#endif
+
 #endif
 
 /**
@@ -276,5 +262,27 @@ u64 kgsl_get_ddrtype(void);
  * @offset: offset to the SP block
  */
 void isdb_write(void __iomem *base, u32 offset);
+
+/**
+ * cmp_u32 - Comparator function for sorting u32 values
+ * @first: Pointer to the first element
+ * @second: Pointer to the second element
+ *
+ * It is intended for use with the kernel's sort() function to sort
+ * arrays of u32 in ascending order.
+ */
+int cmp_u32(const void *first, const void *second);
+
+#if KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE
+#define kgsl_delete_timer(timer) timer_delete(timer)
+#define kgsl_delete_timer_sync(timer) timer_delete_sync(timer)
+#else
+#define kgsl_delete_timer(timer) del_timer(timer)
+#define kgsl_delete_timer_sync(timer) del_timer_sync(timer)
+#endif
+
+#if (KERNEL_VERSION(6, 16, 0) > LINUX_VERSION_CODE)
+#define timer_container_of from_timer
+#endif
 
 #endif

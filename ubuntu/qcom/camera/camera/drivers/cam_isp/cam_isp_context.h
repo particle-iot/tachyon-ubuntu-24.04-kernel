@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_ISP_CONTEXT_H_
@@ -429,7 +429,8 @@ struct cam_isp_fcg_prediction_tracker {
  * @is_shdr_master:            Flag to indicate master context in shdr usecase
  * @last_num_exp:              Last num of exposure
  * @flush_in_progress          indicates whether flush is in progress
- *
+ * @bubble_recover_dis:        Bubble recovery disabled
+ * @sfe_en:                    Indicates if SFE is being used
  */
 struct cam_isp_context {
 	struct cam_context              *base;
@@ -497,6 +498,8 @@ struct cam_isp_context {
 	uint32_t                              last_num_exp;
 	atomic_t                              flush_in_progress;
 	struct mutex                          isp_mutex;
+	bool                                  bubble_recover_dis;
+	bool                                  sfe_en;
 };
 
 /**

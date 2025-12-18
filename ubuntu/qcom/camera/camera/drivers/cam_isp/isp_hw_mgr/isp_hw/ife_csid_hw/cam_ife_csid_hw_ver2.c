@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/iopoll.h>
@@ -2478,7 +2478,7 @@ int cam_ife_csid_ver2_get_hw_caps(void *hw_priv,
 	hw_caps->minor_version = csid_reg->cmn_reg->minor_version;
 	hw_caps->version_incr = csid_reg->cmn_reg->version_incr;
 	hw_caps->global_reset_en = csid_reg->cmn_reg->global_reset;
-	hw_caps->rup_en = csid_reg->cmn_reg->rup_supported;
+	hw_caps->aup_rup_en = csid_reg->cmn_reg->aup_rup_supported;
 	hw_caps->only_master_rup = csid_reg->cmn_reg->only_master_rup;
 	hw_caps->is_lite = soc_private->is_ife_csid_lite;
 	hw_caps->sfe_ipp_input_rdi_res = csid_reg->cmn_reg->sfe_ipp_input_rdi_res;
@@ -3057,11 +3057,13 @@ static int cam_ife_csid_hw_ver2_config_path_data(
 		path_cfg->start_pixel = reserve->in_port->left_start;
 		path_cfg->end_pixel = reserve->in_port->left_stop;
 		CAM_DBG(CAM_ISP,
-			"CSID:%u res:%d left width %d start: %d stop:%d",
+			"CSID:%u res:%d left width %d start: %d stop:%d start-line :%d end-line %d",
 			csid_hw->hw_intf->hw_idx, reserve->res_id,
 			reserve->in_port->left_width,
 			reserve->in_port->left_start,
-			reserve->in_port->left_stop);
+			reserve->in_port->left_stop,
+			path_cfg->start_line,
+			path_cfg->end_line);
 	}
 
 	if (!reserve->per_port_acquire) {
@@ -3252,7 +3254,8 @@ static int cam_ife_csid_ver_config_camif(
 			path_cfg->epoch_cfg >>= 1;
 
 		CAM_DBG(CAM_ISP, "CSID[%u] res_id: %u epoch factor: 0x%x",
-			csid_hw->hw_intf->hw_idx, reserve->res_id, path_cfg->epoch_cfg);
+			csid_hw->hw_intf->hw_idx, reserve->res_id, path_cfg->epoch_cfg,
+			csid_reg->cmn_reg->epoch_factor);
 		break;
 	default:
 		CAM_DBG(CAM_ISP, "CSID[%u] No CAMIF epoch update for res: %u",
@@ -4455,7 +4458,8 @@ static int cam_ife_csid_ver2_program_rdi_path(
 	if (res->is_rdi_primary_res) {
 		val |= path_reg->rup_irq_mask;
 		if (path_cfg->handle_camif_irq)
-			val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask;
+			val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask |
+				path_reg->epoch0_irq_mask;
 	}
 
 	/* Enable secondary events dictated by HW mgr for RDI paths */
@@ -7111,7 +7115,8 @@ static int cam_ife_csid_ver2_update_path_irq(
 	if (res->is_rdi_primary_res) {
 		val |= path_reg->rup_irq_mask;
 		if (path_cfg->handle_camif_irq)
-			val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask;
+			val |= path_reg->sof_irq_mask | path_reg->eof_irq_mask |
+				path_reg->epoch0_irq_mask;
 	}
 
 	/* Enable secondary events dictated by HW mgr for RDI paths */

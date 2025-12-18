@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -40,6 +40,7 @@
 /* Instantiate tracepoints */
 #define CREATE_TRACE_POINTS
 #include "kgsl_power_trace.h"
+#include "kgsl_util.h"
 
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
@@ -91,6 +92,22 @@ static inline struct kgsl_pagetable *_get_memdesc_pagetable(
 static void kgsl_mem_entry_detach_process(struct kgsl_mem_entry *entry);
 
 static const struct vm_operations_struct kgsl_gpumem_vm_ops;
+
+#if (KERNEL_VERSION(6, 10, 0) > LINUX_VERSION_CODE)
+static unsigned long kgsl_mm_get_unmapped_area(struct mm_struct *mm, struct file *file,
+		     unsigned long addr, unsigned long len,
+		     unsigned long pgoff, unsigned long flags)
+{
+	return mm->get_unmapped_area(file, addr, len, pgoff, flags);
+}
+#else
+static unsigned long kgsl_mm_get_unmapped_area(struct mm_struct *mm, struct file *file,
+		     unsigned long addr, unsigned long len,
+		     unsigned long pgoff, unsigned long flags)
+{
+	return mm_get_unmapped_area(mm, file, addr, len, pgoff, flags);
+}
+#endif
 
 /*
  * The memfree list contains the last N blocks of memory that have been freed.
@@ -342,6 +359,7 @@ static void kgsl_destroy_ion(struct kgsl_memdesc *memdesc)
 	}
 
 	memdesc->sgt = NULL;
+	entry->priv_data = NULL;
 }
 
 static const struct kgsl_memdesc_ops kgsl_dmabuf_ops = {
@@ -1088,7 +1106,7 @@ static void _log_gpu_work_events(struct work_struct *work)
 
 static void kgsl_work_period_timer(struct timer_list *t)
 {
-	struct kgsl_device *device = from_timer(device, t, work_period_timer);
+	struct kgsl_device *device = timer_container_of(device, t, work_period_timer);
 
 	queue_work(kgsl_driver.lockless_workqueue, &device->work_period_ws);
 }
@@ -1412,7 +1430,8 @@ static int kgsl_release(struct inode *inodep, struct file *filep)
 	device->ftbl->device_private_destroy(dev_priv);
 
 	result = kgsl_close_device(device);
-	pm_runtime_put(&device->pdev->dev);
+	if (!of_device_is_compatible(device->pdev->dev.of_node, "qcom,adreno"))
+		pm_runtime_put(&device->pdev->dev);
 
 	return result;
 }
@@ -1446,12 +1465,15 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 		return -ENODEV;
 	}
 
-	result = pm_runtime_get_sync(&device->pdev->dev);
-	if (result < 0) {
-		dev_err(device->dev,
+	if (!of_device_is_compatible(device->pdev->dev.of_node, "qcom,adreno")) {
+		result = pm_runtime_get_sync(&device->pdev->dev);
+		if (result < 0) {
+			dev_err(device->dev,
 			     "Runtime PM: Unable to wake up the device, rc = %d\n",
 			     result);
-		return result;
+
+			return result;
+		}
 	}
 	result = 0;
 
@@ -4686,8 +4708,7 @@ static unsigned long set_svm_area(struct file *file,
 	 * Do additoinal constraints checking on the address. Passing MAP_FIXED
 	 * ensures that the address we want gets checked
 	 */
-	ret = current->mm->get_unmapped_area(file, addr, len, 0,
-		flags & MAP_FIXED);
+	ret = kgsl_mm_get_unmapped_area(current->mm, file, addr, len, 0, flags & MAP_FIXED);
 
 	/* If it passes, attempt to set the region in the SVM */
 	if (!IS_ERR_VALUE(ret))
@@ -4774,7 +4795,7 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 	struct kgsl_mem_entry *entry = NULL;
 
 	if (vma_offset == (unsigned long) KGSL_MEMSTORE_TOKEN_ADDRESS)
-		return get_unmapped_area(NULL, addr, len, pgoff, flags);
+		return kgsl_mm_get_unmapped_area(current->mm, NULL, addr, len, pgoff, flags);
 
 	val = get_mmap_entry(private, &entry, pgoff, len);
 	if (val)
@@ -4787,7 +4808,7 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 	}
 
 	if (!kgsl_memdesc_use_cpu_map(&entry->memdesc)) {
-		val = current->mm->get_unmapped_area(file, addr, len, 0, flags);
+		val = kgsl_mm_get_unmapped_area(current->mm, file, addr, len, 0, flags);
 		if (IS_ERR_VALUE(val))
 			dev_err_ratelimited(device->dev,
 					       "get_unmapped_area: pid %d addr %lx pgoff %lx len %ld failed error %d\n",
@@ -5010,7 +5031,7 @@ static struct kobj_type kgsl_gpu_sysfs_ktype = {
 
 static int _register_device(struct kgsl_device *device)
 {
-	static u64 dma_mask = DMA_BIT_MASK(64);
+	static u64 dma_mask = (u64)DMA_BIT_MASK(64);
 	static struct device_dma_parameters dma_parms;
 	int minor, ret;
 	dev_t dev;
@@ -5060,20 +5081,43 @@ static int _register_device(struct kgsl_device *device)
 	return 0;
 }
 
-int kgsl_request_irq(struct platform_device *pdev, const  char *name,
-		irq_handler_t handler, void *data)
+int kgsl_request_irq(struct platform_device *pdev, const char *name,
+		const char *alt_name, int index, irq_handler_t handler, void *data)
 {
-	int ret, num = platform_get_irq_byname(pdev, name);
+	int ret, num = -EINVAL;
+	const char *irq_name = name;
+	char index_name[32];
 
-	if (num < 0)
+	/*
+	 * Get IRQ by name if available, else try alt_name if previous failed,
+	 * otherwise fall back to index-based retrieval.
+	 */
+	if (name) {
+		num = platform_get_irq_byname_optional(pdev, name);
+		if (num < 0 && alt_name) {
+			num = platform_get_irq_byname_optional(pdev, alt_name);
+			irq_name = alt_name;
+		}
+	}
+
+	if (index != -EINVAL && num < 0) {
+		num = platform_get_irq(pdev, index);
+		snprintf(index_name, sizeof(index_name), "irq-index-%d", index);
+		irq_name = index_name;
+	}
+
+	if (num < 0) {
+		dev_err(&pdev->dev, "Unable to retrieve IRQ '%s' (alt: '%s', index: %d): error %d\n",
+			name ? name : "N/A", alt_name ? alt_name : "N/A", index, num);
 		return num;
+	}
 
 	ret = devm_request_irq(&pdev->dev, num, handler, IRQF_TRIGGER_HIGH,
-		name, data);
+		irq_name, data);
 
 	if (ret) {
 		dev_err(&pdev->dev, "Unable to get interrupt %s: %d\n",
-			name, ret);
+			irq_name, ret);
 		return ret;
 	}
 
@@ -5085,14 +5129,14 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 		u32 *ptr)
 {
 	char str[32];
-	u64 ddr = kgsl_get_ddrtype();
+	int ddr = kgsl_get_ddrtype();
 
 	/* kgsl_get_ddrtype returns error if the DDR type isn't determined */
-	if (!IS_ERR_VALUE(ddr)) {
+	if (ddr >= 0) {
 		int ret;
 
 		/* Construct expanded string for the DDR type  */
-		ret = snprintf(str, sizeof(str), "%s-ddr%llu", base, ddr);
+		ret = snprintf(str, sizeof(str), "%s-ddr%d", base, ddr);
 
 		/* WARN_ON() if the array size was too small for the string */
 		if (WARN_ON(ret > sizeof(str)))
@@ -5107,6 +5151,8 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 	return of_property_read_u32(node, base, ptr);
 }
 
+int kgsl_iommu_probe_standard(struct kgsl_device *device, struct platform_device *pdev);
+
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	struct platform_device *pdev = device->pdev;
@@ -5115,6 +5161,10 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	status = _register_device(device);
 	if (status)
 		return status;
+
+	/* Probe standard kgsl smmu dt bindings */
+	if (of_device_is_compatible(pdev->dev.of_node, "qcom,adreno"))
+		kgsl_iommu_probe_standard(device, pdev);
 
 	/* Can return -EPROBE_DEFER */
 	status = kgsl_pwrctrl_init(device);
@@ -5169,7 +5219,7 @@ error:
 
 void kgsl_device_platform_remove(struct kgsl_device *device)
 {
-	del_timer(&device->work_period_timer);
+	kgsl_delete_timer(&device->work_period_timer);
 
 	kthread_destroy_worker(device->events_worker);
 

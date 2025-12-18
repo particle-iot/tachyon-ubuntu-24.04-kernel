@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/dma-mapping.h>
 #include <linux/dma-buf.h>
 #include <linux/of_address.h>
 #include <linux/slab.h>
+#include <linux/soc/qcom/smem.h>
 
 #include <soc/qcom/rpmh.h>
 
@@ -451,44 +452,98 @@ void cam_smmu_util_iommu_custom(struct device *dev,
 
 int cam_get_ddr_type(void)
 {
-	int ret;
 	u64 ddr_type;
-	struct device_node *root_node;
-	struct device_node *mem_node = NULL;
+	struct ddrinfo *ddr;
+	size_t ddr_item_sz;
 
-	root_node = of_find_node_by_path("/");
+	ddr = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_DDR_BUILD_ID, &ddr_item_sz);
 
-	if (root_node == NULL) {
-		CAM_ERR(CAM_UTIL, "Unable to find root node");
-		return -ENOENT;
+	if (IS_ERR(ddr) || ddr_item_sz < sizeof(struct ddrinfo)) {
+		CAM_ERR(CAM_UTIL,
+			"Unable to find ddr_info err %llu, expected size %zu, actual size %zu",
+			PTR_ERR(ddr), sizeof(struct ddrinfo), ddr_item_sz);
+		return PTR_ERR(ddr);
+	} else {
+		ddr_type = ddr->device_type;
+		CAM_DBG(CAM_UTIL, "DDR Type %lld", ddr_type);
 	}
 
-	do {
-		mem_node = of_get_next_child(root_node, mem_node);
-		if (of_node_name_prefix(mem_node, "memory")) {
-			CAM_DBG(CAM_UTIL,
-					"memory node found with full name %s",
-					mem_node->full_name);
-			break;
-		}
-	} while (mem_node != NULL);
-
-	of_node_put(root_node);
-	if (mem_node == NULL) {
-		CAM_ERR(CAM_UTIL, "memory node not found");
-		return -ENOENT;
-	}
-
-	ret = of_property_read_u64(mem_node, "ddr_device_type", &ddr_type);
-
-	of_node_put(mem_node);
-	if (ret < 0) {
-		CAM_ERR(CAM_UTIL, "ddr_device_type read failed");
-		return ret;
-	}
-
-	CAM_DBG(CAM_UTIL, "DDR Type %lld", ddr_type);
 	return ddr_type;
+}
+
+int cam_get_ddr_info(struct ddrinfo *ddr)
+{
+	struct ddrinfo *ddr_data;
+	size_t ddr_item_sz;
+	int i;
+	char dbg_buf[2048];
+	int offset = 0;
+
+	ddr_data = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_DDR_BUILD_ID, &ddr_item_sz);
+
+	if (IS_ERR(ddr_data) || ddr_item_sz < sizeof(struct ddrinfo)) {
+		CAM_ERR(CAM_UTIL,
+			"Unable to find ddr_info err %llu, expected size %zu, actual size %zu",
+			PTR_ERR(ddr_data), sizeof(struct ddrinfo), ddr_item_sz);
+		return PTR_ERR(ddr_data);
+	}
+
+	memcpy(ddr, ddr_data, sizeof(struct ddrinfo));
+
+	offset = scnprintf(dbg_buf, sizeof(dbg_buf),
+			"DDR Info:\n"
+			"  manuf_id: %u\n"
+			"  device_type: %u\n"
+			"  num_channels: %u\n"
+			"  num_ranks: %u %u\n"
+			"  hbb: [%u %u] [%u %u]\n",
+			ddr->manuf_id,
+			ddr->device_type,
+			ddr->num_channels,
+			ddr->num_ranks[0], ddr->num_ranks[1],
+			ddr->hbb[0][0], ddr->hbb[0][1],
+			ddr->hbb[1][0], ddr->hbb[1][1]);
+
+	for (i = 0; i < MAX_IDX_CH; i++) {
+		offset += scnprintf(dbg_buf + offset, sizeof(dbg_buf) - offset,
+				"  ddr_params[%d]: rev1: %02x%02x, rev2: %02x%02x,"
+				"  width: %02x%02x, density: %02x%02x\n",
+				i,
+				ddr->ddr_params[i].revision_id1[0],
+				ddr->ddr_params[i].revision_id1[1],
+				ddr->ddr_params[i].revision_id2[0],
+				ddr->ddr_params[i].revision_id2[1],
+				ddr->ddr_params[i].width[0],
+				ddr->ddr_params[i].width[1],
+				ddr->ddr_params[i].density[0],
+				ddr->ddr_params[i].density[1]);
+	}
+
+	CAM_DBG(CAM_UTIL, "%s", dbg_buf);
+
+	offset = scnprintf(dbg_buf, sizeof(dbg_buf), "DDR Frequency Table:\n");
+
+	for (i = 0; i < ddr->ddr_freq_tbl.num_ddr_freqs && i < 14; i++) {
+		offset += scnprintf(dbg_buf + offset, sizeof(dbg_buf) - offset,
+				"    Freq[%d]: %u kHz, enable: %u\n",
+				i,
+				ddr->ddr_freq_tbl.ddr_freq[i].freq_khz,
+				ddr->ddr_freq_tbl.ddr_freq[i].enable);
+	}
+
+	offset += scnprintf(dbg_buf + offset, sizeof(dbg_buf) - offset,
+			"  max_nom_ddr_freq: %u kHz\n",
+			ddr->ddr_freq_tbl.max_nom_ddr_freq);
+
+	if (ddr->ddr_freq_tbl.clk_period_address) {
+		offset += scnprintf(dbg_buf + offset, sizeof(dbg_buf) - offset,
+				"  clk_period_address: %p\n",
+				ddr->ddr_freq_tbl.clk_period_address);
+	}
+
+	CAM_DBG(CAM_UTIL, "%s", dbg_buf);
+
+	return 0;
 }
 
 int cam_req_mgr_ordered_list_cmp(void *priv,

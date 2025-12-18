@@ -18,6 +18,9 @@ CONFIG_ARCH_ROCKCHIP                            note<'LP: #1825222'>
 CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT       policy<{'arm64': 'y'}>
 CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT       note<'LP: #2102032'>
 
+CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_BTF                           note<'TODO: update note'>
+
 CONFIG_DRM_AMDGPU_CIK                           policy<{'arm64': '-'}>
 CONFIG_DRM_AMDGPU_CIK                           note<'for zesty'>
 
@@ -170,12 +173,15 @@ CONFIG_ARM_QCOM_CPUFREQ_HW                      policy<{'arm64': 'y'}>
 CONFIG_ARM_RK3399_DMC_DEVFREQ                   policy<{'arm64': '-'}>
 CONFIG_ARM_SBSA_WATCHDOG                        policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_CPUFREQ                         policy<{'arm64': 'y'}>
+CONFIG_ARM_SCMI_DEBUG_COUNTERS                  policy<{'arm64': 'n'}>
 CONFIG_ARM_SCMI_PERF_DOMAIN                     policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_POWER_DOMAIN                    policy<{'arm64': 'y'}>
+CONFIG_ARM_SCMI_TRANSPORT_OPTEE                 policy<{'arm64': 'm'}>
 CONFIG_ARM_SCPI_POWER_DOMAIN                    policy<{'arm64': 'y'}>
 CONFIG_ARM_SCPI_PROTOCOL                        policy<{'arm64': 'y'}>
 CONFIG_ARM_SMC_WATCHDOG                         policy<{'arm64': 'y'}>
 CONFIG_ARM_SMMU_QCOM_TBU                        policy<{'arm64': 'y'}>
+CONFIG_ARM_SMMU_V3_QCOM_VIRTIO                  policy<{'arm64': 'n'}>
 CONFIG_ARM_SP805_WATCHDOG                       policy<{'arm64': 'y'}>
 CONFIG_ARM_SUN8I_A33_MBUS_DEVFREQ               policy<{'arm64': '-'}>
 CONFIG_ARM_TEGRA124_CPUFREQ                     policy<{'arm64': '-'}>
@@ -528,6 +534,7 @@ CONFIG_DRM_IMX_LCDC                             policy<{'arm64': '-'}>
 CONFIG_DRM_IMX_LCDIF                            policy<{'arm64': '-'}>
 CONFIG_DRM_IMX_LDB_HELPER                       policy<{'arm64': '-'}>
 CONFIG_DRM_KMB_DISPLAY                          policy<{'arm64': '-'}>
+CONFIG_DRM_LONTIUM_LT9211C                      policy<{'arm64': 'm'}>
 CONFIG_DRM_MEDIATEK                             policy<{'arm64': '-'}>
 CONFIG_DRM_MEDIATEK_DP                          policy<{'arm64': '-'}>
 CONFIG_DRM_MEDIATEK_HDMI                        policy<{'arm64': '-'}>
@@ -701,6 +708,7 @@ CONFIG_I2C_OMAP                                 policy<{'arm64': '-'}>
 CONFIG_I2C_OWL                                  policy<{'arm64': '-'}>
 CONFIG_I2C_PXA                                  policy<{'arm64': '-'}>
 CONFIG_I2C_PXA_SLAVE                            policy<{'arm64': '-'}>
+CONFIG_I2C_QCOM_GENI                            policy<{'arm64': 'y'}>
 CONFIG_I2C_QUP                                  policy<{'arm64': 'y'}>
 CONFIG_I2C_RCAR                                 policy<{'arm64': '-'}>
 CONFIG_I2C_RIIC                                 policy<{'arm64': '-'}>
@@ -1318,6 +1326,8 @@ CONFIG_PWM_TIECAP                               policy<{'arm64': '-'}>
 CONFIG_PWM_TIEHRPWM                             policy<{'arm64': '-'}>
 CONFIG_PWM_VISCONTI                             policy<{'arm64': '-'}>
 CONFIG_PXA168_ETH                               policy<{'arm64': '-'}>
+CONFIG_QCA808X_PHY                              policy<{'arm64': 'm'}>
+CONFIG_QCA83XX_PHY                              policy<{'arm64': 'm'}>
 CONFIG_QCM_GCC_2290                             policy<{'arm64': 'y'}>
 CONFIG_QCOM_A53PLL                              policy<{'arm64': 'y'}>
 CONFIG_QCOM_AOSS_QMP                            policy<{'arm64': 'y'}>
@@ -1350,6 +1360,7 @@ CONFIG_QCOM_MEM_BUF                             policy<{'arm64': 'y'}>
 CONFIG_QCOM_MEM_BUF_DEV                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_MINIDUMP                            policy<{'arm64': 'n'}>
 CONFIG_QCOM_MPM                                 policy<{'arm64': 'y'}>
+CONFIG_QCOM_NET_PHYLIB                          policy<{'arm64': 'm'}>
 CONFIG_QCOM_PANEL_EVENT_NOTIFIER                policy<{'arm64': 'm'}>
 CONFIG_QCOM_PDR_HELPERS                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_QMI_COOLING                         policy<{'arm64': 'm'}>

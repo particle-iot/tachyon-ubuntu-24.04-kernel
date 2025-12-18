@@ -250,6 +250,39 @@ struct cam_req_mgr_sched_request_v2 {
 	__s32 params[5];
 };
 
+/** struct cam_req_mgr_sched_request_v3
+ * @version: Version number
+ * @session_hdl: Input param - Identifier for CSL session
+ * @link_hdl: Input Param -Identifier for link including itself.
+ * @bubble_enable: Input Param - Cam req mgr will do bubble recovery if this
+ * flag is set.
+ * @sync_mode: Type of Sync mode for this request
+ * @additional_timeout: Additional timeout value (in ms) associated with
+ * this request. This value needs to be 0 in cases where long exposure is
+ * not configured for the sensor.The max timeout that will be supported
+ * is 50000 ms
+ * @num_links: Input Param - Num of links for sync
+ * @num_valid_params: Number of valid params
+ * @req_id: Input Param - Request Id from which all requests will be flushed
+ * @param_mask: mask to indicate what the parameters are
+ * @params: parameters passed from user space
+ * @link_hdls: Input Param - Array of link handles to be for sync
+ */
+struct cam_req_mgr_sched_request_v3 {
+	__s32 version;
+	__s32 session_hdl;
+	__s32 link_hdl;
+	__s32 bubble_enable;
+	__s32 sync_mode;
+	__s32 additional_timeout;
+	__s32 num_links;
+	__s32 num_valid_params;
+	__s64 req_id;
+	__s32 param_mask;
+	__s32 params[5];
+	__s32 link_hdls[];
+};
+
 /**
  * struct cam_req_mgr_sync_mode
  * @session_hdl:         Input param - Identifier for CSL session
@@ -350,6 +383,7 @@ struct cam_req_mgr_link_properties {
 #define CAM_REQ_MGR_MAP_BUF_V2                  (CAM_COMMON_OPCODE_MAX + 19)
 #define CAM_REQ_MGR_MEM_CPU_ACCESS_OP           (CAM_COMMON_OPCODE_MAX + 20)
 #define CAM_REQ_MGR_QUERY_CAP                   (CAM_COMMON_OPCODE_MAX + 21)
+#define CAM_REQ_MGR_SCHED_REQ_V3                (CAM_COMMON_OPCODE_MAX + 22)
 
 /* end of cam_req_mgr opcodes */
 

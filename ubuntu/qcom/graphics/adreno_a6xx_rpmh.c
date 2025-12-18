@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/types.h>
@@ -462,6 +462,12 @@ static void build_bw_table_cmd(struct hfi_bwtable_cmd *cmd,
 			cmd->cnoc_cmd_data[i][j] = (u32) cnoc->cmds[i][j];
 }
 
+/* Use hardcoded CNOC table when not defined in device tree */
+static const u32 default_cnoc_table[] = {
+	0,    /* Off */
+	100,  /* On */
+};
+
 static int build_bw_table(struct adreno_device *adreno_dev)
 {
 	struct a6xx_gmu_device *gmu = to_a6xx_gmu(adreno_dev);
@@ -469,7 +475,7 @@ static int build_bw_table(struct adreno_device *adreno_dev)
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct rpmh_bw_votes *ddr, *cnoc = NULL;
 	u32 *cnoc_table;
-	u32 count;
+	u32 count = 0;
 	int ret;
 
 	ddr = build_rpmh_bw_votes(a660_ddr_bcms, ARRAY_SIZE(a660_ddr_bcms),
@@ -480,11 +486,17 @@ static int build_bw_table(struct adreno_device *adreno_dev)
 	cnoc_table = kgsl_bus_get_table(device->pdev, "qcom,bus-table-cnoc",
 		&count);
 
-	if (count > 0)
-		cnoc = build_rpmh_bw_votes(a660_cnoc_bcms,
-			ARRAY_SIZE(a660_cnoc_bcms), cnoc_table, count);
+	/* Use hardcoded CNOC table */
+	if (!count) {
+		cnoc_table = (u32 *)default_cnoc_table;
+		count = ARRAY_SIZE(default_cnoc_table);
+	}
 
-	kfree(cnoc_table);
+	cnoc = build_rpmh_bw_votes(a660_cnoc_bcms,
+		ARRAY_SIZE(a660_cnoc_bcms), cnoc_table, count);
+
+	if (cnoc_table != default_cnoc_table)
+		kfree(cnoc_table);
 
 	if (IS_ERR(cnoc)) {
 		free_rpmh_bw_votes(ddr);

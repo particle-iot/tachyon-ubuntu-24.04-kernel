@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 
@@ -11,24 +11,24 @@
 #include <linux/device.h>
 #include <linux/firmware.h>
 #include <linux/ktime.h>
-#include <linux/of_address.h>
 #include <linux/pm_domain.h>
-#include <linux/version.h>
-#if (KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE)
-#include <linux/firmware/qcom/qcom_scm.h>
-#else
-#include <linux/qcom_scm.h>
-#endif
-#ifdef CONFIG_QCOM_KGSL_UPSTREAM
+#if IS_ENABLED(CONFIG_QCOM_SCM_ADDON)
 #include <linux/firmware/qcom/qcom_scm_addon.h>
 #endif
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#include <linux/soc/qcom/mdt_loader.h>
 #include <linux/string.h>
 
 #include "adreno.h"
 #include "kgsl_util.h"
+
+int cmp_u32(const void *first, const void *second)
+{
+	u32 va = *(u32 *)first;
+	u32 vb = *(u32 *)second;
+
+	return (va > vb) - (va < vb);
+}
 
 bool kgsl_genpd_is_enabled(struct device *dev)
 {
@@ -74,6 +74,22 @@ int kgsl_clk_set_rate(struct clk_bulk_data *clks, int num_clks,
 	struct clk *clk;
 
 	clk = kgsl_of_clk_by_name(clks, num_clks, id);
+
+	/*
+	 * If the downstream clock name isn't found, try removing "_clk" and retry
+	 * with corresponding standard clock name.
+	 */
+	if (!clk && (strlen(id) > 4) && (strcmp(id + strlen(id) - 4, "_clk") == 0)) {
+		char alt_id[32];
+		size_t new_len = strlen(id) - 4;
+
+		if (new_len < sizeof(alt_id)) {
+			memcpy(alt_id, id, new_len);
+			alt_id[new_len] = '\0';
+			clk = kgsl_of_clk_by_name(clks, num_clks, alt_id);
+		}
+	}
+
 	if (!clk)
 		return -ENODEV;
 
@@ -96,93 +112,6 @@ int kgsl_scm_gpu_init_regs(struct device *dev, u32 gpu_req)
 	return ret;
 }
 #endif
-
-/*
- * The PASID has stayed consistent across all targets thus far so we are
- * cautiously optimistic that we can hard code it
- */
-#define GPU_PASID 13
-
-int kgsl_zap_shader_load(struct device *dev, const char *name)
-{
-	struct device_node *np, *mem_np;
-	const struct firmware *fw;
-	void *mem_region = NULL;
-	phys_addr_t mem_phys;
-	struct resource res;
-	ssize_t mem_size;
-	int ret;
-
-	np = of_get_child_by_name(dev->of_node, "zap-shader");
-	if (!np) {
-		dev_err(dev, "zap-shader node not found. Please update the device tree\n");
-		return -ENODEV;
-	}
-
-	mem_np = of_parse_phandle(np, "memory-region", 0);
-	of_node_put(np);
-	if (!mem_np) {
-		dev_err(dev, "Couldn't parse the mem-region from the zap-shader node\n");
-		return -EINVAL;
-	}
-
-	ret = of_address_to_resource(mem_np, 0, &res);
-	of_node_put(mem_np);
-	if (ret)
-		return ret;
-
-	ret = request_firmware(&fw, name, dev);
-	if (ret) {
-		dev_err(dev, "Couldn't load the firmware %s\n", name);
-		return ret;
-	}
-
-	mem_size = qcom_mdt_get_size(fw);
-	if (mem_size < 0) {
-		ret = mem_size;
-		goto out;
-	}
-
-	if (mem_size > resource_size(&res)) {
-		ret = -E2BIG;
-		goto out;
-	}
-
-	mem_phys = res.start;
-
-	mem_region = memremap(mem_phys, mem_size, MEMREMAP_WC);
-	if (!mem_region) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	ret = qcom_mdt_load(dev, fw, name, GPU_PASID, mem_region,
-		mem_phys, mem_size, NULL);
-	if (ret) {
-		dev_err(dev, "Error %d while loading the MDT\n", ret);
-		goto out;
-	}
-
-	ret = qcom_scm_pas_auth_and_reset(GPU_PASID);
-
-out:
-	if (mem_region)
-		memunmap(mem_region);
-
-	release_firmware(fw);
-	return ret;
-}
-
-int kgsl_zap_shader_unload(struct device *dev)
-{
-	int ret;
-
-	ret = qcom_scm_pas_shutdown_retry(GPU_PASID);
-	if (ret)
-		dev_err(dev, "Error %d while PAS shutdown\n", ret);
-
-	return ret;
-}
 
 int kgsl_hwlock(struct cpu_gpu_lock *lock)
 {
@@ -228,49 +157,35 @@ void kgsl_hwunlock(struct cpu_gpu_lock *lock)
 }
 
 #if IS_ENABLED(CONFIG_QCOM_KGSL_UPSTREAM)
-u64 kgsl_get_ddrtype(void)
+#include <linux/soc/qcom/smem.h>
+#include <linux/soc/qcom/socinfo.h>
+
+#if defined(SMEM_DDR_BUILD_ID)
+int kgsl_get_ddrtype(void)
 {
-	int ret = -EINVAL;
-	u64 ddr_type;
-	struct device_node *root_node;
-	struct device_node *mem_node = NULL;
+	struct ddrinfo *ddr;
 
-	root_node = of_find_node_by_path("/");
-
-	if (!root_node) {
-		pr_err("kgsl: Unable to find device tree root node\n");
-		return (u64)ret;
+	ddr = qcom_smem_get(QCOM_SMEM_HOST_ANY, SMEM_DDR_BUILD_ID, NULL);
+	if (IS_ERR(ddr)) {
+		pr_err("kgsl: Unable to get ddr type\n");
+		return PTR_ERR(ddr);
 	}
 
-	do {
-		mem_node = of_get_next_child(root_node, mem_node);
-		if (of_node_name_prefix(mem_node, "memory"))
-			break;
-	} while (mem_node);
-
-	of_node_put(root_node);
-	if (!mem_node) {
-		pr_err("kgsl: Unable to find device tree memory node\n");
-		return (u64)ret;
-	}
-
-	ret = of_property_read_u64(mem_node, "ddr_device_type", &ddr_type);
-
-	of_node_put(mem_node);
-	if (ret) {
-		pr_err("kgsl: ddr_device_type read error %d\n", ret);
-		return (u64)ret;
-	}
-
-	return ddr_type;
+	return ddr->device_type;
 }
-#else
+#else /* !defined(SMEM_DDR_BUILD_ID) */
+int kgsl_get_ddrtype(void)
+{
+	return -ENOENT;
+}
+#endif /* defined(SMEM_DDR_BUILD_ID) */
+#else /* !IS_ENABLED(CONFIG_QCOM_KGSL_UPSTREAM) */
 #include <soc/qcom/of_common.h>
-u64 kgsl_get_ddrtype(void)
+int kgsl_get_ddrtype(void)
 {
-	return (u64)of_fdt_get_ddrtype();
+	return of_fdt_get_ddrtype();
 }
-#endif
+#endif /* IS_ENABLED(CONFIG_QCOM_KGSL_UPSTREAM) */
 
 #if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
 #include <soc/qcom/minidump.h>

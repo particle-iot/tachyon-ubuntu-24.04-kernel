@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __KGSL_DEVICE_H
 #define __KGSL_DEVICE_H
@@ -202,6 +202,28 @@ struct kgsl_memobj_node {
 	unsigned long flags;
 	unsigned long priv;
 };
+
+struct kgsl_speedbin {
+	u16 fuse;
+	u16 speedbin;
+};
+
+/*
+ * Helper to build a speedbin table, i.e. the table:
+ *      fuse | speedbin
+ *      -----+---------
+ *        0  |   0
+ *       169 |   1
+ *       174 |   2
+ *
+ * would be declared as:
+ *     .speedbins = KGSL_SPEEDBINS(
+ *                      { 0,   0 },
+ *                      { 169, 1 },
+ *                      { 174, 2 },
+ *     ),
+ */
+#define KGSL_SPEEDBINS(tbl...) ((struct kgsl_speedbin[]) { tbl {SHRT_MAX, 0} })
 
 struct kgsl_device {
 	struct device *dev;

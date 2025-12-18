@@ -6,6 +6,7 @@
  *
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 2015-2018 Linaro Ltd.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/clk.h>
 #include <linux/interconnect.h>
@@ -18,7 +19,6 @@
 #include <linux/of_graph.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
-#include <linux/pm_opp.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 
@@ -1814,7 +1814,9 @@ static const struct camss_subdev_resources csiphy_res_8300[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy0", "csiphy0_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy0" },
 		.interrupt = { "csiphy0" },
@@ -1828,7 +1830,9 @@ static const struct camss_subdev_resources csiphy_res_8300[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy1", "csiphy1_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy1" },
 		.interrupt = { "csiphy1" },
@@ -1842,7 +1846,9 @@ static const struct camss_subdev_resources csiphy_res_8300[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy2", "csiphy2_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy2" },
 		.interrupt = { "csiphy2" },
@@ -2258,7 +2264,9 @@ static const struct camss_subdev_resources csiphy_res_8775p[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy0", "csiphy0_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy0" },
 		.interrupt = { "csiphy0" },
@@ -2272,7 +2280,9 @@ static const struct camss_subdev_resources csiphy_res_8775p[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy1", "csiphy1_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy1" },
 		.interrupt = { "csiphy1" },
@@ -2286,7 +2296,9 @@ static const struct camss_subdev_resources csiphy_res_8775p[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy2", "csiphy2_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy2" },
 		.interrupt = { "csiphy2" },
@@ -2300,7 +2312,9 @@ static const struct camss_subdev_resources csiphy_res_8775p[] = {
 		.regulators = {},
 		.clock = { "csid_csiphy_rx", "csiphy3", "csiphy3_timer"},
 		.clock_rate = {
-			{ 400000000, 0, 400000000}
+			{ 400000000 },
+			{ 0 },
+			{ 400000000 }
 		},
 		.reg = { "csiphy3" },
 		.interrupt = { "csiphy3" },
@@ -3519,25 +3533,12 @@ static int camss_configure_pd(struct camss *camss)
 	if (!camss->genpd)
 		return -ENODEV;
 
-	ret = devm_pm_opp_set_clkname(camss->dev, "vfe0");
-	if (ret) {
-		dev_err(dev, "devm_pm_opp_set_clkname failed %d\n", ret);
-		return ret;
-	}
-
 	camss->genpd_link = device_link_add(camss->dev, camss->genpd,
 					    DL_FLAG_STATELESS | DL_FLAG_PM_RUNTIME |
 					    DL_FLAG_RPM_ACTIVE);
 	if (!camss->genpd_link) {
 		dev_err(dev, "device_link_add failed %d\n", ret);
 		ret = -EINVAL;
-		goto fail_pm;
-	}
-
-	ret = devm_pm_opp_of_add_table(camss->dev);
-	if (ret) {
-		dev_err(dev, "devm_pm_opp_of_add_table failed %d\n", ret);
-		device_link_del(camss->genpd_link);
 		goto fail_pm;
 	}
 

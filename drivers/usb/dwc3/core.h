@@ -1007,6 +1007,7 @@ struct dwc3_glue_ops {
 struct dwc3_glue_data {
 	void			*glue_data;
 	struct dwc3_glue_ops	*ops;
+	bool ignore_resets;
 };
 
 /**

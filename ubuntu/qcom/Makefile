@@ -14,6 +14,7 @@ obj-y += graphics/
 
 obj-y += camera-qcm6490/
 obj-y += camera-qcs9100/
+obj-y += camera-qcs8300/
 
 ###
 

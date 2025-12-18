@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_IFE_CSID_LITE_680_H_
@@ -428,10 +428,11 @@ static struct cam_ife_csid_ver2_common_reg_info
 	.top_reset_irq_mask                           = {0x1,},
 	.top_buf_done_irq_mask                        = 0x2000,
 	.global_reset                                 = 1,
-	.rup_supported                                = 1,
+	.aup_rup_supported                            = 1,
 	.only_master_rup                              = 1,
 	.phy_sel_base_idx                             = 1,
 	.camif_irq_support                            = true,
+	.epoch_factor                                 = 50,
 };
 
 static struct cam_ife_csid_ver2_csi2_rx_reg_info

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __KGSL_TIMELINE_H
@@ -48,6 +48,22 @@ struct kgsl_timeline_event {
 	/** @node: list node */
 	struct list_head node;
 };
+
+/**
+ * kgsl_fences_timeline_value_str - Get the timeline value as a string
+ * @fence: Pointer to the dma_fence object
+ * @value: Pointer to the character buffer to store the value string
+ * @size: Size of the character buffer
+ *
+ * This function retrieves the timeline value from a DMA fence as a string.
+ * It delegates to the appropriate timeline_value_str implementation based on
+ * the fence operations.
+ *
+ * If either the fence, fence operations, or value pointer is NULL, the function
+ * returns without doing anything.
+ */
+void kgsl_fences_timeline_value_str(struct dma_fence *fence, char *value,
+	size_t size);
 
 /**
  * kgsl_timeline_add_signal - Notify a timeline of an upcoming signal

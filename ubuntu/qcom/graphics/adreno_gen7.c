@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/debugfs.h>
@@ -666,7 +666,9 @@ int gen7_start(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	const struct adreno_gen7_core *gen7_core = to_gen7_core(adreno_dev);
-	u32 mal, mode = 0, rgb565_predicator = 0;
+	u32 rgb565_predicator = 0;
+	u32 mal = adreno_dev->mal;
+	u32 mode = adreno_dev->ubwc_mode;
 	/*
 	 * HBB values 13 to 16 can represented LSB of HBB from 0 to 3.
 	 * Any HBB value beyond 16 needs programming MSB of HBB.
@@ -740,13 +742,6 @@ int gen7_start(struct adreno_device *adreno_dev)
 	if (adreno_dev->bcl_enabled && adreno_is_gen7_2_x_family(adreno_dev))
 		kgsl_regrmw(device, GEN7_GMU_CX_GMU_POWER_COUNTER_SELECT_1, GENMASK(15, 8),
 				FIELD_PREP(GENMASK(15, 8), 0x26));
-
-	if (of_property_read_u32(device->pdev->dev.of_node,
-		"qcom,min-access-length", &mal))
-		mal = 32;
-
-	of_property_read_u32(device->pdev->dev.of_node,
-			"qcom,ubwc-mode", &mode);
 
 	if (!WARN_ON(!adreno_dev->highest_bank_bit)) {
 		hbb_lo = (adreno_dev->highest_bank_bit - 13) & 3;
@@ -1897,7 +1892,7 @@ static void gen7_remove(struct adreno_device *adreno_dev)
 	/* Make sure timer is initialized, otherwise WARN_ON is generated */
 	if (adreno_preemption_feature_set(adreno_dev) &&
 	    (test_bit(GMU_PRIV_FIRST_BOOT_DONE, &gmu->flags)))
-		del_timer(&adreno_dev->preempt.timer);
+		kgsl_delete_timer(&adreno_dev->preempt.timer);
 }
 
 static void gen7_read_bus_stats(struct kgsl_device *device,

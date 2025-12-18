@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 /*
@@ -30,6 +30,7 @@
 #include "kgsl_sync.h"
 #include "kgsl_timeline.h"
 #include "kgsl_trace.h"
+#include "kgsl_util.h"
 
 /*
  * Define an kmem cache for the memobj structures since we
@@ -144,7 +145,7 @@ void kgsl_dump_syncpoints(struct kgsl_device *device,
 static void syncobj_timer(struct timer_list *t)
 {
 	struct kgsl_device *device;
-	struct kgsl_drawobj_sync *syncobj = from_timer(syncobj, t, timer);
+	struct kgsl_drawobj_sync *syncobj = timer_container_of(syncobj, t, timer);
 	struct kgsl_drawobj *drawobj;
 	struct kgsl_drawobj_sync_event *event;
 	unsigned int i;
@@ -249,7 +250,7 @@ static bool drawobj_sync_expire(struct kgsl_device *device,
 	 * for dispatch
 	 */
 	if (!kgsl_drawobj_events_pending(event->syncobj)) {
-		del_timer(&syncobj->timer);
+		kgsl_delete_timer(&syncobj->timer);
 
 		if (device->ftbl->drawctxt_sched)
 			device->ftbl->drawctxt_sched(device,
@@ -342,7 +343,7 @@ static void syncobj_destroy(struct kgsl_drawobj *drawobj)
 	unsigned int i;
 
 	/* Zap the canary timer */
-	del_timer_sync(&syncobj->timer);
+	kgsl_delete_timer_sync(&syncobj->timer);
 
 	/*
 	 * Clear all pending events - this will render any subsequent async

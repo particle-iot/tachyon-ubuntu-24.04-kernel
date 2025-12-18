@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -195,7 +195,18 @@ static int cam_req_mgr_close(struct file *filep)
 	struct v4l2_subdev *sd;
 	struct cam_subdev *csd;
 	struct v4l2_fh *vfh = filep->private_data;
-	struct v4l2_subdev_fh *subdev_fh = to_v4l2_subdev_fh(vfh);
+	struct v4l2_subdev_fh *subdev_fh = NULL;
+
+	if (!vfh) {
+		CAM_ERR(CAM_CRM, "filep->private_data (vfh) is NULL!");
+		return -EINVAL;
+	}
+
+	subdev_fh = to_v4l2_subdev_fh(vfh);
+	if (!subdev_fh) {
+		CAM_ERR(CAM_CRM, "Failed to convert vfh to subdev_fh!");
+		return -EINVAL;
+	}
 
 	CAM_WARN(CAM_CRM,
 		"release invoked associated userspace process has died, open_cnt: %d",
@@ -206,6 +217,7 @@ static int cam_req_mgr_close(struct file *filep)
 	mutex_lock(&g_dev.cam_lock);
 
 	if (g_dev.open_cnt <= 0) {
+		CAM_WARN(CAM_CRM, "open_cnt <= 0 in close!");
 		mutex_unlock(&g_dev.cam_lock);
 		cam_req_mgr_rwsem_write_op(CAM_SUBDEV_UNLOCK);
 		return -EINVAL;
@@ -215,7 +227,13 @@ static int cam_req_mgr_close(struct file *filep)
 	g_dev.shutdown_state = true;
 
 	list_for_each_entry(csd, &cam_req_mgr_ordered_sd_list, list) {
+		if (!csd)
+			continue;
+
 		sd = &csd->sd;
+		if (!sd)
+			continue;
+
 		if (!(sd->flags & V4L2_SUBDEV_FL_HAS_DEVNODE))
 			continue;
 		if (sd->internal_ops) {
@@ -481,6 +499,45 @@ static long cam_private_ioctl(struct file *file, void *fh,
 		}
 
 		rc = cam_req_mgr_schedule_request_v2(&sched_req);
+		}
+		break;
+
+	case CAM_REQ_MGR_SCHED_REQ_V3: {
+		struct cam_req_mgr_sched_request_v3 *sched_req;
+		struct cam_req_mgr_sched_request_v3 crm_sched_req;
+		int sched_req_size;
+
+		if (k_ioctl->size < 0)
+			return -EINVAL;
+
+		if (copy_from_user(&crm_sched_req,
+			u64_to_user_ptr(k_ioctl->handle),
+			sizeof(struct cam_req_mgr_sched_request_v3))) {
+			return -EFAULT;
+		}
+
+		if (crm_sched_req.num_links > MAXIMUM_LINKS_PER_SESSION)
+			return -EINVAL;
+
+		sched_req_size = sizeof(struct cam_req_mgr_sched_request_v3) +
+			((crm_sched_req.num_links) * sizeof(__signed__ int));
+
+		if (k_ioctl->size != sched_req_size)
+			return -EINVAL;
+
+		sched_req = kzalloc(sched_req_size, GFP_KERNEL);
+		if (!sched_req) {
+			return -ENOMEM;
+		}
+
+		if (copy_from_user(sched_req, u64_to_user_ptr(k_ioctl->handle), sched_req_size)) {
+			kfree(sched_req);
+			sched_req = NULL;
+			return -EFAULT;
+		}
+
+		rc = cam_req_mgr_schedule_request_v3(sched_req);
+		kfree(sched_req);
 		}
 		break;
 
@@ -885,7 +942,7 @@ bool cam_req_mgr_is_shutdown(void)
 int cam_register_subdev(struct cam_subdev *csd)
 {
 	struct v4l2_subdev *sd;
-	int rc;
+	int csd_name_len, rc;
 
 	if (!g_dev.state) {
 		CAM_DBG(CAM_CRM, "camera root device not ready yet");
@@ -902,7 +959,16 @@ int cam_register_subdev(struct cam_subdev *csd)
 	sd = &csd->sd;
 	v4l2_subdev_init(sd, csd->ops);
 	sd->internal_ops = csd->internal_ops;
-	snprintf(sd->name, sizeof(sd->name), "%s", csd->name);
+	csd_name_len = strlen(csd->name);
+	if (csd_name_len < sizeof(sd->name)) {
+		snprintf(sd->name, sizeof(sd->name), "%s", csd->name);
+	} else {
+		CAM_ERR(CAM_CRM, "Subdevice Name %s to big %d <= %d",
+			csd->name, sizeof(sd->name),
+			csd_name_len);
+		rc = -EINVAL;
+		goto invalid_val_fail;
+	}
 	v4l2_set_subdevdata(sd, csd->token);
 
 	sd->flags = csd->sd_flags;
@@ -935,6 +1001,7 @@ int cam_register_subdev(struct cam_subdev *csd)
 	g_dev.count++;
 
 reg_fail:
+invalid_val_fail:
 	mutex_unlock(&g_dev.dev_lock);
 	return rc;
 }

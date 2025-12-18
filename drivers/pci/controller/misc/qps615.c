@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 /* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <linux/firmware.h>
 #include <linux/i2c.h>
@@ -18,6 +19,8 @@ struct pcie_switch_i2c_setting {
 struct qps615_switch_i2c {
 	struct i2c_client *client;
 	struct regulator *vdda;
+	u8 *fw_data;
+	size_t size;
 };
 
 static const struct of_device_id qps615_switch_of_match[] = {
@@ -94,32 +97,26 @@ static int qps615_switch_i2c_read(struct i2c_client *client, u32 slv_addr, u32 r
  * request_firmware API. This firmware bin is parsed and i2c writes
  * are performed to initialize the QPS615 switch.
  */
-int qps615_switch_init(struct i2c_client *client)
+int qps615_switch_init(struct i2c_client *client, struct qps615_switch_i2c *qps615)
 {
-	const struct firmware *fw;
 	struct pcie_switch_i2c_setting *set;
-	int ret;
-	u32 val;
 	const u8 *pos, *eof;
+	int ret = 0;
+	u32 val;
 
-	if (!client)
-		return 0;
+	if (!client || !qps615)
+		return -EINVAL;
 
-	ret = request_firmware(&fw, "qcom/qps615.bin", &client->dev);
-	if (ret < 0) {
-		dev_err(&client->dev, "firmware loading failed with ret %d\n", ret);
-		return ret;
+	if (qps615->size % sizeof(struct pcie_switch_i2c_setting) != 0) {
+		dev_err(&client->dev, "Invalid firmware format: size %zu is not a multiple of %zu\n",
+			qps615->size, sizeof(struct pcie_switch_i2c_setting));
+		return -EINVAL;
 	}
 
-	if (!fw) {
-		ret = -EINVAL;
-		goto err;
-	}
+	pos = qps615->fw_data;
+	eof = qps615->fw_data + qps615->size;
 
-	pos = fw->data;
-	eof = fw->data + fw->size;
-
-	while (pos < (fw->data + fw->size)) {
+	while (pos < (qps615->fw_data + qps615->size)) {
 		set = (struct pcie_switch_i2c_setting *)pos;
 
 		ret = qps615_switch_i2c_write(client, set->slv_addr, set->reg_addr, set->val);
@@ -147,7 +144,6 @@ int qps615_switch_init(struct i2c_client *client)
 	}
 
 err:
-	release_firmware(fw);
 
 	return ret;
 }
@@ -158,10 +154,14 @@ static void qps615_power_on(struct i2c_client *client)
 	int ret;
 
 	ret = regulator_enable(qps615->vdda);
-	if (ret)
+	if (ret) {
 		dev_err(&client->dev, "cannot enable vdda regulator\n");
+		return;
+	}
 
-	qps615_switch_init(client);
+	ret = qps615_switch_init(client, qps615);
+	if (ret)
+		dev_err(&client->dev, "switch initialization failed: %d\n", ret);
 }
 
 static int qps615_suspend_noirq(struct device *dev)
@@ -185,6 +185,7 @@ static int qps615_resume_noirq(struct device *dev)
 static int qps615_switch_probe(struct i2c_client *client)
 {
 	struct qps615_switch_i2c *qps615;
+	const struct firmware *fw;
 	int ret;
 
 	qps615 = devm_kzalloc(&client->dev, sizeof(*qps615), GFP_KERNEL);
@@ -196,12 +197,39 @@ static int qps615_switch_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, qps615);
 
 	qps615->vdda = devm_regulator_get(&client->dev, "vdda");
+	if (IS_ERR(qps615->vdda)) {
+		dev_err(&client->dev, "Failed to get vdda regulator\n");
+		return PTR_ERR(qps615->vdda);
+	}
+
+	ret = request_firmware(&fw, "qcom/qps615.bin", &client->dev);
+	if (ret < 0) {
+		dev_err(&client->dev, "firmware loading failed with ret %d\n", ret);
+		return ret;
+	}
+
+	qps615->fw_data = devm_kzalloc(&client->dev, fw->size, GFP_KERNEL);
+	if (!qps615->fw_data) {
+		release_firmware(fw);
+		return -ENOMEM;
+	}
+
+	memcpy(qps615->fw_data, fw->data, fw->size);
+	qps615->size = fw->size;
+
+	release_firmware(fw);
 
 	ret = regulator_enable(qps615->vdda);
-	if (ret)
+	if (ret) {
 		dev_err(&client->dev, "cannot enable vdda regulator\n");
+		return ret;
+	}
 
-	qps615_switch_init(client);
+	/*
+	 * Do not fail the probe if qps615_switch_init() fails.
+	 * The switch remains functional even without I2C writes.
+	 */
+	qps615_switch_init(client, qps615);
 	return 0;
 }
 

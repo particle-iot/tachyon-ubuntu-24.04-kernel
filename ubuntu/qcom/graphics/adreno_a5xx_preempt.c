@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2017,2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "adreno.h"
 #include "adreno_a5xx.h"
 #include "adreno_pm4types.h"
 #include "adreno_trace.h"
+#include "kgsl_util.h"
 
 #define PREEMPT_RECORD(_field) \
 		offsetof(struct a5xx_cp_preemption_record, _field)
@@ -73,7 +74,7 @@ static void _a5xx_preemption_done(struct adreno_device *adreno_dev)
 		return;
 	}
 
-	del_timer_sync(&adreno_dev->preempt.timer);
+	kgsl_delete_timer_sync(&adreno_dev->preempt.timer);
 
 	trace_adreno_preempt_done(adreno_dev->cur_rb->id, adreno_dev->next_rb->id, 0, 0);
 
@@ -204,7 +205,7 @@ void a5xx_preemption_trigger(struct adreno_device *adreno_dev)
 	}
 
 	/* Turn off the dispatcher timer */
-	del_timer(&adreno_dev->dispatcher.timer);
+	kgsl_delete_timer(&adreno_dev->dispatcher.timer);
 
 	/*
 	 * This is the most critical section - we need to take care not to race
@@ -279,7 +280,7 @@ void a5xx_preempt_callback(struct adreno_device *adreno_dev, int bit)
 		return;
 	}
 
-	del_timer(&adreno_dev->preempt.timer);
+	kgsl_delete_timer(&adreno_dev->preempt.timer);
 
 	trace_adreno_preempt_done(adreno_dev->cur_rb->id, adreno_dev->next_rb->id, 0, 0);
 

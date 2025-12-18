@@ -419,6 +419,7 @@ static int pmic_glink_ucsi_probe(struct auxiliary_device *adev,
 	INIT_WORK(&ucsi->register_work, pmic_glink_ucsi_register);
 	init_completion(&ucsi->read_ack);
 	init_completion(&ucsi->write_ack);
+	spin_lock_init(&ucsi->state_lock);
 	init_completion(&ucsi->sync_ack);
 	spin_lock_init(&ucsi->state_lock);
 	mutex_init(&ucsi->lock);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitfield.h>
@@ -15,6 +15,7 @@
 #include <linux/qcom-io-pgtable.h>
 #include <linux/seq_file.h>
 #include <linux/delay.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/version.h>
 #if (KERNEL_VERSION(6, 3, 0) <= LINUX_VERSION_CODE)
@@ -22,7 +23,7 @@
 #else
 #include <linux/qcom_scm.h>
 #endif
-#ifdef CONFIG_QCOM_KGSL_UPSTREAM
+#if IS_ENABLED(CONFIG_QCOM_SCM_ADDON)
 #include <linux/firmware/qcom/qcom_scm_addon.h>
 #endif
 #include <linux/random.h>
@@ -63,6 +64,14 @@ struct kgsl_iommu_addr_entry {
 };
 
 static struct kmem_cache *addr_entry_cache;
+
+static struct adreno_smmu_priv *kgsl_get_prvdata(struct device *dev)
+{
+	struct kgsl_device *kgsl = dev_get_drvdata(dev);
+	struct kgsl_iommu *iommu = KGSL_IOMMU(kgsl);
+
+	return &((iommu->user_context).adreno_smmu);
+}
 
 /* These are dummy TLB ops for the io-pgtable instances */
 
@@ -1207,6 +1216,7 @@ static int kgsl_iommu_secure_fault_handler(struct iommu_domain *domain,
 static void kgsl_iommu_disable_clk(struct kgsl_mmu *mmu)
 {
 	struct kgsl_iommu *iommu = &mmu->iommu;
+	struct device *iommu_dev;
 
 	atomic_dec(&iommu->clk_enable_count);
 
@@ -1221,8 +1231,9 @@ static void kgsl_iommu_disable_clk(struct kgsl_mmu *mmu)
 	if (!IS_ERR_OR_NULL(iommu->cx_regulator))
 		regulator_disable(iommu->cx_regulator);
 
-	if (pm_runtime_enabled(&iommu->pdev->dev))
-		pm_runtime_put_sync(&iommu->pdev->dev);
+	iommu_dev = iommu->smmu_vir_cx_pd ? iommu->smmu_vir_cx_pd : &iommu->pdev->dev;
+	if (pm_runtime_enabled(iommu_dev))
+		pm_runtime_put_sync(iommu_dev);
 }
 
 /*
@@ -1232,12 +1243,14 @@ static void kgsl_iommu_disable_clk(struct kgsl_mmu *mmu)
 static void kgsl_iommu_enable_clk(struct kgsl_mmu *mmu)
 {
 	struct kgsl_iommu *iommu = &mmu->iommu;
+	struct device *iommu_dev;
 
 	if (!IS_ERR_OR_NULL(iommu->cx_regulator))
 		WARN_ON(regulator_enable(iommu->cx_regulator));
 
-	if (pm_runtime_enabled(&iommu->pdev->dev))
-		WARN_ON(pm_runtime_resume_and_get(&iommu->pdev->dev));
+	iommu_dev = iommu->smmu_vir_cx_pd ? iommu->smmu_vir_cx_pd : &iommu->pdev->dev;
+	if (pm_runtime_enabled(iommu_dev))
+		WARN_ON(pm_runtime_resume_and_get(iommu_dev));
 
 	WARN_ON(clk_bulk_prepare_enable(iommu->num_clks, iommu->clks));
 
@@ -1258,12 +1271,16 @@ static void kgsl_iommu_set_ttbr0(struct kgsl_iommu_context *context,
 		struct kgsl_mmu *mmu, const struct io_pgtable_cfg *pgtbl_cfg)
 {
 	struct adreno_smmu_priv *adreno_smmu;
+	struct kgsl_device *device = KGSL_MMU_DEVICE(mmu);
 
 	/* Quietly return if the context doesn't have a domain */
 	if (!context->domain)
 		return;
 
-	adreno_smmu = dev_get_drvdata(&context->pdev->dev);
+	if (of_device_is_compatible(device->pdev->dev.of_node, "qcom,adreno"))
+		adreno_smmu = kgsl_get_prvdata(device->dev);
+	else
+		adreno_smmu = dev_get_drvdata(&context->pdev->dev);
 
 	/* Enable CX and clocks before we call into SMMU to setup registers */
 	kgsl_iommu_enable_clk(mmu);
@@ -1334,6 +1351,18 @@ static void _enable_gpuhtw_llc(struct kgsl_mmu *mmu, struct iommu_domain *domain
 		iommu_set_pgtable_quirks(domain, IO_PGTABLE_QUIRK_ARM_OUTER_WBWA);
 }
 
+#if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
+int _kgsl_set_smmu_aperture(u32 num_context_bank)
+{
+	return qcom_scm_set_gpu_smmu_aperture(num_context_bank);
+}
+#else
+int _kgsl_set_smmu_aperture(u32 num_context_bank)
+{
+	return qcom_scm_kgsl_set_smmu_aperture(num_context_bank);
+}
+#endif
+
 int kgsl_set_smmu_aperture(struct kgsl_device *device,
 		struct kgsl_iommu_context *context)
 {
@@ -1342,9 +1371,9 @@ int kgsl_set_smmu_aperture(struct kgsl_device *device,
 	if (!test_bit(KGSL_MMU_SMMU_APERTURE, &device->mmu.features))
 		return 0;
 
-	ret = qcom_scm_kgsl_set_smmu_aperture(context->cb_num);
+	ret = _kgsl_set_smmu_aperture(context->cb_num);
 	if (ret == -EBUSY)
-		ret = qcom_scm_kgsl_set_smmu_aperture(context->cb_num);
+		ret = _kgsl_set_smmu_aperture(context->cb_num);
 
 	if (ret)
 		dev_err(&device->pdev->dev, "Unable to set the SMMU aperture: %d. The aperture needs to be set to use per-process pagetables\n",
@@ -1371,8 +1400,13 @@ static int set_smmu_lpac_aperture(struct kgsl_device *device,
 /* FIXME: better name feor this function */
 static int kgsl_iopgtbl_alloc(struct kgsl_iommu_context *ctx, struct kgsl_iommu_pt *pt)
 {
-	struct adreno_smmu_priv *adreno_smmu = dev_get_drvdata(&ctx->pdev->dev);
+	struct adreno_smmu_priv *adreno_smmu;
 	const struct io_pgtable_cfg *cfg = NULL;
+
+	if (of_device_is_compatible(ctx->kgsldev->pdev->dev.of_node, "qcom,adreno"))
+		adreno_smmu = kgsl_get_prvdata(ctx->kgsldev->dev);
+	else
+		adreno_smmu = dev_get_drvdata(&ctx->pdev->dev);
 
 	if (adreno_smmu->cookie)
 		cfg = adreno_smmu->get_ttbr1_cfg(adreno_smmu->cookie);
@@ -1614,7 +1648,12 @@ static void kgsl_iommu_close(struct kgsl_mmu *mmu)
 		kgsl_guard_page = NULL;
 	}
 
-	if (pm_runtime_enabled(&iommu->pdev->dev))
+	if (iommu->smmu_vir_cx_pd && pm_runtime_enabled(iommu->smmu_vir_cx_pd)) {
+		pm_runtime_disable(iommu->smmu_vir_cx_pd);
+		dev_pm_domain_detach(iommu->smmu_vir_cx_pd, false);
+		kfree(iommu->smmu_vir_cx_pd);
+		iommu->smmu_vir_cx_pd = NULL;
+	} else if (pm_runtime_enabled(&iommu->pdev->dev))
 		pm_runtime_disable(&iommu->pdev->dev);
 
 	kmem_cache_destroy(addr_entry_cache);
@@ -2321,25 +2360,26 @@ static bool kgsl_iommu_addr_in_range(struct kgsl_pagetable *pagetable,
 	return false;
 }
 
-static int kgsl_iommu_setup_context(struct kgsl_mmu *mmu,
-		struct device_node *parent,
-		struct kgsl_iommu_context *context, const char *name,
-		iommu_fault_handler_t handler)
+#if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
+static struct iommu_domain *kgsl_iommu_domain_alloc(struct device *dev)
 {
-	struct device_node *node = of_find_node_by_name(parent, name);
-	struct platform_device *pdev;
+	return iommu_paging_domain_alloc(dev);
+}
+#else
+static struct iommu_domain *kgsl_iommu_domain_alloc(struct device *dev)
+{
+	return iommu_domain_alloc(&platform_bus_type);
+}
+#endif
+
+static int kgsl_iommu_setup_context_common(struct kgsl_mmu *mmu,
+		struct platform_device *pdev, struct device_node *node,
+		struct kgsl_iommu_context *context, const char *name,
+		iommu_fault_handler_t handler, bool restore_drvdata)
+{
 	struct kgsl_device *device = KGSL_MMU_DEVICE(mmu);
+	void *kgsl_drvdata = NULL;
 	int ret;
-
-	if (!node)
-		return -ENOENT;
-
-	pdev = of_find_device_by_node(node);
-	ret = of_dma_configure(&pdev->dev, node, true);
-	of_node_put(node);
-
-	if (ret)
-		return ret;
 
 	context->cb_num = -1;
 	context->name = name;
@@ -2347,21 +2387,26 @@ static int kgsl_iommu_setup_context(struct kgsl_mmu *mmu,
 	context->pdev = pdev;
 	ratelimit_default_init(&context->ratelimit);
 
-	/* Set the adreno_smmu priv data for the device */
+	if (restore_drvdata)
+		kgsl_drvdata = dev_get_drvdata(&pdev->dev);
+
 	dev_set_drvdata(&pdev->dev, &context->adreno_smmu);
 
-	/* Create a new context */
-	context->domain = iommu_domain_alloc(&platform_bus_type);
+	context->domain = kgsl_iommu_domain_alloc(&context->pdev->dev);
 	if (!context->domain) {
-		/*FIXME: Put back the pdev here? */
+		if (restore_drvdata)
+			dev_set_drvdata(&pdev->dev, kgsl_drvdata);
 		return -ENODEV;
 	}
 
 	_enable_gpuhtw_llc(mmu, context->domain);
 
 	ret = iommu_attach_device(context->domain, &context->pdev->dev);
+
+	if (restore_drvdata)
+		dev_set_drvdata(&pdev->dev, kgsl_drvdata);
+
 	if (ret) {
-		/* FIXME: put back the device here? */
 		iommu_domain_free(context->domain);
 		context->domain = NULL;
 		return ret;
@@ -2379,11 +2424,31 @@ static int kgsl_iommu_setup_context(struct kgsl_mmu *mmu,
 
 	iommu_detach_device(context->domain, &context->pdev->dev);
 	iommu_domain_free(context->domain);
-
-	/* FIXME: put back the device here? */
 	context->domain = NULL;
 
 	return context->cb_num;
+}
+
+static int kgsl_iommu_setup_context(struct kgsl_mmu *mmu,
+		struct device_node *parent,
+		struct kgsl_iommu_context *context, const char *name,
+		iommu_fault_handler_t handler)
+{
+	struct device_node *node = of_find_node_by_name(parent, name);
+	struct platform_device *pdev;
+	int ret;
+
+	if (!node)
+		return -ENOENT;
+
+	pdev = of_find_device_by_node(node);
+	ret = of_dma_configure(&pdev->dev, node, true);
+	of_node_put(node);
+
+	if (ret)
+		return ret;
+
+	return kgsl_iommu_setup_context_common(mmu, pdev, node, context, name, handler, false);
 }
 
 static int iommu_probe_user_context(struct kgsl_device *device,
@@ -2498,16 +2563,18 @@ static int iommu_probe_secure_context(struct kgsl_device *device,
 	context->pdev = pdev;
 	ratelimit_default_init(&context->ratelimit);
 
-	context->domain = iommu_domain_alloc(&platform_bus_type);
+	context->domain = kgsl_iommu_domain_alloc(&context->pdev->dev);
 	if (!context->domain) {
 		ret = -ENODEV;
 		goto err_device_put;
 	}
 
-	ret = qcom_iommu_set_secure_vmid(context->domain, secure_vmid);
-	if (ret) {
-		dev_err(&device->pdev->dev, "Unable to set the secure VMID: %d\n", ret);
-		goto err_domain_free;
+	if (!of_property_read_bool(node, "qcom,iommu-vmid")) {
+		ret = qcom_iommu_set_secure_vmid(context->domain, secure_vmid);
+		if (ret) {
+			dev_err(&device->pdev->dev, "Unable to set the secure VMID: %d\n", ret);
+			goto err_domain_free;
+		}
 	}
 
 	_enable_gpuhtw_llc(mmu, context->domain);
@@ -2588,6 +2655,229 @@ static void kgsl_iommu_check_config(struct kgsl_mmu *mmu,
 	of_node_put(node);
 }
 
+static void kgsl_iommu_setup_vbo(struct kgsl_mmu *mmu)
+{
+	if ((mmu->subtype == KGSL_IOMMU_SMMU_V500) &&
+			test_bit(KGSL_MMU_SUPPORT_VBO, &mmu->features)) {
+		/*
+		 * We need to allocate a page because we need a known physical
+		 * address to program in the PRR register but the hardware
+		 * should intercept accesses to the page before they go to DDR
+		 * so this should be mostly just a placeholder
+		 */
+		kgsl_vbo_zero_page = alloc_page(GFP_KERNEL | __GFP_ZERO |
+			__GFP_NORETRY | __GFP_HIGHMEM);
+	}
+	if (!kgsl_vbo_zero_page)
+		clear_bit(KGSL_MMU_SUPPORT_VBO, &mmu->features);
+}
+
+static void kgsl_iommu_map_globals(struct kgsl_device *device, struct kgsl_mmu *mmu)
+{
+	struct kgsl_global_memdesc *md;
+
+	list_for_each_entry(md, &device->globals, node) {
+		if (md->memdesc.flags & KGSL_MEMFLAGS_SECURE) {
+			if (IS_ERR_OR_NULL(mmu->securepagetable))
+				continue;
+
+			kgsl_iommu_secure_map(mmu->securepagetable,
+				&md->memdesc);
+		} else
+			kgsl_iommu_default_map(mmu->defaultpagetable,
+				&md->memdesc);
+	}
+}
+
+static int kgsl_iommu_setup_context_standard(struct kgsl_mmu *mmu,
+		struct device_node *node,
+		struct kgsl_iommu_context *context, const char *name,
+		iommu_fault_handler_t handler)
+{
+	struct platform_device *pdev;
+	int ret;
+
+	pdev = of_find_device_by_node(node);
+
+	ret = of_dma_configure(&pdev->dev, node, true);
+	if (ret)
+		return ret;
+
+	return kgsl_iommu_setup_context_common(mmu, pdev, node, context, name, handler, true);
+}
+
+int kgsl_iommu_probe_standard(struct kgsl_device *device, struct platform_device *pdev)
+{
+	struct kgsl_iommu *iommu = KGSL_IOMMU(device);
+	struct device *virt_dev = NULL;
+	struct device_node *node, *smmu_node = NULL;
+	struct kgsl_mmu *mmu = &device->mmu;
+	struct kgsl_iommu_pt *pt;
+	struct of_phandle_args args;
+	u32 val[4];
+	int ret;
+
+	node = pdev->dev.of_node;
+	smmu_node = of_parse_phandle(node, "iommus", 0);
+	if (!smmu_node) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* Create a kmem cache for the pagetable address objects */
+	if (!addr_entry_cache) {
+		addr_entry_cache = KMEM_CACHE(kgsl_iommu_addr_entry, 0);
+		if (!addr_entry_cache) {
+			ret = -ENOMEM;
+			goto err;
+		}
+	}
+
+	/*
+	 * Allocate and register a virtual device, associate it with
+	 * power domain from the smmu dt node, and enable runtime
+	 * power management.
+	 */
+	virt_dev = kzalloc(sizeof(*virt_dev), GFP_KERNEL);
+	if (!virt_dev) {
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	dev_set_name(virt_dev, "genpd:kgsl_cx_pd");
+	ret = device_register(virt_dev);
+	if (ret)
+		goto err;
+
+	ret = of_parse_phandle_with_fixed_args(smmu_node, "power-domains", 1, 0, &args);
+	if (ret)
+		goto err;
+
+	ret = of_genpd_add_device(&args, virt_dev);
+	if (ret)
+		goto err;
+
+	pm_runtime_enable(virt_dev);
+
+	/* Map IOMMU register range from smmu node to virtual memory */
+	ret = of_property_read_u32_array(smmu_node, "reg", val, 4);
+	if (ret) {
+		dev_err(&device->pdev->dev,
+			"%pOF: Unable to read KGSL IOMMU register range\n",
+			smmu_node);
+		goto err;
+	}
+
+	iommu->regbase = devm_ioremap(&device->pdev->dev, val[1], val[3]);
+	if (!iommu->regbase) {
+		dev_err(&device->pdev->dev, "Couldn't map IOMMU registers\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	iommu->pdev = pdev;
+	iommu->num_clks = 0;
+	iommu->smmu_vir_cx_pd = virt_dev;
+
+	/* Retrieve and initialize IOMMU clocks from smmu node. */
+	iommu->clks = devm_kcalloc(&pdev->dev, ARRAY_SIZE(kgsl_iommu_clocks),
+				sizeof(*iommu->clks), GFP_KERNEL);
+	if (!iommu->clks) {
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	if (!of_parse_phandle_with_args(node, "iommus", "#iommu-cells", 0, &args)) {
+		struct device_node *iommu_np = args.np;
+		struct platform_device *iommu_pdev = of_find_device_by_node(iommu_np);
+
+		if (!iommu_pdev) {
+			of_node_put(iommu_np);
+			ret = -EPROBE_DEFER;
+			goto err;
+		}
+
+		ret = devm_clk_bulk_get_all(&iommu_pdev->dev, &iommu->clks);
+		if (ret < 0) {
+			put_device(&iommu_pdev->dev);
+			of_node_put(iommu_np);
+			goto err;
+		}
+
+		iommu->num_clks = ret;
+		put_device(&iommu_pdev->dev);
+		of_node_put(iommu_np);
+	}
+
+	set_bit(KGSL_MMU_PAGED, &mmu->features);
+	mmu->type = KGSL_MMU_TYPE_IOMMU;
+	mmu->mmu_ops = &kgsl_iommu_ops;
+
+	if (of_device_is_compatible(smmu_node, "qcom,qsmmu-v500") ||
+		of_device_is_compatible(smmu_node, "arm,mmu-500"))
+		mmu->subtype = KGSL_IOMMU_SMMU_V500;
+
+	if (of_device_is_compatible(smmu_node, "qcom,adreno-smmu"))
+		set_bit(KGSL_MMU_IOPGTABLE, &mmu->features);
+
+	/* Setup iommu default non secure context */
+	ret = kgsl_iommu_setup_context_standard(mmu, node, &iommu->user_context,
+		"gfx3d_user", kgsl_iommu_default_fault_handler);
+	if (ret)
+		goto err;
+
+	/* Make the default pagetable */
+	mmu->defaultpagetable = kgsl_iommu_default_pagetable(mmu);
+	if (IS_ERR(mmu->defaultpagetable)) {
+		ret = PTR_ERR(mmu->defaultpagetable);
+		goto err;
+	}
+
+	/* If IOPGTABLE isn't enabled then we are done */
+	if (!test_bit(KGSL_MMU_IOPGTABLE, &mmu->features))
+		return 0;
+
+	pt = to_iommu_pt(mmu->defaultpagetable);
+
+	/* Enable TTBR0 on the default context */
+	kgsl_iommu_set_ttbr0(&iommu->user_context, mmu, &pt->cfg);
+
+	kgsl_set_smmu_aperture(device, &iommu->user_context);
+
+	/* Map any globals that might have been created early */
+	kgsl_iommu_map_globals(device, mmu);
+
+	/* QDSS is supported only when QCOM_KGSL_QDSS_STM is enabled */
+	if (IS_ENABLED(CONFIG_QCOM_KGSL_QDSS_STM))
+		device->qdss_desc = kgsl_allocate_global_fixed(device,
+					"qcom,gpu-qdss-stm", "gpu-qdss");
+
+	device->qtimer_desc = kgsl_allocate_global_fixed(device,
+		"qcom,gpu-timer", "gpu-qtimer");
+
+	/*
+	 * Only support VBOs on MMU500 hardware that supports the PRR
+	 * marker register to ignore writes to the zero page
+	 */
+	kgsl_iommu_setup_vbo(mmu);
+	of_node_put(smmu_node);
+	return 0;
+
+err:
+	if (virt_dev) {
+		if (pm_runtime_enabled(virt_dev))
+			pm_runtime_disable(virt_dev);
+		device_unregister(virt_dev);
+		kfree(virt_dev);
+	}
+
+	kmem_cache_destroy(addr_entry_cache);
+	addr_entry_cache = NULL;
+
+	of_node_put(smmu_node);
+	return ret;
+}
+
 int kgsl_iommu_bind(struct kgsl_device *device, struct platform_device *pdev)
 {
 	u32 val[2];
@@ -2595,7 +2885,6 @@ int kgsl_iommu_bind(struct kgsl_device *device, struct platform_device *pdev)
 	struct kgsl_iommu *iommu = KGSL_IOMMU(device);
 	struct kgsl_mmu *mmu = &device->mmu;
 	struct device_node *node = pdev->dev.of_node;
-	struct kgsl_global_memdesc *md;
 
 	/* Create a kmem cache for the pagetable address objects */
 	if (!addr_entry_cache) {
@@ -2670,18 +2959,7 @@ int kgsl_iommu_bind(struct kgsl_device *device, struct platform_device *pdev)
 	iommu_probe_secure_context(device, node);
 
 	/* Map any globals that might have been created early */
-	list_for_each_entry(md, &device->globals, node) {
-
-		if (md->memdesc.flags & KGSL_MEMFLAGS_SECURE) {
-			if (IS_ERR_OR_NULL(mmu->securepagetable))
-				continue;
-
-			kgsl_iommu_secure_map(mmu->securepagetable,
-				&md->memdesc);
-		} else
-			kgsl_iommu_default_map(mmu->defaultpagetable,
-				&md->memdesc);
-	}
+	kgsl_iommu_map_globals(device, mmu);
 
 	/* QDSS is supported only when QCOM_KGSL_QDSS_STM is enabled */
 	if (IS_ENABLED(CONFIG_QCOM_KGSL_QDSS_STM))
@@ -2695,19 +2973,7 @@ int kgsl_iommu_bind(struct kgsl_device *device, struct platform_device *pdev)
 	 * Only support VBOs on MMU500 hardware that supports the PRR
 	 * marker register to ignore writes to the zero page
 	 */
-	if ((mmu->subtype == KGSL_IOMMU_SMMU_V500) &&
-			test_bit(KGSL_MMU_SUPPORT_VBO, &mmu->features)) {
-		/*
-		 * We need to allocate a page because we need a known physical
-		 * address to program in the PRR register but the hardware
-		 * should intercept accesses to the page before they go to DDR
-		 * so this should be mostly just a placeholder
-		 */
-		kgsl_vbo_zero_page = alloc_page(GFP_KERNEL | __GFP_ZERO |
-			__GFP_NORETRY | __GFP_HIGHMEM);
-	}
-	if (!kgsl_vbo_zero_page)
-		clear_bit(KGSL_MMU_SUPPORT_VBO, &mmu->features);
+	kgsl_iommu_setup_vbo(mmu);
 
 	return 0;
 

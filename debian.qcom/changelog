@@ -1,3 +1,578 @@
+linux-qcom (6.8.0-1057.58) noble; urgency=medium
+
+  * noble/linux-qcom: 6.8.0-1057.58 -proposed tracker (LP: #2132319)
+
+  * [QC] Can we use adreno firmwares from linux-firmware
+    - kgsl: a6x: Use secure firmware with mbn format
+    - arm64: dts: qcom: Add firmware-name property for Adreno GPUs
+    - kgsl: Add support to check /lib/firmware/qcom for sqe and gmu firmwares
+
+  * [RB3] Suspend resume not working on X04
+    - PENDING: drivers: pinctrl: skip storing/restoring reserved GPIOs
+    - QCLINUX: Revert "QCLINUX: dcc: Add suspend to RAM support for qcom-dcc
+      driver"
+    - QCLINUX: pci: misc: qps615: Remove request_firmware() dependency on
+      resume
+    - PENDING: arm64: dts: qcom: Remove CLKREF_EN from PCIe1 clocks node
+
+  * change the qupv3fw.elf path temporarily
+    - SAUCE: change the qupv3fw.elf loading path
+    - Revert "UBUNTU: SAUCE: i2c: qcom-geni: Change the firmware folder for
+      QLI1.6"
+
+  * [RB3] [QLI1.6] the monitor shows a black screen with desktop-image
+    - SAUCE: drm: msm: skip dpu_find_format if catalog is not ready
+
+  * RB4 Audio BU with TPLG support
+    - SAUCE: dts: qcom: RB4: support tplg for pro-sku board
+
+  * camera UAPI compatibility update
+    - msm: camera: uapi: new structure for SAT frame sync
+    - msm: camera: reqmgr: adding support sched_req ver3
+
+  * Monza BT Support
+    - PENDING: arm64: dts: Enable BT_EN pin via GPIO55 on Monza
+    - Bluetooth: btusb: QCA: Fix downloading wrong NVM for WCN6855 GF variant
+      without board ID
+    - PENDING: driver: bluetooth: btusb: add default nvm file
+    - BACKPORT: Bluetooth: btusb: QCA: Support downloading custom-made
+      firmwares
+    - PENDING: driver: bluetooth: btusb: add custom-made firmwares
+
+  * Monza Display support (eDP)
+    - PENDING: ARM: dts: msm: monza: enable DisplayPort
+
+  * Monza Camera Support
+    - ARM: dts: msm: Camera: Add dtsi for monaco-monza dev
+
+  * Monza eMMC Support
+    - PENDING: arm64: dts: qcom: Add eMMC support for monza EVK board
+
+  * Monza enable PCIE0
+    - PENDING: arm64: dts: qcom: Add PCIe support for monza EVK board
+
+  * Monza WLAN Support
+    - PENDING: arm64: dts: qcom: Set GPIO54 high for WiFi rfkill on Monza EVK
+
+  * Monza USB2.0 and Type-A ports
+    - PENDING: arm64: dts: qcom: Enable USB2 controller on monza EVK board
+
+  * Monza USB3.0 - SS and HS
+    - PENDING: arm64: dts: qcom: Enable primary USB for monza EVK board
+
+  * Monza Ethernet Support
+    - PENDING: arm64: dts: qcom: Enable ethernet on monza EVK board
+
+  * Monza kernel (includes DT) update
+    - PENDING: arm64: dts: qcom: add support for monza board
+    - QCLINUX: arm64: dts: qcom: addons DT support for monaco monza
+
+  * [RB8][x05] dwc3-qcom errors found in dmesg
+    - Revert "UBUNTU: SAUCE: arm64: dts: qcom: fix vbus_dwc3 issue for
+      qcs9075"
+    - Revert "usb: dwc3: qcom: Add DT property check before regulator get"
+    - PENDING: usb: dwc3: qcom: Handle optional vbus_dwc3 regulator without
+      error logging
+
+  * (kernel-space) high resolution (4K) improvement - Integrate HDMI bridge
+    lontium-lt9611 driver
+    - drm/bridge: lt9611: Avoid partial display failure
+    - arm64: dts: rubikpi3: enable lt,fixed-mode attribute for HDMI function
+
+  * The msm display driver not updated in the kernel
+    - SAUCE: sync msm_default from msm for -1057
+    - SAUCE: Do the necessary change to support adreno for -1057
+
+  * [RB8] the 2.5Gbs ethernet port is limited to 1Gbs
+    - net: phy: move at803x PHY driver to dedicated directory
+    - net: phy: qcom: create and move functions to shared library
+    - net: phy: qcom: deatch qca83xx PHY driver from at803x
+    - net: phy: qcom: move additional functions to shared library
+    - net: phy: qcom: detach qca808x PHY driver from at803x
+    - net: phy: qcom: qca808x: fix logic error in LED brightness set
+    - net: phy: qcom: qca808x: default to LED active High if not set
+    - net: phy: qcom: move more function to shared library
+    - net: phy: qcom: move common qca808x LED define to shared header
+    - net: phy: qcom: generalize some qca808x LED functions
+    - net: phy: qcom: qca808x: add helper for checking for 1G only model
+    - net: phy: qcom: qca808x: fill in possible_interfaces
+    - net: phy: qcom: qca808x: Fix WoL issue by utilizing at8031_set_wol()
+    - net: phy: qcom: move the WoL function to shared library
+    - PENDING: net: phy: qcom: qca808x: Add .get_rate_matching support
+    - Ubuntu: [Config] run updateconfigs after merging AT80xx PHY driver
+    - SAUCE: arm64: dts: qcom: qcs9075-iq-9075-evk: ethphy to 2.5G
+
+  * Miscellaneous Ubuntu changes
+    - SAUCE: qcom: dts: add monaco monza board to combined-dtb
+    - SAUCE: i2c: qcom-geni: Change the firmware folder for QLI1.6
+    - SAUCE: arm64: dts: qcom: fix usb_dwc3 calltrace for rb4
+    - SAUCE: add camera driver build for rb4
+    - SAUCE: qcom: dts: Makefile: add video and graphic for rb4
+
+  * Miscellaneous upstream changes
+    - PENDING: dt-bindings: arm: qcom: Add QCM6490 RB3 board
+    - QCLINUX: dt-bindings: arm: qcom: Add QCM6490 addons support
+    - QCLINUX: dt-bindings: arm: Add mezz board support on QCM6490
+    - PENDING: dt-bindings: arm: qcom: Add rb3gen2 mezzanine board support on
+      QCM6490
+    - QCLINUX: dt-bindings: arm: qcom: Add X1E80100 addons support
+    - FROMLIST: dt-bindings: arm: qcom: Document QCM8550, QCS8550 SoC and
+      board
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS8550 addons support
+    - PENDING: dt-bindings: arm: qcom: Document rb5gen2-hdk board
+    - QCLINUX: dt-bindings: arm: qcom: Update qcm6490-rb3 to qcs6490-rb3gen2
+    - PENDING: dt-bindings: arm: qcom: Update rb5gen2-hdk to rb5gen2
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS5430 Soc and Boards
+    - dt-bindings: arm: qcom: add missing SDM845 board compatibles
+    - dt-bindings: arm: qcom: add missing SM6125 board compatibles
+    - dt-bindings: arm: qcom: add missing SM6350 board compatibles
+    - dt-bindings: arm: qcom: Document lg,judyln and lg,judyp devices
+    - dt-bindings: arm: qcom: move swir,mangoh-green-wp8548 board
+      documentation to qcom.yaml
+    - dt-bindings: arm: qcom: Document QDU1000/QRU1000 SoCs and boards
+    - dt-bindings: arm: qcom: Document SM6375 & Xperia 10 IV
+    - dt-bindings: arm: qcom: Add SM6115(P) and Lenovo Tab P11
+    - dt-bindings: arm: qcom: Add QRB2210/QCM2290 and RB1 board
+    - dt-bindings: arm: qcom: Add Acer Aspire 1
+    - dt-bindings: qcom: Add ipq5018 bindings
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS5430 fp1p5 Board
+    - FROMLIST: dt-bindings: arm: qcom: Document sm8650p soc and AIM500 AIoT
+      board
+    - QCLINUX: dt-bindings: arm: qcom: Add SM8650P addons support
+    - QCLINUX: dt-bindings: arm: qcom: Add QCM6490 IDP AMOLED addons support
+    - PENDING: dt-bindings: arm: qcom: add SA8255p Ride board
+    - PENDING: dt-bindings: arm: qcom: document QCS8275/QCS8300 SoC and
+      reference board
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS5430 Soc and Boards
+    - FROMLIST: dt-bindings: arm: qcom: Document QCS9100 compatible
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS8300 addons support
+    - QCLINUX: dt-bindings: arm: qcom: Document HSP board variants
+    - FROMGIT: dt-bindings: arm: qcom: add sa8775p-ride Rev 3
+    - PENDING: dt-bindings: arm: qcom: add SA7255p Ride board
+    - FROMLIST: BACKPORT: dt-bindings: arm: qcom: Document qcs9100-ride and
+      qcs9100-ride Rev3
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS9100 and SA8775p addons support
+    - FROMLIST: dt-bindings: arm: qcom: Document rb8/ride/ride-r3 on QCS9075
+    - QCLINUX: dt-bindings: arm: qcom: qcs9075: Document rb8/ride/ride-r3
+      addons
+    - FROMGIT: dt-bindings: arm: qcom: document QCS615 and the reference board
+    - QCLINUX: dt-bindings: arm: qcom: Add QCS615 addons support
+    - QCLINUX: dt-bindings: arm: qcom: qcs9075-addons: Rename rb8 to
+      iq-9075-evk
+    - PENDING: dt-bindings: arm: qcom: Rename qcs9075-rb8 to
+      qcs9075-iq-9075-evk
+    - PENDING: dt-bindings: arm: qcom: Add documentation for IQ8 EVK board
+    - PENDING: dt-bindings: arm: qcom: Add documentation for IQ8 Pro SKU EVK
+    - QCLINUX: arm64: defconfig: Disable In-Tree MEMORY_DUMP_V2 Driver
+    - QCLINUX: arm64: dts: qcom: Add metadata for FIT image support
+    - PENDING: soc: qcom: socinfo: add support for SA8650P
+    - PENDING: arm64: dts: qcom: Add support for QCS8275 IQ8 Pro SKU EVK board
+    - PENDING: misc: fastrpc: Resolve compilation warnings
+    - PENDING: arm64: dts: qcom: sa8775p: pmic: Remove "allow-set-time" for
+      RTC
+    - PENDING: usb-conn-gpio: Add LPM support when only
+    - PENDING: arm64: dts: qcom: Add usb conn gpio
+    - UPSTREAM: dt-bindings: dma: qcom,gpi: Add QCS8300 compatible
+    - QCLINUX: Revert of commit 3359fb13eebc ("QCLINUX: Enable QCOM_SI_CORE
+      and QCOM_SI_CORE_XTS")
+    - PENDING: arm64: dts: qcom: sa8255p: Add alias for uart17
+    - PENDING: arm64: dts: qcom: Make status disabled for remote endpoints on
+      mezz
+    - PENDING: dt-bindings: mmc: sdhci-msm: Document SA7255 compatible
+    - UPSTREAM: i2c: qcom-geni: Use dev_err_probe in the probe function
+    - UPSTREAM: i2c: qcom-geni: Simplify error handling in probe function
+    - PENDING: dt-bindings: media: Add sa8775p cci dt binding
+    - FROMLIST: dt-bindings: qcom: se-common: Add QUP Peripheral-specific
+      properties for I2C, SPI, and SERIAL bus
+    - PENDING: arm64: dts: qcom: qcs9075-iq-9075-evk: Add firmware-name for
+      QUPv3
+    - QCLINUX: arm64: dts: qcom: qcs8275: modify dmic interface
+    - QCLINUX: soc: qcom: socinfo: Add DDR info SMEM struct
+    - FROMLIST: media: venus: Add a check for packet size after reading from
+      shared memory
+    - FROMLIST: media: venus: Fix OOB read due to missing payload bound check
+    - PENDING: mmc: sdhci-msm: Enable SCMI support for eMMC
+    - QCLINUX: Enable QCOM_SI_CORE back and revert SMCInvoke
+    - PENDING: arm64: dts: qcom: sa7255p: Enable scmi channel 23
+    - PENDING: arm64: dts: qcom: Add status prop for ICE nodes
+    - PENDING: arm64: dts: qcom: Enable vqmmc voltage switching for qcs9075
+      rb8
+    - PENDING: arm64: dts: msm: Add UFS support for QCS8275 IQ8 Pro SKU EVK
+    - UPSTREAM: scsi: ufs: ufs-qcom: Add fixup_dev_quirks vops
+    - FROMLIST: PCI: qcom: Add 8.0 GT/s equalization settings for PCIe EP
+    - UPSTREAM: scsi: ufs: qcom: Add quirks for Samsung UFS devices
+    - UPSTREAM: arm64: dts: qcom: qcs8300: Add QUPv3 configuration
+    - PENDING: usb-conn-gpio: Add support for creation
+    - QCLINUX: firmware: qcom_scm_addon: Add SMC call for secure state
+    - PENDING: arm64: dts: qcom: Add usb conn gpio
+    - PENDING: arm64: dts: qcom: Add usb conn gpio
+    - PENDING: arm64: dts: qcom: Add usb conn gpio
+    - QCLINUX: firmware: si-core: Add mem-object init for kernel client
+    - UPSTREAM: usb: dwc3: core: Don't touch the resets
+    - PENDING: net: stmmac: Disable SPH
+    - QCLINUX: drm/msm: detect highest bank bit base on ddr type
+    - FROMLIST: arm64: dts: qcom: sa8775p: remove the pm opp support
+    - FROMLIST: media: qcom: camss: remove the pm opp support
+    - FROMLIST: soc: qcom: socinfo: Add support for new fields in revision 20
+    - Revert "FROMLIST: nvmem: qfprom: Add constraint read for some SoCs"
+    - PENDING: arm64: dts: qcom: sa7255p: Add parf reg and global irq support
+    - FROMLIST: soc: qcom: socinfo: Add support for new fields in revision 21
+    - FROMLIST: soc: qcom: socinfo: Add support for new fields in revision 22
+    - PENDING: dt-bindings: thermal: tsens: Add QCS8300 compatible
+    - PENDING: arm64: dts: qcom: Enable tsens and thermal for QCS8300 SoC
+    - QCLINUX: defconfig: Enable CONFIG_VIRTIO_IOMMU
+    - PENDING: net: stmmac: Add EEPROM support to driver
+    - PENDING: ASoC: dt-bindings: q6dsp: Add Audio DAI ID for Senary MI2S
+    - PENDING: ASoC: qdsp6: Add Senary MI2S Support
+    - PENDING: arm64: dts: qcom: sc7280: Add Senary MI2S Support
+    - QCLINUX: iommu/virtio: Add VIRTIO_IOMMU_T_ATTACH_TABLE/INVALIDATE
+    - UPSTREAM: iommu/arm-smmu-v3: Add struct arm_smmu_impl_ops
+    - QCLINUX: iommu/virtio-iommu: Move 'struct viommu_dev' to common header
+    - QCLINUX: iommu/virtio: Refactor viommu_probe
+    - PENDING: arm64: dts: qcom: sa7255p: Add missing properties
+    - PENDING: arm64: dts: qcom: sa8255p: Add missing properties
+    - QCLINUX: drivers: virt: gunyah: Replace arm_smccc_1_1_smc with
+    - PENDING: arm64: dts: qcom: Add mode as host for
+    - PENDING: arm64: dts: qcom: Add support for remoteproc instances
+    - PENDING: arm64: dts: qcom: Enable PCIe for QCS8275 IQ8 Pro SKU EVK
+    - PENDING: arm64: dts: qcom: Add 2nd UFS support for sa8255p
+    - PENDING: arm64: dts: qcom: sa7255p: Add address-cells and size-cells
+      property to interrupt-controller node
+    - QCLINUX: arm64: dts: qcom: qcs8275: addons dt support for IQ8 QCS8275
+      Pro SKU
+    - PENDING: net: stmmac: change mapping between VDMA/TC/PDMA for CBS
+    - PENDING: arm64: dts: qcom: sa8255p: Add address-cells and size-cells
+      property to interrupt-controller node
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Use dev_err_probe to bail out
+    - PENDING: arm64: dts: qcom: sa8255p: Enable Safety for PCIe1
+    - QCLINUX: arm64: dts: qcom: qcs6490-addons-rb3gen2: Update sound card
+      bindings for qcs6490 platform
+    - firmware: arm_scmi: Add helper to trace bad messages
+    - firmware: arm_scmi: Add support for debug metrics at the interface
+    - firmware: arm_scmi: Track basic SCMI communication debug metrics
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: mailbox: support P2A channel
+      completion
+    - UPSTREAM: dt-bindings: firmware: arm,scmi: Support notification
+      completion channel
+    - BACKPORT: Bluetooth: hci_event: Fix not using key encryption size when
+      its known
+    - PENDING: arm64: dts: qcom: qcs8300-ride: Enable spi10 node
+    - BACKPORT: dt-bindings: soc: qcom: add qcom,qcs615-imem compatible
+    - BACKPORT: arm64: dts: qcom: qcs615: Add IMEM and PIL info region
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Register stub driver
+    - QCLINUX: arm64: defconfigs: Enable CONFIG_ARM_SMMU_V3_QCOM_VIRTIO
+    - BACKPORT: arm64: dts: qcom: qcs615: fix a crash issue caused by infinite
+      loop for Coresight
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Support arm_smmu_get_by_fwnode
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Introduce setup_shmem_iomap
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Introduce packet handling
+      helpers
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Add support for standalone
+      transport drivers
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Make MBOX transport a standalone
+      driver
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Make SMC transport a standalone
+      driver
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Make OPTEE transport a
+      standalone driver
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Make VirtIO transport a
+      standalone driver
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Remove legacy transport-layer
+      code
+    - BACKPORT: UPSTREAM: firmware: arm_scmi: Support 'reg-io-width' property
+      for shared memory
+    - UPSTREAM: dt-bindings: sram: Document reg-io-width property
+    - FROMLIST: driver: bluetooth: hci_qca: Multiple triggers of SSR only
+      generate one coredump file
+    - Revert "PENDING: arm64: dts: qcom: qcm6490-rb3: Enable gpi-dma and qup
+      node"
+    - Revert "PENDING: i2c: qcom-geni: Load i2c Firmware from driver probe"
+    - PENDING: arm64: dts: qcom: sa7255p: Update Camera PIL region
+    - PENDING: arm64: dts: qcom: qcs8275: Add displayport support
+    - Revert "PENDING: serial: qcom-geni: Support of uart firmware load from
+      Linux"
+    - Revert "PENDING: spi: geni-qcom: Load spi Firmware from driver probe"
+    - BACKPORT: dt-bindings: PCI: qcom,pcie-sm8150: document qcs615
+    - PENDING: arm64: dts: qcom: Enable ethernet on QCS8275 IQ8 PRO SKU EVK
+    - QCLINUX: usb: dwc3: qcom: Remove enable-rt flag in glue
+    - PENDING: bus: mhi: host: pci_generic: add support for sdx35 modem
+    - PENDING: arm64: dts: qcom: Add support for Eth0 and Eth1 on QPS615 for
+    - Revert "PENDING: soc: qcom: qup_fw: QUP SE Firmware load from Linux"
+    - BACKPORT: bus: mhi: ep: Update read pointer only after buffer is written
+    - QCLINUX: iommu/virtio: Export viommu_send_req_sync
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Support VIRTIO_IOMMU_T_PROBE
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Reduce queue sizes
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Support VIRTIO_IOMMU_T_ATTACH_TABLE
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Add impl_ops->cmdq_issue_cmdlist
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Support virtio pasid table
+      invalidation
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Add invalidate by range and asid
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Register with iommu framework
+    - QCLINUX: iommu/virtio: Add fault handler callback
+    - QCLINUX: arm64: dts: qcom: Fix spmi gpio node naming
+    - PENDING: arm64: dts: qcom: sa8775p: Correct gpu_speed_bin node
+    - FROMLIST: net: stmmac: leave enabling _RE and _TE to
+      stmmac_mac_link_up()
+    - UPSTREAM: arm64: dts: qcom: qcm6490-rb3: Enable gpi-dma and qup node
+    - UPSTREAM: usb: typec: ucsi: Move unregister out of atomic section
+    - QCLINUX: arm64: dts: qcom: add support for IQ8-8275-evk pro sku mezz
+      board
+    - FROMLIST: soc: qcom: geni-se: Add support to load QUP SE Firmware via
+      Linux subsystem
+    - QCLINUX: usb: dwc3: Fix reset assertion during probe failure
+    - FROMLIST: arm64: dts: qcom: Fix vbus regualtors for qcs8300 and sa8775
+    - FROMLIST: dt-bindings: arm-smmu: document QCS615 GPU SMMU
+    - FROMLIST: arm64: dts: qcom: qcs615: add the GPU SMMU node
+    - FROMLIST: serial: qcom-geni: Load UART qup Firmware from linux side
+    - FROMLIST: dt-bindings: phy: qcom,sc8280xp-qmp-pcie-phy: Update pcie phy
+      bindings for QCS615
+    - BACKPORT: phy: qcom: qmp: Add phy register and clk setting for QCS615
+      PCIe
+    - FROMLIST: arm64: dts: qcom: qcs615: enable pcie
+    - FROMLIST: spi: geni-qcom: Load spi qup Firmware from linux side
+    - FROMLIST: arm64: dts: qcom: qcs615-ride: Enable PCIe interface
+    - FROMLIST: arm64: dts: qcom: qcs615: Set LDO12A regulator to HPM to avoid
+      boot hang
+    - FROMLIST: remoteproc: qcom: Fix NULL pointer in glink_subdev_stop()
+    - BACKPORT: arm64: dts: qcom: qcs615: Add the smp2p nodes
+    - BACKPORT: soc: qcom: smp2p: Fix fallback to qcom,ipc parse
+    - QCLINUX: iommu: Turn on clocks before reading FSR
+    - FROMLIST: i2c: qcom-geni: Load i2c qup Firmware from linux side
+    - QCLINUX: arm-smmu-v3-qcom-virtio: Invoke report_iommu_fault
+    - PENDING: arm64: dts: qcom: Enable QPS615 on IQ8 Pro SKU EVK Mezz
+    - BACKPORT: arm64: dts: qcom: qcs615: disable the CTI device of the camera
+      block
+    - PENDING: net: stmmac: Change PDMA mapping to resolve SMMU crash
+    - UPSTREAM: soc: qcom: socinfo: Update X1E PMICs
+    - PENDING: misc: fastrpc: prevent context use-after-free in poll mode
+    - FROMLIST: arm64: dts: qcom: qcs615: add a PCIe port for WLAN
+    - FROMLIST: arm64: dts: qcom: qcs615-ride: Enable WiFi/BT nodes
+    - PENDING: serial: qcom-geni: Add DFS clock mode support to GENI UART
+      driver
+    - PENDING: dt-binding: document static TPDM compatible
+    - UPSTREAM: soc: qcom: spmi-pmic: add more PMIC SUBTYPE IDs
+    - UPSTREAM: dt-bindings: display/msm: Add SM6150 DSI phy
+    - UPSTREAM: dt-bindings: display/msm: dsi-controller-main: Document SM6150
+    - Revert "FROMLIST: mmc: sdhci-msm: Enable MMC_CAP_AGGRESSIVE_PM for
+      qualcomm controllers"
+    - PENDING: arm64: dts: qcom: Add nvmem-layout for eeprom on qcs9075
+    - UPSTREAM: dt-bindings: display/msm: Add SM6150 MDSS & DPU
+    - UPSTREAM: drm/msm: mdss: Add SM6150 support
+    - UPSTREAM: drm/msm/dpu: Add SM6150 support
+    - QCLINUX: drm/msm/disp: Update layer mixer width and QCOM compressed
+      format list
+    - BACKPORT: FROMGIT: dt-bindings: remoteproc: qcom,sm8150-pas: Document
+      QCS615 remoteproc
+    - UPSTREAM: drm/msm/dsi: Add dsi phy support for SM6150
+    - UPSTREAM: drm/msm/dsi: Add support for SM6150
+    - UPSTREAM: drm/msm/dpu: Add writeback support for SM6150
+    - QCLINUX: arm64: defconfig: qcom: Enable SX150X for QCS615
+    - PENDING: i2c: qcom-geni: Fix tracepoint registration conflicts
+    - QCLINUX: arm64: defconfig: qcom: Make GENI I2C driver built-in to
+      support early SD card initialization
+    - PENDING: arm64: dts: qcom: qcs6490-rb3gen2: Switch HPD GPIO to use
+    - BACKPORT: FROMGIT: arm64: dts: qcom: qcs615: add ADSP and CDSP nodes
+    - BACKPORT: FROMGIT: arm64: dts: qcom: qcs615-ride: enable remoteprocs
+    - FROMLIST: arm64: dts: qcom: Add display support for QCS615
+    - PENDING: arm64: dts: qcom: qcs8300-ride: Enable i2c15 node
+    - FROMLIST: arm64: dts: qcom: qcs615: Add ADSP and CDSP fastrpc nodes
+    - PENDING: arm64: dts: qcom: Add nvmem-layout for eeprom on qcs8275
+    - FROMLIST: drm/msm/dp: add HPD callback for dp MST
+    - PENDING: net: stmmac: start phylink after initialization
+    - PENDING: arm64: dts: qcom: sa7255p: Add eMMC support
+    - PENDING: arm64: dts: qcom: Enable BT on IQ8 EVK PRO SKU
+    - QCLINUX: arm64: dts: qcom: Update cooling cell for cdsp node for qcm6490
+    - PENDING: arm64: dts: qcom: sa7255p: Enable uart2
+    - BACKPORT: Patch-mainline: PCI: qcom: Enumerate endpoints based on Link
+      up event in 'global_irq' interrupt
+    - FROMLIST: arm64: dts: qcom: Add display support for QCS615 RIDE board
+    - BACKPORT: PCI: dwc: Skip waiting for link up if vendor drivers can
+      detect Link up event
+    - BACKPORT: PCI: qcom: Set use_linkup_irq if global IRQ handler is present
+    - BACKPORT: PCI: qcom: Update ICC and OPP values during link up event
+    - BACKPORT: Patch-mainline: PCI: qcom: Enable MSI interrupts together with
+      Link up if 'Global IRQ' is supported
+    - BACKPORT: Patch-mainline: arm64: dts: qcom: sa8775p: Add 'global' PCIe
+      interrupt
+    - PENDING: arm64: dts: qcom: Expose Ethernet MAC address via NVMEM
+    - PENDING: arm64: dts: qcom: qcs6490-rb3gen2: Add firmware-name for QUPv3
+    - BACKPORT: drm/msm/a6xx: Add A621 support
+    - BACKPORT: drm/msm/a6xx: Split out gpucc register block
+    - BACKPORT: drm/msm/a6xx: Fix gpucc register block for A621
+    - BACKPORT: drm/msm/a6xx: Evaluate adreno_is_a650_family in pdc_in_aop
+      check
+    - BACKPORT: drm/msm/a6xx: Add support for Adreno 623
+    - BACKPORT: dt-bindings: display/msm/gmu: Add Adreno 623 GMU
+    - PENDING: dt-bindings: mmc: sdhci-msm: Document SA8775 compatible
+    - PENDING: arm64: dts: qcom: Update sd card node configurations on
+      qcs9075-iq-9075-evk
+    - PENDING: arm64: dts: qcom: Add eMMC support for qcs9075-iq-9075-evk
+    - QCLINUX: drivers: thermal: Add deepsleep support and avoid wakeup tsens
+      trips
+    - QCLINUX: arm64: dts: qcom: qcs615: add dma-buf heaps
+    - QCLINUX: arm64: dts: qcom: qcs615: add secure buffer device
+    - QCLINUX: arm64: dts: qcom: qcs615: add mem-buf device
+    - FROMLIST: arm64: dts: qcom: qcs8300: Add gpu and gmu nodes
+    - FROMLIST: arm64: dts: qcom: qcs8300-ride: Enable Adreno 623 GPU
+    - PENDING: arm64: dts: qcom: Enable cpu idle injection for cpu tsens for
+      qcs8275
+    - FROMLIST: driver: bluetooth: hci_qca: SSR(Sub-System Restart)process
+      failed due to tx_idle_timer timeout
+    - PENDING: coresight: add static tpdm support
+    - PENDING: coresight: configure atid for dummy soure
+    - BACKPORT: coresight: tmc: Stop trace capture on FlIn
+    - PENDING: arm64: dts: qcom: qcs8275-iq-8275-evk: Add firmware-name for
+      QUPv3
+    - FROMLIST: ARM: dts: msm: Add firmware reserve memory for qcs615 target
+    - PENDING: arm64: dts: qcom: Enable nsp tsens mitigation for qcs8275
+      variants
+    - PENDING: ARM: dts: qcs6490-rb3gen2: correct regulator settings to match
+      HW Spec
+    - FROMGIT: dt-bindings: crypto: qcom,prng: document QCS615
+    - FROMGIT: dt-bindings: crypto: qcom-qce: document the QCS615 crypto
+      engine
+    - PENDING: cpuidle: Disable idle lpm at bootup
+    - QCLINUX: arm64: dts: qcom: Enable gpu tsens mitigation for qcs8275
+      variants
+    - PENDING: arm64: dts: msm: Add eMMC support for qcs8275-iq-8275-evk
+    - PENDING: arm64: dts: msm: Add eMMC support for qcs8275-iq-8275-evk-pro-
+      sku
+    - PENDING: arm64: dts: qcom: Add PCIe wake GPIO for IQ8
+    - PENDING: arm64: dts: qcom: Add PCIe wake GPIO for IQ9
+    - PENDING: drm/msm: mdss: Fix ubwc incorrect issue
+    - PENDING: arm64: dts: qcom: tpm enablement for qcs8275-iq-8275-evk-pro-
+      sku
+    - PENDING: arm64: dts: qcom: Add support for Eth0 and Eth1 on QPS615 for
+    - PENDING: arm64: dts: qcom: Add EEPROM and nvmem layout for mezz on
+      qcs8275
+    - PENDING: arm64: dts: qcom: Expose Ethernet MAC address via NVMEM for IQ8
+    - FROMLIST: dt-bindings: i2c: qcom-cci: Add sa8775p cci dt binding
+    - FROMLIST: arm64: dts: qcom: sa8775p: Add IMX577 camera sensor
+    - QCLINUX: arm64: dts: qcom: qcs9075-iq-9075-evk: add sensor regulator
+    - QCLINUX: arm64: dts: qcom: qcs9075-iq-9075-evk: Enable IMX577 camera
+      sensor
+    - QCLINUX: arm64: dts: qcom: disable camss for addons
+    - FROMLIST: camss: update CSIPHY driver on camss for qcs9100
+    - FROMLIST: camss: Fix CAMSS CSIPHY Clock
+    - FROMLIST: dt-bindings: bridge: lt9211c: Add bindings
+    - FROMLIST: drm/bridge: add support for lontium lt9211c bridge
+    - QCLINUX: arm64: dts: qcom: Enable lvds support for rb3gen2 ia mezz
+    - QCLINUX: arm64: defconfig: enable lt9211c for qcom
+    - PENDING: Enable ICE node for eMMC
+    - PENDING: arm64: dts: qcom: Enable ICE EMMC for Rb4
+    - QCLINUX: arm64: dts: qcom: qcs6490-addons-rb3gen2: Update sound card
+      name for qcs6490 platform
+    - drivers: qps615: Fix regulator put for always-on supplies
+    - video: driver: use offset for meta buffer
+    - video: driver: update crop before calculating size
+    - video: driver: fix for raw buffer size to handle interlace
+    - msm: camera: sensor: Fix TOCTOU Security in sensor utility
+    - msm: camera: isp: Unify the ISP context IRQ state machine
+    - msm: camera: tpg: Proper cmd descriptor handling
+    - msm: camera: common: change typedefs according to linux std
+    - msm: camera: sensor: Added NULL param validation
+    - msm: camera: sensor: move the ioctl to uapi directory
+    - msm: camera: common: Use strscpy instead of strlcpy
+    - msm: camera: utils: updated __assign_str api
+    - msm: camera: utils: deprecating v4l2_subdev macro
+    - msm: camera: icp: Use flex array to fix UBSAN kernel panic
+    - msm: camera: fd: Limit fd entry and I/O buffer strictly
+    - msm: camera: ife: Fix Offline Packet Stall via Pre-Fence Enqueue
+    - msm: camera: common: change to get ddr_type from SMEM
+    - msm: camera: common: checkpatch issue fix
+    - msm: camera: ife: Route the request to the appropriate offline hw
+    - msm: camera: sensor: add csiphy register support for qcs615
+    - msm: camera: isp: Copy tfe dual config to avoid TOCTOU
+    - msm: camera: isp: Fix potential illegal access in Acquire HW
+    - msm: camera: utils: Fix Out of Bounds write
+    - msm: camera: sensor: TOCTOU error handling i2c command parser
+    - msm: camera: mem_mgr: Enhancement in cam_req_mgr_close
+    - msm: camera: csiphy: Add CSIPHY 1.3.1 with updated CDR value
+    - msm: camera: sensor: Fix array list corruption
+    - msm: camera: csiphy: Update CDR for CSIPHY 1.3.1
+    - kgsl: Use a623_gmu.bin for A623 GPU
+    - kgsl: Replace all instances of strlcpy() with strscpy()
+    - kgsl: Use iommu_paging_domain_alloc()
+    - kgsl: iommu: Set secure vmid only if qcom,iommu-vmid is not defined
+    - kgsl: Provide namespaces as string literals
+    - kgsl: Make changes to kgsl for Linux kernel version 6.10
+    - kgsl: snapshot: Use kstrtobool() instead of strtobool()
+    - kgsl: Update platform_driver::remove callback prototypes
+    - kgsl: Update the use of the shrinker API
+    - kgsl: Add README and License for KGSL driver source code
+    - kgsl: Update gfx_kernel_headers.py with correct copyright and license
+    - kgsl: Remove GPL-2.0 license boilerplate in favor of SPDX identifier
+    - kgsl: Update kernel timer APIs for deactivating timers
+    - kgsl: Enable KGSL driver compilation with upstream kernel
+    - kgsl: Fix kgsl compilation issues
+    - kgsl: Obtain ddr type using smem
+    - kgsl: Add support for parsing standard adreno compatible strings
+    - kgsl: Support firmware-name DT property
+    - kgsl: Support standard DT compliant IRQs for GPU and GMU nodes
+    - kgsl: Support standard device tree interconnect path naming
+    - kgsl: Handle missing RSCC register range
+    - kgsl: Support register range names from standard dt bindings
+    - kgsl: Enable GMU registration via standard gmu compatible strings
+    - kgsl: Fix compilation error for deprecated members of dma_fence_ops
+    - kgsl: Fix compilation error for deprecated from_timer() macro
+    - kgsl: Fix compilation warning for in_range() macro
+    - kgsl: Fix compilation error for read() callback of struct bin_attribute
+    - kgsl: Support standard DT compliant IOMMU and GMU clocks
+    - kgsl: Add support for parsing OPP table
+    - kgsl: Add support for speedbin based OPP configuration
+    - kgsl: Add ubwc mode and mal configuration in gpulist
+    - kgsl: Add cnoc bus table in driver
+    - kgsl: Support IOMMU probe for standard DT bindings
+    - kgsl : Fix compilation error for deprecated member of dma_fence_ops
+    - kgsl: Add device link between cx_pd and iommu for no GMU and rGMU cases
+    - kgsl: a6x: Use secure firmware with mbn format for A612
+    - kgsl: Remove support for standard compatible strings
+    - kgsl: Avoid use after free in kgsl_destroy_ion()
+    - PENDING: i2c: qcom-geni: Fix tracepoint registration conflicts
+    - Ubuntu: [Config] run updateconfigs after merging qli1.6
+    - Revert "QCLINUX: arm64: dts: qcom: qcs6490-addons-rb3gen2: Update sound
+      card bindings for qcs6490 platform"
+    - Revert "QCLINUX: arm64: dts: qcom: qcs6490-addons-rb3gen2: Update sound
+      card name for qcs6490 platform"
+    - ARM: msm: dts: camera: RB8 select csiphy_1.3.1
+    - ARM: dts: msm: Add secure context bank node for qcs9100
+    - ARM: dts: msm:  Add support for QCS9100 gpu SKUs
+    - ARM: dts: msm: Add graphics dt node for qcs615 target
+    - video: platform: sa8775p: update the address range for video regions
+    - PENDING: misc: fastrpc: Return on argument copy failure
+    - QCLINUX: arm64: dts: qcom: Add board-id and msm-id for Rb3Gen2 ptz mezz
+
+  [ Ubuntu: 6.8.0-90.91 ]
+
+  * noble/linux: 6.8.0-90.91 -proposed tracker (LP: #2131785)
+  * cifs: Fix memory leak of a folio every call to cifs_writepages_begin()
+    (LP: #2131213)
+    - cifs: fix pagecache leak when do writepages
+
+  [ Ubuntu: 6.8.0-89.90 ]
+
+  * noble/linux: 6.8.0-89.90 -proposed tracker (LP: #2131481)
+  * CVE-2025-39993
+    - media: rc: fix races with imon_disconnect()
+  * Audio output fails on internal speakers when using kernel 6.8.0-84 and
+    newer. (LP: #2130212)
+    - Revert "ASoC: cs35l56: Prevent races when soft-resetting using SPI
+      control"
+  * i40e driver is triggering VF resets on every link state change
+    (LP: #2130552)
+    - i40e: avoid redundant VF link state updates
+  * CVE-2025-40018
+    - ipvs: Defer ip_vs_ftp unregister during netns cleanup
+  * CVE-2025-39964
+    - crypto: af_alg - Disallow concurrent writes in af_alg_sendmsg
+    - crypto: af_alg - Fix incorrect boolean values in af_alg_ctx
+  * CVE-2025-37958
+    - mm/huge_memory: fix dereferencing invalid pmd migration entry
+  * CVE-2025-38666
+    - net: appletalk: Fix use-after-free in AARP proxy probe
+
+ -- Hui Wang <hui.wang@canonical.com>  Tue, 25 Nov 2025 20:25:40 +0800
+
 linux-qcom (6.8.0-1056.57) noble; urgency=medium
 
   * noble/linux-qcom: 6.8.0-1056.57 -proposed tracker (LP: #2129199)

@@ -1208,7 +1208,7 @@ struct cam_isp_stream_grp_config {
 	__u32                                 lane_cfg;
 	__u32                                 feature_mask;
 	__u32                                 stream_cfg_cnt;
-	bool                                  enable_error_recovery;
+	__u8                                  enable_error_recovery;
 	__u32                                 recovery_threshold;
 	__u32                                 reserved;
 	struct cam_isp_sensor_stream_config   stream_cfg[CAM_ISP_STREAM_CFG_MAX];

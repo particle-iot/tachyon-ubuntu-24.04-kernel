@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk-provider.h>
@@ -583,12 +583,10 @@ static int a6xx_rgmu_load_firmware(struct adreno_device *adreno_dev)
 	if (rgmu->fw_hostptr)
 		return 0;
 
-	ret = request_firmware(&fw, a6xx_core->gmufw_name, &rgmu->pdev->dev);
-	if (ret < 0) {
-		dev_err(&rgmu->pdev->dev, "request_firmware (%s) failed: %d\n",
-				a6xx_core->gmufw_name, ret);
+	ret = adreno_request_firmware(&fw, a6xx_core->gmufw_name,
+			&rgmu->pdev->dev, true);
+	if (ret)
 		return ret;
-	}
 
 	rgmu->fw_hostptr = devm_kmemdup(&rgmu->pdev->dev, fw->data,
 					fw->size, GFP_KERNEL);
@@ -986,9 +984,9 @@ static int a6xx_first_boot(struct adreno_device *adreno_dev)
 
 	/*
 	 * There is a possible deadlock scenario during kgsl firmware reading
-	 * (request_firmware) and devfreq update calls. During first boot, kgsl
-	 * device mutex is held and then request_firmware is called for reading
-	 * firmware. request_firmware internally takes dev_pm_qos_mtx lock.
+	 * (firmware_request_nowarn) and devfreq update calls. During first boot, kgsl
+	 * device mutex is held and then firmware_request_nowarn is called for reading
+	 * firmware. firmware_request_nowarn internally takes dev_pm_qos_mtx lock.
 	 * Whereas in case of devfreq update calls triggered by thermal/bcl or
 	 * devfreq sysfs, it first takes the same dev_pm_qos_mtx lock and then
 	 * tries to take kgsl device mutex as part of get_dev_status/target
@@ -1093,7 +1091,7 @@ no_gx_power:
 
 	clear_bit(RGMU_PRIV_GPU_STARTED, &rgmu->flags);
 
-	del_timer_sync(&device->idle_timer);
+	kgsl_delete_timer_sync(&device->idle_timer);
 
 	kgsl_pwrscale_sleep(device);
 
@@ -1212,15 +1210,19 @@ static int a6xx_rgmu_irq_probe(struct kgsl_device *device)
 	struct a6xx_rgmu_device *rgmu = to_a6xx_rgmu(ADRENO_DEVICE(device));
 	int ret;
 
-	ret = kgsl_request_irq(rgmu->pdev, "kgsl_oob",
+	/* Try with "hfi" irq first. Use Fallback legacy name "kgsl_oob" if not found. */
+	ret = kgsl_request_irq(rgmu->pdev, "hfi", "kgsl_oob", -EINVAL,
 			a6xx_oob_irq_handler, device);
+
 	if (ret < 0)
 		return ret;
 
 	rgmu->oob_interrupt_num  = ret;
 
-	ret = kgsl_request_irq(rgmu->pdev,
-		"kgsl_rgmu", a6xx_rgmu_irq_handler, device);
+	/* Try with "gmu" irq first. Use Fallback legacy name "kgsl_rgmu" if not found. */
+	ret = kgsl_request_irq(rgmu->pdev, "gmu", "kgsl_rgmu", -EINVAL,
+			a6xx_rgmu_irq_handler, device);
+
 	if (ret < 0)
 		return ret;
 
@@ -1399,11 +1401,18 @@ static int a6xx_rgmu_probe_dev(struct platform_device *pdev)
 	return component_add(&pdev->dev, &a6xx_rgmu_component_ops);
 }
 
+#if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
+static void a6xx_rgmu_remove_dev(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &a6xx_rgmu_component_ops);
+}
+#else
 static int a6xx_rgmu_remove_dev(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &a6xx_rgmu_component_ops);
 	return 0;
 }
+#endif
 
 static const struct of_device_id a6xx_rgmu_match_table[] = {
 	{ .compatible = "qcom,gpu-rgmu" },

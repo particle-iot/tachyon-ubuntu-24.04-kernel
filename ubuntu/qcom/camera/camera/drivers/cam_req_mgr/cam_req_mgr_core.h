@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _CAM_REQ_MGR_CORE_H_
@@ -666,6 +666,48 @@ struct cam_req_mgr_core_link_mini_dump {
 };
 
 /**
+ * struct cam_req_mgr_core_sched_req
+ *
+ * - Common members
+ * @session_hdl          : Input param - Identifier for CSL session
+ * @ink_hdl              : Input Param -Identifier for link including itself.
+ * @bubble_enable        : Input Param - Cam req mgr will do bubble recovery if this
+ *                         flag is set.
+ * @sync_mode            : Type of Sync mode for this request
+ * @additional_timeout   : Additional timeout value (in ms) associated with
+ *                         this request. This value needs to be 0 in cases where long exposure is
+ *                         not configured for the sensor.The max timeout that will be supported
+ *                         is 50000 ms
+ * @req_id               : Input Param - Request Id from which all requests will be flushed
+ *
+ * - Support sched_request
+ * @reserved             : Reserved
+ *
+ * - Support sched_request_v2/sched_request_v3
+ * @version              : Version number
+ * @num_links            : Input Param - Num of links for sync
+ * @num_valid_params     : Number of valid params
+ * @param_mask           : mask to indicate what the parameters are
+ * @params               : pointer, point to parameters passed from user space
+ * @link_hdls            : pointer, point to Input Param - Array of link handles to be for sync
+ */
+struct cam_req_mgr_core_sched_req {
+	int32_t                     session_hdl;
+	int32_t                     link_hdl;
+	int32_t                     bubble_enable;
+	int32_t                     sync_mode;
+	int32_t                     additional_timeout;
+	int64_t                     req_id;
+	int32_t                     reserved;
+	int32_t                     version;
+	int32_t                     num_links;
+	int32_t                     num_valid_params;
+	int32_t                     param_mask;
+	int32_t                    *params;
+	int32_t                    *link_hdls;
+};
+
+/**
  * struct cam_req_mgr_core_mini_dump
  * @link             : Array of dumped links
  * @num_link         : Number of links dumped
@@ -731,6 +773,13 @@ int cam_req_mgr_schedule_request(struct cam_req_mgr_sched_request *sched_req);
  * @sched_req: request id, session, link id info, bubble recovery info and sync info
  */
 int cam_req_mgr_schedule_request_v2(struct cam_req_mgr_sched_request_v2 *sched_req);
+
+/**
+ * cam_req_mgr_schedule_request_v3()
+ * @brief: Request is scheduled
+ * @sched_req: request id, session, link id info, bubble recovery info and sync info
+ */
+int cam_req_mgr_schedule_request_v3(struct cam_req_mgr_sched_request_v3 *sched_req);
 
 /**
  * cam_req_mgr_sync_config()

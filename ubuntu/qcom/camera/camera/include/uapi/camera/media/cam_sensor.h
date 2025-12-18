@@ -905,10 +905,10 @@ struct cam_sensor_streamon_dev {
  * @height : Height of the image stream
  */
 struct stream_dimension {
-	uint32_t left;
-	uint32_t top;
-	uint32_t width;
-	uint32_t height;
+	__u32 left;
+	__u32 top;
+	__u32 width;
+	__u32 height;
 };
 
 /**
@@ -920,8 +920,8 @@ struct stream_dimension {
  */
 struct tpg_command_header_t {
 	__u32 cmd_type;
-	ssize_t  size;
-	uint32_t cmd_version;
+	__s64 size;
+	__u32 cmd_version;
 } __attribute__((packed));
 
 /**
@@ -932,10 +932,10 @@ struct tpg_command_header_t {
  * @pixel_type            : red green blue ir mono
  */
 struct tpg_pixel_coordinate_t {
-	uint32_t xcoordinate;
-	uint32_t ycoordinate;
-	uint32_t exposure_type;
-	uint32_t pixel_type;
+	__u32 xcoordinate;
+	__u32 ycoordinate;
+	__u32 exposure_type;
+	__u32 pixel_type;
 } __attribute__((packed));
 
 /**
@@ -948,10 +948,10 @@ struct tpg_pixel_coordinate_t {
  * @pixel_coordinate          : pixel coordinate array
  */
 struct tpg_cfa_information_t {
-	uint32_t number_of_pixel_per_color;
-	uint32_t pattern_width;
-	uint32_t pattern_height;
-	uint32_t pixel_coordinate_count;
+	__u32 number_of_pixel_per_color;
+	__u32 pattern_width;
+	__u32 pattern_height;
+	__u32 pixel_coordinate_count;
 	struct tpg_pixel_coordinate_t pixel_coordinate[64];
 } __attribute__((packed));
 
@@ -964,11 +964,11 @@ struct tpg_cfa_information_t {
  * @delay_us   : delay in micro second
  */
 struct tpg_reg_settings {
-	uint32_t reg_offset;
-	uint32_t reg_value;
-	uint32_t operation;
-	uint32_t delay_us;
-	uint32_t reserved[4];
+	__u32 reg_offset;
+	__u32 reg_value;
+	__u32 operation;
+	__u32 delay_us;
+	__u32 reserved[4];
 } __attribute__((packed));
 
 /**
@@ -983,11 +983,11 @@ struct tpg_reg_settings {
  */
 struct tpg_settings_config_t {
 	struct tpg_command_header_t header;
-	uint32_t settings_array_offset;
-	uint32_t settings_array_size;
-	uint32_t active_count;
-	uint32_t param_mask;
-	uint32_t params[4];
+	__u32 settings_array_offset;
+	__u32 settings_array_size;
+	__u32 active_count;
+	__u32 param_mask;
+	__u32 params[4];
 } __attribute__((packed));
 
 /**
@@ -1009,16 +1009,16 @@ struct tpg_settings_config_t {
 struct tpg_global_config_t {
 	struct tpg_command_header_t header;
 	enum tpg_phy_type_t phy_type;
-	uint8_t lane_count;
+	__u8 lane_count;
 	enum tpg_interleaving_format_t interleaving_format;
-	uint8_t phy_mode;
+	__u8 phy_mode;
 	enum tpg_shutter_t shutter_type;
-	uint32_t mode;
-	uint32_t hbi;
-	uint32_t vbi;
-	uint32_t skip_pattern;
-	uint64_t tpg_clock;
-	uint32_t reserved[4];
+	__u32 mode;
+	__u32 hbi;
+	__u32 vbi;
+	__u32 skip_pattern;
+	__u64 tpg_clock;
+	__u32 reserved[4];
 } __attribute__((packed));
 
 /**
@@ -1045,19 +1045,19 @@ struct tpg_old_stream_config_t {
 	struct tpg_command_header_t header;
 	enum tpg_pattern_t pattern_type;
 	enum tpg_color_bar_mode_t cb_mode;
-	uint32_t frame_count;
+	__u32 frame_count;
 	enum tpg_stream_t stream_type;
 	struct stream_dimension stream_dimension;
-	uint8_t pixel_depth;
+	__u8 pixel_depth;
 	enum tpg_cfa_arrangement_t cfa_arrangement;
 	enum tpg_image_format_t output_format;
-	uint32_t hbi;
-	uint32_t vbi;
-	uint16_t vc;
-	uint16_t dt;
-	uint32_t skip_pattern;
-	uint32_t rotate_period;
-	uint32_t reserved[4];
+	__u32 hbi;
+	__u32 vbi;
+	__u16 vc;
+	__u16 dt;
+	__u32 skip_pattern;
+	__u32 rotate_period;
+	__u32 reserved[4];
 } __attribute__((packed));
 
 /**
@@ -1087,22 +1087,22 @@ struct tpg_stream_config_t {
 	struct tpg_command_header_t header;
 	enum tpg_pattern_t pattern_type;
 	enum tpg_color_bar_mode_t cb_mode;
-	uint32_t frame_count;
+	__u32 frame_count;
 	enum tpg_stream_t stream_type;
 	struct stream_dimension stream_dimension;
-	uint8_t pixel_depth;
+	__u8 pixel_depth;
 	enum tpg_cfa_arrangement_t cfa_arrangement;
 	enum tpg_image_format_t output_format;
-	uint32_t hbi;
-	uint32_t vbi;
-	uint16_t vc;
-	uint16_t dt;
-	uint32_t skip_pattern;
-	uint32_t rotate_period;
-	uint32_t xcfa_debug;
-	uint32_t shdr_line_offset0;
-	uint32_t shdr_line_offset1;
-	uint32_t reserved[4];
+	__u32 hbi;
+	__u32 vbi;
+	__u16 vc;
+	__u16 dt;
+	__u32 skip_pattern;
+	__u32 rotate_period;
+	__u32 xcfa_debug;
+	__u32 shdr_line_offset0;
+	__u32 shdr_line_offset1;
+	__u32 reserved[4];
 } __attribute__((packed));
 
 /**
@@ -1132,27 +1132,27 @@ struct tpg_stream_config_t {
  */
 struct tpg_stream_config_v3_t {
 	struct tpg_command_header_t header;
-	uint32_t pattern_type;
-	uint32_t cb_mode;
-	uint32_t frame_count;
-	uint32_t stream_type;
+	__u32 pattern_type;
+	__u32 cb_mode;
+	__u32 frame_count;
+	__u32 stream_type;
 	struct stream_dimension stream_dimension;
-	uint32_t pixel_depth;
-	uint32_t cfa_arrangement;
-	uint32_t output_format;
-	uint32_t hbi;
-	uint32_t vbi;
-	uint16_t vc;
-	uint16_t dt;
-	uint32_t skip_pattern;
-	uint32_t rotate_period;
-	uint32_t xcfa_debug;
-	uint32_t shdr_line_offset0;
-	uint32_t shdr_line_offset1;
-	uint32_t cfa_info_exist;
+	__u32 pixel_depth;
+	__u32 cfa_arrangement;
+	__u32 output_format;
+	__u32 hbi;
+	__u32 vbi;
+	__u16 vc;
+	__u16 dt;
+	__u32 skip_pattern;
+	__u32 rotate_period;
+	__u32 xcfa_debug;
+	__u32 shdr_line_offset0;
+	__u32 shdr_line_offset1;
+	__u32 cfa_info_exist;
 	struct tpg_cfa_information_t cfa_info;
-	uint32_t xcfa_type;
-	uint32_t reserved[5];
+	__u32 xcfa_type;
+	__u32 reserved[5];
 } __attribute__((packed));
 
 /**
@@ -1171,15 +1171,15 @@ struct tpg_stream_config_v3_t {
  */
 struct tpg_illumination_control {
 	struct tpg_command_header_t header;
-	uint16_t vc;
-	uint16_t dt;
-	uint32_t exposure_short;
-	uint32_t exposure_mid;
-	uint32_t exposure_long;
-	uint16_t r_gain;
-	uint16_t g_gain;
-	uint16_t b_gain;
-	uint32_t reserved[4];
+	__u16 vc;
+	__u16 dt;
+	__u32 exposure_short;
+	__u32 exposure_mid;
+	__u32 exposure_long;
+	__u16 r_gain;
+	__u16 g_gain;
+	__u16 b_gain;
+	__u32 reserved[4];
 } __attribute__((packed));
 
 /**
@@ -1274,5 +1274,8 @@ struct cam_flash_query_cap_info {
 	__u32    max_duration_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u32    max_current_torch[CAM_FLASH_MAX_LED_TRIGGERS];
 } __attribute__ ((packed));
+
+#define VIDIOC_MSM_CCI_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct cam_cci_ctrl)
 
 #endif

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "qcs8300-addons.dtsi"
+#include "qcs8275-thermal-addons.dtsi"
+
+&{/} {
+	model = "Qualcomm Technologies, Inc. Monaco Monza addons";
+	qcom,board-id = <0x00010020 4>, <0x00010019 4>;
+};

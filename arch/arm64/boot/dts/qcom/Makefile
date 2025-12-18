@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
+dtb-$(CONFIG_ARCH_QCOM)	+= qcom-dtb-metadata.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 
 apq8016-sbc-usb-host-dtbs	:= apq8016-sbc.dtb apq8016-sbc-usb-host.dtbo
@@ -23,6 +24,11 @@ dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp433.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp449.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp453.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= ipq9574-rdp454.dtb
+
+monaco-addons-monza-dtbs:= monaco-monza.dtb monaco-addons-monza.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= monaco-addons-monza.dtb
+dtb-$(CONFIG_ARCH_QCOM)	+= monaco-monza.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-acer-a1-724.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-alcatel-idol347.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-asus-z00l.dtb
@@ -135,6 +141,10 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-iq-8275-evk.dtb
 qcs8275-addons-iq-8275-evk-pro-sku-dtbs:= qcs8275-iq-8275-evk-pro-sku.dtb qcs8275-addons-iq-8275-evk-pro-sku.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-addons-iq-8275-evk-pro-sku.dtb
+
+qcs8275-addons-iq-8275-evk-pro-sku-mezz-dtbs:= qcs8275-addons-iq-8275-evk-pro-sku.dtb qcs8275-addons-iq-8275-evk-pro-sku-mezz.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-addons-iq-8275-evk-pro-sku-mezz.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8275-iq-8275-evk-pro-sku.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-addons-ride.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride.dtb
@@ -404,12 +414,16 @@ qcs9075-addons-iq-9075-evk-ovl-dtbs := \
 dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-ovl.dtb
 qcs8275-addons-iq-8275-evk-ovl-dtbs := \
     qcs8275-addons-iq-8275-evk.dtb \
-    qcs8275-camera-iq-8275-evk.dtbo
+    qcs8275-camera-iq-8275-evk.dtbo \
+    qcs8300-video.dtbo \
+    qcs8300-graphics.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM) += qcs8275-addons-iq-8275-evk-pro-sku-ovl.dtb
 qcs8275-addons-iq-8275-evk-pro-sku-ovl-dtbs := \
     qcs8275-addons-iq-8275-evk-pro-sku.dtb \
-    qcs8275-camera-iq-8275-evk-pro-sku.dtbo
+    qcs8275-camera-iq-8275-evk-pro-sku.dtbo \
+    qcs8300-video.dtbo \
+    qcs8300-graphics.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM) += qcs6490-thundercomm-rubikpi3-ovl.dtb
 qcs6490-thundercomm-rubikpi3-ovl-dtbs := \
@@ -417,6 +431,14 @@ qcs6490-thundercomm-rubikpi3-ovl-dtbs := \
     qcm6490-graphics.dtbo \
     qcm6490-camera-rubikpi3.dtbo \
     qcm6490-video.dtbo
+
+dtb-$(CONFIG_ARCH_QCOM) += monaco-addons-monza-ovl.dtb
+monaco-addons-monza-ovl-dtbs := \
+    monaco-monza.dtb \
+    monaco-addons-monza.dtbo \
+    monaco-monza-camera.dtbo \
+    qcs8300-video.dtbo \
+    qcs8300-graphics.dtbo
 
 dtb-$(CONFIG_ARCH_QCOM)	+= combined-dtb.dtb
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __MSM_VIDC_DEBUG__
@@ -104,20 +104,11 @@ enum vidc_msg_prio_fw {
 
 #define dprintk_inst(__level, __level_str, inst, __fmt, ...) \
 	do { \
-		if (msm_vidc_debug & VIDC_FTRACE) { \
-			if (inst && (msm_vidc_debug & (__level))) { \
-				trace_printk(VIDC_DBG_TAG_INST __fmt, \
-					__level_str, \
-					inst->debug_str, \
-					##__VA_ARGS__); \
-			} \
-		} else { \
-			if (inst && (msm_vidc_debug & (__level))) { \
-				pr_info(VIDC_DBG_TAG_INST __fmt, \
-					__level_str, \
-					inst->debug_str, \
-					##__VA_ARGS__); \
-			} \
+		if (inst && (msm_vidc_debug & (__level))) { \
+			pr_info(VIDC_DBG_TAG_INST __fmt, \
+				__level_str, \
+				inst->debug_str, \
+				##__VA_ARGS__); \
 		} \
 	} while (0)
 
@@ -137,22 +128,12 @@ enum vidc_msg_prio_fw {
 
 #define dprintk_core(__level, __level_str, __fmt, ...) \
 	do { \
-		if (msm_vidc_debug & VIDC_FTRACE) { \
-			if (msm_vidc_debug & (__level)) { \
-				trace_printk(VIDC_DBG_TAG_CORE __fmt, \
-					__level_str, \
-					DEFAULT_SID, \
-					"codec", \
-					##__VA_ARGS__); \
-			} \
-		} else { \
-			if (msm_vidc_debug & (__level)) { \
-				pr_info(VIDC_DBG_TAG_CORE __fmt, \
-					__level_str, \
-					DEFAULT_SID, \
-					"codec", \
-					##__VA_ARGS__); \
-			} \
+		if (msm_vidc_debug & (__level)) { \
+			pr_info(VIDC_DBG_TAG_CORE __fmt, \
+				__level_str, \
+				DEFAULT_SID, \
+				"codec", \
+				##__VA_ARGS__); \
 		} \
 	} while (0)
 
@@ -177,10 +158,6 @@ enum vidc_msg_prio_fw {
 	do { \
 		if ((msm_fw_debug & (__level)) & FW_PRINTK) { \
 			pr_info(FW_DBG_TAG __fmt, \
-				"fw", \
-				##__VA_ARGS__); \
-		} else if ((msm_fw_debug & (__level)) & FW_FTRACE) { \
-			trace_printk(FW_DBG_TAG __fmt, \
 				"fw", \
 				##__VA_ARGS__); \
 		} \
