@@ -18,8 +18,8 @@ CONFIG_ARCH_ROCKCHIP                            note<'LP: #1825222'>
 CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT       policy<{'arm64': 'y'}>
 CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT       note<'LP: #2102032'>
 
-CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_BTF                           note<TODO: update note>
+CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_BTF                           note<'BTF debug info for BPF'>
 
 CONFIG_DRM_AMDGPU_CIK                           policy<{'arm64': '-'}>
 CONFIG_DRM_AMDGPU_CIK                           note<'for zesty'>
@@ -525,7 +525,6 @@ CONFIG_CRYPTO_DEV_SUN8I_SS_HASH                 policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_SUN8I_SS_PRNG                 policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_ZYNQMP_AES                    policy<{'arm64': '-'}>
 CONFIG_CRYPTO_DEV_ZYNQMP_SHA3                   policy<{'arm64': '-'}>
-CONFIG_DEBUG_INFO_BTF_MODULES                   policy<{'arm64': '-'}>
 CONFIG_DEBUG_KERNEL_DC                          policy<{'arm64': '-'}>
 CONFIG_DEVFREQ_EVENT_ROCKCHIP_DFI               policy<{'arm64': '-'}>
 CONFIG_DMA_SUN6I                                policy<{'arm64': '-'}>
@@ -916,7 +915,6 @@ CONFIG_MMC_SH_MMCIF                             policy<{'arm64': '-'}>
 CONFIG_MMC_SPI                                  policy<{'arm64': 'y'}>
 CONFIG_MMC_SUNXI                                policy<{'arm64': '-'}>
 CONFIG_MMC_TMIO_CORE                            policy<{'arm64': '-'}>
-CONFIG_MODULE_ALLOW_BTF_MISMATCH                policy<{'arm64': '-'}>
 CONFIG_MSM_GCC_8916                             policy<{'arm64': 'y'}>
 CONFIG_MSM_GCC_8994                             policy<{'arm64': 'y'}>
 CONFIG_MSM_GCC_8998                             policy<{'arm64': 'y'}>
@@ -1322,7 +1320,6 @@ CONFIG_POWER_RESET_ODROID_GO_ULTRA_POWEROFF     policy<{'arm64': '-'}>
 CONFIG_POWER_RESET_SC27XX                       policy<{'arm64': '-'}>
 CONFIG_POWER_SEQUENCING                         policy<{'arm64': 'm'}>
 CONFIG_POWER_SEQUENCING_QCOM_WCN                policy<{'arm64': 'm'}>
-CONFIG_PROBE_EVENTS_BTF_ARGS                    policy<{'arm64': '-'}>
 CONFIG_PRU_REMOTEPROC                           policy<{'arm64': '-'}>
 CONFIG_PSTORE_BLK_CONSOLE_SIZE                  policy<{'arm64': '64'}>
 CONFIG_PSTORE_BLK_FTRACE_SIZE                   policy<{'arm64': '64'}>
