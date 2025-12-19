@@ -2054,6 +2054,8 @@ CONFIG_ZYNQMP_POWER                             policy<{'arm64': '-'}>
 # Panic on oops for better debugging (stop immediately on kernel bugs)
 CONFIG_PANIC_ON_OOPS                            policy<{'arm64': 'y'}>
 CONFIG_PANIC_ON_OOPS                            note<'Tachyon: panic immediately on oops for easier debugging'>
+CONFIG_PANIC_ON_OOPS_VALUE                      policy<{'arm64': '1'}>
+CONFIG_PANIC_ON_OOPS_VALUE                      note<'Tachyon: panic value 1 = always panic on oops'>
 
 # Pstore/ramoops configuration for crash log preservation
 CONFIG_PSTORE_RAM                               policy<{'arm64': 'y'}>
@@ -2067,6 +2069,15 @@ CONFIG_PSTORE_PMSG                              note<'Tachyon: capture userspace
 
 CONFIG_PSTORE_FTRACE                            policy<{'arm64': 'y'}>
 CONFIG_PSTORE_FTRACE                            note<'Tachyon: capture function traces to pstore'>
+
+# PSTORE_BLK size options (new config options that appeared)
+CONFIG_PSTORE_BLK_CONSOLE_SIZE                  policy<{'arm64': '64'}>
+CONFIG_PSTORE_BLK_PMSG_SIZE                     policy<{'arm64': '64'}>
+CONFIG_PSTORE_BLK_FTRACE_SIZE                   policy<{'arm64': '64'}>
+
+# REED_SOLOMON is pulled in as built-in dependency by PSTORE_RAM=y
+CONFIG_REED_SOLOMON                             policy<{'arm64': 'y'}>
+CONFIG_REED_SOLOMON                             note<'Tachyon: built-in (was module) due to PSTORE_RAM=y dependency'>
 
 # Larger log buffer for more crash context
 CONFIG_LOG_BUF_SHIFT                            policy<{'arm64': '18'}>
