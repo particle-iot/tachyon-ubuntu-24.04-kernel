@@ -7,10 +7,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Installation mode: "device" or "adb"
+# Installation mode: "device", "adb", or "ssh"
 INSTALL_MODE=""
 ADB_SERIAL="${ADB_SERIAL:-}"
 ADB_CMD="adb"
+SSH_HOST="${SSH_HOST:-}"
+SSH_PASSWORD="${SSH_PASSWORD:-}"
+SSH_CMD="ssh"
+SCP_CMD="scp"
 AUTO_CONFIRM="no"
 AUTO_REBOOT="no"
 DRY_RUN="no"
@@ -25,17 +29,21 @@ NC='\033[0m' # No Color
 
 show_help() {
     cat << EOF
-Usage: $0 --device <command> [packages...]             # Run on device (requires sudo)
-       $0 --adb [-s ID] <command> [packages...]        # Run via ADB from host
+Usage: $0 --device <command> [packages...]                            # Run on device (requires sudo)
+       $0 --adb [-s ID] <command> [packages...]                       # Run via ADB from host
+       $0 --ssh --ssh-host USER@HOST [--ssh-password PWD] <command>  # Run via SSH from host
 
 Options:
-    --device        Run installation locally on the device
-    --adb           Run installation remotely via ADB from host computer
-    -s, --serial ID Specify ADB device serial (optional, uses ADB_SERIAL env var)
-    --yes, -y       Auto-confirm installation (skip confirmation prompt)
-    --reboot, -r    Automatically reboot device after installation
-    --dry-run, -n   Show what would be done without doing it
-    --force, -f     Force installation (pass --force-all to dpkg)
+    --device              Run installation locally on the device
+    --adb                 Run installation remotely via ADB from host computer
+    -s, --serial ID       Specify ADB device serial (optional, uses ADB_SERIAL env var)
+    --ssh                 Run installation remotely via SSH from host computer
+    --ssh-host USER@HOST  SSH connection string (e.g., root@192.168.86.42)
+    --ssh-password PWD    SSH password (optional, uses SSH_PASSWORD env var or key auth)
+    --yes, -y             Auto-confirm installation (skip confirmation prompt)
+    --reboot, -r          Automatically reboot device after installation
+    --dry-run, -n         Show what would be done without doing it
+    --force, -f           Force installation (pass --force-all to dpkg)
 
 Commands:
     help            Show this help message
@@ -49,11 +57,14 @@ Arguments:
 
 Environment Variables:
     ADB_SERIAL      ADB device serial number (alternative to --serial flag)
+    SSH_HOST        SSH connection string (alternative to --ssh-host flag)
+    SSH_PASSWORD    SSH password (alternative to --ssh-password flag)
 
 Examples:
     # Auto-find and install local packages
     $0 --adb install                      # Auto-find and install via ADB
     $0 --device install                   # Auto-find and install on device
+    $0 --ssh --ssh-host root@192.168.86.42 --ssh-password particle install
 
     # Install from URLs
     $0 --adb -s a3c44498 install \\
@@ -97,6 +108,18 @@ while [[ $# -gt 0 ]]; do
             ADB_SERIAL="$2"
             shift 2
             ;;
+        --ssh)
+            INSTALL_MODE="ssh"
+            shift
+            ;;
+        --ssh-host)
+            SSH_HOST="$2"
+            shift 2
+            ;;
+        --ssh-password)
+            SSH_PASSWORD="$2"
+            shift 2
+            ;;
         --yes|-y)
             AUTO_CONFIRM="yes"
             shift
@@ -135,6 +158,46 @@ if [ "$INSTALL_MODE" = "adb" ] && [ -n "$ADB_SERIAL" ]; then
     ADB_CMD="adb -s $ADB_SERIAL"
 fi
 
+# Setup SSH/SCP commands with password authentication if specified
+if [ "$INSTALL_MODE" = "ssh" ]; then
+    if [ -z "$SSH_HOST" ]; then
+        error "SSH mode requires --ssh-host parameter (e.g., root@192.168.86.42)"
+    fi
+
+    # Check if sshpass is available for password authentication
+    USE_SSHPASS=false
+    if [ -n "$SSH_PASSWORD" ]; then
+        if command -v sshpass &> /dev/null; then
+            USE_SSHPASS=true
+        else
+            warn "sshpass not found - install it for automatic password authentication"
+            warn "  macOS: brew install hudochenkov/sshpass/sshpass"
+            warn "  Linux: sudo apt-get install sshpass"
+            warn "You will be prompted for the password for each SSH/SCP operation"
+        fi
+    fi
+fi
+
+# Helper function to execute SSH commands
+ssh_exec() {
+    if [ "$USE_SSHPASS" = true ]; then
+        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SSH_HOST" "$@"
+    else
+        ssh -o StrictHostKeyChecking=no "$SSH_HOST" "$@"
+    fi
+}
+
+# Helper function to execute SCP commands
+scp_exec() {
+    local src="$1"
+    local dst="$2"
+    if [ "$USE_SSHPASS" = true ]; then
+        sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no "$src" "$dst"
+    else
+        scp -o StrictHostKeyChecking=no "$src" "$dst"
+    fi
+}
+
 error() {
     echo -e "${RED}ERROR: $*${NC}" >&2
     exit 1
@@ -155,30 +218,41 @@ section() {
     echo -e "${BLUE}========================================${NC}"
 }
 
-# Execute command on device (locally or via ADB)
+# Execute command on device (locally, via ADB, or via SSH)
 run_on_device() {
     if [ "$INSTALL_MODE" = "device" ]; then
         "$@"
-    else
+    elif [ "$INSTALL_MODE" = "adb" ]; then
         $ADB_CMD shell "$@"
+    elif [ "$INSTALL_MODE" = "ssh" ]; then
+        ssh_exec "$@"
     fi
 }
 
-# Execute command on device as root (locally or via ADB)
+# Execute command on device as root (locally, via ADB, or via SSH)
 run_on_device_sudo() {
     if [ "$INSTALL_MODE" = "device" ]; then
         sudo "$@"
-    else
+    elif [ "$INSTALL_MODE" = "adb" ]; then
         $ADB_CMD shell "sudo $*"
+    elif [ "$INSTALL_MODE" = "ssh" ]; then
+        # SSH: if connecting as root, no sudo needed; otherwise use sudo
+        if [[ "$SSH_HOST" == root@* ]]; then
+            ssh_exec "$*"
+        else
+            ssh_exec "sudo $*"
+        fi
     fi
 }
 
-# Push file to device (only for ADB mode, no-op for device mode)
+# Push file to device (for ADB and SSH modes, no-op for device mode)
 push_to_device() {
     local src="$1"
     local dst="$2"
     if [ "$INSTALL_MODE" = "adb" ]; then
         $ADB_CMD push "$src" "$dst"
+    elif [ "$INSTALL_MODE" = "ssh" ]; then
+        scp_exec "$src" "$SSH_HOST:$dst"
     fi
 }
 
@@ -270,6 +344,20 @@ check_device() {
         if ! $ADB_CMD shell "echo test" &> /dev/null; then
             error "Cannot communicate with device"
         fi
+    elif [ "$INSTALL_MODE" = "ssh" ]; then
+        # Check SSH connectivity
+        if ! command -v ssh &> /dev/null; then
+            error "ssh command not found. Please install OpenSSH client."
+        fi
+
+        if ! command -v scp &> /dev/null; then
+            error "scp command not found. Please install OpenSSH client."
+        fi
+
+        # Verify device is accessible
+        if ! ssh_exec "echo test" &> /dev/null; then
+            error "Cannot communicate with device via SSH. Check hostname and credentials."
+        fi
     fi
 
     # Get device info
@@ -283,6 +371,9 @@ check_device() {
     info "  Distribution: $DISTRO"
     if [ -n "$ADB_SERIAL" ]; then
         info "  Serial: $ADB_SERIAL"
+    fi
+    if [ -n "$SSH_HOST" ]; then
+        info "  SSH Host: $SSH_HOST"
     fi
 
     # Check for packages
@@ -404,7 +495,7 @@ install_packages() {
 
     if [ "$DRY_RUN" = "yes" ]; then
         warn "DRY RUN: Would perform the following actions:"
-        if [ "$INSTALL_MODE" = "adb" ]; then
+        if [ "$INSTALL_MODE" = "adb" ] || [ "$INSTALL_MODE" = "ssh" ]; then
             warn "  1. Push ${#PACKAGES[@]} packages to /tmp/"
         fi
         warn "  2. Install packages with dpkg -i"
@@ -414,8 +505,8 @@ install_packages() {
         return 0
     fi
 
-    # Push packages if using ADB
-    if [ "$INSTALL_MODE" = "adb" ]; then
+    # Push packages if using ADB or SSH
+    if [ "$INSTALL_MODE" = "adb" ] || [ "$INSTALL_MODE" = "ssh" ]; then
         info "Pushing packages to device..."
         for pkg in "${PACKAGES[@]}"; do
             info "  Pushing $(basename "$pkg")..."
@@ -450,7 +541,7 @@ install_packages() {
     info "Installed kernel: $NEW_KERNEL"
 
     # Cleanup
-    if [ "$INSTALL_MODE" = "adb" ]; then
+    if [ "$INSTALL_MODE" = "adb" ] || [ "$INSTALL_MODE" = "ssh" ]; then
         info "Cleaning up temporary files on device..."
         for pkg in "${PACKAGES[@]}"; do
             run_on_device "rm -f /tmp/$(basename "$pkg")" || true
@@ -471,8 +562,14 @@ reboot_device() {
 
         if [ "$INSTALL_MODE" = "device" ]; then
             sudo reboot || warn "Reboot command failed"
-        else
+        elif [ "$INSTALL_MODE" = "adb" ]; then
             $ADB_CMD reboot || warn "Reboot command failed, device may already be rebooting"
+        elif [ "$INSTALL_MODE" = "ssh" ]; then
+            if [[ "$SSH_HOST" == root@* ]]; then
+                ssh_exec "reboot" || warn "Reboot command failed, device may already be rebooting"
+            else
+                ssh_exec "sudo reboot" || warn "Reboot command failed, device may already be rebooting"
+            fi
         fi
 
         info "Device is rebooting..."
@@ -481,8 +578,14 @@ reboot_device() {
         warn "Installation complete. Reboot device to use new kernel:"
         if [ "$INSTALL_MODE" = "device" ]; then
             warn "  sudo reboot"
-        else
+        elif [ "$INSTALL_MODE" = "adb" ]; then
             warn "  $ADB_CMD reboot"
+        elif [ "$INSTALL_MODE" = "ssh" ]; then
+            if [[ "$SSH_HOST" == root@* ]]; then
+                warn "  ssh $SSH_HOST 'reboot'"
+            else
+                warn "  ssh $SSH_HOST 'sudo reboot'"
+            fi
         fi
     fi
 }
