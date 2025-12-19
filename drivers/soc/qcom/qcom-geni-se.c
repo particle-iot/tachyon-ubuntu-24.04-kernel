@@ -1244,8 +1244,10 @@ int geni_load_se_firmware(struct geni_se *se, enum geni_se_protocol_type protoco
 	}
 
 	ret = device_property_read_string(se->wrapper->dev, "firmware-name", &fw_name);
-	if (ret)
-		return  -EINVAL;
+	if (ret) {
+		/* Use default name */
+		fw_name = "qupv3fw.elf";
+	}
 
 	se->protocol = protocol;
 
