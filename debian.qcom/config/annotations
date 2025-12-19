@@ -2048,3 +2048,26 @@ CONFIG_ZYNQMP_FIRMWARE_DEBUG                    policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_IPI_MBOX                          policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_PM_DOMAINS                        policy<{'arm64': '-'}>
 CONFIG_ZYNQMP_POWER                             policy<{'arm64': '-'}>
+
+# ---- Tachyon: Enhanced Crash Debugging Configuration ----
+
+# Panic on oops for better debugging (stop immediately on kernel bugs)
+CONFIG_PANIC_ON_OOPS                            policy<{'arm64': 'y'}>
+CONFIG_PANIC_ON_OOPS                            note<'Tachyon: panic immediately on oops for easier debugging'>
+
+# Pstore/ramoops configuration for crash log preservation
+CONFIG_PSTORE_RAM                               policy<{'arm64': 'y'}>
+CONFIG_PSTORE_RAM                               note<'Tachyon: built-in ramoops for early crash capture'>
+
+CONFIG_PSTORE_CONSOLE                           policy<{'arm64': 'y'}>
+CONFIG_PSTORE_CONSOLE                           note<'Tachyon: capture console output to pstore'>
+
+CONFIG_PSTORE_PMSG                              policy<{'arm64': 'y'}>
+CONFIG_PSTORE_PMSG                              note<'Tachyon: capture userspace messages to pstore'>
+
+CONFIG_PSTORE_FTRACE                            policy<{'arm64': 'y'}>
+CONFIG_PSTORE_FTRACE                            note<'Tachyon: capture function traces to pstore'>
+
+# Larger log buffer for more crash context
+CONFIG_LOG_BUF_SHIFT                            policy<{'arm64': '18'}>
+CONFIG_LOG_BUF_SHIFT                            note<'Tachyon: 256KB log buffer (was 128KB)'>
