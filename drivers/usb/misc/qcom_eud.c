@@ -50,6 +50,7 @@ struct eud_chip {
 	bool				usb_attached;
 	bool				vbus_control;
 	enum usb_role			current_role;
+	bool				manage_on_role_changes;
 };
 
 struct eud_cfg {
@@ -330,6 +331,14 @@ static int eud_usb_role_switch_set(struct usb_role_switch *sw,
 
 	mutex_lock(&chip->mutex);
 	ret = eud_usb_role_set(chip, role);
+	if (chip->manage_on_role_changes) {
+		if (role == USB_ROLE_DEVICE) {
+			enable_eud(chip);
+		} else if (role == USB_ROLE_HOST) {
+			disable_eud(chip);
+			eud_phy_enable(chip);
+		}
+	}
 	mutex_unlock(&chip->mutex);
 
 	return ret;
@@ -342,12 +351,16 @@ static int eud_probe(struct platform_device *pdev)
 	struct resource *res;
 	const struct eud_cfg *cfg;
 	int ret;
+	u32 reg;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
 	chip->dev = &pdev->dev;
+
+	chip->manage_on_role_changes = fwnode_property_read_bool(dev_fwnode(chip->dev),
+			"qcom,manage-on-role-changes");
 
 	chip->usb2_phy = devm_phy_get(chip->dev, "usb2-phy");
 	if (IS_ERR(chip->usb2_phy))
@@ -399,6 +412,12 @@ static int eud_probe(struct platform_device *pdev)
 	enable_irq_wake(chip->irq);
 
 	platform_set_drvdata(pdev, chip);
+
+	reg = readl(chip->base + EUD_REG_CSR_EUD_EN);
+	if (reg & EUD_ENABLE) {
+		disable_eud(chip);
+		chip->manage_on_role_changes = true;
+	}
 
 	return 0;
 }
