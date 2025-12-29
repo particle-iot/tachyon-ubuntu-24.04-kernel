@@ -1,3 +1,15 @@
+linux-particle (6.8.0-1058.59+particle1) noble; urgency=medium
+
+  * Particle: 6.8.0-1058.59+particle1
+    - Sync with upstream canonical/master-next @ Ubuntu-qcom-6.8.0-1058.59
+  * Enable panic debug
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/21)
+  * usb: qcom: eud: turn EUD on or off on role switch changes
+  * usb: dwc3: revert to canonical/master-next
+  * soc: qcom: geni-se: use default qupv3fw.elf firmware name if not set in DT
+
+-- Andrey Tolstoy <andrey@particle.io>  Tue, 30 Dec 2025 04:02:13 +0700
+
 linux-qcom (6.8.0-1058.59) noble; urgency=medium
 
   * noble/linux-qcom: 6.8.0-1058.59 -proposed tracker (LP: #2136794)
