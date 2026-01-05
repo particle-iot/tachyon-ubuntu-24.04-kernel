@@ -171,3 +171,6 @@ sphinx_*/
 
 # Rust analyzer configuration
 /rust-project.json
+
+# Build output directory for docker build
+build-tachyon
