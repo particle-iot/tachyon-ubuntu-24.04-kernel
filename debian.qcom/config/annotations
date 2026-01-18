@@ -21,8 +21,10 @@ CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT       note<'LP: #2102032'>
 CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_INFO_BTF                           note<'Disabled - causes build issues with cross-compile'>
 CONFIG_DEBUG_INFO_BTF_MODULES                   policy<{'arm64': '-'}>
-CONFIG_PAHOLE_HAS_LANG_EXCLUDE                  policy<{'arm64': '-'}>
-CONFIG_PAHOLE_HAS_SPLIT_BTF                     policy<{'arm64': '-'}>
+CONFIG_MODULE_ALLOW_BTF_MISMATCH                policy<{'arm64': '-'}>
+CONFIG_PAHOLE_HAS_LANG_EXCLUDE                  policy<{'arm64': 'y'}>
+CONFIG_PAHOLE_HAS_SPLIT_BTF                     policy<{'arm64': 'y'}>
+CONFIG_PROBE_EVENTS_BTF_ARGS                    policy<{'arm64': '-'}>
 CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': '-'}>
 
 CONFIG_QCOM_QSEECOM                             policy<{'arm64': 'y'}>
