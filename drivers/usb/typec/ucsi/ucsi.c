@@ -1194,7 +1194,8 @@ static void ucsi_partner_change(struct ucsi_connector *con)
 			typec_set_mode(con->port, TYPEC_MODE_AUDIO);
 			break;
 		default:
-			if (UCSI_CONSTAT(con, PARTNER_FLAG_USB))
+			if (UCSI_CONSTAT(con, PARTNER_FLAG_USB) &&
+			    !UCSI_CONSTAT(con, PARTNER_FLAG_ALT_MODE))
 				typec_set_mode(con->port, TYPEC_STATE_USB);
 		}
 	}
