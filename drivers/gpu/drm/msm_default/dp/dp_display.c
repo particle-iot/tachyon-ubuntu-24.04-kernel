@@ -1199,6 +1199,7 @@ enum drm_mode_status msm_dp_display_mode_valid(struct msm_dp *dp,
 int msm_dp_display_get_modes(struct msm_dp *dp)
 {
 	struct msm_dp_display_private *msm_dp_display;
+	int rc;
 
 	if (!dp) {
 		DRM_ERROR("invalid params\n");
@@ -1207,8 +1208,18 @@ int msm_dp_display_get_modes(struct msm_dp *dp)
 
 	msm_dp_display = container_of(dp, struct msm_dp_display_private, msm_dp_display);
 
-	return msm_dp_panel_get_modes(msm_dp_display->panel,
-		dp->connector);
+	rc = msm_dp_panel_get_modes(msm_dp_display->panel, dp->connector);
+	if (rc > 0)
+		return rc;
+
+	/* Particle: Retry once because early HPD-high EDID reads can fail. */
+	drm_dbg_dp(msm_dp_display->drm_dev, "retry EDID read for DP modes\n");
+
+	rc = msm_dp_panel_read_edid(msm_dp_display->panel, dp->connector);
+	if (rc)
+		return rc;
+
+	return msm_dp_panel_get_modes(msm_dp_display->panel, dp->connector);
 }
 
 bool msm_dp_display_check_video_test(struct msm_dp *dp)
