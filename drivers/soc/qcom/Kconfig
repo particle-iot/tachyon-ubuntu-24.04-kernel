@@ -125,6 +125,23 @@ config QCOM_PMIC_GLINK
 	  Say yes here to support USB-C and battery status on modern Qualcomm
 	  platforms.
 
+config QCOM_GLINK_PKT
+	tristate "Qualcomm GLINK packet driver (out-of-tree, /dev/smd*)"
+	depends on RPMSG_QCOM_GLINK
+	depends on OF
+	help
+	  Exposes MPSS GLINK channels (e.g. DATA1, DATA4, DATA11) as
+	  /dev/smd* character devices for userspace AT / data communication
+	  with the integrated modem. This is an out-of-tree downstream
+	  alternative to the mainline rpmsg_wwan_ctrl driver, used as a
+	  workaround for the qcom_glink_native destroy_ept deadlock against
+	  wwan_core ops_lock on close (see Particle bugfix notes).
+
+	  Userspace must blacklist rpmsg_wwan_ctrl to avoid racing for the
+	  same channels.
+
+	  If unsure, say N.
+
 config QCOM_QMI_HELPERS
 	tristate
 	depends on NET
