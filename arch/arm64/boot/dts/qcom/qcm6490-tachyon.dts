@@ -1,0 +1,1775 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025 Particle Industries, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+
+/* PM7250B is configured to use SID8/9 */
+#define PM7250B_SID 8
+#define PM7250B_SID1 9
+
+#include <dt-bindings/iio/qcom,spmi-adc7-pm7325.h>
+#include <dt-bindings/iio/qcom,spmi-adc7-pmk8350.h>
+#include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
+#include "qcm6490.dtsi"
+#include "pm7250b.dtsi"
+#include "pm7325.dtsi"
+#include "pm8350c.dtsi"
+#include "pmk8350.dtsi"
+
+/ {
+    model = "Particle Tachyon";
+    compatible = "particle,tachyon", "qcom,qcm6490", "qcom,yupik-iot", "qcom,yupik-iot-idp", "qcom,idp";
+    
+    qcom,board-id = <0x22 0x00>;
+    qcom,msm-id = <0x1f1 0x10000>;
+
+    reserved-memory {
+        rmtfs_mem: memory@f8500000 {
+            compatible = "qcom,rmtfs-mem";
+            reg = <0x0 0xf8500000 0x0 0x600000>;
+            no-map;
+
+            qcom,client-id = <1>;
+            qcom,vmid = <QCOM_SCM_VMID_MSS_MSA>, <QCOM_SCM_VMID_NAV>;
+        };
+    };
+
+    /*
+     * cam is powered externally (always on). Model the internal module rails
+     * as fixed regulators so the sensor driver can do its power sequencing
+     * without toggling unrelated PMIC rails.
+     */
+    cam_vana_2p8: regulator-cam-vana-2p8 {
+        compatible = "regulator-fixed";
+        regulator-name = "cam_vana_2p8";
+        regulator-min-microvolt = <2800000>;
+        regulator-max-microvolt = <2800000>;
+        regulator-always-on;
+        regulator-boot-on;
+    };
+
+    cam_vdig_1p05: regulator-cam-vdig-1p05 {
+        compatible = "regulator-fixed";
+        regulator-name = "cam_vdig_1p05";
+        regulator-min-microvolt = <1050000>;
+        regulator-max-microvolt = <1050000>;
+        regulator-always-on;
+        regulator-boot-on;
+    };
+
+    cam_vddl_1p8: regulator-cam-vddl-1p8 {
+        compatible = "regulator-fixed";
+        regulator-name = "cam_vddl_1p8";
+        regulator-min-microvolt = <1800000>;
+        regulator-max-microvolt = <1800000>;
+        regulator-always-on;
+        regulator-boot-on;
+    };
+
+    codec_vdd_1p8: regulator-codec-1p8 {
+        compatible = "regulator-fixed";
+        regulator-name = "codec_1p8";
+        regulator-min-microvolt = <1800000>;
+        regulator-max-microvolt = <1800000>;
+        gpio = <&tlmm 16 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+    };
+
+    codec_vdd_3p0: regulator-codec-3p0 {
+        compatible = "regulator-fixed";
+        regulator-name = "codec_3p0";
+        regulator-min-microvolt = <3000000>;
+        regulator-max-microvolt = <3000000>;
+        gpio = <&tlmm 17 GPIO_ACTIVE_HIGH>;
+        enable-active-high;
+    };
+
+    aliases {
+        serial0 = &uart5;  // Debug
+        
+        hsuart0 = &uart7;  // Bluetooth
+        hsuart1 = &uart12; // Syscon
+        hsuart2 = &uart8;  // 40 pin: 8,10,11,36
+
+        i2c0 = &i2c0;  // Audio Codec bus
+        i2c1 = &i2c2;  // 40 pin: 3,5
+        i2c2 = &i2c10; // QWIIC
+
+        spi0 = &spi14; // 40 pin: 19,21,23,24,26 a98000
+
+        wlan = &wlan;
+        bluetooth = &bluetooth;
+    };
+
+    chosen {
+        stdout-path = "serial0:115200n8";
+    };
+
+    gpio-keys {
+        compatible = "gpio-keys";
+        label = "gpio-keys";
+
+        pinctrl-0 = <&key_vol_up_default>;
+        pinctrl-names = "default";
+
+        key-volume-up {
+            label = "volume_up";
+            gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
+            linux,input-type = <1>;
+            linux,code = <KEY_VOLUMEUP>;
+            wakeup-source;
+            debounce-interval = <15>;
+            linux,can-disable;
+        };
+    };
+
+    leds {
+        compatible = "gpio-leds";
+
+        activity_led: activity_led {
+            label = "activity_led";
+            function = LED_FUNCTION_ACTIVITY;
+            linux,default-trigger = "activity";
+            gpios = <&tlmm 14 GPIO_ACTIVE_HIGH>;
+            default-state = "on";
+            status = "ok";
+            regulators = <&vreg_l7c_3p0>;
+        };
+    };
+
+    thermal-zones {
+        quiet-thermal {
+            polling-delay-passive = <0>;
+            polling-delay = <0>;
+            thermal-sensors = <&pmk8350_adc_tm 1>;
+
+            trips {
+                active-config0 {
+                    temperature = <125000>;
+                    hysteresis = <1000>;
+                    type = "passive";
+                };
+            };
+        };
+
+        sdm-skin-thermal {
+            polling-delay-passive = <0>;
+            polling-delay = <0>;
+            thermal-sensors = <&pmk8350_adc_tm 3>;
+
+            trips {
+                active-config0 {
+                    temperature = <125000>;
+                    hysteresis = <1000>;
+                    type = "passive";
+                };
+            };
+        };
+
+        xo-thermal {
+            polling-delay-passive = <0>;
+            polling-delay = <0>;
+            thermal-sensors = <&pmk8350_adc_tm 0>;
+
+            trips {
+                active-config0 {
+                    temperature = <125000>;
+                    hysteresis = <1000>;
+                    type = "passive";
+                };
+            };
+        };
+    };
+
+    wcn6855-pmu {
+        compatible = "qcom,wcn6855-pmu";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&wlan_en_state>;
+
+        vddctrl1-supply = <&vreg_l19b_1p8>;
+        vddctrl2-supply = <&vreg_s7b_0p972>; // ? FIXME
+        vddaon-supply = <&vreg_s7b_0p972>;
+        vddvm-supply = <&vreg_l19b_1p8>;
+        vddvl-supply = <&vreg_s1b_1p872>;
+        vddvh-supply = <&vreg_s8b_1p272>;
+
+        wlan-enable-gpios = <&tlmm 84 GPIO_ACTIVE_HIGH>;
+        //bt-enable-gpios = <&tlmm 85 GPIO_ACTIVE_HIGH>;
+
+        regulators {
+            vreg_pmu_rfa_cmn: ldo0 {
+                regulator-name = "vreg_pmu_rfa_cmn";
+            };
+
+            vreg_pmu_aon_0p59: ldo1 {
+                regulator-name = "vreg_pmu_aon_0p59";
+            };
+
+            vreg_pmu_wlcx_0p8: ldo2 {
+                regulator-name = "vreg_pmu_wlcx_0p8";
+            };
+
+            vreg_pmu_wlmx_0p85: ldo3 {
+                regulator-name = "vreg_pmu_wlmx_0p85";
+            };
+
+            vreg_pmu_btcmx_0p85: ldo4 {
+                regulator-name = "vreg_pmu_btcmx_0p85";
+            };
+
+            vreg_pmu_rfa_0p8: ldo5 {
+                regulator-name = "vreg_pmu_rfa_0p8";
+            };
+
+            vreg_pmu_rfa_1p2: ldo6 {
+                regulator-name = "vreg_pmu_rfa_1p2";
+            };
+
+            vreg_pmu_rfa_1p7: ldo7 {
+                regulator-name = "vreg_pmu_rfa_1p7";
+            };
+
+            vreg_pmu_pcie_0p9: ldo8 {
+                regulator-name = "vreg_pmu_pcie_0p9";
+            };
+
+            vreg_pmu_pcie_1p8: ldo9 {
+                regulator-name = "vreg_pmu_pcie_1p8";
+            };
+        };
+    };
+
+    pmic-glink {
+        compatible = "qcom,qcm6490-pmic-glink", "qcom,pmic-glink";
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        orientation-gpios = <&tlmm 140 GPIO_ACTIVE_HIGH>;
+
+        connector@0 {
+            compatible = "usb-c-connector";
+            reg = <0>;
+            power-role = "dual";
+            data-role = "dual";
+
+            ports {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                port@0 {
+                    reg = <0>;
+
+                    pmic_glink_hs_in: endpoint {
+                        remote-endpoint = <&usb_1_dwc3_hs>;
+                    };
+                };
+
+                port@1 {
+                    reg = <1>;
+
+                    pmic_glink_ss_in: endpoint {
+                        //remote-endpoint = <&usb_1_dwc3_ss>;
+                        remote-endpoint = <&usb_1_qmpphy_out>;
+                    };
+                };
+
+                port@2 {
+                    reg = <2>;
+
+                    pmic_glink_sbu: endpoint {
+                        remote-endpoint = <&usb1_sbu_mux>;
+                    };
+                };
+            };
+        };
+    };
+};
+
+// Audio: reserved memory, stub codec, ADSP memory mapping, and sound card
+/ {
+    reserved-memory {
+        audio_cma_mem: qcom,audio-ml {
+            compatible = "shared-dma-pool";
+            alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+            reusable;
+            alignment = <0x0 0x400000>;
+            size = <0x0 0x1000000>; /* 16MB */
+        };
+    };
+
+    msm_stub_codec: msm-stub-codec {
+        compatible = "qcom,msm-stub-codec";
+        #sound-dai-cells = <1>;
+    };
+
+    spf_core_platform: spf-core-platform {
+        compatible = "qcom,spf-core-platform";
+
+        msm_audio_mem: msm-audio-mem {
+            compatible = "qcom,msm-audio-mem";
+            qcom,smmu-version = <2>;
+            qcom,smmu-enabled;
+            iommus = <&apps_smmu 0x1801 0x0>;
+            qcom,iommu-dma-addr-pool = <0x10000000 0x10000000>;
+            qcom,smmu-sid-mask = /bits/ 64 <0xf>;
+            dma-coherent;
+        };
+
+        msm_audio_mem_cma: msm-audio-mem-cma {
+            compatible = "qcom,msm-audio-mem";
+            memory-region = <&audio_cma_mem>;
+        };
+    };
+
+    sound: sound {
+        status = "okay";
+        compatible = "qcom,qcm6490-sndcard";
+        model = "qcm6490-tachyon-snd-card";
+        widgets =
+            "Microphone", "Onboard Mic";
+        audio-routing =
+            "Headphone Jack", "LOUT1",
+            "Headphone Jack", "ROUT1",
+            "Onboard Mic", "Mic Bias",
+            "LINPUT1", "Onboard Mic",
+            "RINPUT1", "Onboard Mic";
+        pin-switches = "Onboard Mic";
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        pinctrl-names = "default", "stub_aif1_active", "stub_aif1_sleep";
+        pinctrl-0 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>,
+                <&mi2s0_mclk_sleep>, <&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+        pinctrl-1 = <&mi2s0_data0>, <&mi2s0_data1>,
+                <&mi2s0_mclk>, <&mi2s0_sclk>, <&mi2s0_ws>;
+        pinctrl-2 = <&mi2s0_data0_sleep>, <&mi2s0_data1_sleep>,
+                <&mi2s0_mclk_sleep>, <&mi2s0_sclk_sleep>, <&mi2s0_ws_sleep>;
+
+        mi2s-playback-dai-link {
+            link-name = "MI2S-LPAIF-RX-PRIMARY";
+            dai-format = "i2s";
+            mclk-fs = <256>;
+            cpu {
+                sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
+            };
+            codec {
+                sound-dai = <&msm_stub_codec 2>, <&es8388>;
+            };
+            platform {
+                sound-dai = <&q6apm>;
+            };
+        };
+
+        mi2s-capture-dai-link {
+            link-name = "MI2S-LPAIF-TX-PRIMARY";
+            dai-format = "i2s";
+            mclk-fs = <256>;
+            cpu {
+                sound-dai = <&q6apmbedai PRIMARY_MI2S_TX>;
+            };
+            codec {
+                sound-dai = <&msm_stub_codec 3>, <&es8388>;
+            };
+            platform {
+                sound-dai = <&q6apm>;
+            };
+        };
+
+        dp-playback-dai-link {
+            link-name = "DISPLAY_PORT-RX";
+            cpu {
+                sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
+            };
+            codec {
+                sound-dai = <&mdss_dp>;
+            };
+            platform {
+                sound-dai = <&q6apm>;
+            };
+        };
+    };
+};
+
+&{/smem} {
+    bootph-all;
+};
+
+&apps_rsc {
+    regulators-0 {
+        compatible = "qcom,pm7325-rpmh-regulators";
+        qcom,pmic-id = "b";
+
+        vreg_s1b_1p872: smps1 {
+            regulator-min-microvolt = <1840000>;
+            regulator-max-microvolt = <2040000>;
+        };
+
+        vreg_s2b_0p876: smps2 {
+            regulator-min-microvolt = <570070>;
+            regulator-max-microvolt = <1050000>;
+        };
+
+        vreg_s7b_0p972: smps7 {
+            regulator-min-microvolt = <535000>;
+            regulator-max-microvolt = <1120000>;
+        };
+
+        vreg_s8b_1p272: smps8 {
+            regulator-min-microvolt = <1200000>;
+            regulator-max-microvolt = <1500000>;
+        };
+
+        vreg_l1b_0p912: ldo1 {
+            regulator-min-microvolt = <912000>;
+            regulator-max-microvolt = <925000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l2b_3p072: ldo2 {
+            regulator-min-microvolt = <2700000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l3b_0p504: ldo3 {
+            regulator-min-microvolt = <312000>;
+            regulator-max-microvolt = <910000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l4b_0p752: ldo4 {
+            regulator-min-microvolt = <752000>;
+            regulator-max-microvolt = <820000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l5b_0p752: ldo5 {
+            regulator-min-microvolt = <552000>;
+            regulator-max-microvolt = <832000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l6b_1p2: ldo6 {
+            regulator-min-microvolt = <1140000>;
+            regulator-max-microvolt = <1260000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l7b_2p952: ldo7 {
+            regulator-min-microvolt = <2400000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l8b_0p904: ldo8 {
+            regulator-min-microvolt = <870000>;
+            regulator-max-microvolt = <970000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l9b_1p2: ldo9 {
+            regulator-min-microvolt = <1200000>;
+            regulator-max-microvolt = <1304000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l11b_1p504: ldo11 {
+            regulator-min-microvolt = <1504000>;
+            regulator-max-microvolt = <2000000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l12b_0p751: ldo12 {
+            regulator-min-microvolt = <751000>;
+            regulator-max-microvolt = <824000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l13b_0p53: ldo13 {
+            regulator-min-microvolt = <530000>;
+            regulator-max-microvolt = <824000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l14b_1p08: ldo14 {
+            regulator-min-microvolt = <1080000>;
+            regulator-max-microvolt = <1304000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l15b_0p765: ldo15 {
+            regulator-min-microvolt = <765000>;
+            regulator-max-microvolt = <1020000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l16b_1p1: ldo16 {
+            regulator-min-microvolt = <1100000>;
+            regulator-max-microvolt = <1300000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l17b_1p7: ldo17 {
+            regulator-min-microvolt = <1700000>;
+            regulator-max-microvolt = <1900000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l18b_1p8: ldo18 {
+            regulator-min-microvolt = <1800000>;
+            regulator-max-microvolt = <2000000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l19b_1p8: ldo19 {
+            regulator-min-microvolt = <1800000>;
+            regulator-max-microvolt = <2000000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+    };
+
+    regulators-1 {
+        compatible = "qcom,pm8350c-rpmh-regulators";
+        qcom,pmic-id = "c";
+
+        vreg_s1c_2p19: smps1 {
+            regulator-min-microvolt = <2190000>;
+            regulator-max-microvolt = <2210000>;
+        };
+
+        vreg_s2c_0p752: smps2 {
+            regulator-min-microvolt = <750000>;
+            regulator-max-microvolt = <800000>;
+        };
+
+        vreg_s5c_0p752: smps5 {
+            regulator-min-microvolt = <465000>;
+            regulator-max-microvolt = <1050000>;
+        };
+
+        vreg_s7c_0p752: smps7 {
+            regulator-min-microvolt = <465000>;
+            regulator-max-microvolt = <800000>;
+        };
+
+        vreg_s9c_1p084: smps9 {
+            regulator-min-microvolt = <1010000>;
+            regulator-max-microvolt = <1170000>;
+        };
+
+        vreg_s10c_0p752:smps10 {
+            regulator-min-microvolt = <752000>;
+            regulator-max-microvolt = <800000>;
+        };
+
+        vreg_l1c_1p8: ldo1 {
+            regulator-min-microvolt = <1800000>;
+            regulator-max-microvolt = <1980000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l2c_1p62: ldo2 {
+            regulator-min-microvolt = <1620000>;
+            regulator-max-microvolt = <1980000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l3c_2p8: ldo3 {
+            regulator-min-microvolt = <2800000>;
+            regulator-max-microvolt = <3540000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l4c_1p62: ldo4 {
+            regulator-min-microvolt = <1620000>;
+            regulator-max-microvolt = <3300000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l5c_1p62: ldo5 {
+            regulator-min-microvolt = <1620000>;
+            regulator-max-microvolt = <3300000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l6c_2p96: ldo6 {
+            regulator-min-microvolt = <1650000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l7c_3p0: ldo7 {
+            regulator-min-microvolt = <3000000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+            regulator-always-on;
+        };
+
+        vreg_l8c_1p62: ldo8 {
+            regulator-min-microvolt = <1620000>;
+            regulator-max-microvolt = <2000000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l9c_2p96: ldo9 {
+            regulator-min-microvolt = <2700000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l10c_0p88: ldo10 {
+            regulator-min-microvolt = <880000>;
+            regulator-max-microvolt = <1050000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l11c_2p8: ldo11 {
+            regulator-min-microvolt = <2800000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l12c_1p65: ldo12 {
+            regulator-min-microvolt = <1650000>;
+            regulator-max-microvolt = <2000000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_l13c_2p7: ldo13 {
+            regulator-min-microvolt = <2700000>;
+            regulator-max-microvolt = <3544000>;
+            regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+        };
+
+        vreg_bob_3p296: bob {
+            regulator-min-microvolt = <3008000>;
+            regulator-max-microvolt = <3960000>;
+        };
+    };
+};
+
+&pm7325_gpios {
+    key_vol_up_default: key-vol-up-state {
+        pins = "gpio6";
+        function = "normal";
+        input-enable;
+        bias-pull-up;
+        power-source = <0>;
+        qcom,drive-strength = <3>;
+    };
+};
+
+&pm8350c_pwm {
+    #address-cells = <1>;
+    #size-cells = <0>;
+    status = "okay";
+
+    led@1 {
+        reg = <1>;
+        color = <LED_COLOR_ID_RED>;
+        label = "red";
+    };
+
+    led@2 {
+        reg = <2>;
+        color = <LED_COLOR_ID_GREEN>;
+        label = "green";
+    };
+
+    led@3 {
+        reg = <3>;
+        color = <LED_COLOR_ID_BLUE>;
+        label = "blue";
+    };
+};
+
+&pmk8350_adc_tm {
+    status = "okay";
+
+    xo-therm@0 {
+        reg = <0>;
+        io-channels = <&pmk8350_vadc PMK8350_ADC7_AMUX_THM1_100K_PU>;
+        qcom,ratiometric;
+        qcom,hw-settle-time-us = <200>;
+    };
+
+    quiet-therm@1 {
+        reg = <1>;
+        io-channels = <&pmk8350_vadc PM7325_ADC7_AMUX_THM1_100K_PU>;
+        qcom,ratiometric;
+        qcom,hw-settle-time-us = <200>;
+    };
+
+    sdm-skin-therm@3 {
+        reg = <3>;
+        io-channels = <&pmk8350_vadc PM7325_ADC7_AMUX_THM3_100K_PU>;
+        qcom,ratiometric;
+        qcom,hw-settle-time-us = <200>;
+    };
+};
+
+&pmk8350_pon {
+    status = "okay";
+};
+
+&pmk8350_rtc {
+    status = "okay";
+};
+
+&pmk8350_vadc {
+    channel@44 {
+        reg = <PMK8350_ADC7_AMUX_THM1_100K_PU>;
+        label = "xo_therm";
+        qcom,hw-settle-time = <200>;
+        qcom,pre-scaling = <1 1>;
+        qcom,ratiometric;
+    };
+
+    channel@144 {
+        reg = <PM7325_ADC7_AMUX_THM1_100K_PU>;
+        qcom,ratiometric;
+        qcom,hw-settle-time = <200>;
+        qcom,pre-scaling = <1 1>;
+        label = "pm7325_quiet_therm";
+    };
+
+    channel@146 {
+        reg = <PM7325_ADC7_AMUX_THM3_100K_PU>;
+        qcom,ratiometric;
+        qcom,hw-settle-time = <200>;
+        qcom,pre-scaling = <1 1>;
+        label = "pm7325_sdm_skin_therm";
+    };
+
+    pmk8350-die-temp@3 {
+        reg = <PMK8350_ADC7_DIE_TEMP>;
+        label = "pmk8350_die_temp";
+        qcom,pre-scaling = <1 1>;
+    };
+};
+
+&pon_pwrkey {
+    status = "okay";
+};
+
+&pon_resin {
+    linux,code = <KEY_VOLUMEDOWN>;
+    status = "okay";
+};
+
+&pcie1 {
+    perst-gpios = <&tlmm 2 GPIO_ACTIVE_LOW>;
+
+    pinctrl-0 = <&pcie1_reset_n>, <&pcie1_wake_n>, <&pcie1_clkreq_n>, <&pcie1_pwr_en>;
+    pinctrl-names = "default";
+
+    vdda-supply = <&vreg_l6b_1p2>;
+    vddpe-3v3-supply = <&vreg_bob_3p296>;
+
+    iommu-map = <0x0 &apps_smmu 0x1c80 0x1>,
+            <0x100 &apps_smmu 0x1c81 0x1>,
+            <0x208 &apps_smmu 0x1c84 0x1>,
+            <0x210 &apps_smmu 0x1c85 0x1>,
+            <0x218 &apps_smmu 0x1c86 0x1>,
+            <0x300 &apps_smmu 0x1c87 0x1>,
+            <0x400 &apps_smmu 0x1c88 0x1>,
+            <0x500 &apps_smmu 0x1c89 0x1>,
+            <0x501 &apps_smmu 0x1c90 0x1>;
+
+    status = "okay";
+};
+
+&pcie1_phy {
+    vdda-phy-supply = <&vreg_l10c_0p88>;
+    vdda-pll-supply = <&vreg_l6b_1p2>;
+
+    status = "okay";
+};
+
+&gpi_dma0 {
+    status = "okay";
+};
+
+&gpi_dma1 {
+    status = "okay";
+};
+
+&qupv3_id_0 {
+    status = "okay";
+};
+
+&qupv3_id_1 {
+    status = "okay";
+};
+
+&ipa {
+    firmware-name = "qcom/qcm6490/ipa_fws.mdt";
+};
+
+&remoteproc_adsp {
+    firmware-name = "qcom/qcm6490/adsp.mdt";
+    status = "okay";
+};
+
+&remoteproc_cdsp {
+    firmware-name = "qcom/qcm6490/cdsp.mdt";
+    status = "okay";
+};
+
+&remoteproc_mpss {
+    firmware-name = "tachyon/modem/modem.mdt";
+    status = "okay";
+};
+
+/*
+ * MPSS GLINK packet ports: expose modem AT / data channels as /dev/smd*
+ * character devices via the out-of-tree glink_pkt driver (drivers/soc/qcom).
+ *
+ * Background: mainline rpmsg_wwan_ctrl exposes the same DATA1/DATA4 channels
+ * as /dev/wwan0at*, but the mainline qcom_glink_native destroy_ept path
+ * deadlocks with wwan_core ops_lock on close (see yyt-notes/
+ * bugfix-modem-at_cmd_no_smd_dev.md Test-03/04). Until that is fixed
+ * upstream, we use glink_pkt which holds the rpmsg endpoint for the lifetime
+ * of the channel and never destroys it on close, sidestepping the deadlock.
+ *
+ * Userspace must blacklist rpmsg_wwan_ctrl so it does not race for the same
+ * channels (handled in rootfs config, not in this dts).
+ */
+/ {
+    qcom,glinkpkt {
+        compatible = "qcom,glinkpkt";
+
+        qcom,glinkpkt-data1 {
+            qcom,glinkpkt-edge    = "mpss";
+            qcom,glinkpkt-ch-name = "DATA1";
+            qcom,glinkpkt-dev-name = "smd7";
+        };
+
+        qcom,glinkpkt-data4 {
+            qcom,glinkpkt-edge    = "mpss";
+            qcom,glinkpkt-ch-name = "DATA4";
+            qcom,glinkpkt-dev-name = "smd8";
+        };
+
+        qcom,glinkpkt-data11 {
+            qcom,glinkpkt-edge    = "mpss";
+            qcom,glinkpkt-ch-name = "DATA11";
+            qcom,glinkpkt-dev-name = "smd11";
+        };
+    };
+};
+
+// Disable WCN6750 wifi, we have a different one
+&remoteproc_wpss {
+    status = "disabled";
+};
+
+&wifi {
+    status = "disabled";
+};
+
+&tlmm {
+    pinctrl-names = "default";
+    pinctrl-0 = <&header_40pin_gpio_default>, <&peri_5v_en_default>,
+            <&dsi_csi_sw_en_default>, <&syscon_rgb_reserved_default>,
+            <&syscon_bls_invoke_ctrl_default>, <&syscon_reset_ctrl_default>, <&level_shifter_en_default>;
+
+    csi1_mclk_default: csi1-mclk-default-state {
+        pins = "gpio67";
+        function = "cam_mclk";
+        drive-strength = <2>;
+        bias-disable;
+    };
+
+    csi1_mclk_sleep: csi1-mclk-sleep-state {
+        pins = "gpio67";
+        function = "cam_mclk";
+        drive-strength = <2>;
+        bias-pull-down;
+    };
+
+    csi1_reset_default: csi1-reset-default-state {
+        pins = "gpio141";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    csi1_reset_sleep: csi1-reset-sleep-state {
+        pins = "gpio141";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-pull-down;
+    };
+
+    csi1_power_en_default: csi1-power-en-default-state {
+        pins = "gpio107";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    csi1_power_en_sleep: csi1-power-en-sleep-state {
+        pins = "gpio107";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-pull-down;
+    };
+
+    csi2_mclk_default: csi2-mclk-default-state {
+        pins = "gpio65";
+        function = "cam_mclk";
+        drive-strength = <2>;
+        bias-disable;
+    };
+
+    csi2_mclk_sleep: csi2-mclk-sleep-state {
+        pins = "gpio65";
+        function = "cam_mclk";
+        drive-strength = <2>;
+        bias-pull-down;
+    };
+
+    csi2_reset_default: csi2-reset-default-state {
+        pins = "gpio54";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    csi2_reset_sleep: csi2-reset-sleep-state {
+        pins = "gpio54";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-pull-down;
+    };
+
+    csi2_power_en_default: csi2-power-en-default-state {
+        pins = "gpio12";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    csi2_power_en_sleep: csi2-power-en-sleep-state {
+        pins = "gpio12";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-pull-down;
+    };
+
+    bt_en_state_default: bt-en-default-state {
+        pins = "gpio85";
+        function = "gpio";
+        output-low;
+        bias-disable;
+    };
+
+    bt_sw_ctrl_default: bt-sw-ctrl-default-state {
+        pins = "gpio86";
+        function = "gpio";
+        bias-pull-down;
+    };
+
+    pcie1_reset_n: pcie1-reset-n-state {
+        pins = "gpio2";
+        function = "gpio";
+        drive-strength = <16>;
+        output-low;
+        bias-disable;
+    };
+
+    pcie1_wake_n: pcie1-wake-n-state {
+        pins = "gpio3";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-up;
+    };
+
+    header_40pin_gpio_default: header-40pin-gpio-state {
+        pins = "gpio6", "gpio18", "gpio19", "gpio24",
+               "gpio44", "gpio61", "gpio158", "gpio165", "gpio166";
+        function = "gpio";
+        drive-strength = <6>;
+        bias-disable;
+        input-enable;
+    };
+
+    pcie1_pwr_en: pcie1-power-default-state {
+        pins = "gpio105";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    wlan_en_state: wlan-en-state {
+        pins = "gpio84";
+        function = "gpio";
+        output-low;
+        bias-pull-down;
+    };
+
+    // Should be no longer required, already in sc7280.dtsi
+    pcie0_clkreq_n: pcie0-clkreq-n-state {
+        pins = "gpio88";
+        function = "pcie0_clkreqn";
+        drive-strength = <2>;
+        bias-pull-up;
+    };
+    pcie0_reset_n: pcie0-reset-n-state {
+        pins = "gpio87";
+        function = "gpio";
+        drive-strength = <16>;
+        output-low;
+        bias-disable;
+    };
+
+    pcie0_wake_n: pcie0-wake-n-state {
+        pins = "gpio89";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-up;
+    };
+
+    qup_uart7_sleep_cts: qup-uart7-sleep-cts-state {
+        pins = "gpio28";
+        function = "gpio";
+        /*
+         * Configure a bias-bus-hold on CTS to lower power
+         * usage when Bluetooth is turned off. Bus hold will
+         * maintain a low power state regardless of whether
+         * the Bluetooth module drives the pin in either
+         * direction or leaves the pin fully unpowered.
+         */
+        bias-bus-hold;
+    };
+
+    qup_uart7_sleep_rts: qup-uart7-sleep-rts-state {
+        pins = "gpio29";
+        function = "gpio";
+        /*
+         * Configure pull-down on RTS. As RTS is active low
+         * signal, pull it low to indicate the BT SoC that it
+         * can wakeup the system anytime from suspend state by
+         * pulling RX low (by sending wakeup bytes).
+         */
+        bias-pull-down;
+    };
+
+    qup_uart7_sleep_rx: qup-uart7-sleep-rx-state {
+        pins = "gpio31";
+        function = "gpio";
+        /*
+         * Configure a pull-up on RX. This is needed to avoid
+         * garbage data when the TX pin of the Bluetooth module
+         * is floating which may cause spurious wakeups.
+         */
+        bias-pull-up;
+    };
+
+    qup_uart7_sleep_tx: qup-uart7-sleep-tx-state {
+        pins = "gpio30";
+        function = "gpio";
+        /*
+         * Configure pull-up on TX when it isn't actively driven
+         * to prevent BT SoC from receiving garbage during sleep.
+         */
+        bias-pull-up;
+    };
+
+    peri_5v_en_default: peri-5v-en-state {
+        pins = "gpio13";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    dsi_csi_sw_en_default: dsi-csi-sw-en-state {
+        pins = "gpio15";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-disable;
+    };
+
+    syscon_rgb_reserved_default: syscon-rgb-reserved-state {
+        pins = "gpio20", "gpio21", "gpio77";
+        function = "gpio";
+        drive-strength = <2>;
+        input-enable;
+        bias-disable;
+    };
+
+    syscon_reset_ctrl_default: syscon-reset-ctrl-state {
+        pins = "gpio46";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-disable;
+    };
+
+    syscon_bls_invoke_ctrl_default: syscon-bls-invoke-ctrl-state {
+        pins = "gpio63";
+        function = "gpio";
+        drive-strength = <2>;
+        output-low;
+        bias-disable;
+    };
+
+    level_shifter_en_default: level-shifter-en-state {
+        pins = "gpio7";
+        function = "gpio";
+        drive-strength = <16>;
+        output-high;
+        bias-disable;
+    };
+
+    /* SPI14 CS1 on GPIO62 as GPIO-controlled CS */
+    spi14_cs1_gpio_default: spi14-cs1-gpio-state {
+        pins = "gpio62";
+        function = "gpio";
+        drive-strength = <2>;
+        output-high;
+        bias-disable;
+    };
+
+    usb1_sbu_default: usb1-sbu-state {
+        oe-n-pins {
+            pins = "gpio108";
+            function = "gpio";
+            bias-disable;
+            drive-strength = <16>;
+            output-high;
+        };
+        sel-pins {
+            pins = "gpio42";
+            function = "gpio";
+            bias-disable;
+            drive-strength = <16>;
+        };
+    };
+
+    /* PRIMARY MI2S - sleep states (used in sound card default/sleep pinctrl) */
+    mi2s0_data0_sleep: mi2s0-data0-sleep-state {
+        pins = "gpio98";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-down;
+        input-enable;
+    };
+
+    mi2s0_data1_sleep: mi2s0-data1-sleep-state {
+        pins = "gpio99";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-down;
+        input-enable;
+    };
+
+    mi2s0_sclk_sleep: mi2s0-sclk-sleep-state {
+        pins = "gpio97";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-down;
+        input-enable;
+    };
+
+    mi2s0_ws_sleep: mi2s0-ws-sleep-state {
+        pins = "gpio100";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-down;
+        input-enable;
+    };
+
+    mi2s0_mclk_sleep: mi2s0-mclk-sleep-state {
+        pins = "gpio96";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-pull-down;
+        input-enable;
+    };
+};
+
+// These are required for UFS to work
+&ufs_mem_hc {
+    reset-gpios = <&tlmm 175 GPIO_ACTIVE_LOW>;
+    vcc-supply = <&vreg_l7b_2p952>;
+    vcc-max-microamp = <800000>;
+    vccq-supply = <&vreg_l9b_1p2>;
+    vccq-max-microamp = <900000>;
+    vccq2-supply = <&vreg_l9b_1p2>;
+    vccq2-max-microamp = <900000>;
+
+    status = "okay";
+};
+
+&ufs_mem_phy {
+    vdda-phy-supply = <&vreg_l10c_0p88>;
+    vdda-pll-supply = <&vreg_l6b_1p2>;
+
+    status = "okay";
+};
+
+&vreg_l7b_2p952 {
+    /delete-property/regulator-min-microvolt;
+    /delete-property/regulator-max-microvolt;
+    regulator-allow-set-load;
+    regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
+};
+
+&vreg_l9b_1p2 {
+    /delete-property/regulator-min-microvolt;
+    /delete-property/regulator-max-microvolt;
+    regulator-allow-set-load;
+    regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM RPMH_REGULATOR_MODE_HPM>;
+};
+
+&uart5 {
+    compatible = "qcom,geni-debug-uart";
+    status = "okay";
+};
+
+&qup_uart5_rx {
+    drive-strength = <2>;
+    bias-pull-up;
+};
+
+&qup_uart5_tx {
+    drive-strength = <2>;
+    bias-disable;
+};
+
+&pcie0 {
+    // No longer required, pins should already be assigned with latest sc7280.dtsi
+    perst-gpios = <&tlmm 87 GPIO_ACTIVE_LOW>;
+
+    pinctrl-0 = <&pcie0_reset_n>, <&pcie0_wake_n>, <&pcie0_clkreq_n>;
+    pinctrl-names = "default";
+
+    vdda-supply = <&vreg_l6b_1p2>;
+    vddpe-3v3-supply = <&vreg_bob_3p296>;
+
+    status = "okay";
+
+    pcieport0: pcie@0 {
+        device_type = "pci";
+        reg = <0x0 0x0 0x0 0x0 0x0>;
+        #address-cells = <3>;
+        #size-cells = <2>;
+        ranges;
+        bus-range = <0x01 0xff>;
+    };
+};
+
+&pcie0_phy {
+    vdda-phy-supply = <&vreg_l10c_0p88>;
+    vdda-pll-supply = <&vreg_l6b_1p2>;
+
+    status = "okay";
+};
+
+&pcieport0 {
+    wlan: wifi@0 {
+        compatible = "qcom,wcn6855-wifi";
+        reg = <0x10000 0x0 0x0 0x0 0x0>;
+        /* FIXME: Temporary MAC for Wi-Fi bringup; replace with real board/NVMEM MAC source. */
+        local-mac-address = [02 11 22 33 44 55];
+
+        vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+        vddaon-supply = <&vreg_pmu_aon_0p59>;
+        vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+        vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+        vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+        vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+        vddrfa1p7-supply = <&vreg_pmu_rfa_1p7>;
+        vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
+        vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+
+        status = "okay";
+    };
+};
+
+// BT
+&uart7 {
+    status = "okay";
+    qcom,load-firmware;
+    qcom,xfer-mode = <1>;
+
+    //pinctrl-1 = <&qup_uart7_sleep_cts>, <&qup_uart7_sleep_rts>, <&qup_uart7_sleep_tx>, <&qup_uart7_sleep_rx>;
+
+    bluetooth: bluetooth {
+        compatible = "qcom,wcn6855-bt";
+
+        pinctrl-names = "default";
+        pinctrl-0 = <&bt_en_state_default>, <&bt_sw_ctrl_default>;
+        enable-gpios = <&tlmm 85 GPIO_ACTIVE_HIGH>; /* BT_EN */
+        swctrl-gpios = <&tlmm 86 GPIO_ACTIVE_HIGH>;
+
+        vddio-supply = <&vreg_l19b_1p8>;
+        vddbtcxmx-supply = <&vreg_s7b_0p972>;
+        vddrfacmn-supply = <&vreg_s7b_0p972>;
+        vddrfa0p8-supply = <&vreg_s7b_0p972>;
+        vddrfa1p7-supply = <&vreg_s1b_1p872>;
+        vddrfa1p2-supply = <&vreg_s8b_1p272>;
+        vddrfa2p2-supply = <&vreg_s1c_2p19>;
+        vddasd-supply = <&vreg_l11c_2p8>;
+
+        max-speed = <3200000>;
+        /*
+         * FIXME: This is only a temporary bring-up BD_ADDR copied from the
+         * runtime workaround. Replace it with a real, stable, per-device
+         * unique address source later.
+         *
+         * local-bd-address is little-endian in DT. This corresponds to
+         * 22:4A:06:75:3D:31.
+         */
+        local-bd-address = [31 3d 75 06 4a 22];
+        
+        status = "okay";
+    };
+};
+
+&qup_uart7_cts {
+    /*
+     * Configure a bias-bus-hold on CTS to lower power
+     * usage when Bluetooth is turned off. Bus hold will
+     * maintain a low power state regardless of whether
+     * the Bluetooth module drives the pin in either
+     * direction or leaves the pin fully unpowered.
+     */
+    bias-bus-hold;
+};
+
+&qup_uart7_rts {
+    /* We'll drive RTS, so no pull */
+    drive-strength = <2>;
+    bias-disable;
+};
+
+&qup_uart7_rx {
+    /*
+     * Configure a pull-up on RX. This is needed to avoid
+     * garbage data when the TX pin of the Bluetooth module is
+     * in tri-state (module powered off or not driving the
+     * signal yet).
+     */
+    bias-pull-up;
+};
+
+&qup_uart7_tx {
+    /* We'll drive TX, so no pull */
+    drive-strength = <2>;
+    bias-disable;
+};
+
+// USB1 (OTG)
+/delete-node/ &usb_1_dwc3;
+
+&usb_1 {
+    reg = <0x0 0x0a600000 0x0 0x200000>;
+
+    interrupts-extended = <&intc GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>,
+                  <&intc GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>,
+                  <&pdc 14 IRQ_TYPE_LEVEL_HIGH>,
+                  <&pdc 15 IRQ_TYPE_EDGE_BOTH>,
+                  <&pdc 17 IRQ_TYPE_EDGE_BOTH>;
+    interrupt-names = "dwc_usb3",
+              "hs_phy_irq",
+              "dp_hs_phy_irq",
+              "dm_hs_phy_irq",
+              "ss_phy_irq";
+
+    iommus = <&apps_smmu 0xe0 0x0>;
+    snps,dis_u2_susphy_quirk;
+    snps,dis_enblslpm_quirk;
+    phys = <&usb_1_hsphy>, <&usb_1_qmpphy QMP_USB43DP_USB3_PHY>;
+    phy-names = "usb2-phy", "usb3-phy";
+    maximum-speed = "super-speed";
+    snps,dis-u2-entry-quirk;
+    snps,dis-u1-entry-quirk;
+    dr_mode = "otg";
+    usb-role-switch;
+    qcom,enable-rt;
+    wakeup-source;
+
+    status = "okay";
+
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@0 {
+            reg = <0>;
+            usb_1_dwc3_hs: endpoint {
+            };
+        };
+
+        // port@1 {
+        //     reg = <1>;
+        //     usb_1_dwc3_ss: endpoint {
+        //     };
+        // };
+    };
+};
+
+&usb_1_dwc3_hs {
+    remote-endpoint = <&pmic_glink_hs_in>;
+};
+
+// &usb_1_dwc3_ss {
+//     remote-endpoint = <&pmic_glink_ss_in>;
+// };
+
+&usb_1_qmpphy_out {
+    remote-endpoint = <&pmic_glink_ss_in>;
+};
+
+&usb_1_qmpphy_dp_in {
+    remote-endpoint = <&mdss_dp_out>;
+};
+
+&usb_1_hsphy {
+    vdda-pll-supply = <&vreg_l10c_0p88>;
+    vdda18-supply = <&vreg_l1c_1p8>;
+    vdda33-supply = <&vreg_l2b_3p072>;
+
+    status = "okay";
+};
+
+&usb_1_qmpphy {
+    vdda-phy-supply = <&vreg_l6b_1p2>;
+    vdda-pll-supply = <&vreg_l1b_0p912>;
+
+    orientation-switch;
+    status = "okay";
+};
+
+// USB2 (HOST)
+/delete-node/ &usb_2_dwc3;
+
+&soc {
+    refgen: regulator@88e7000 {
+        compatible = "qcom,sm8250-refgen-regulator";
+        reg = <0x0 0x088e7000 0x0 0x84>;
+    };
+};
+
+&usb_2 {
+    reg = <0x0 0x08c00000 0x0 0x100000>;
+
+    interrupts-extended = <&intc GIC_SPI 242 IRQ_TYPE_LEVEL_HIGH>,
+                <&intc GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH>,
+                <&pdc 12 IRQ_TYPE_LEVEL_HIGH>,
+                <&pdc 13 IRQ_TYPE_EDGE_BOTH>;
+    interrupt-names = "dwc_usb2",
+            "hs_phy_irq",
+            "dp_hs_phy_irq",
+            "dm_hs_phy_irq";
+
+    iommus = <&apps_smmu 0xa0 0x0>;
+    snps,dis_u2_susphy_quirk;
+    snps,dis_enblslpm_quirk;
+    phys = <&usb_2_hsphy>;
+    phy-names = "usb2-phy";
+    maximum-speed = "high-speed";
+    snps,dis-u2-entry-quirk;
+    snps,dis-u1-entry-quirk;
+
+    /delete-property/ usb-role-switch;
+    qcom,enable-rt;
+    wakeup-source;
+    dr_mode = "host";
+
+    status = "okay";
+};
+
+&usb_2_hsphy {
+    vdda-pll-supply = <&vreg_l10c_0p88>;
+    vdda18-supply = <&vreg_l1c_1p8>;
+    vdda33-supply = <&vreg_l2b_3p072>;
+
+    status = "okay";
+};
+
+&gcc {
+	protected-clocks = <GCC_QSPI_CNOC_PERIPH_AHB_CLK>, <GCC_QSPI_CORE_CLK>,
+			<GCC_QSPI_CORE_CLK_SRC>, <GCC_CFG_NOC_LPASS_CLK>,
+			<GCC_MSS_GPLL0_MAIN_DIV_CLK_SRC>, <GCC_MSS_CFG_AHB_CLK>,
+			<GCC_MSS_OFFLINE_AXI_CLK>, <GCC_MSS_SNOC_AXI_CLK>,
+			<GCC_MSS_Q6_MEMNOC_AXI_CLK>, <GCC_MSS_Q6SS_BOOT_CLK_SRC>,
+			<GCC_SEC_CTRL_CLK_SRC>, <GCC_WPSS_AHB_CLK>,
+			<GCC_WPSS_AHB_BDG_MST_CLK>, <GCC_WPSS_RSCP_CLK>;
+};
+
+&gpu {
+    status = "okay";
+};
+
+&gpu_zap_shader {
+    firmware-name = "a660_zap.mdt";
+    status = "okay";
+};
+
+// ES8388 audio codec
+&i2c0 {
+    status = "okay";
+    clock-frequency = <400000>;
+    qcom,load-firmware;
+
+    es8388: codec@10 {
+        compatible = "everest,es8388_a";
+        reg = <0x10>;
+        assigned-clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+        assigned-clock-rates = <12288000>;
+        clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+        clock-names = "mclk";
+        #sound-dai-cells = <0>;
+        DVDD-supply = <&codec_vdd_1p8>;
+        AVDD-supply = <&codec_vdd_3p0>;
+        PVDD-supply = <&codec_vdd_3p0>;
+        HPVDD-supply = <&codec_vdd_3p0>;
+        hp-mic-bias-gpio = <&tlmm 45 0x0>;
+    };
+};
+
+// 40Pin Header, Pin3/5
+&i2c2 {
+    status = "okay";
+    clock-frequency = <400000>;
+    qcom,load-firmware;
+};
+
+// // 40Pin Header, Pin8/10/11/36
+// &uart8 {
+//     status = "okay";
+//     qcom,load-firmware;
+// };
+
+// 40Pin Header, Pin27/28
+&i2c9 {
+    status = "okay";
+    clock-frequency = <400000>;
+    qcom,load-firmware;
+};
+
+// QWIIC I2C
+&i2c10 {
+    status = "okay";
+    clock-frequency = <400000>;
+    qcom,load-firmware;
+};
+
+// CSI/DSI I2C Bus for touch controller
+&i2c13 {
+    status = "okay";
+    clock-frequency = <400000>;
+    qcom,load-firmware;
+};
+
+// // Main UART via Syscon: TX/RX only
+// &uart12 {
+//     status = "okay";
+//     qcom,load-firmware;
+//     pinctrl-names = "default";
+//     pinctrl-0 = <&qup_uart12_tx>, <&qup_uart12_rx>;
+// };
+
+// 40Pin Header, Pin19/21/23/24/26
+&spi14 {
+    status = "okay";
+    qcom,load-firmware;
+    pinctrl-names = "default";
+    pinctrl-0 = <&qup_spi14_data_clk>, <&qup_spi14_cs>, <&spi14_cs1_gpio_default>;
+    cs-gpios = <0>, <&tlmm 62 GPIO_ACTIVE_LOW>;
+
+    spidev@0{
+        compatible = "dhcom-board";
+        reg = <0>;
+        spi-max-frequency = <50000000>;
+    };
+    spidev@1{
+        compatible = "dhcom-board";
+        reg = <1>;
+        spi-max-frequency = <50000000>;
+    };
+};
+
+&mdss {
+    status = "okay";
+};
+
+&mdss_dp {
+    status = "okay";
+};
+
+&mdss_dp_out {
+    data-lanes = <0 1 2 3>;
+    remote-endpoint = <&usb_1_qmpphy_dp_in>;
+};
+
+&pmk8350 {
+    pmk8350_sdam_15: nvram@7e00 {
+        compatible = "qcom,spmi-sdam";
+        reg = <0x7e00>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges = <0 0x7e00 0x100>;
+
+        // /* 调试 ADSP batteryless bring-up 时读取现成 ICL_DEBUG_PROP step。 */
+        // sdam_icl_debug_prop: icl-debug-prop@45 {
+        //     reg = <0x45 0x4>;
+        // };
+    };
+
+    pmk8350_sdam_16: nvram@7f00 {
+        compatible = "qcom,spmi-sdam";
+        reg = <0x7f00>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges = <0 0x7f00 0x100>;
+
+        sdam_os_type: sdam-os-type@5e {
+            reg = <0x5e 0x1>;
+            bits = <0 1>;
+        };
+    };
+};
+
+&{/} {
+    usb1-sbu-mux {
+        compatible = "gpio-sbu-mux";
+        enable-gpios = <&tlmm 108 GPIO_ACTIVE_HIGH>;
+        select-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&usb1_sbu_default>;
+        mode-switch;
+        orientation-switch;
+        port {
+            usb1_sbu_mux: endpoint {
+                remote-endpoint = <&pmic_glink_sbu>;
+            };
+        };
+    };
+};
+
+/* PRIMARY MI2S active pinctrl configuration */
+&mi2s0_data0 {
+    drive-strength = <8>;
+    bias-disable;
+};
+
+&mi2s0_data1 {
+    drive-strength = <8>;
+    bias-disable;
+};
+
+&mi2s0_sclk {
+    drive-strength = <8>;
+    bias-disable;
+    output-high;
+};
+
+&mi2s0_ws {
+    drive-strength = <8>;
+    bias-disable;
+    output-high;
+};
+
+&mi2s0_mclk {
+    drive-strength = <8>;
+    bias-disable;
+    output-high;
+};
+
+/* q6apm-dais is required for q6apm topology component probing on this kernel */
+&q6apm {
+    q6apmdais: dais {
+        compatible = "qcom,q6apm-dais";
+        iommus = <&apps_smmu 0x1801 0x0>;
+    };
+};
+
+&q6apmbedai {
+    qcom,prmcc_clk = <&q6prmcc>;
+    /delete-property/ q6apm-dai-uses-dummy-ops;
+};
+
+/* Disable unused audio macros (Tachyon uses MI2S + ES8388, not SoundWire/CDC DMA) */
+&lpass_va_macro {
+    status = "disabled";
+};
+
+&lpass_rx_macro {
+    status = "disabled";
+};
+
+&lpass_tx_macro {
+    status = "disabled";
+};
+
+&lpass_wsa_macro {
+    status = "disabled";
+};
+
+&lpass_tlmm {
+    status = "disabled";
+};
+
+&swr0 {
+    status = "disabled";
+};
+
+&swr1 {
+    status = "disabled";
+};
+
+&swr2 {
+    status = "disabled";
+};
+
+/*
+ * NPU/HTP enablement: give the cDSP FastRPC instance a reserved DMA heap.
+ * Without a memory-region the kernel logs
+ *   "qcom,fastrpc a300000.remoteproc...: no reserved DMA memory for FASTRPC"
+ * and QNN HTP inference cannot allocate rpcmem buffers on the cDSP.
+ * The ADSP FastRPC already has this (adsp_heap_mem in qcm6490.dtsi);
+ * mirror it for the cDSP here, kept board-specific out of qcm6490.dtsi.
+ */
+&{/reserved-memory} {
+    cdsp_heap_mem: cdsp-heap {
+        compatible = "shared-dma-pool";
+        alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+        reusable;
+        alignment = <0x0 0x400000>;
+        size = <0x0 0x4000000>;          /* 64MB; reusable CMA, reclaimable */
+    };
+};
+
+&remoteproc_cdsp {
+    glink-edge {
+        fastrpc {
+            memory-region = <&cdsp_heap_mem>;
+        };
+    };
+};

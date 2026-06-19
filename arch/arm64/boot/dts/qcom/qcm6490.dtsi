@@ -12,10 +12,12 @@
  * required by qcm6490
  */
 /delete-node/ &rmtfs_mem;
-/delete-node/ &wpss_mem;
-/delete-node/ &adsp_mem;
-/delete-node/ &cdsp_mem;
-/delete-node/ &remoteproc_adsp;
+
+// Particle: 
+// /delete-node/ &wpss_mem;
+// /delete-node/ &adsp_mem;
+// /delete-node/ &cdsp_mem;
+// /delete-node/ &remoteproc_adsp;
 
 /{
 	firmware {
@@ -315,6 +317,17 @@
 	status = "okay";
 };
 
+&remoteproc_wpss {
+	compatible = "qcom,sc7280-wpss-pas";
+
+	clocks = <&rpmhcc RPMH_CXO_CLK>;
+	clock-names = "xo";
+
+	/delete-property/ qcom,halt-regs;
+	/delete-property/ resets;
+	/delete-property/ reset-names;
+};
+
 &soc {
 	refgen:regulator@88e7000 {
 		compatible = "qcom,sm8250-refgen-regulator";
@@ -406,11 +419,8 @@
 
 					q6apmbedai: bedais {
 						compatible = "qcom,q6apm-lpass-dais";
+						q6apm-dai-uses-dummy-ops;
 						#sound-dai-cells = <1>;
-					};
-					q6apmdai: dais {
-						compatible = "qcom,q6apm-dais";
-						iommus = <&apps_smmu 0x1801 0x0>;
 					};
 				};
 
@@ -598,6 +608,10 @@
 
 &video_mem {
 	reg = <0x0 0x8a700000 0x0 0x700000>;
+};
+
+&wifi {
+	memory-region = <&wlan_fw_mem>;
 };
 
 &xbl_mem {
