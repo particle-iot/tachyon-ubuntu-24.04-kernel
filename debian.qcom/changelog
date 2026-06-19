@@ -1,3 +1,12 @@
+linux-particle (6.8.0-1058.59+particle2) noble; urgency=medium
+
+  * arm64: dts: qcom: add qcm6490-tachyon board
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/29)
+  * wifi: ath11k: fix rx error path meta data corruption
+  * wifi: ath11k: fix rx completion meta data corruption
+
+ -- Eugene <eugene@particle.io>  Fri, 19 Jun 2026 16:28:42 +0800
+
 linux-particle (6.8.0-1058.59+particle1) noble; urgency=medium
 
   * Particle: 6.8.0-1058.59+particle1
