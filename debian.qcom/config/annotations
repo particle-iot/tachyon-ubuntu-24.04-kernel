@@ -1718,6 +1718,7 @@ CONFIG_SND_SOC_ALC5632                          policy<{'arm64': '-'}>
 CONFIG_SND_SOC_APPLE_MCA                        policy<{'arm64': '-'}>
 CONFIG_SND_SOC_AUDIO_PKT                        policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_DAVINCI_MCASP                    policy<{'arm64': '-'}>
+CONFIG_SND_SOC_ES8388                           policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_FSL_ASOC_CARD                    policy<{'arm64': '-'}>
 CONFIG_SND_SOC_FSL_AUD2HTX                      policy<{'arm64': '-'}>
 CONFIG_SND_SOC_IMX_AUDIO_RPMSG                  policy<{'arm64': '-'}>
