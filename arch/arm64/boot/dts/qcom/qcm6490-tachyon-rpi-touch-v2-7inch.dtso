@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2025 Particle Industries, Inc. All rights reserved.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "qcm6490-tachyon-rpi-touch-v2.dtsi"
