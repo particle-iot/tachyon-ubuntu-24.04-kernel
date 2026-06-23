@@ -1450,6 +1450,7 @@ CONFIG_QCOM_MINIDUMP                            policy<{'arm64': 'n'}>
 CONFIG_QCOM_MPM                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_NET_PHYLIB                          policy<{'arm64': 'm'}>
 CONFIG_QCOM_PANEL_EVENT_NOTIFIER                policy<{'arm64': 'm'}>
+CONFIG_QCOM_GLINK_PKT                           policy<{'arm64': 'm'}>
 CONFIG_QCOM_PDR_HELPERS                         policy<{'arm64': 'y'}>
 CONFIG_QCOM_QMI_COOLING                         policy<{'arm64': 'm'}>
 CONFIG_QCOM_QMI_HELPERS                         policy<{'arm64': 'y'}>
