@@ -162,6 +162,13 @@ static int qcm6490_snd_hw_params(struct snd_pcm_substream *substream,
 			ret = snd_soc_dai_set_sysclk(codec_dai, link_priv->mclk_id,
 						     mclk_rate, clk_dir);
 			if (ret < 0) {
+				/*
+				 * Some multi-codec links include glue components such as
+				 * msm-stub-codec for DAPM/pinctrl routing only. They do not
+				 * implement set_sysclk() and should not block the real codec.
+				 */
+				if (ret == -ENOTSUPP)
+					continue;
 				dev_err(rtd->dev, "snd_soc_dai_set_sysclk err = %d\n",
 					ret);
 				return ret;
