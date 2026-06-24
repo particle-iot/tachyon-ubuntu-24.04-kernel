@@ -1,3 +1,22 @@
+linux-particle (6.8.0-1058.59+particle3) noble; urgency=medium
+
+  * phy: qcom-qmp-combo: force DP-only mode for 4-lane DP (4K@60)
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/35)
+  * arm64: dts: qcom: add Raspberry Pi 7" v2 touchscreen overlay for tachyon
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/34)
+  * ASoC: qdsp6: topology: add DisplayPort sink module support
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/33)
+  * ASoC: qcom: qcm6490: skip set_sysclk for stub codecs in multi-codec links
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/32)
+  * drm/msm/dp: retry EDID read for empty DP modes
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/31)
+  * usb: typec: ucsi: avoid USB mux overwrite in altmode
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/30)
+  * Adds glink smd for at commands.
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/28)
+
+ -- Nick Lambourne <nick@particle.io>  Wed, 24 Jun 2026 18:01:07 +0000
+
 linux-particle (6.8.0-1058.59+particle2) noble; urgency=medium
 
   * arm64: dts: qcom: add qcm6490-tachyon board
