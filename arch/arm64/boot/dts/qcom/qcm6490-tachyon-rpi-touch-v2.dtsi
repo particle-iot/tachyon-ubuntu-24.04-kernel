@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2025 Particle Industries, Inc. All rights reserved.
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+
+&mdss {
+	status = "okay";
+};
+
+&mdss_dsi_phy {
+	vdds-supply = <&vreg_l10c_0p88>;
+	status = "okay";
+};
+
+&mdss_dsi {
+	vdda-supply = <&vreg_l6b_1p2>;
+	status = "okay";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&dsi_csi_sw_display>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+			mdss_dsi0_out: endpoint {
+				remote-endpoint = <&rpi_touch_v2_panel_in>;
+			};
+		};
+	};
+
+	rpi_touch_v2_panel: panel@0 {
+		reg = <0>;
+		compatible = "raspberrypi,dsi-7inch";
+		reset-gpio = <&rpi_touch_v2_panel_regulator 0 GPIO_ACTIVE_LOW>;
+		backlight = <&rpi_touch_v2_panel_regulator>;
+		status = "okay";
+
+		port {
+			rpi_touch_v2_panel_in: endpoint {
+				remote-endpoint = <&mdss_dsi0_out>;
+			};
+		};
+	};
+};
+
+&{/} {
+	rpi_touch_v2_touch_reg: touch_reg {
+		compatible = "regulator-fixed";
+		regulator-name = "touch_reg_1";
+		gpio = <&rpi_touch_v2_panel_regulator 1 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <50000>;
+		enable-active-high;
+	};
+};
+
+&i2c13 {
+	status = "okay";
+    qcom,load-firmware;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	rpi_touch_v2_panel_regulator: regulator@45 {
+		compatible = "raspberrypi,v2-touchscreen-panel-regulator";
+		reg = <0x45>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+	rpi_touch_v2_ts: gt911@5d {
+		compatible = "goodix,gt911";
+		reg = <0x5d>;
+		AVDD28-supply = <&rpi_touch_v2_touch_reg>;
+		touchscreen-size-x = <720>;
+		touchscreen-size-y = <1280>;
+		touchscreen-x-mm = <62>;
+		touchscreen-y-mm = <110>;
+	};
+};
+
+&tlmm {
+	// DSI/CSI switch control - set to display mode
+	dsi_csi_sw_display: dsi-csi-sw-display-state {
+		pins = "gpio68";
+		function = "gpio";
+		drive-strength = <2>;
+		output-low;  // Select display mode (low=display, high=camera)
+		bias-disable;
+	};
+};
