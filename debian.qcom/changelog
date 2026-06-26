@@ -1,3 +1,10 @@
+linux-particle (6.8.0-1058.59+particle4) noble; urgency=medium
+
+  * ASoC: codecs: add Everest ES8388 I2C codec driver
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/36)
+
+ -- Nick Lambourne <nick@particle.io>  Fri, 26 Jun 2026 06:54:03 +0000
+
 linux-particle (6.8.0-1058.59+particle3) noble; urgency=medium
 
   * phy: qcom-qmp-combo: force DP-only mode for 4-lane DP (4K@60)
