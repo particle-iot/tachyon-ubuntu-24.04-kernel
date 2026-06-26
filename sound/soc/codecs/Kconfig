@@ -1103,6 +1103,13 @@ config SND_SOC_ES8328_SPI
 	depends on SPI_MASTER
 	select SND_SOC_ES8328
 
+config SND_SOC_ES8388
+	tristate "Everest Semi ES8388 CODEC"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Enable support for the Everest Semi ES8388 audio CODEC.
+
 config SND_SOC_GTM601
 	tristate 'GTM601 UMTS modem audio codec'
 
