@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 dtb-$(CONFIG_ARCH_QCOM)	+= qcm6490-tachyon.dtb
+# Overlay combo: validates the dtbo applies and forces -@ (__symbols__)
+# on the base qcm6490-tachyon.dtb so UEFI can merge dtbo files at boot.
+dtb-$(CONFIG_ARCH_QCOM)	+= qcm6490-tachyon-imx519-csi1-ovl.dtb
+qcm6490-tachyon-imx519-csi1-ovl-dtbs := qcm6490-tachyon.dtb \
+	qcm6490-tachyon-camera-imx519-csi1.dtbo
 #dtb-$(CONFIG_ARCH_QCOM)	+= qcom-dtb-metadata.dtb
 #dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 
