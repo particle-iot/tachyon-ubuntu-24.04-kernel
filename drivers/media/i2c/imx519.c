@@ -1065,16 +1065,35 @@ static int imx519_write_reg(struct imx519 *imx519, u16 reg, u32 len, u32 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx519->sd);
 	u8 buf[6];
+	int i, ret = -EIO;
 
 	if (len > 4)
 		return -EINVAL;
 
 	put_unaligned_be16(reg, buf);
 	put_unaligned_be32(val << (8 * (4 - len)), buf + 2);
-	if (i2c_master_send(client, buf, len + 2) != len + 2)
-		return -EIO;
+	/*
+	 * camss-domain activity opens periodic sub-millisecond transient
+	 * windows that NACK whatever CCI transfer they overlap (bus-level,
+	 * affects any slave). The retry delay is far longer than a window,
+	 * so a single retry recovers; retry NACK (-ENXIO) only and
+	 * propagate every other error immediately.
+	 */
+	for (i = 0; i < 3; i++) {
+		ret = i2c_master_send(client, buf, len + 2);
+		if (ret == len + 2) {
+			if (i)
+				dev_dbg(&client->dev,
+					"reg 0x%4.4x recovered after %d retries\n",
+					reg, i);
+			return 0;
+		}
+		if (ret != -ENXIO)
+			break;
+		usleep_range(300, 600);
+	}
 
-	return 0;
+	return ret < 0 ? ret : -EIO;
 }
 
 /* Write a list of registers */
