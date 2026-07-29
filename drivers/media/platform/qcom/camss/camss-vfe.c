@@ -506,8 +506,13 @@ static void vfe_buf_flush_pending(struct vfe_output *output,
 	struct camss_buffer *t;
 
 	list_for_each_entry_safe(buf, t, &output->pending_bufs, queue) {
+		/*
+		 * Detach before vb2_buffer_done(): once a buffer is returned
+		 * to vb2 the driver no longer owns it, including its list
+		 * node.
+		 */
+		list_del_init(&buf->queue);
 		vb2_buffer_done(&buf->vb.vb2_buf, state);
-		list_del(&buf->queue);
 	}
 }
 
@@ -888,8 +893,10 @@ int vfe_flush_buffers(struct camss_video *vid,
 {
 	struct vfe_line *line = container_of(vid, struct vfe_line, video_out);
 	struct vfe_device *vfe = to_vfe(line);
+	struct camss_buffer *buf;
 	struct vfe_output *output;
 	unsigned long flags;
+	unsigned int i;
 
 	output = &line->output;
 
@@ -897,16 +904,22 @@ int vfe_flush_buffers(struct camss_video *vid,
 
 	vfe_buf_flush_pending(output, state);
 
-	if (output->buf[0])
-		vb2_buffer_done(&output->buf[0]->vb.vb2_buf, state);
-
-	if (output->buf[1])
-		vb2_buffer_done(&output->buf[1]->vb.vb2_buf, state);
-
-	if (output->last_buffer) {
-		vb2_buffer_done(&output->last_buffer->vb.vb2_buf, state);
-		output->last_buffer = NULL;
+	/*
+	 * Drop the driver's references before returning the buffers to
+	 * vb2: a residual wm_done IRQ that still finds them in buf[]
+	 * would complete the same vb2 buffer twice.
+	 */
+	for (i = 0; i < ARRAY_SIZE(output->buf); i++) {
+		buf = output->buf[i];
+		output->buf[i] = NULL;
+		if (buf)
+			vb2_buffer_done(&buf->vb.vb2_buf, state);
 	}
+
+	buf = output->last_buffer;
+	output->last_buffer = NULL;
+	if (buf)
+		vb2_buffer_done(&buf->vb.vb2_buf, state);
 
 	spin_unlock_irqrestore(&vfe->output_lock, flags);
 
