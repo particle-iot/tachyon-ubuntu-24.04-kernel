@@ -826,6 +826,10 @@
     status = "okay";
 };
 
+&venus {
+    status = "okay";
+};
+
 &remoteproc_mpss {
     firmware-name = "tachyon/modem/modem.mdt";
     status = "okay";
