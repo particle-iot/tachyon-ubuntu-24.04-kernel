@@ -1,3 +1,16 @@
+linux-particle (6.8.0-1058.59+particle5) noble; urgency=medium
+
+  * arm64: dts: qcom: sc7280: drop secure video SID from the base dtsi
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/40)
+  * remoteproc: qcom_q6v5_pas: add CX/MX proxy votes for sc7280 cdsp
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/39)
+  * arm64: dts: qcom: enable 40pin header and syscon UARTs for tachyon
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/38)
+  * arm64: dts: qcom: enable micro SD slot for tachyon
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/37)
+
+ -- Eugene <eugene@particle.io>  Fri, 31 Jul 2026 11:18:22 +0000
+
 linux-particle (6.8.0-1058.59+particle4) noble; urgency=medium
 
   * ASoC: codecs: add Everest ES8388 I2C codec driver
