@@ -879,6 +879,24 @@
 };
 
 &tlmm {
+    /*
+     * qcm6490.dtsi sets gpio-reserved-ranges = <32 2>, <48 4>. Narrow it so
+     * both 40pin-header UART pin groups become available.
+     *
+     * <32 2> is dropped entirely: gpio32/33 are uart8 CTS/RTS on header pins
+     * 36 and 11, and the hardware exposes them for flow control. They used to
+     * be the ADSP secondary SPMI SCLK/SDATA, which is why releasing them once
+     * bootlooped the board - back then TZ still assigned QUPV3_1_SE0 to the
+     * ADSP as an SPMI master and both sides configured the same pins. That is
+     * no longer the case: TZ hands the SE to HLOS as UART_4W and
+     * SpmiQupBus_Init is gone from the ADSP image.
+     *
+     * <48 2> is kept: gpio48/49 are uart12 CTS/RTS, and uart12 stays two-wire
+     * (it is an internal Syscon link with no flow control wired). Only
+     * gpio50/51 (uart12 TX/RX) are released.
+     */
+    gpio-reserved-ranges = <48 2>;
+
     pinctrl-names = "default";
     pinctrl-0 = <&header_40pin_gpio_default>, <&peri_5v_en_default>,
             <&dsi_csi_sw_en_default>, <&syscon_rgb_reserved_default>,
@@ -1331,8 +1349,6 @@
     wlan: wifi@0 {
         compatible = "qcom,wcn6855-wifi";
         reg = <0x10000 0x0 0x0 0x0 0x0>;
-        /* FIXME: Temporary MAC for Wi-Fi bringup; replace with real board/NVMEM MAC source. */
-        local-mac-address = [02 11 22 33 44 55];
 
         vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
         vddaon-supply = <&vreg_pmu_aon_0p59>;
@@ -1598,11 +1614,27 @@
     qcom,load-firmware;
 };
 
-// // 40Pin Header, Pin8/10/11/36
-// &uart8 {
-//     status = "okay";
-//     qcom,load-firmware;
-// };
+/*
+ * 40Pin Header UART - header pins 8(TX), 10(RX), 11(RTS), 36(CTS),
+ * documented by Particle as UART10 with "Hardware RTS/CTS supported".
+ *
+ * Four-wire, matching the header: TX=gpio34, RX=gpio35, CTS=gpio32,
+ * RTS=gpio33. TZ marks QUPV3_1_SE0 as UART_4W so the flow-control pins are
+ * handed to HLOS as well; a two-wire user only has to drop the cts/rts
+ * entries here, with no TZ/devcfg change.
+ *
+ * Requires the matching BP change: TZ hands QUPV3_1_SE0 to AC_HLOS, and the
+ * ADSP no longer registers SpmiQupBus_Init with rcinit nor builds its battman
+ * config target with SPMI_QUP. Without that the SE stays owned by ADSP
+ * firmware as a secondary SPMI master, driving gpio32/33 as SPMI SCLK/SDATA,
+ * and the AP cannot use this SE at all. Those pins served the SMB139x charge
+ * pump bus, which Tachyon does not populate.
+ */
+&uart8 {
+    status = "okay";
+    pinctrl-0 = <&qup_uart8_cts>, <&qup_uart8_rts>,
+            <&qup_uart8_tx>, <&qup_uart8_rx>;
+};
 
 // 40Pin Header, Pin27/28
 &i2c9 {
@@ -1625,13 +1657,18 @@
     qcom,load-firmware;
 };
 
-// // Main UART via Syscon: TX/RX only
-// &uart12 {
-//     status = "okay";
-//     qcom,load-firmware;
-//     pinctrl-names = "default";
-//     pinctrl-0 = <&qup_uart12_tx>, <&qup_uart12_rx>;
-// };
+/*
+ * Main UART via Syscon: TX/RX only.
+ *
+ * TZ assigns QUPV3_1_SE4 to AC_HLOS as UART_2W with bLoad = FALSE, so the SE
+ * comes up without protocol firmware and qcom_geni_serial loads it after
+ * reading GENI_SE_INVALID_PROTO. Only TX/RX are selected; the stock four-wire
+ * pinctrl would also claim gpio48/49, which stay reserved.
+ */
+&uart12 {
+    status = "okay";
+    pinctrl-0 = <&qup_uart12_tx>, <&qup_uart12_rx>;
+};
 
 // 40Pin Header, Pin19/21/23/24/26
 &spi14 {
