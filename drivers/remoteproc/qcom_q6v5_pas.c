@@ -1578,7 +1578,7 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,qcs8300-gpdsp-pas", .data = &qcs8300_gpdsp_resource},
 	{ .compatible = "qcom,sc7180-mpss-pas", .data = &mpss_resource_init},
 	{ .compatible = "qcom,sc7280-adsp-pas", .data = &sdm845_adsp_resource_init},
-	{ .compatible = "qcom,sc7280-cdsp-pas", .data = &sdm845_cdsp_resource_init},
+	{ .compatible = "qcom,sc7280-cdsp-pas", .data = &sm6350_cdsp_resource},
 	{ .compatible = "qcom,sc7280-mpss-pas", .data = &mpss_resource_init},
 	{ .compatible = "qcom,sc7280-wpss-pas", .data = &sc7280_wpss_resource},
 	{ .compatible = "qcom,sc8180x-adsp-pas", .data = &sm8150_adsp_resource},
