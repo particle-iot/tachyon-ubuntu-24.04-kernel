@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Particle Tachyon camera overlay
+ *
+ * IMX219 on CSI1.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/qcom,camcc-sc7280.h>
+#include <dt-bindings/gpio/gpio.h>
+
+&camcc {
+    status = "okay";
+};
+
+&camss {
+    status = "okay";
+
+    vdda-phy-supply = <&vreg_l10c_0p88>;
+    vdda-pll-supply = <&vreg_l6b_1p2>;
+
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        port@3 {
+            reg = <3>;
+
+            csiphy3_ep: endpoint {
+                clock-lanes = <7>;
+                data-lanes = <0 1>;
+                remote-endpoint = <&imx219_ep>;
+            };
+        };
+    };
+};
+
+&cci1 {
+    status = "okay";
+    /*
+     * The i2c-qcom-cci divider tables assume a 37.5 MHz CCI clock but the
+     * driver does not program the RCG itself; without this the clock stays
+     * at the 19.2 MHz XO default and every I2C timing stretches by ~2x.
+     * Keep the bus at 400 kHz: 1 MHz operation has not been validated with
+     * this module.
+     */
+    assigned-clocks = <&camcc CAM_CC_CCI_1_CLK_SRC>;
+    assigned-clock-rates = <37500000>;
+};
+
+&cci1_i2c0 {
+    status = "okay";
+    clock-frequency = <400000>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    imx219: camera@10 {
+        compatible = "sony,imx219";
+        reg = <0x10>;
+
+        /*
+         * The MCLK branch clocks live inside the TITAN_TOP GDSC power
+         * domain on this camcc (verified on this board with imx519:
+         * cam_cc_mclk3_clk only ungates while the GDSC is powered).
+         * Attach the sensor to the GDSC so runtime-resume powers it
+         * before the MCLK is enabled.
+         */
+        power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>;
+
+        /* Expose standard V4L2 camera properties for libcamera */
+        orientation = <2>; /* V4L2_FWNODE_ORIENTATION_EXTERNAL */
+        rotation = <0>; /* 0, 90, 180 or 270 */
+
+        reset-gpios = <&tlmm 141 GPIO_ACTIVE_HIGH>;
+        pinctrl-names = "default", "sleep";
+        pinctrl-0 = <&csi1_mclk_default &csi1_reset_default
+                 &csi1_power_en_default>;
+        pinctrl-1 = <&csi1_mclk_sleep &csi1_reset_sleep
+                 &csi1_power_en_sleep>;
+
+        clocks = <&camcc CAM_CC_MCLK3_CLK>;
+        assigned-clocks = <&camcc CAM_CC_MCLK3_CLK>;
+        assigned-clock-rates = <24000000>;
+
+        /*
+         * Voltages per the imx219 binding. The module is powered
+         * externally via POWER_EN (gpio107) and has its own internal LDOs,
+         * so these are always-on fixed regulators that exist only to
+         * satisfy the driver's power sequencing.
+         */
+        VANA-supply = <&cam_vana_2p8>;
+        VDIG-supply = <&cam_vdig_1p8>;
+        VDDL-supply = <&cam_vddl_1p2>;
+
+        status = "okay";
+
+        port {
+            imx219_ep: endpoint {
+                clock-lanes = <7>;
+                link-frequencies = /bits/ 64 <456000000>;
+                /* Sensor-side lane numbering per the imx219 binding. */
+                data-lanes = <1 2>;
+                remote-endpoint = <&csiphy3_ep>;
+            };
+        };
+    };
+};
