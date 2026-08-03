@@ -16,6 +16,9 @@ description: |-
   Image data is sent through MIPI CSI-2, which is configured as either 2 or
   4 data lanes.
 
+allOf:
+  - $ref: /schemas/media/video-interface-devices.yaml#
+
 properties:
   compatible:
     const: sony,imx519
@@ -44,12 +47,22 @@ properties:
       Reference to the GPIO connected to the xclr pin, if any.
       Must be released (set high) after all supplies and INCK are applied.
 
-  # See ../video-interfaces.txt for more details
+  power-domains:
+    maxItems: 1
+    description: |-
+      Power domain the sensor belongs to. On some SoCs the MCLK branch
+      feeding the sensor lives inside a camera power domain, which must be
+      powered before the clock can be ungated.
+
   port:
-    type: object
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
     properties:
       endpoint:
-        type: object
+        $ref: /schemas/media/video-interfaces.yaml#
+        unevaluatedProperties: false
+
         properties:
           data-lanes:
             description: |-
@@ -59,17 +72,9 @@ properties:
               - const: 1
               - const: 2
 
-          clock-noncontinuous:
-            type: boolean
-            description: |-
-              MIPI CSI-2 clock is non-continuous if this property is present,
-              otherwise it's continuous.
+          clock-noncontinuous: true
 
-          link-frequencies:
-            allOf:
-              - $ref: /schemas/types.yaml#/definitions/uint64-array
-            description:
-              Allowed data bus frequencies.
+          link-frequencies: true
 
         required:
           - link-frequencies
@@ -83,7 +88,7 @@ required:
   - VDDL-supply
   - port
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |
