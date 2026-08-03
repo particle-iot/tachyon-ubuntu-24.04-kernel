@@ -16,6 +16,9 @@ description: |-
   Image data is sent through MIPI CSI-2, which is configured as either 2 or
   4 data lanes.
 
+allOf:
+  - $ref: /schemas/media/video-interface-devices.yaml#
+
 properties:
   compatible:
     const: sony,imx219
@@ -44,6 +47,13 @@ properties:
     description: |-
       Reference to the GPIO connected to the xclr pin, if any.
       Must be released (set high) after all supplies are applied.
+
+  power-domains:
+    maxItems: 1
+    description: |-
+      Power domain the sensor belongs to. On some SoCs the MCLK branch
+      feeding the sensor lives inside a camera power domain, which must be
+      powered before the clock can be ungated.
 
   port:
     $ref: /schemas/graph.yaml#/$defs/port-base
@@ -79,7 +89,7 @@ required:
   - VDDL-supply
   - port
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |
