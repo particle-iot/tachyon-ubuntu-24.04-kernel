@@ -45,6 +45,12 @@
      * cam is powered externally (always on). Model the internal module rails
      * as fixed regulators so the sensor driver can do its power sequencing
      * without toggling unrelated PMIC rails.
+     *
+     * Sensors disagree on which rail is which voltage - imx519 wants a 1.05V
+     * VDIG and a 1.8V VDDL, imx219 wants 1.8V and 1.2V - so provide a rail
+     * per voltage and let each overlay reference the ones its binding
+     * documents. Nothing here switches real hardware; the module has its own
+     * internal LDOs behind POWER_EN.
      */
     cam_vana_2p8: regulator-cam-vana-2p8 {
         compatible = "regulator-fixed";
@@ -64,11 +70,29 @@
         regulator-boot-on;
     };
 
+    cam_vdig_1p8: regulator-cam-vdig-1p8 {
+        compatible = "regulator-fixed";
+        regulator-name = "cam_vdig_1p8";
+        regulator-min-microvolt = <1800000>;
+        regulator-max-microvolt = <1800000>;
+        regulator-always-on;
+        regulator-boot-on;
+    };
+
     cam_vddl_1p8: regulator-cam-vddl-1p8 {
         compatible = "regulator-fixed";
         regulator-name = "cam_vddl_1p8";
         regulator-min-microvolt = <1800000>;
         regulator-max-microvolt = <1800000>;
+        regulator-always-on;
+        regulator-boot-on;
+    };
+
+    cam_vddl_1p2: regulator-cam-vddl-1p2 {
+        compatible = "regulator-fixed";
+        regulator-name = "cam_vddl_1p2";
+        regulator-min-microvolt = <1200000>;
+        regulator-max-microvolt = <1200000>;
         regulator-always-on;
         regulator-boot-on;
     };

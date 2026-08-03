@@ -5,6 +5,9 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcm6490-tachyon.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= qcm6490-tachyon-imx519-csi1-ovl.dtb
 qcm6490-tachyon-imx519-csi1-ovl-dtbs := qcm6490-tachyon.dtb \
 	qcm6490-tachyon-camera-imx519-csi1.dtbo
+dtb-$(CONFIG_ARCH_QCOM)	+= qcm6490-tachyon-imx219-csi1-ovl.dtb
+qcm6490-tachyon-imx219-csi1-ovl-dtbs := qcm6490-tachyon.dtb \
+	qcm6490-tachyon-camera-imx219-csi1.dtbo
 #dtb-$(CONFIG_ARCH_QCOM)	+= qcom-dtb-metadata.dtb
 #dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 
