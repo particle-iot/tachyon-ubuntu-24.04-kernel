@@ -1,30 +1,32 @@
-iris-objs += iris_probe.o \
+qcom-iris-objs += iris_buffer.o \
+             iris_common.o \
              iris_core.o \
+             iris_ctrls.o \
+             iris_firmware.o \
+             iris_hfi_common.o \
+             iris_hfi_gen1_command.o \
+             iris_hfi_gen1_response.o \
+             iris_hfi_gen2_command.o \
+             iris_hfi_gen2_packet.o \
+             iris_hfi_gen2_response.o \
+             iris_hfi_queue.o \
+             iris_platform_gen2.o \
+             iris_power.o \
+             iris_probe.o \
+             iris_resources.o \
+             iris_state.o \
+             iris_utils.o \
              iris_vidc.o \
              iris_vb2.o \
              iris_vdec.o \
              iris_venc.o \
-             iris_state.o \
-             iris_ctrls.o \
-             iris_helpers.o \
-             iris_hfi.o \
-             iris_hfi_response.o \
-             iris_hfi_queue.o \
-             iris_hfi_packet.o \
-             iris_buffer.o \
-             iris_power.o \
-             resources.o \
-             firmware.o \
-             memory.o \
-             vpu_common.o \
-             vpu_iris3.o \
-             vpu_iris3_buffer.o \
-             vpu_iris3_power.o \
-             vpu_iris2.o \
-             vpu_iris2_buffer.o \
-             vpu_iris2_power.o \
-             platform_common.o \
-             platform_sm8550.o \
-             platform_qcm6490.o
+             iris_vpu2.o \
+             iris_vpu3x.o \
+             iris_vpu_buffer.o \
+             iris_vpu_common.o \
 
-obj-$(CONFIG_VIDEO_QCOM_IRIS) += iris.o
+ifeq ($(CONFIG_VIDEO_QCOM_VENUS),)
+qcom-iris-objs += iris_platform_gen1.o
+endif
+
+obj-$(CONFIG_VIDEO_QCOM_IRIS) += qcom-iris.o

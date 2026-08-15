@@ -1,15 +1,13 @@
 config VIDEO_QCOM_IRIS
-        tristate "Qualcomm Iris V4L2 encoder/decoder driver"
-        depends on V4L_MEM2MEM_DRIVERS
-        depends on VIDEO_DEV && QCOM_SMEM
-        depends on (ARCH_QCOM && IOMMU_DMA) || COMPILE_TEST
+        tristate "Qualcomm iris V4L2 decoder driver"
+        depends on VIDEO_DEV
+        depends on ARCH_QCOM || COMPILE_TEST
+        select V4L2_MEM2MEM_DEV
         select QCOM_MDT_LOADER if ARCH_QCOM
         select QCOM_SCM
         select VIDEOBUF2_DMA_CONTIG
-        select V4L2_MEM2MEM_DEV
-        select DMABUF_HEAPS
         help
-          This is a V4L2 driver for Qualcomm Iris video accelerator
-          hardware. It accelerates encoding and decoding operations
-          on various Qualcomm SoCs.
+          This is a V4L2 driver for Qualcomm iris video accelerator
+          hardware. It accelerates decoding operations on various
+          Qualcomm SoCs.
           To compile this driver as a module choose m here.

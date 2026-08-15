@@ -2113,6 +2113,8 @@ CONFIG_VIDEO_MESON_GE2D                         policy<{'arm64': '-'}>
 CONFIG_VIDEO_MESON_VDEC                         policy<{'arm64': '-'}>
 CONFIG_VIDEO_NPCM_VCD_ECE                       policy<{'arm64': '-'}>
 CONFIG_VIDEO_QCOM_IRIS                          policy<{'arm64': 'm'}>
+CONFIG_VIDEO_QCOM_VENUS                         policy<{'arm64': 'n'}>
+CONFIG_VIDEO_QCOM_VENUS                         note<'mutually exclusive with VIDEO_QCOM_IRIS: iris only registers the qcom,sc7280-venus compatible and builds its gen1 platform data when venus is disabled'>
 CONFIG_VIDEO_RCAR_CSI2                          policy<{'arm64': '-'}>
 CONFIG_VIDEO_RCAR_DRIF                          policy<{'arm64': '-'}>
 CONFIG_VIDEO_RCAR_ISP                           policy<{'arm64': '-'}>

@@ -1,106 +1,101 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include <linux/delay.h>
+#include <linux/pm_runtime.h>
 
 #include "iris_core.h"
-#include "iris_helpers.h"
-#include "iris_hfi.h"
+#include "iris_firmware.h"
 #include "iris_state.h"
+#include "iris_vpu_common.h"
 
-int iris_core_deinit_locked(struct iris_core *core)
+void iris_core_deinit(struct iris_core *core)
 {
-	int ret;
-
-	ret = check_core_lock(core);
-	if (ret)
-		return ret;
-
-	if (core->state == IRIS_CORE_DEINIT)
-		return 0;
-
-	iris_hfi_core_deinit(core);
-
-	iris_change_core_state(core, IRIS_CORE_DEINIT);
-
-	return ret;
-}
-
-int iris_core_deinit(struct iris_core *core)
-{
-	int ret;
+	pm_runtime_resume_and_get(core->dev);
 
 	mutex_lock(&core->lock);
-	ret = iris_core_deinit_locked(core);
+	if (core->state != IRIS_CORE_DEINIT) {
+		iris_fw_unload(core);
+		iris_vpu_power_off(core);
+		iris_hfi_queues_deinit(core);
+		core->state = IRIS_CORE_DEINIT;
+	}
 	mutex_unlock(&core->lock);
 
-	return ret;
+	pm_runtime_put_sync(core->dev);
+}
+
+static int iris_wait_for_system_response(struct iris_core *core)
+{
+	u32 hw_response_timeout_val = core->iris_platform_data->hw_response_timeout;
+	int ret;
+
+	if (core->state == IRIS_CORE_ERROR)
+		return -EIO;
+
+	ret = wait_for_completion_timeout(&core->core_init_done,
+					  msecs_to_jiffies(hw_response_timeout_val));
+	if (!ret) {
+		core->state = IRIS_CORE_ERROR;
+		return -ETIMEDOUT;
+	}
+
+	return 0;
 }
 
 int iris_core_init(struct iris_core *core)
 {
-	int ret = 0;
+	int ret;
 
 	mutex_lock(&core->lock);
-	if (core_in_valid_state(core)) {
-		goto unlock;
-	} else if (core->state == IRIS_CORE_ERROR) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (iris_change_core_state(core, IRIS_CORE_INIT_WAIT))
-		iris_change_core_state(core, IRIS_CORE_ERROR);
-
-	ret = iris_hfi_core_init(core);
-	if (ret) {
-		iris_change_core_state(core, IRIS_CORE_ERROR);
-		dev_err(core->dev, "%s: core init failed\n", __func__);
-		iris_core_deinit_locked(core);
-		goto unlock;
-	}
-
-unlock:
-	mutex_unlock(&core->lock);
-
-	return ret;
-}
-
-int iris_core_init_wait(struct iris_core *core)
-{
-	const int interval = 10;
-	int max_tries, count = 0, ret = 0;
-
-	mutex_lock(&core->lock);
-	if (!core_in_valid_state(core)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (core->state == IRIS_CORE_INIT)
-		goto unlock;
-
-	max_tries = core->cap[HW_RESPONSE_TIMEOUT].value / interval;
-	while (count < max_tries) {
-		if (core->state != IRIS_CORE_INIT_WAIT)
-			break;
-		msleep(interval);
-		count++;
-	}
-
 	if (core->state == IRIS_CORE_INIT) {
 		ret = 0;
-		goto unlock;
-	} else {
-		iris_change_core_state(core, IRIS_CORE_ERROR);
-		iris_core_deinit_locked(core);
+		goto exit;
+	} else if (core->state == IRIS_CORE_ERROR) {
 		ret = -EINVAL;
-		goto unlock;
+		goto error;
 	}
 
-unlock:
+	core->state = IRIS_CORE_INIT;
+
+	ret = iris_hfi_queues_init(core);
+	if (ret)
+		goto error;
+
+	ret = iris_vpu_power_on(core);
+	if (ret)
+		goto error_queue_deinit;
+
+	ret = iris_fw_load(core);
+	if (ret)
+		goto error_power_off;
+
+	ret = iris_vpu_boot_firmware(core);
+	if (ret)
+		goto error_unload_fw;
+
+	ret = iris_vpu_switch_to_hwmode(core);
+	if (ret)
+		goto error_unload_fw;
+
+	ret = iris_hfi_core_init(core);
+	if (ret)
+		goto error_unload_fw;
+
+	mutex_unlock(&core->lock);
+
+	return iris_wait_for_system_response(core);
+
+error_unload_fw:
+	iris_fw_unload(core);
+error_power_off:
+	iris_vpu_power_off(core);
+error_queue_deinit:
+	iris_hfi_queues_deinit(core);
+error:
+	core->state = IRIS_CORE_DEINIT;
+exit:
 	mutex_unlock(&core->lock);
 
 	return ret;
