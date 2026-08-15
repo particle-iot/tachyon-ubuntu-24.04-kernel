@@ -2338,7 +2338,6 @@ static const u32 qcm6490_vdec_psc_avc[] = {
     HFI_PROP_PROFILE,
     HFI_PROP_LEVEL,
     HFI_PROP_SIGNAL_COLOR_INFO,
-    HFI_PROP_MAX_NUM_REORDER_FRAMES,
 };
 
 static const u32 qcm6490_vdec_psc_hevc[] = {
@@ -2350,7 +2349,6 @@ static const u32 qcm6490_vdec_psc_hevc[] = {
     HFI_PROP_LEVEL,
     HFI_PROP_TIER,
     HFI_PROP_SIGNAL_COLOR_INFO,
-    HFI_PROP_MAX_NUM_REORDER_FRAMES,
 };
 
 static const u32 qcm6490_vdec_psc_vp9[] = {
@@ -2362,44 +2360,39 @@ static const u32 qcm6490_vdec_psc_vp9[] = {
     HFI_PROP_LEVEL,
 };
 
+/*
+ * The decoder subscribe tables below are trimmed to the property set
+ * supported by video-firmware 2.4.2 (the newest QCM6490 build, shipped
+ * with qcom-linux 1.7), mirroring the upstream iris platform_qcm6490
+ * tables. Properties this firmware rejects (DPB_LIST/SUBFRAME_INPUT on
+ * the input port, MAX_NUM_REORDER_FRAMES in the port-settings-change
+ * set, WORST_COMPRESSION_RATIO/WORST_COMPLEXITY_FACTOR/FENCE on the
+ * output port) fail the whole SUBSCRIBE command with
+ * "Unsupported port settings type" and stall the decode session.
+ */
 static const u32 qcm6490_vdec_input_properties_avc[] = {
     HFI_PROP_NO_OUTPUT,
-    HFI_PROP_SUBFRAME_INPUT,
-    HFI_PROP_DPB_LIST,
 };
 
 static const u32 qcm6490_vdec_input_properties_hevc[] = {
     HFI_PROP_NO_OUTPUT,
-    HFI_PROP_SUBFRAME_INPUT,
-    HFI_PROP_DPB_LIST,
 };
 
 static const u32 qcm6490_vdec_input_properties_vp9[] = {
     HFI_PROP_NO_OUTPUT,
-    HFI_PROP_SUBFRAME_INPUT,
-    HFI_PROP_DPB_LIST,
 };
 
 static const u32 qcm6490_vdec_output_properties_avc[] = {
-    HFI_PROP_WORST_COMPRESSION_RATIO,
-    HFI_PROP_WORST_COMPLEXITY_FACTOR,
     HFI_PROP_PICTURE_TYPE,
     HFI_PROP_CABAC_SESSION,
-    HFI_PROP_FENCE,
 };
 
 static const u32 qcm6490_vdec_output_properties_hevc[] = {
-    HFI_PROP_WORST_COMPRESSION_RATIO,
-    HFI_PROP_WORST_COMPLEXITY_FACTOR,
     HFI_PROP_PICTURE_TYPE,
-    HFI_PROP_FENCE,
 };
 
 static const u32 qcm6490_vdec_output_properties_vp9[] = {
-    HFI_PROP_WORST_COMPRESSION_RATIO,
-    HFI_PROP_WORST_COMPLEXITY_FACTOR,
     HFI_PROP_PICTURE_TYPE,
-    HFI_PROP_FENCE,
 };
 
 static const struct msm_vidc_platform_data qcm6490_data = {

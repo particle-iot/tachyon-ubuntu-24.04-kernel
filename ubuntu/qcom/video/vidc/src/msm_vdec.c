@@ -84,6 +84,19 @@ static int msm_vdec_codec_change(struct msm_vidc_inst *inst, u32 v4l2_codec)
 	if (rc)
 		goto exit;
 
+	/*
+	 * Keep the PIX_FMTS capability in sync with the default capture
+	 * format (linear NV12, see msm_vdec_inst_init). Clients that accept
+	 * the G_FMT default without an explicit S_FMT (GStreamer does this)
+	 * would otherwise leave PIX_FMTS at the platform default (UBWC), so
+	 * is_split_mode_enabled() stays false, no DPB internal buffers are
+	 * allocated and the firmware never produces a decoded frame.
+	 */
+	msm_vidc_update_cap_value(inst, PIX_FMTS,
+		v4l2_colorformat_to_driver(inst,
+			inst->fmts[OUTPUT_PORT].fmt.pix_mp.pixelformat, __func__),
+		__func__);
+
 exit:
 	return rc;
 }
@@ -2179,7 +2192,10 @@ int msm_vdec_try_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 {
 	int rc = 0;
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
+	struct msm_vidc_core *core;
 	u32 pix_fmt;
+
+	core = inst->core;
 
 	memset(pixmp->reserved, 0, sizeof(pixmp->reserved));
 	if (f->type == INPUT_MPLANE) {
@@ -2218,6 +2234,24 @@ int msm_vdec_try_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		pixmp->field = V4L2_FIELD_NONE;
 
 	pixmp->num_planes = 1;
+	/*
+	 * Report valid plane sizes on TRY_FMT as well: generic V4L2 clients
+	 * (GStreamer) treat sizeimage == 0 as an unusable format and abort
+	 * negotiation. Mirror what S_FMT would return for this format.
+	 */
+	if (f->type == INPUT_MPLANE) {
+		pixmp->plane_fmt[0].bytesperline = 0;
+		pixmp->plane_fmt[0].sizeimage = call_session_op(core,
+			buffer_size, inst, MSM_VIDC_BUF_INPUT);
+	} else if (f->type == OUTPUT_MPLANE) {
+		u32 fmt = v4l2_colorformat_to_driver(inst,
+			pixmp->pixelformat, __func__);
+
+		pixmp->plane_fmt[0].bytesperline =
+			video_y_stride_bytes(fmt, pixmp->width);
+		pixmp->plane_fmt[0].sizeimage = call_session_op(core,
+			buffer_size, inst, MSM_VIDC_BUF_OUTPUT);
+	}
 	return rc;
 }
 
@@ -2618,8 +2652,15 @@ int msm_vdec_inst_init(struct msm_vidc_inst *inst)
 
 	f = &inst->fmts[OUTPUT_PORT];
 	f->type = OUTPUT_MPLANE;
+	/*
+	 * Default the decoder capture format to linear NV12 instead of the
+	 * UBWC-compressed NV12C (Q08C): generic V4L2 clients (GStreamer
+	 * v4l2videodec, FFmpeg v4l2_m2m) take the driver default from
+	 * G_FMT/first ENUM_FMT entry and cannot consume Q08C. Clients that
+	 * want UBWC still get it by calling S_FMT with Q08C explicitly.
+	 */
 	f->fmt.pix_mp.pixelformat =
-		v4l2_colorformat_from_driver(inst, MSM_VIDC_FMT_NV12C, __func__);
+		v4l2_colorformat_from_driver(inst, MSM_VIDC_FMT_NV12, __func__);
 	colorformat = v4l2_colorformat_to_driver(inst,
 		f->fmt.pix_mp.pixelformat, __func__);
 	f->fmt.pix_mp.width = video_y_stride_pix(colorformat, DEFAULT_WIDTH);
