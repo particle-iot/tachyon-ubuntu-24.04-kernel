@@ -224,7 +224,24 @@ static bool rxrpc_input_packet(struct rxrpc_local *local, struct sk_buff **_skb)
 		 * decryption.
 		 */
 		if (sp->hdr.securityIndex != 0) {
-			skb = skb_unshare(skb, GFP_ATOMIC);
+			if (skb_has_frag_list(skb) || skb_has_shared_frag(skb)) {
+				/* skb_unshare() only copies cloned skbs, but
+				 * an uncloned skb can still carry externally
+				 * owned paged frags (e.g. spliced page-cache
+				 * pages).  Force a private copy so in-place
+				 * decryption cannot write over pages the skb
+				 * does not own.
+				 */
+				struct sk_buff *nskb = skb_copy(skb, GFP_ATOMIC);
+
+				if (likely(nskb))
+					consume_skb(skb);
+				else
+					kfree_skb(skb);
+				skb = nskb;
+			} else {
+				skb = skb_unshare(skb, GFP_ATOMIC);
+			}
 			if (!skb) {
 				rxrpc_eaten_skb(*_skb, rxrpc_skb_eaten_by_unshare_nomem);
 				*_skb = NULL;
