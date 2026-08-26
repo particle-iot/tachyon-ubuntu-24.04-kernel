@@ -22,7 +22,15 @@ static int iris_hfi_queue_write(struct iris_iface_q_info *qinfo, void *packet, u
 		empty_space = read_idx - write_idx;
 	else
 		empty_space = IFACEQ_QUEUE_SIZE - (write_idx -  read_idx);
-	if (empty_space < packet_size)
+	/*
+	 * Reject a packet that would exactly fill the ring. The write index
+	 * would then land on the read index, which iris_hfi_queue_read()
+	 * treats as "empty", and everything already queued would never be
+	 * consumed - the command is simply lost and surfaces later as a
+	 * firmware timeout. Keeping one sentinel word is what venus does,
+	 * both in this tree and in mainline.
+	 */
+	if (empty_space <= packet_size)
 		return -ENOSPC;
 
 	queue->tx_req =  0;
