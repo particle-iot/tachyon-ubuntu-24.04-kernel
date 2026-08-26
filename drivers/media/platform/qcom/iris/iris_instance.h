@@ -81,6 +81,7 @@ struct iris_inst {
 	struct v4l2_format		*fmt_src;
 	struct v4l2_format		*fmt_dst;
 	struct v4l2_ctrl_handler	ctrl_handler;
+	struct v4l2_ctrl		*ctrl_min_buffers;
 	enum domain_type		domain;
 	struct iris_hfi_rect_desc	crop;
 	struct iris_hfi_rect_desc	compose;

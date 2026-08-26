@@ -195,26 +195,50 @@ static int iris_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct iris_inst *inst = container_of(ctrl->handler, struct iris_inst, ctrl_handler);
 	enum platform_inst_fw_cap_type cap_id;
 	struct platform_inst_fw_cap *cap;
+	enum platform_inst_fw_cap_flags prev_flags;
 	struct vb2_queue *q;
+	s64 prev_value;
+	int ret = 0;
 
 	cap = &inst->fw_caps[0];
 	cap_id = iris_get_cap_id(ctrl->id);
 	if (!iris_valid_cap_id(cap_id))
 		return -EINVAL;
 
+	/*
+	 * The control core calls this with ctrl_handler->lock held, and that
+	 * lock is inst->lock (see iris_ctrls_init()). Instance state is thus
+	 * already serialised here - do not take it again.
+	 */
 	q = v4l2_m2m_get_src_vq(inst->m2m_ctx);
 	if (vb2_is_streaming(q) &&
 	    (!(inst->fw_caps[cap_id].flags & CAP_FLAG_DYNAMIC_ALLOWED)))
 		return -EINVAL;
 
+	prev_flags = cap[cap_id].flags;
+	prev_value = inst->fw_caps[cap_id].value;
+
 	cap[cap_id].flags |= CAP_FLAG_CLIENT_SET;
 
 	inst->fw_caps[cap_id].value = ctrl->val;
 
-	if (vb2_is_streaming(q) && cap[cap_id].set)
-		return cap[cap_id].set(inst, cap_id);
+	if (!vb2_is_streaming(q) || !cap[cap_id].set)
+		return 0;
 
-	return 0;
+	ret = cap[cap_id].set(inst, cap_id);
+	if (ret) {
+		/*
+		 * The core leaves the control at its previous current value
+		 * when s_ctrl fails, so this cache has to be rolled back to
+		 * match. Keeping the rejected value would make G_CTRL and the
+		 * value handed to the firmware on the next stream setup
+		 * disagree, with neither reflecting what the hardware holds.
+		 */
+		inst->fw_caps[cap_id].value = prev_value;
+		cap[cap_id].flags = prev_flags;
+	}
+
+	return ret;
 }
 
 static const struct v4l2_ctrl_ops iris_ctrl_ops = {
@@ -241,6 +265,23 @@ int iris_ctrls_init(struct iris_inst *inst)
 	ret = v4l2_ctrl_handler_init(&inst->ctrl_handler, num_ctrls + 1);
 	if (ret)
 		return ret;
+
+	/*
+	 * Let the control handler and the instance share one lock.
+	 *
+	 * The two were separate locks taken in both orders: the control core
+	 * calls s_ctrl with ctrl_handler->lock held and the handler then needs
+	 * instance state, while the HFI response path holds inst->lock and
+	 * updates a control from it (iris_hfi_gen{1,2}_response.c). That is a
+	 * classic ABBA pair. Collapsing them into one lock removes the cycle
+	 * outright and, as a side effect, serialises s_ctrl against STREAMON,
+	 * which no lock did before - this driver installs no vdev->lock, so
+	 * the V4L2 core does not serialise ioctls for it.
+	 *
+	 * Everything reached while holding it must therefore use the unlocked
+	 * control helpers; see the response paths.
+	 */
+	inst->ctrl_handler.lock = &inst->lock;
 
 	for (idx = 1; idx < INST_FW_CAP_MAX; idx++) {
 		struct v4l2_ctrl *ctrl;
@@ -278,12 +319,19 @@ int iris_ctrls_init(struct iris_inst *inst)
 		ctrl_idx++;
 	}
 
+	/*
+	 * Keep the pointer: the HFI response path updates this control while
+	 * holding inst->lock, and v4l2_ctrl_find() would take that same lock
+	 * again now that the handler shares it.
+	 */
 	if (inst->domain == DECODER) {
-		v4l2_ctrl_new_std(&inst->ctrl_handler, NULL,
-				  V4L2_CID_MIN_BUFFERS_FOR_CAPTURE, 1, 32, 1, 4);
+		inst->ctrl_min_buffers =
+			v4l2_ctrl_new_std(&inst->ctrl_handler, NULL,
+					  V4L2_CID_MIN_BUFFERS_FOR_CAPTURE, 1, 32, 1, 4);
 	} else {
-		v4l2_ctrl_new_std(&inst->ctrl_handler, NULL,
-				  V4L2_CID_MIN_BUFFERS_FOR_OUTPUT, 1, 32, 1, 4);
+		inst->ctrl_min_buffers =
+			v4l2_ctrl_new_std(&inst->ctrl_handler, NULL,
+					  V4L2_CID_MIN_BUFFERS_FOR_OUTPUT, 1, 32, 1, 4);
 	}
 
 	ret = inst->ctrl_handler.error;

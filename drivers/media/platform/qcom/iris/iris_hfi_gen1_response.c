@@ -34,7 +34,6 @@ static void iris_hfi_gen1_read_changed_params(struct iris_inst *inst,
 	struct hfi_pic_struct *pic_struct;
 	struct hfi_framesize *frame_sz;
 	struct vb2_queue *dst_q;
-	struct v4l2_ctrl *ctrl;
 	u32 full_range, ptype;
 
 	do {
@@ -159,9 +158,14 @@ static void iris_hfi_gen1_read_changed_params(struct iris_inst *inst,
 	inst->fw_min_count = event.buf_count;
 	inst->buffers[BUF_OUTPUT].min_count = iris_vpu_buf_count(inst, BUF_OUTPUT);
 	inst->buffers[BUF_OUTPUT].size = pixmp_op->plane_fmt[0].sizeimage;
-	ctrl = v4l2_ctrl_find(&inst->ctrl_handler, V4L2_CID_MIN_BUFFERS_FOR_CAPTURE);
-	if (ctrl)
-		v4l2_ctrl_s_ctrl(ctrl, inst->buffers[BUF_OUTPUT].min_count);
+	/*
+	 * Runs with inst->lock held, which the control handler now shares, so
+	 * the locking helpers would deadlock on themselves: use the cached
+	 * control and the unlocked setter.
+	 */
+	if (inst->ctrl_min_buffers)
+		__v4l2_ctrl_s_ctrl(inst->ctrl_min_buffers,
+				   inst->buffers[BUF_OUTPUT].min_count);
 
 	dst_q = v4l2_m2m_get_dst_vq(inst->m2m_ctx);
 	/* compat: min_reqbufs_allocation (inst->buffers[BUF_OUTPUT].min_count) has no equivalent here */
