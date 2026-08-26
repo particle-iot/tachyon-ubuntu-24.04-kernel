@@ -139,9 +139,14 @@ int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt, u32 pkt_size)
 {
 	int ret;
 
+	/*
+	 * pm_runtime_resume_and_get() already drops the usage count when it
+	 * fails, so jumping to the shared put path here would decrement it a
+	 * second time and corrupt the runtime-PM accounting for the device.
+	 */
 	ret = pm_runtime_resume_and_get(core->dev);
 	if (ret < 0)
-		goto exit;
+		return ret;
 
 	mutex_lock(&core->lock);
 	ret = iris_hfi_queue_cmd_write_locked(core, pkt, pkt_size);

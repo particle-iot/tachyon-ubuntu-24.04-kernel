@@ -12,18 +12,37 @@
 
 void iris_core_deinit(struct iris_core *core)
 {
-	pm_runtime_resume_and_get(core->dev);
+	int ret;
+
+	/*
+	 * A failed resume must not be followed by a put: the helper has
+	 * already dropped the reference it took.
+	 *
+	 * The teardown itself splits in two. iris_fw_unload() is a SCM call
+	 * (qcom_scm_pas_shutdown()) and does not touch Iris registers, so it
+	 * must run either way - leaving the PAS loaded while the driver
+	 * declares itself deinitialised would strand firmware state across
+	 * both the remove path and the system-error path, which re-inits the
+	 * core straight away. iris_vpu_power_off() does touch registers and
+	 * clocks, so it only runs when the device is actually resumed; the
+	 * runtime-PM resume failure path has already removed VPU power.
+	 */
+	ret = pm_runtime_resume_and_get(core->dev);
+	if (ret < 0)
+		dev_err(core->dev, "deinit without a resumed device: %d\n", ret);
 
 	mutex_lock(&core->lock);
 	if (core->state != IRIS_CORE_DEINIT) {
 		iris_fw_unload(core);
-		iris_vpu_power_off(core);
+		if (ret >= 0)
+			iris_vpu_power_off(core);
 		iris_hfi_queues_deinit(core);
 		core->state = IRIS_CORE_DEINIT;
 	}
 	mutex_unlock(&core->lock);
 
-	pm_runtime_put_sync(core->dev);
+	if (ret >= 0)
+		pm_runtime_put_sync(core->dev);
 }
 
 static int iris_wait_for_system_response(struct iris_core *core)
