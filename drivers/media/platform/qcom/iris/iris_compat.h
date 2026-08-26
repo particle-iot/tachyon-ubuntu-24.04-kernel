@@ -63,6 +63,11 @@ static inline void iris_pm_domain_detach_list(void *data)
 	dev_pm_domain_detach_list(data);
 }
 
+static inline void iris_pm_device_link_del(void *data)
+{
+	device_link_del(data);
+}
+
 static inline int iris_devm_pm_domain_attach_list(struct device *dev,
 						  const struct dev_pm_domain_attach_data *data,
 						  struct dev_pm_domain_list **list)
@@ -73,6 +78,7 @@ static inline int iris_devm_pm_domain_attach_list(struct device *dev,
 		struct device **virt_devs;
 		const char **names;
 		unsigned int i;
+		u32 link_flags;
 
 		/* devm_pm_opp_attach_genpd() expects a NULL terminated list. */
 		names = devm_kcalloc(dev, data->num_pd_names + 1, sizeof(*names),
@@ -85,7 +91,47 @@ static inline int iris_devm_pm_domain_attach_list(struct device *dev,
 
 		*list = NULL;
 
-		return devm_pm_opp_attach_genpd(dev, names, &virt_devs);
+		ret = devm_pm_opp_attach_genpd(dev, names, &virt_devs);
+		if (ret)
+			return ret;
+
+		/*
+		 * Reaching the domains through the OPP core skips everything
+		 * dev_pm_domain_attach_list() does about device links:
+		 * devm_pm_opp_attach_genpd() ends up in
+		 * __genpd_dev_pm_attach() with power_on == false and never
+		 * calls device_link_add(). Nothing would then order the OPP
+		 * domain against this device across runtime PM, and the
+		 * caller's PD_FLAG_DEV_LINK_ON would be dropped without a
+		 * trace. Pick the flags exactly as the core does.
+		 */
+		link_flags = data->pd_flags & PD_FLAG_NO_DEV_LINK ? 0 :
+			     DL_FLAG_STATELESS | DL_FLAG_PM_RUNTIME;
+		if (link_flags && data->pd_flags & PD_FLAG_DEV_LINK_ON)
+			link_flags |= DL_FLAG_RPM_ACTIVE;
+
+		for (i = 0; link_flags && i < data->num_pd_names; i++) {
+			struct device_link *link;
+
+			if (!virt_devs[i])
+				continue;
+
+			link = device_link_add(dev, virt_devs[i], link_flags);
+			if (!link)
+				return -ENODEV;
+
+			/*
+			 * The driver core does not tear down STATELESS links,
+			 * so each one needs its own devm action.
+			 */
+			ret = devm_add_action_or_reset(dev,
+						       iris_pm_device_link_del,
+						       link);
+			if (ret)
+				return ret;
+		}
+
+		return 0;
 	}
 
 	ret = dev_pm_domain_attach_list(dev, data, list);
