@@ -12,6 +12,7 @@
 #include "msm_vidc_inst.h"
 #include "msm_vidc_driver.h"
 #include "msm_vidc_internal.h"
+#include "msm_vidc_buffer.h"
 #include "msm_vidc_control.h"
 #include "msm_vidc_debug.h"
 #include "msm_vidc_power.h"
@@ -2192,10 +2193,7 @@ int msm_vdec_try_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 {
 	int rc = 0;
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
-	struct msm_vidc_core *core;
 	u32 pix_fmt;
-
-	core = inst->core;
 
 	memset(pixmp->reserved, 0, sizeof(pixmp->reserved));
 	if (f->type == INPUT_MPLANE) {
@@ -2241,16 +2239,18 @@ int msm_vdec_try_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	 */
 	if (f->type == INPUT_MPLANE) {
 		pixmp->plane_fmt[0].bytesperline = 0;
-		pixmp->plane_fmt[0].sizeimage = call_session_op(core,
-			buffer_size, inst, MSM_VIDC_BUF_INPUT);
+		pixmp->plane_fmt[0].sizeimage =
+			msm_vidc_decoder_input_size_for(inst,
+				pixmp->pixelformat, pixmp->width, pixmp->height);
 	} else if (f->type == OUTPUT_MPLANE) {
 		u32 fmt = v4l2_colorformat_to_driver(inst,
 			pixmp->pixelformat, __func__);
 
 		pixmp->plane_fmt[0].bytesperline =
 			video_y_stride_bytes(fmt, pixmp->width);
-		pixmp->plane_fmt[0].sizeimage = call_session_op(core,
-			buffer_size, inst, MSM_VIDC_BUF_OUTPUT);
+		pixmp->plane_fmt[0].sizeimage =
+			msm_vidc_decoder_output_size_for(inst,
+				pixmp->pixelformat, pixmp->width, pixmp->height);
 	}
 	return rc;
 }
