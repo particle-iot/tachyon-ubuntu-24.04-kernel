@@ -10,6 +10,7 @@
 #include "iris_common.h"
 #include "iris_instance.h"
 #include "iris_vb2.h"
+#include "iris_vidc.h"
 #include "iris_vdec.h"
 #include "iris_venc.h"
 #include "iris_vpu_buffer.h"
@@ -57,11 +58,23 @@ static int iris_check_session_supported(struct iris_inst *inst)
 	bool found = false;
 	int ret;
 
+	/*
+	 * iris_check_core_mbpf() below takes core->lock itself, so this walk
+	 * has to finish with it released.
+	 */
+	mutex_lock(&core->lock);
 	list_for_each_entry(instance, &core->instances, list) {
-		if (instance == inst)
+		if (instance == inst) {
 			found = true;
+			break;
+		}
 	}
+	mutex_unlock(&core->lock);
 
+	/*
+	 * Defensive only: the caller reserves a slot (and therefore a list
+	 * entry) before reaching here. A miss means the two got out of step.
+	 */
 	if (!found) {
 		ret = -EINVAL;
 		goto exit;
@@ -103,6 +116,7 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 	struct iris_inst *inst;
 	struct iris_core *core;
 	struct v4l2_format *f;
+	bool is_create_bufs;
 	u32 min_count;
 	int ret = 0;
 
@@ -117,31 +131,61 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 	core = inst->core;
 	f = V4L2_TYPE_IS_OUTPUT(q->type) ? inst->fmt_src : inst->fmt_dst;
 
-	if (*num_planes) {
-		if (*num_planes != f->fmt.pix_mp.num_planes ||
-		    sizes[0] < f->fmt.pix_mp.plane_fmt[0].sizeimage)
-			ret = -EINVAL;
+	/*
+	 * VB2 uses this one callback for both REQBUFS and CREATE_BUFS, telling
+	 * them apart by *num_planes being non-zero for the latter. Validate the
+	 * caller-supplied geometry first: a request that is going to be
+	 * rejected must not claim a session slot or open a firmware session on
+	 * its way out, and neither is released before close() once taken.
+	 */
+	is_create_bufs = *num_planes != 0;
+	if (is_create_bufs &&
+	    (*num_planes != f->fmt.pix_mp.num_planes ||
+	     sizes[0] < f->fmt.pix_mp.plane_fmt[0].sizeimage)) {
+		ret = -EINVAL;
 		goto unlock;
+	}
+
+	/*
+	 * Take a session slot before anything else looks at the instance list.
+	 * This is the point where the firmware session is about to exist, and
+	 * it has to precede session_open() so that an early HFI response can
+	 * still find the instance by its session id.
+	 */
+	if (!inst->once_per_session_set) {
+		ret = iris_add_session(inst);
+		if (ret)
+			goto unlock;
 	}
 
 	ret = iris_check_session_supported(inst);
 	if (ret)
-		goto unlock;
+		goto release_slot;
 
 	if (!inst->once_per_session_set) {
-		inst->once_per_session_set = true;
-
 		ret = core->hfi_ops->session_open(inst);
 		if (ret) {
 			ret = -EINVAL;
 			dev_err(core->dev, "session open failed\n");
-			goto unlock;
+			goto release_slot;
 		}
+
+		inst->once_per_session_set = true;
 
 		ret = iris_inst_change_state(inst, IRIS_INST_INIT);
 		if (ret)
 			goto unlock;
 	}
+
+	/*
+	 * CREATE_BUFS brought its own geometry, already validated above; only
+	 * REQBUFS has fields to fill in. Both had to pass through the setup
+	 * above, though - returning before it would let a fresh handle
+	 * allocate buffers with no session behind them, which only surfaces
+	 * at STREAMON and leaves the instance in IRIS_INST_ERROR.
+	 */
+	if (is_create_bufs)
+		goto unlock;
 
 	*num_planes = 1;
 	sizes[0] = f->fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -157,6 +201,17 @@ int iris_vb2_queue_setup(struct vb2_queue *q,
 				  BUF_INPUT : BUF_OUTPUT].min_count;
 	*num_buffers = max(*num_buffers, max(min_count, (u32)MIN_BUFFERS));
 
+	mutex_unlock(&inst->lock);
+
+	return ret;
+
+release_slot:
+	/*
+	 * Only unwind a slot this call reserved. Once the firmware session
+	 * exists the slot belongs to it until close().
+	 */
+	if (!inst->once_per_session_set)
+		iris_remove_session(inst);
 unlock:
 	mutex_unlock(&inst->lock);
 

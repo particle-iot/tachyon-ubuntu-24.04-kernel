@@ -40,24 +40,44 @@ static void iris_v4l2_fh_deinit(struct iris_inst *inst, struct file *filp)
 	v4l2_fh_exit(&inst->fh);
 }
 
-static void iris_add_session(struct iris_inst *inst)
+/*
+ * Claim one of the core's session slots for this instance.
+ *
+ * Deliberately not called from open(): V4L2 forbids an artificial limit on
+ * opening a device node, and v4l2-compliance enforces it. The slot is taken
+ * where the session resource is actually consumed, just before the firmware
+ * session is created, and released again if that fails - so a handle refused
+ * now succeeds once another instance frees its slot.
+ *
+ * Idempotent: an instance already holding a slot simply keeps it.
+ */
+int iris_add_session(struct iris_inst *inst)
 {
 	struct iris_core *core = inst->core;
 	struct iris_inst *iter;
 	u32 count = 0;
+	int ret = 0;
 
 	mutex_lock(&core->lock);
 
-	list_for_each_entry(iter, &core->instances, list)
+	list_for_each_entry(iter, &core->instances, list) {
+		if (iter == inst)
+			goto unlock;
 		count++;
+	}
 
 	if (count < core->iris_platform_data->max_session_count)
 		list_add_tail(&inst->list, &core->instances);
+	else
+		ret = -EBUSY;
 
+unlock:
 	mutex_unlock(&core->lock);
+
+	return ret;
 }
 
-static void iris_remove_session(struct iris_inst *inst)
+void iris_remove_session(struct iris_inst *inst)
 {
 	struct iris_core *core = inst->core;
 	struct iris_inst *iter, *temp;
@@ -202,8 +222,6 @@ int iris_open(struct file *filp)
 		ret = iris_venc_inst_init(inst);
 	if (ret)
 		goto fail_m2m_ctx_release;
-
-	iris_add_session(inst);
 
 	inst->fh.m2m_ctx = inst->m2m_ctx;
 
