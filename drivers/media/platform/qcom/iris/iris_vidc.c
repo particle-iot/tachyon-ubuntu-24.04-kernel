@@ -429,14 +429,11 @@ static int iris_enum_frameintervals(struct file *filp, void *fh,
 	struct iris_inst *inst = iris_get_inst(filp);
 	struct iris_core *core = inst->core;
 	struct platform_inst_caps *caps;
-	u32 fps, mbpf;
+	u32 fps, mbpf, max_fps;
 	int ret = 0;
 
 	if (inst->domain == DECODER)
 		return -ENOTTY;
-
-	if (fival->index)
-		return -EINVAL;
 
 	ret = iris_venc_validate_format(inst, fival->pixel_format);
 	if (ret)
@@ -453,23 +450,39 @@ static int iris_enum_frameintervals(struct file *filp, void *fh,
 		return -EINVAL;
 
 	mbpf = NUM_MBS_PER_FRAME(fival->height, fival->width);
-	fps = DIV_ROUND_UP(core->iris_platform_data->max_core_mbps, mbpf);
 
 	/*
-	 * The rate is a software parameter: S_PARM takes any value up to the
-	 * platform maximum, so the range is continuous. Reporting it as
-	 * stepwise with a 1/MAXIMUM_FPS step would restrict clients to frame
-	 * intervals that are a multiple of it, which excludes common rates
-	 * such as 25 and 50 fps.
+	 * Floor, not DIV_ROUND_UP. Rounding up advertises a rate the driver
+	 * itself refuses: at 3840x2160 it yields 65 fps, which needs 2106000
+	 * macroblocks/s against a 2088960 platform budget, so
+	 * iris_check_core_mbps() rejects the very rate just enumerated.
 	 */
-	fival->type = V4L2_FRMIVAL_TYPE_CONTINUOUS;
-	fival->stepwise.min.numerator = 1;
-	fival->stepwise.min.denominator =
-			min_t(u32, fps, MAXIMUM_FPS);
-	fival->stepwise.max.numerator = 1;
-	fival->stepwise.max.denominator = 1;
-	fival->stepwise.step.numerator = 1;
-	fival->stepwise.step.denominator = 1;
+	fps = core->iris_platform_data->max_core_mbps / mbpf;
+	max_fps = min_t(u32, fps, caps->max_frame_rate);
+	max_fps = min_t(u32, max_fps, caps->max_operating_rate);
+	max_fps = min_t(u32, max_fps, MAXIMUM_FPS);
+
+	/*
+	 * s_param() keeps the rate as an integer (denominator / numerator), so
+	 * the only intervals this driver can honour are 1/n for integer n.
+	 * Enumerate exactly those.
+	 *
+	 * Neither of the other two types can describe that set. CONTINUOUS
+	 * promises every rational interval in the range, which the integer
+	 * store cannot deliver. STEPWISE takes a rational addend, so a step of
+	 * 1/1 means "min + k seconds", not the 1/n series - and the upstream
+	 * 1/MAXIMUM_FPS step restricts clients to multiples of it, excluding
+	 * common rates such as 25 and 50 fps.
+	 *
+	 * Index 0 is the fastest rate the platform allows at this resolution;
+	 * the series then walks down to 1 fps.
+	 */
+	if (fival->index >= max_fps)
+		return -EINVAL;
+
+	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+	fival->discrete.numerator = 1;
+	fival->discrete.denominator = max_fps - fival->index;
 
 	return 0;
 }
