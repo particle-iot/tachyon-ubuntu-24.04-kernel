@@ -74,6 +74,23 @@ int iris_wait_for_session_response(struct iris_inst *inst, bool is_flush)
 	return 0;
 }
 
+/*
+ * Returns the instance with a reference held; the caller must drop it with
+ * iris_put_instance().
+ *
+ * Handing out a bare pointer here is not safe. The lookup runs from the
+ * interrupt path, which then takes inst->lock - and between dropping
+ * core->lock and acquiring inst->lock, close() can remove the session,
+ * destroy that very mutex and free the instance. The firmware's ordering is
+ * not a lifetime guarantee either: a failed close command, a close response
+ * that times out, a late or out-of-order packet, or error recovery all leave
+ * a response in flight for a session that is going away.
+ *
+ * Taking the reference under core->lock closes that window. The instance is
+ * either still on the list, in which case it cannot be freed until the
+ * caller is done with it, or already removed, in which case the lookup
+ * simply misses it.
+ */
 struct iris_inst *iris_get_instance(struct iris_core *core, u32 session_id)
 {
 	struct iris_inst *inst;
@@ -81,6 +98,7 @@ struct iris_inst *iris_get_instance(struct iris_core *core, u32 session_id)
 	mutex_lock(&core->lock);
 	list_for_each_entry(inst, &core->instances, list) {
 		if (inst->session_id == session_id) {
+			kref_get(&inst->kref);
 			mutex_unlock(&core->lock);
 			return inst;
 		}

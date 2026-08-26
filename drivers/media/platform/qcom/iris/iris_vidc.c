@@ -188,6 +188,8 @@ int iris_open(struct file *filp)
 
 	mutex_init(&inst->lock);
 	mutex_init(&inst->ctx_q_lock);
+	/* Held by this file handle; the response path takes its own. */
+	kref_init(&inst->kref);
 
 	INIT_LIST_HEAD(&inst->buffers[BUF_BIN].list);
 	INIT_LIST_HEAD(&inst->buffers[BUF_ARP].list);
@@ -204,16 +206,23 @@ int iris_open(struct file *filp)
 
 	iris_v4l2_fh_init(inst, filp);
 
+	/*
+	 * Leave only NULL behind on failure: the release callback below owns
+	 * the teardown from here on, and it can only skip what it can
+	 * recognise as absent. An ERR_PTR would be freed as if it were real.
+	 */
 	inst->m2m_dev = v4l2_m2m_init(&iris_m2m_ops);
 	if (IS_ERR_OR_NULL(inst->m2m_dev)) {
+		inst->m2m_dev = NULL;
 		ret = -EINVAL;
 		goto fail_v4l2_fh_deinit;
 	}
 
 	inst->m2m_ctx = v4l2_m2m_ctx_init(inst->m2m_dev, inst, iris_m2m_queue_init);
 	if (IS_ERR_OR_NULL(inst->m2m_ctx)) {
+		inst->m2m_ctx = NULL;
 		ret = -EINVAL;
-		goto fail_m2m_release;
+		goto fail_v4l2_fh_deinit;
 	}
 
 	if (inst->domain == DECODER)
@@ -221,21 +230,15 @@ int iris_open(struct file *filp)
 	else if (inst->domain == ENCODER)
 		ret = iris_venc_inst_init(inst);
 	if (ret)
-		goto fail_m2m_ctx_release;
+		goto fail_v4l2_fh_deinit;
 
 	inst->fh.m2m_ctx = inst->m2m_ctx;
 
 	return 0;
 
-fail_m2m_ctx_release:
-	v4l2_m2m_ctx_release(inst->m2m_ctx);
-fail_m2m_release:
-	v4l2_m2m_release(inst->m2m_dev);
 fail_v4l2_fh_deinit:
 	iris_v4l2_fh_deinit(inst, filp);
-	mutex_destroy(&inst->ctx_q_lock);
-	mutex_destroy(&inst->lock);
-	kfree(inst);
+	iris_put_instance(inst);
 
 	return ret;
 }
@@ -299,30 +302,64 @@ static void iris_check_num_queued_internal_buffers(struct iris_inst *inst, u32 p
 			count, inst->domain == DECODER ? BUF_PERSIST : BUF_ARP);
 }
 
-int iris_close(struct file *filp)
+/*
+ * Everything a response handler can still reach is freed here, not in
+ * close(). Keeping the instance itself alive is not enough: the handler
+ * also dereferences inst->m2m_ctx, the control handler, the formats and
+ * the buffer lists, and all of those are separate allocations. Freeing
+ * them while a response is in flight is a use-after-free even though the
+ * instance survives.
+ */
+static void iris_inst_release(struct kref *kref)
 {
-	struct iris_inst *inst = iris_get_inst(filp);
+	struct iris_inst *inst = container_of(kref, struct iris_inst, kref);
 
+	/*
+	 * Also reached from a failed open(), so nothing here may assume the
+	 * instance was fully built. v4l2_ctrl_handler_free() tolerates being
+	 * called twice and on an uninitialised handler, but the m2m helpers
+	 * dereference their argument straight away.
+	 */
 	v4l2_ctrl_handler_free(&inst->ctrl_handler);
-	v4l2_m2m_ctx_release(inst->m2m_ctx);
-	v4l2_m2m_release(inst->m2m_dev);
-	mutex_lock(&inst->lock);
-	if (inst->domain == DECODER)
-		iris_vdec_inst_deinit(inst);
-	else if (inst->domain == ENCODER)
-		iris_venc_inst_deinit(inst);
-	iris_session_close(inst);
-	iris_inst_change_state(inst, IRIS_INST_DEINIT);
-	iris_v4l2_fh_deinit(inst, filp);
+	if (inst->m2m_ctx)
+		v4l2_m2m_ctx_release(inst->m2m_ctx);
+	if (inst->m2m_dev)
+		v4l2_m2m_release(inst->m2m_dev);
 	iris_destroy_all_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 	iris_destroy_all_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	iris_check_num_queued_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 	iris_check_num_queued_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
-	iris_remove_session(inst);
-	mutex_unlock(&inst->lock);
+	if (inst->domain == DECODER)
+		iris_vdec_inst_deinit(inst);
+	else if (inst->domain == ENCODER)
+		iris_venc_inst_deinit(inst);
 	mutex_destroy(&inst->ctx_q_lock);
 	mutex_destroy(&inst->lock);
 	kfree(inst);
+}
+
+void iris_put_instance(struct iris_inst *inst)
+{
+	kref_put(&inst->kref, iris_inst_release);
+}
+
+int iris_close(struct file *filp)
+{
+	struct iris_inst *inst = iris_get_inst(filp);
+
+	mutex_lock(&inst->lock);
+	iris_session_close(inst);
+	iris_inst_change_state(inst, IRIS_INST_DEINIT);
+	iris_v4l2_fh_deinit(inst, filp);
+	iris_remove_session(inst);
+	mutex_unlock(&inst->lock);
+
+	/*
+	 * Removing the session from the list is what stops new lookups. A
+	 * response already holding a reference keeps the instance and all of
+	 * its resources alive until it is done; the last put frees them.
+	 */
+	iris_put_instance(inst);
 
 	return 0;
 }

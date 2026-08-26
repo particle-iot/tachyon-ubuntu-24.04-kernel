@@ -12,6 +12,7 @@
 #include "iris_vdec.h"
 #include "iris_vpu_buffer.h"
 #include "iris_vpu_common.h"
+#include "iris_vidc.h"
 
 struct iris_hfi_gen2_core_hfi_range {
 	u32 begin;
@@ -915,6 +916,7 @@ static int iris_hfi_gen2_handle_session_response(struct iris_core *core,
 		iris_hfi_gen2_handle_dequeue_buffers(inst);
 
 	mutex_unlock(&inst->lock);
+	iris_put_instance(inst);
 
 	return ret;
 }

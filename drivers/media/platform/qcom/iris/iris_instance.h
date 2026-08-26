@@ -6,6 +6,7 @@
 #ifndef __IRIS_INSTANCE_H__
 #define __IRIS_INSTANCE_H__
 
+#include <linux/kref.h>
 #include <media/v4l2-ctrls.h>
 
 #include "iris_buffer.h"
@@ -80,6 +81,7 @@ struct iris_inst {
 	struct v4l2_fh			fh;
 	struct v4l2_format		*fmt_src;
 	struct v4l2_format		*fmt_dst;
+	struct kref			kref;
 	struct v4l2_ctrl_handler	ctrl_handler;
 	struct v4l2_ctrl		*ctrl_min_buffers;
 	enum domain_type		domain;

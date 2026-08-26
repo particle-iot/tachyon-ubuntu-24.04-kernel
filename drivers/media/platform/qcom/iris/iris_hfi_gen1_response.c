@@ -12,6 +12,7 @@
 #include "iris_instance.h"
 #include "iris_vdec.h"
 #include "iris_vpu_buffer.h"
+#include "iris_vidc.h"
 
 static void iris_hfi_gen1_read_changed_params(struct iris_inst *inst,
 					      struct hfi_msg_event_notify_pkt *pkt)
@@ -637,6 +638,7 @@ static void iris_hfi_gen1_handle_response(struct iris_core *core, void *response
 			mutex_lock(&inst->lock);
 			iris_hfi_gen1_session_event_notify(inst, hdr);
 			mutex_unlock(&inst->lock);
+			iris_put_instance(inst);
 		} else {
 			iris_hfi_gen1_sys_event_notify(core, hdr);
 		}
@@ -672,6 +674,7 @@ static void iris_hfi_gen1_handle_response(struct iris_core *core, void *response
 			}
 		}
 		mutex_unlock(&inst->lock);
+		iris_put_instance(inst);
 
 		break;
 	}

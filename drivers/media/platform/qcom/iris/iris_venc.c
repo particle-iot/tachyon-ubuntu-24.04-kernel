@@ -24,6 +24,9 @@ int iris_venc_inst_init(struct iris_inst *inst)
 	if (!inst->fmt_src || !inst->fmt_dst) {
 		kfree(inst->fmt_src);
 		kfree(inst->fmt_dst);
+		/* The release path frees these again if they are left dangling. */
+		inst->fmt_src = NULL;
+		inst->fmt_dst = NULL;
 		return -ENOMEM;
 	}
 
