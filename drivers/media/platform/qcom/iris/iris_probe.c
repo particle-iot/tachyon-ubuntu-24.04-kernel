@@ -199,6 +199,14 @@ static int iris_remove(struct platform_device *pdev)
 		return 0;
 
 	/*
+	 * Unregister first: that clears V4L2_FL_REGISTERED, so open() starts
+	 * failing at the door. Doing it after the core was torn down would leave
+	 * a window where a fresh open() still reaches a dead core.
+	 */
+	video_unregister_device(core->vdev_dec);
+	video_unregister_device(core->vdev_enc);
+
+	/*
 	 * The interrupt schedules sys_error_handler, which takes core->lock and
 	 * re-initialises the core. Nothing here stops it on its own: the irq is
 	 * devm-managed and so outlives this function, and iris_vpu_power_off()
@@ -210,9 +218,6 @@ static int iris_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&core->sys_error_handler);
 
 	iris_core_deinit(core);
-
-	video_unregister_device(core->vdev_dec);
-	video_unregister_device(core->vdev_enc);
 
 	v4l2_device_unregister(&core->v4l2_dev);
 
@@ -427,6 +432,13 @@ static struct platform_driver qcom_iris_driver = {
 		.name = "qcom-iris",
 		.of_match_table = iris_dt_match,
 		.pm = &iris_pm_ops,
+		/*
+		 * An instance keeps a plain pointer to the devres-allocated core
+		 * and still uses it from close(), so a remove() with file handles
+		 * open would leave those pointing at freed memory. This does not
+		 * fix that lifetime; it removes the operation that would reach it.
+		 */
+		.suppress_bind_attrs = true,
 	},
 };
 
