@@ -33,11 +33,20 @@ static void iris_v4l2_fh_init(struct iris_inst *inst, struct file *filp)
 	iris_v4l2_fh_add(&inst->fh, filp);
 }
 
-static void iris_v4l2_fh_deinit(struct iris_inst *inst, struct file *filp)
+/*
+ * Detach the handle from the file, but leave the v4l2_fh itself intact.
+ *
+ * v4l2_fh_exit() clears fh->vdev, and a response still in flight can queue an
+ * event on this handle - iris_vdec_src_change(), the EOS path and the LAST
+ * buffer path all call v4l2_event_queue_fh(), whose first act is to take
+ * fh->vdev->fh_lock. Tearing the fh down here would leave that a NULL
+ * dereference; it happens in the release instead, once nothing can reach the
+ * instance any more.
+ */
+static void iris_v4l2_fh_detach(struct iris_inst *inst, struct file *filp)
 {
 	iris_v4l2_fh_del(&inst->fh, filp);
 	inst->fh.ctrl_handler = NULL;
-	v4l2_fh_exit(&inst->fh);
 }
 
 /*
@@ -215,14 +224,14 @@ int iris_open(struct file *filp)
 	if (IS_ERR_OR_NULL(inst->m2m_dev)) {
 		inst->m2m_dev = NULL;
 		ret = -EINVAL;
-		goto fail_v4l2_fh_deinit;
+		goto fail_v4l2_fh_detach;
 	}
 
 	inst->m2m_ctx = v4l2_m2m_ctx_init(inst->m2m_dev, inst, iris_m2m_queue_init);
 	if (IS_ERR_OR_NULL(inst->m2m_ctx)) {
 		inst->m2m_ctx = NULL;
 		ret = -EINVAL;
-		goto fail_v4l2_fh_deinit;
+		goto fail_v4l2_fh_detach;
 	}
 
 	if (inst->domain == DECODER)
@@ -230,14 +239,14 @@ int iris_open(struct file *filp)
 	else if (inst->domain == ENCODER)
 		ret = iris_venc_inst_init(inst);
 	if (ret)
-		goto fail_v4l2_fh_deinit;
+		goto fail_v4l2_fh_detach;
 
 	inst->fh.m2m_ctx = inst->m2m_ctx;
 
 	return 0;
 
-fail_v4l2_fh_deinit:
-	iris_v4l2_fh_deinit(inst, filp);
+fail_v4l2_fh_detach:
+	iris_v4l2_fh_detach(inst, filp);
 	iris_put_instance(inst);
 
 	return ret;
@@ -333,6 +342,7 @@ static void iris_inst_release(struct kref *kref)
 		iris_vdec_inst_deinit(inst);
 	else if (inst->domain == ENCODER)
 		iris_venc_inst_deinit(inst);
+	v4l2_fh_exit(&inst->fh);
 	mutex_destroy(&inst->ctx_q_lock);
 	mutex_destroy(&inst->lock);
 	kfree(inst);
@@ -350,7 +360,7 @@ int iris_close(struct file *filp)
 	mutex_lock(&inst->lock);
 	iris_session_close(inst);
 	iris_inst_change_state(inst, IRIS_INST_DEINIT);
-	iris_v4l2_fh_deinit(inst, filp);
+	iris_v4l2_fh_detach(inst, filp);
 	iris_remove_session(inst);
 	mutex_unlock(&inst->lock);
 
