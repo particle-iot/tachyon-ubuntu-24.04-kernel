@@ -66,11 +66,19 @@ int iris_enable_power_domains(struct iris_core *core, struct device *pd_dev)
 	if (ret)
 		return ret;
 
-	ret = pm_runtime_get_sync(pd_dev);
-	if (ret < 0)
+	/*
+	 * pm_runtime_get_sync() leaves the usage count incremented even when it
+	 * fails, which would pin the domain for good; resume_and_get() drops it
+	 * for us. Undo the rate as well, so a failed enable leaves nothing
+	 * behind.
+	 */
+	ret = pm_runtime_resume_and_get(pd_dev);
+	if (ret < 0) {
+		dev_pm_opp_set_rate(core->dev, 0);
 		return ret;
+	}
 
-	return ret;
+	return 0;
 }
 
 int iris_disable_power_domains(struct iris_core *core, struct device *pd_dev)
