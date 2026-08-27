@@ -85,13 +85,15 @@ int iris_disable_power_domains(struct iris_core *core, struct device *pd_dev)
 {
 	int ret;
 
+	/*
+	 * The reference goes back either way. Returning early on a failed rate
+	 * reset would pin the domain for good - the same leak the enable path
+	 * had, just from the other direction. Report the failure after the put.
+	 */
 	ret = dev_pm_opp_set_rate(core->dev, 0);
-	if (ret)
-		return ret;
-
 	pm_runtime_put_sync(pd_dev);
 
-	return 0;
+	return ret;
 }
 
 static struct clk *iris_get_clk_by_type(struct iris_core *core, enum platform_clk_type clk_type)
