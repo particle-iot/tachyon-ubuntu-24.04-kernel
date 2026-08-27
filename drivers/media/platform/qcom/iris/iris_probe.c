@@ -198,6 +198,17 @@ static int iris_remove(struct platform_device *pdev)
 	if (!core)
 		return 0;
 
+	/*
+	 * The interrupt schedules sys_error_handler, which takes core->lock and
+	 * re-initialises the core. Nothing here stops it on its own: the irq is
+	 * devm-managed and so outlives this function, and iris_vpu_power_off()
+	 * only masks it when the watchdog has not fired and the device resumed.
+	 * Mask it unconditionally, then wait for work already queued - otherwise
+	 * it runs against a destroyed mutex and a core devres is about to free.
+	 */
+	disable_irq(core->irq);
+	cancel_delayed_work_sync(&core->sys_error_handler);
+
 	iris_core_deinit(core);
 
 	video_unregister_device(core->vdev_dec);
