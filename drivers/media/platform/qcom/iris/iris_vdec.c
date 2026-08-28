@@ -191,6 +191,12 @@ int iris_vdec_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 
 	memset(pixmp->reserved, 0, sizeof(pixmp->reserved));
 	fmt = find_format(inst, pixmp->pixelformat, f->type);
+
+	/*
+	 * VIDIOC_TRY_FMT has to answer with the format VIDIOC_S_FMT would
+	 * produce. Only the raw queue is handled here; the bitstream queue is
+	 * left alone for the reason spelled out below.
+	 */
 	switch (f->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		if (!fmt) {
@@ -199,6 +205,14 @@ int iris_vdec_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 			f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
 			f->fmt.pix_mp.pixelformat = f_inst->fmt.pix_mp.pixelformat;
 		}
+		/*
+		 * No alignment here. On the bitstream queue width and height are
+		 * a placeholder the decoder replaces once it parses the sequence
+		 * header (dev-decoder.rst), and the value S_FMT aligns is the
+		 * coded resolution handed to the firmware, not a buffer layout.
+		 * Reporting the aligned value from TRY_FMT makes GStreamer's
+		 * v4l2videodec fail negotiation outright.
+		 */
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		if (!fmt) {
@@ -206,13 +220,21 @@ int iris_vdec_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 			f->fmt.pix_mp.pixelformat = f_inst->fmt.pix_mp.pixelformat;
 			f->fmt.pix_mp.width = f_inst->fmt.pix_mp.width;
 			f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
+		} else {
+			pixmp->width = ALIGN(pixmp->width, 128);
+			pixmp->height = ALIGN(pixmp->height, 32);
 		}
 
 		src_q = v4l2_m2m_get_src_vq(m2m_ctx);
 		if (vb2_is_streaming(src_q)) {
+			/*
+			 * While the bitstream queue streams the raw geometry
+			 * follows it, but it still has to come back aligned -
+			 * S_FMT aligns it, so TRY_FMT has to as well.
+			 */
 			f_inst = inst->fmt_src;
-			f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
-			f->fmt.pix_mp.width = f_inst->fmt.pix_mp.width;
+			pixmp->width = ALIGN(f_inst->fmt.pix_mp.width, 128);
+			pixmp->height = ALIGN(f_inst->fmt.pix_mp.height, 32);
 		}
 		break;
 	default:
@@ -223,6 +245,27 @@ int iris_vdec_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 		pixmp->field = V4L2_FIELD_NONE;
 
 	pixmp->num_planes = 1;
+
+	/*
+	 * Same reason as the encoder: userspace may size CREATE_BUFS from what
+	 * TRY_FMT reports. On the bitstream queue the width and height stay the
+	 * placeholder the client passed, but the size is computed from the
+	 * geometry S_FMT would settle on, so the number is still usable.
+	 */
+	if (V4L2_TYPE_IS_OUTPUT(f->type)) {
+		u32 codec_align = pixmp->pixelformat == V4L2_PIX_FMT_HEVC ? 32 : 16;
+
+		pixmp->plane_fmt[0].bytesperline = 0;
+		pixmp->plane_fmt[0].sizeimage =
+			iris_get_buffer_size_for(inst, BUF_INPUT, pixmp->pixelformat,
+						 ALIGN(pixmp->width, codec_align),
+						 ALIGN(pixmp->height, codec_align));
+	} else {
+		pixmp->plane_fmt[0].bytesperline = ALIGN(pixmp->width, 128);
+		pixmp->plane_fmt[0].sizeimage =
+			iris_get_buffer_size_for(inst, BUF_OUTPUT, pixmp->pixelformat,
+						 pixmp->width, pixmp->height);
+	}
 
 	return 0;
 }
@@ -282,6 +325,14 @@ int iris_vdec_s_fmt(struct iris_inst *inst, struct v4l2_format *f)
 		output_fmt->fmt.pix_mp.height = ALIGN(f->fmt.pix_mp.height, 32);
 		inst->buffers[BUF_OUTPUT].size = iris_get_buffer_size(inst, BUF_OUTPUT);
 
+		/*
+		 * Read the geometry back out of f, not out of a copy taken
+		 * before try_fmt: when the requested pixelformat is not
+		 * supported try_fmt substitutes the current format together
+		 * with its resolution, and crop has to follow that substitution.
+		 * A crop larger than fmt_src underflows the offsets handed to
+		 * the firmware.
+		 */
 		inst->crop.left = 0;
 		inst->crop.top = 0;
 		inst->crop.width = f->fmt.pix_mp.width;

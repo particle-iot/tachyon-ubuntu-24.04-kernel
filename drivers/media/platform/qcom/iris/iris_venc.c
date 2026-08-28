@@ -11,6 +11,7 @@
 #include "iris_ctrls.h"
 #include "iris_instance.h"
 #include "iris_power.h"
+#include "iris_utils.h"
 #include "iris_venc.h"
 #include "iris_vpu_buffer.h"
 
@@ -195,6 +196,16 @@ int iris_venc_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 
 	memset(pixmp->reserved, 0, sizeof(pixmp->reserved));
 	fmt = find_format(inst, pixmp->pixelformat, f->type);
+
+	/*
+	 * VIDIOC_TRY_FMT has to answer with the format VIDIOC_S_FMT would
+	 * produce. Width and height were left untouched here, so the two
+	 * disagreed for every size that is not already aligned - 1280x720
+	 * included - and an unusable request was only rejected once frames
+	 * were queued.
+	 */
+	iris_normalize_frame_size(inst, &pixmp->width, &pixmp->height);
+
 	switch (f->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		if (!fmt) {
@@ -202,15 +213,22 @@ int iris_venc_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 			f->fmt.pix_mp.width = f_inst->fmt.pix_mp.width;
 			f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
 			f->fmt.pix_mp.pixelformat = f_inst->fmt.pix_mp.pixelformat;
+		} else {
+			pixmp->width = ALIGN(pixmp->width, 128);
+			pixmp->height = ALIGN(pixmp->height, 32);
 		}
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		if (!fmt) {
-			f_inst = inst->fmt_dst;
-			f->fmt.pix_mp.width = f_inst->fmt.pix_mp.width;
-			f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
+		/*
+		 * The coded queue's width and height are read-only: they follow
+		 * the raw format and the crop rectangle. Report what S_FMT would
+		 * report instead of echoing the request back.
+		 */
+		f_inst = inst->fmt_dst;
+		f->fmt.pix_mp.width = f_inst->fmt.pix_mp.width;
+		f->fmt.pix_mp.height = f_inst->fmt.pix_mp.height;
+		if (!fmt)
 			f->fmt.pix_mp.pixelformat = f_inst->fmt.pix_mp.pixelformat;
-		}
 		break;
 	default:
 		return -EINVAL;
@@ -220,6 +238,28 @@ int iris_venc_try_fmt(struct iris_inst *inst, struct v4l2_format *f)
 		pixmp->field = V4L2_FIELD_NONE;
 
 	pixmp->num_planes = 1;
+
+	/*
+	 * Fill in the plane sizes too. Userspace is allowed to size its
+	 * CREATE_BUFS allocations from what TRY_FMT reports
+	 * (Documentation/userspace-api/media/v4l/buffer.rst), and leaving these
+	 * at whatever the caller passed - zero, for a cleared struct - hands it
+	 * a buffer that cannot hold a frame.
+	 */
+	if (V4L2_TYPE_IS_OUTPUT(f->type)) {
+		pixmp->plane_fmt[0].bytesperline = ALIGN(pixmp->width, 128);
+		pixmp->plane_fmt[0].sizeimage =
+			iris_get_buffer_size_for(inst, BUF_INPUT, pixmp->pixelformat,
+						 pixmp->width, pixmp->height);
+	} else {
+		if (pixmp->colorspace != V4L2_COLORSPACE_DEFAULT &&
+		    pixmp->colorspace != V4L2_COLORSPACE_REC709)
+			pixmp->colorspace = V4L2_COLORSPACE_DEFAULT;
+		pixmp->plane_fmt[0].bytesperline = 0;
+		pixmp->plane_fmt[0].sizeimage =
+			iris_get_buffer_size_for(inst, BUF_OUTPUT, pixmp->pixelformat,
+						 pixmp->width, pixmp->height);
+	}
 
 	return 0;
 }
@@ -259,6 +299,23 @@ static int iris_venc_s_fmt_output(struct iris_inst *inst, struct v4l2_format *f)
 static int iris_venc_s_fmt_input(struct iris_inst *inst, struct v4l2_format *f)
 {
 	struct v4l2_format *fmt, *output_fmt;
+	u32 vis_width, vis_height;
+
+	/*
+	 * try_fmt aligns the geometry up to what the hardware wants, so the
+	 * visible size the crop comparison below needs has to be taken before
+	 * that. When the requested pixelformat is not supported try_fmt
+	 * substitutes the current format and its resolution, so follow that
+	 * substitution rather than the rejected request.
+	 */
+	if (find_format(inst, f->fmt.pix_mp.pixelformat, f->type)) {
+		vis_width = f->fmt.pix_mp.width;
+		vis_height = f->fmt.pix_mp.height;
+	} else {
+		vis_width = inst->fmt_src->fmt.pix_mp.width;
+		vis_height = inst->fmt_src->fmt.pix_mp.height;
+	}
+	iris_normalize_frame_size(inst, &vis_width, &vis_height);
 
 	iris_venc_try_fmt(inst, f);
 
@@ -290,8 +347,8 @@ static int iris_venc_s_fmt_input(struct iris_inst *inst, struct v4l2_format *f)
 	inst->buffers[BUF_INPUT].min_count = iris_vpu_buf_count(inst, BUF_INPUT);
 	inst->buffers[BUF_INPUT].size = fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 
-	if (f->fmt.pix_mp.width != inst->crop.width ||
-	    f->fmt.pix_mp.height != inst->crop.height) {
+	if (vis_width != inst->crop.width ||
+	    vis_height != inst->crop.height) {
 		inst->crop.top = 0;
 		inst->crop.left = 0;
 		inst->crop.width = fmt->fmt.pix_mp.width;
@@ -360,6 +417,12 @@ int iris_venc_s_selection(struct iris_inst *inst, struct v4l2_selection *s)
 	case V4L2_SEL_TGT_CROP:
 		s->r.left = 0;
 		s->r.top = 0;
+
+		/* Same normalization the format path applies, so a rectangle the
+		 * bitstream cannot express is adjusted here rather than at
+		 * streaming time.
+		 */
+		iris_normalize_frame_size(inst, &s->r.width, &s->r.height);
 
 		if (s->r.width > inst->fmt_src->fmt.pix_mp.width ||
 		    s->r.height > inst->fmt_src->fmt.pix_mp.height)

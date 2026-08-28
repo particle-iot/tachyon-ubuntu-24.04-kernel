@@ -9,6 +9,7 @@
 #include "iris_buffer.h"
 #include "iris_instance.h"
 #include "iris_power.h"
+#include "iris_utils.h"
 #include "iris_vpu_buffer.h"
 
 #define PIXELS_4K 4096
@@ -60,20 +61,14 @@
  *
  * Note: All the alignments are hardware requirements.
  */
-static u32 iris_yuv_buffer_size_nv12(struct iris_inst *inst)
+static u32 iris_yuv_buffer_size_nv12(struct iris_inst *inst, u32 width, u32 height)
 {
 	u32 y_plane, uv_plane, y_stride, uv_stride, y_scanlines, uv_scanlines;
-	struct v4l2_format *f;
 
-	if (inst->domain == DECODER)
-		f = inst->fmt_dst;
-	else
-		f = inst->fmt_src;
-
-	y_stride = ALIGN(f->fmt.pix_mp.width, Y_STRIDE_ALIGN);
-	uv_stride = ALIGN(f->fmt.pix_mp.width, UV_STRIDE_ALIGN);
-	y_scanlines = ALIGN(f->fmt.pix_mp.height, Y_SCANLINE_ALIGN);
-	uv_scanlines = ALIGN((f->fmt.pix_mp.height + 1) >> 1, UV_SCANLINE_ALIGN);
+	y_stride = ALIGN(width, Y_STRIDE_ALIGN);
+	uv_stride = ALIGN(width, UV_STRIDE_ALIGN);
+	y_scanlines = ALIGN(height, Y_SCANLINE_ALIGN);
+	uv_scanlines = ALIGN((height + 1) >> 1, UV_SCANLINE_ALIGN);
 	y_plane = y_stride * y_scanlines;
 	uv_plane = uv_stride * uv_scanlines;
 
@@ -168,55 +163,50 @@ static u32 iris_yuv_buffer_size_nv12(struct iris_inst *inst)
  *
  * Note: All the alignments are hardware requirements.
  */
-static u32 iris_yuv_buffer_size_qc08c(struct iris_inst *inst)
+static u32 iris_yuv_buffer_size_qc08c(struct iris_inst *inst, u32 width, u32 height)
 {
 	u32 y_plane, uv_plane, y_stride, uv_stride;
 	u32 uv_meta_stride, uv_meta_plane;
 	u32 y_meta_stride, y_meta_plane;
-	struct v4l2_format *f = NULL;
 
-	if (inst->domain == DECODER)
-		f = inst->fmt_dst;
-	else
-		f = inst->fmt_src;
-
-	y_meta_stride = ALIGN(DIV_ROUND_UP(f->fmt.pix_mp.width, META_STRIDE_ALIGNED >> 1),
+	y_meta_stride = ALIGN(DIV_ROUND_UP(width, META_STRIDE_ALIGNED >> 1),
 			      META_STRIDE_ALIGNED);
-	y_meta_plane = y_meta_stride * ALIGN(DIV_ROUND_UP(f->fmt.pix_mp.height,
+	y_meta_plane = y_meta_stride * ALIGN(DIV_ROUND_UP(height,
 							  META_SCANLINE_ALIGNED >> 1),
 					     META_SCANLINE_ALIGNED);
 	y_meta_plane = ALIGN(y_meta_plane, PIXELS_4K);
 
-	y_stride = ALIGN(f->fmt.pix_mp.width, Y_STRIDE_ALIGN);
-	y_plane = ALIGN(y_stride * ALIGN(f->fmt.pix_mp.height, Y_SCANLINE_ALIGN), PIXELS_4K);
+	y_stride = ALIGN(width, Y_STRIDE_ALIGN);
+	y_plane = ALIGN(y_stride * ALIGN(height, Y_SCANLINE_ALIGN), PIXELS_4K);
 
-	uv_meta_stride = ALIGN(DIV_ROUND_UP(f->fmt.pix_mp.width / 2, META_STRIDE_ALIGNED >> 2),
+	uv_meta_stride = ALIGN(DIV_ROUND_UP(width / 2, META_STRIDE_ALIGNED >> 2),
 			       META_STRIDE_ALIGNED);
-	uv_meta_plane = uv_meta_stride * ALIGN(DIV_ROUND_UP(f->fmt.pix_mp.height / 2,
+	uv_meta_plane = uv_meta_stride * ALIGN(DIV_ROUND_UP(height / 2,
 							    META_SCANLINE_ALIGNED >> 1),
 					       META_SCANLINE_ALIGNED);
 	uv_meta_plane = ALIGN(uv_meta_plane, PIXELS_4K);
 
-	uv_stride = ALIGN(f->fmt.pix_mp.width, UV_STRIDE_ALIGN);
-	uv_plane = ALIGN(uv_stride * ALIGN(f->fmt.pix_mp.height / 2, UV_SCANLINE_ALIGN_QC08C),
+	uv_stride = ALIGN(width, UV_STRIDE_ALIGN);
+	uv_plane = ALIGN(uv_stride * ALIGN(height / 2, UV_SCANLINE_ALIGN_QC08C),
 			 PIXELS_4K);
 
 	return ALIGN(y_meta_plane + y_plane + uv_meta_plane + uv_plane, PIXELS_4K);
 }
 
-static u32 iris_dec_bitstream_buffer_size(struct iris_inst *inst)
+static u32 iris_dec_bitstream_buffer_size(struct iris_inst *inst, u32 codec,
+					  u32 width, u32 height)
 {
 	struct platform_inst_caps *caps = inst->core->iris_platform_data->inst_caps;
 	u32 base_res_mbs = NUM_MBS_4K;
 	u32 frame_size, num_mbs;
 	u32 div_factor = 2;
 
-	num_mbs = iris_get_mbpf(inst);
+	num_mbs = NUM_MBS_PER_FRAME(height, width);
 	if (num_mbs > NUM_MBS_4K) {
 		div_factor = 4;
 		base_res_mbs = caps->max_mbpf;
 	} else {
-		if (inst->codec == V4L2_PIX_FMT_VP9)
+		if (codec == V4L2_PIX_FMT_VP9)
 			div_factor = 1;
 	}
 
@@ -229,19 +219,16 @@ static u32 iris_dec_bitstream_buffer_size(struct iris_inst *inst)
 	return ALIGN(frame_size, PIXELS_4K);
 }
 
-static u32 iris_enc_bitstream_buffer_size(struct iris_inst *inst)
+static u32 iris_enc_bitstream_buffer_size(struct iris_inst *inst, u32 width, u32 height)
 {
 	u32 aligned_width, aligned_height, bitstream_size, yuv_size;
 	int bitrate_mode, frame_rc;
-	struct v4l2_format *f;
-
-	f = inst->fmt_dst;
 
 	bitrate_mode = inst->fw_caps[BITRATE_MODE].value;
 	frame_rc = inst->fw_caps[FRAME_RC_ENABLE].value;
 
-	aligned_width = ALIGN(f->fmt.pix_mp.width, 32);
-	aligned_height = ALIGN(f->fmt.pix_mp.height, 32);
+	aligned_width = ALIGN(width, 32);
+	aligned_height = ALIGN(height, 32);
 	bitstream_size = aligned_width * aligned_height * 3;
 	yuv_size = (aligned_width * aligned_height * 3) >> 1;
 	if (aligned_width * aligned_height > (4096 * 2176))
@@ -258,36 +245,88 @@ static u32 iris_enc_bitstream_buffer_size(struct iris_inst *inst)
 	return ALIGN(bitstream_size, 4096);
 }
 
-int iris_get_buffer_size(struct iris_inst *inst,
-			 enum iris_buffer_type buffer_type)
+/*
+ * TRY_FMT has to report the buffer size S_FMT would produce, because
+ * userspace is allowed to size CREATE_BUFS allocations from it
+ * (Documentation/userspace-api/media/v4l/buffer.rst). That means computing a
+ * size for geometry the instance has not adopted yet, so the geometry is a
+ * parameter here rather than being read back out of inst.
+ */
+int iris_get_buffer_size_for(struct iris_inst *inst,
+			     enum iris_buffer_type buffer_type,
+			     u32 pixelformat, u32 width, u32 height)
 {
 	if (inst->domain == DECODER) {
 		switch (buffer_type) {
 		case BUF_INPUT:
-			return iris_dec_bitstream_buffer_size(inst);
+			return iris_dec_bitstream_buffer_size(inst, pixelformat,
+							      width, height);
 		case BUF_OUTPUT:
-			if (inst->fmt_dst->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_QC08C)
-				return iris_yuv_buffer_size_qc08c(inst);
+			if (pixelformat == V4L2_PIX_FMT_QC08C)
+				return iris_yuv_buffer_size_qc08c(inst, width, height);
 			else
-				return iris_yuv_buffer_size_nv12(inst);
+				return iris_yuv_buffer_size_nv12(inst, width, height);
 		case BUF_DPB:
-			return iris_yuv_buffer_size_qc08c(inst);
+			return iris_yuv_buffer_size_qc08c(inst, width, height);
 		default:
 			return 0;
 		}
 	} else {
 		switch (buffer_type) {
 		case BUF_INPUT:
-			if (inst->fmt_src->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_QC08C)
-				return iris_yuv_buffer_size_qc08c(inst);
+			if (pixelformat == V4L2_PIX_FMT_QC08C)
+				return iris_yuv_buffer_size_qc08c(inst, width, height);
 			else
-				return iris_yuv_buffer_size_nv12(inst);
+				return iris_yuv_buffer_size_nv12(inst, width, height);
 		case BUF_OUTPUT:
-			return iris_enc_bitstream_buffer_size(inst);
+			return iris_enc_bitstream_buffer_size(inst, width, height);
 		default:
 			return 0;
 		}
 	}
+}
+
+int iris_get_buffer_size(struct iris_inst *inst,
+			 enum iris_buffer_type buffer_type)
+{
+	struct v4l2_format *f;
+	u32 pixelformat;
+	u32 width, height;
+
+	/* The raw side of either domain is the one whose geometry is used. */
+	if (inst->domain == DECODER)
+		f = buffer_type == BUF_INPUT ? inst->fmt_src : inst->fmt_dst;
+	else
+		f = buffer_type == BUF_OUTPUT ? inst->fmt_dst : inst->fmt_src;
+
+	/* DPB buffers are internal and always follow the raw geometry. */
+	if (buffer_type == BUF_DPB)
+		f = inst->domain == DECODER ? inst->fmt_dst : inst->fmt_src;
+
+	/*
+	 * pixelformat is the format of the queue this buffer type belongs to:
+	 * the codec fourcc on the bitstream side, the raw fourcc on the other.
+	 * Reading it back off one fixed queue got the bitstream size computed
+	 * with a stale codec.
+	 */
+	pixelformat = f->fmt.pix_mp.pixelformat;
+
+	width = f->fmt.pix_mp.width;
+	height = f->fmt.pix_mp.height;
+
+	/*
+	 * The bitstream size used to go through iris_get_mbpf(), which takes
+	 * the larger of the format and the crop rectangle. Keep that, so the
+	 * size this returns is unchanged from before the geometry became a
+	 * parameter.
+	 */
+	if (inst->domain == DECODER && buffer_type == BUF_INPUT) {
+		width = max(width, inst->crop.width);
+		height = max(height, inst->crop.height);
+	}
+
+	return iris_get_buffer_size_for(inst, buffer_type, pixelformat,
+					width, height);
 }
 
 static void iris_fill_internal_buf_info(struct iris_inst *inst,

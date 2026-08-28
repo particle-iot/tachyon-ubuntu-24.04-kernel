@@ -9,6 +9,27 @@
 #include "iris_instance.h"
 #include "iris_utils.h"
 
+/*
+ * Parity and bounds normalization for the encoder's visible frame geometry,
+ * shared by TRY_FMT, S_FMT and S_SELECTION so that the three cannot disagree
+ * on it.
+ *
+ * Odd sizes are rounded down because the H.264 and HEVC cropping syntax counts
+ * in chroma samples: with 4:2:0 subsampling an odd visible width or height
+ * cannot be expressed in the bitstream at all.
+ *
+ * The bounds are the ones VIDIOC_ENUM_FRAMESIZES reports, so the two cannot
+ * drift apart. This covers geometry only - it says nothing about whether the
+ * firmware will accept a given combination.
+ */
+void iris_normalize_frame_size(struct iris_inst *inst, u32 *width, u32 *height)
+{
+	struct platform_inst_caps *caps = inst->core->iris_platform_data->inst_caps;
+
+	*width = clamp(*width & ~1u, caps->min_frame_width, caps->max_frame_width);
+	*height = clamp(*height & ~1u, caps->min_frame_height, caps->max_frame_height);
+}
+
 bool iris_res_is_less_than(u32 width, u32 height,
 			   u32 ref_width, u32 ref_height)
 {

@@ -106,6 +106,8 @@ struct iris_buffers {
 };
 
 int iris_get_buffer_size(struct iris_inst *inst, enum iris_buffer_type buffer_type);
+int iris_get_buffer_size_for(struct iris_inst *inst, enum iris_buffer_type buffer_type,
+			     u32 pixelformat, u32 width, u32 height);
 void iris_get_internal_buffers(struct iris_inst *inst, u32 plane);
 int iris_create_internal_buffers(struct iris_inst *inst, u32 plane);
 int iris_queue_internal_buffers(struct iris_inst *inst, u32 plane);

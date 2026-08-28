@@ -22,6 +22,8 @@
 #define IRIS_BUS_NAME "platform:iris_icc"
 #define STEP_WIDTH 1
 #define STEP_HEIGHT 1
+#define STEP_WIDTH_ENC 2
+#define STEP_HEIGHT_ENC 2
 
 static void iris_v4l2_fh_init(struct iris_inst *inst, struct file *filp)
 {
@@ -461,10 +463,26 @@ static int iris_enum_framesizes(struct file *filp, void *fh,
 	fsize->type = V4L2_FRMSIZE_TYPE_STEPWISE;
 	fsize->stepwise.min_width = caps->min_frame_width;
 	fsize->stepwise.max_width = caps->max_frame_width;
-	fsize->stepwise.step_width = STEP_WIDTH;
 	fsize->stepwise.min_height = caps->min_frame_height;
 	fsize->stepwise.max_height = caps->max_frame_height;
-	fsize->stepwise.step_height = STEP_HEIGHT;
+
+	/*
+	 * The encoder rounds the visible size down to even, because the H.264
+	 * and HEVC cropping syntax counts in chroma samples and an odd size
+	 * cannot be expressed there. Report that, instead of claiming every
+	 * size in the range is usable.
+	 *
+	 * The decoder keeps a step of one: it takes the real resolution from
+	 * the sequence header rather than from S_FMT, so a stream with odd
+	 * dimensions - VP9 allows them - still decodes.
+	 */
+	if (inst->domain == ENCODER) {
+		fsize->stepwise.step_width = STEP_WIDTH_ENC;
+		fsize->stepwise.step_height = STEP_HEIGHT_ENC;
+	} else {
+		fsize->stepwise.step_width = STEP_WIDTH;
+		fsize->stepwise.step_height = STEP_HEIGHT;
+	}
 
 	return ret;
 }
