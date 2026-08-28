@@ -3,82 +3,86 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include "iris_power.h"
-#include "iris_helpers.h"
-#include "resources.h"
+#include <linux/pm_opp.h>
+#include <linux/pm_runtime.h>
+#include <media/v4l2-mem2mem.h>
 
-static int iris_set_buses(struct iris_inst *inst)
+#include "iris_buffer.h"
+#include "iris_instance.h"
+#include "iris_power.h"
+#include "iris_resources.h"
+#include "iris_vpu_common.h"
+
+static u32 iris_calc_bw(struct iris_inst *inst, struct icc_vote_data *data)
 {
+	const struct bw_info *bw_tbl = NULL;
+	struct iris_core *core = inst->core;
+	u32 num_rows, i, mbs, mbps;
+	u32 icc_bw = 0;
+
+	mbs = DIV_ROUND_UP(data->height, 16) * DIV_ROUND_UP(data->width, 16);
+	mbps = mbs * data->fps;
+	if (mbps == 0)
+		goto exit;
+
+	bw_tbl = core->iris_platform_data->bw_tbl_dec;
+	num_rows = core->iris_platform_data->bw_tbl_dec_size;
+
+	for (i = 0; i < num_rows; i++) {
+		if (i != 0 && mbps > bw_tbl[i].mbs_per_sec)
+			break;
+
+		icc_bw = bw_tbl[i].bw_ddr;
+	}
+
+exit:
+	return icc_bw;
+}
+
+static int iris_set_interconnects(struct iris_inst *inst)
+{
+	struct iris_core *core = inst->core;
 	struct iris_inst *instance;
-	struct iris_core *core;
 	u64 total_bw_ddr = 0;
 	int ret;
-
-	core = inst->core;
 
 	mutex_lock(&core->lock);
 	list_for_each_entry(instance, &core->instances, list) {
 		if (!instance->max_input_data_size)
 			continue;
 
-		total_bw_ddr += instance->power.bus_bw;
+		total_bw_ddr += instance->power.icc_bw;
 	}
 
-	ret = vote_buses(core, total_bw_ddr);
+	ret = iris_set_icc_bw(core, total_bw_ddr);
 
 	mutex_unlock(&core->lock);
 
 	return ret;
 }
 
-static int iris_vote_buses(struct iris_inst *inst)
+static int iris_vote_interconnects(struct iris_inst *inst)
 {
-	struct v4l2_format *out_f, *inp_f;
-	struct bus_vote_data *vote_data;
-	struct iris_core *core;
-
-	core = inst->core;
-
-	vote_data = &inst->bus_data;
-
-	out_f = inst->fmt_dst;
-	inp_f = inst->fmt_src;
+	struct icc_vote_data *vote_data = &inst->icc_data;
+	struct v4l2_format *inp_f = inst->fmt_src;
 
 	vote_data->width = inp_f->fmt.pix_mp.width;
 	vote_data->height = inp_f->fmt.pix_mp.height;
-	vote_data->fps = inst->max_rate;
+	vote_data->fps = DEFAULT_FPS;
 
-	if (inst->domain == ENCODER) {
-		vote_data->color_formats[0] =
-			v4l2_colorformat_to_driver(inst, inst->fmt_src->fmt.pix_mp.pixelformat);
-	} else if (inst->domain == DECODER) {
-		if (is_linear_colorformat(out_f->fmt.pix_mp.pixelformat)) {
-			vote_data->color_formats[0] = V4L2_PIX_FMT_NV12;
-			vote_data->color_formats[1] = out_f->fmt.pix_mp.pixelformat;
-		} else {
-			vote_data->color_formats[0] = out_f->fmt.pix_mp.pixelformat;
-		}
-	}
+	inst->power.icc_bw = iris_calc_bw(inst, vote_data);
 
-	call_session_op(core, calc_bw, inst, vote_data);
-
-	inst->power.bus_bw = vote_data->bus_bw;
-
-	return iris_set_buses(inst);
+	return iris_set_interconnects(inst);
 }
 
 static int iris_set_clocks(struct iris_inst *inst)
 {
+	struct iris_core *core = inst->core;
 	struct iris_inst *instance;
-	struct iris_core *core;
-	int ret = 0;
-	u64 freq;
-
-	core = inst->core;
+	u64 freq = 0;
+	int ret;
 
 	mutex_lock(&core->lock);
-
-	freq = 0;
 	list_for_each_entry(instance, &core->instances, list) {
 		if (!instance->max_input_data_size)
 			continue;
@@ -87,9 +91,7 @@ static int iris_set_clocks(struct iris_inst *inst)
 	}
 
 	core->power.clk_freq = freq;
-
-	ret = opp_set_rate(core, freq);
-
+	ret = dev_pm_opp_set_rate(core->dev, freq);
 	mutex_unlock(&core->lock);
 
 	return ret;
@@ -97,87 +99,42 @@ static int iris_set_clocks(struct iris_inst *inst)
 
 static int iris_scale_clocks(struct iris_inst *inst)
 {
-	struct iris_buffer *vbuf;
-	struct iris_core *core;
-	u32 data_size = 0;
+	const struct vpu_ops *vpu_ops = inst->core->iris_platform_data->vpu_ops;
+	struct v4l2_m2m_ctx *m2m_ctx = inst->m2m_ctx;
+	struct v4l2_m2m_buffer *buffer, *n;
+	struct iris_buffer *buf;
+	size_t data_size = 0;
 
-	core = inst->core;
-
-	list_for_each_entry(vbuf, &inst->buffers.input.list, list)
-		data_size = max(data_size, vbuf->data_size);
-
-	inst->max_input_data_size = data_size;
-
-	if (inst->domain == ENCODER) {
-		inst->max_rate = max((inst->cap[OPERATING_RATE].value >> 16),
-			(inst->cap[FRAME_RATE].value >> 16));
-	} else if (inst->domain == DECODER) {
-		inst->max_rate = inst->cap[QUEUED_RATE].value >> 16;
+	v4l2_m2m_for_each_src_buf_safe(m2m_ctx, buffer, n) {
+		buf = to_iris_buffer(&buffer->vb);
+		data_size = max(data_size, buf->data_size);
 	}
 
+	inst->max_input_data_size = data_size;
 	if (!inst->max_input_data_size)
 		return 0;
 
-	inst->power.min_freq = call_session_op(core, calc_freq, inst,
-					       inst->max_input_data_size);
-	iris_set_clocks(inst);
+	inst->power.min_freq = vpu_ops->calc_freq(inst, inst->max_input_data_size);
 
-	return 0;
+	return iris_set_clocks(inst);
 }
 
 int iris_scale_power(struct iris_inst *inst)
 {
-	iris_scale_clocks(inst);
-	iris_vote_buses(inst);
+	struct iris_core *core = inst->core;
+	int ret;
 
-	return 0;
-}
+	if (pm_runtime_suspended(core->dev)) {
+		ret = pm_runtime_resume_and_get(core->dev);
+		if (ret < 0)
+			return ret;
 
-int iris_update_input_rate(struct iris_inst *inst, u64 time_us)
-{
-	struct iris_input_timer *prev_timer = NULL;
-	struct iris_input_timer *input_timer;
-	u64 input_timer_sum_us = 0;
-	u64 counter = 0;
-
-	input_timer = kzalloc(sizeof(*input_timer), GFP_KERNEL);
-	if (!input_timer)
-		return -ENOMEM;
-
-	input_timer->time_us = time_us;
-	INIT_LIST_HEAD(&input_timer->list);
-	list_add_tail(&input_timer->list, &inst->input_timer_list);
-	list_for_each_entry(input_timer, &inst->input_timer_list, list) {
-		if (prev_timer) {
-			input_timer_sum_us += input_timer->time_us - prev_timer->time_us;
-			counter++;
-		}
-		prev_timer = input_timer;
+		pm_runtime_put_autosuspend(core->dev);
 	}
 
-	if (input_timer_sum_us && counter >= INPUT_TIMER_LIST_SIZE)
-		inst->cap[QUEUED_RATE].value =
-			(s32)(DIV64_U64_ROUND_CLOSEST(counter * 1000000,
-				input_timer_sum_us) << 16);
+	ret = iris_scale_clocks(inst);
+	if (ret)
+		return ret;
 
-	if (counter >= INPUT_TIMER_LIST_SIZE) {
-		input_timer = list_first_entry(&inst->input_timer_list,
-					       struct iris_input_timer, list);
-		list_del_init(&input_timer->list);
-		kfree(input_timer);
-	}
-
-	return 0;
-}
-
-int iris_flush_input_timer(struct iris_inst *inst)
-{
-	struct iris_input_timer *input_timer, *dummy_timer;
-
-	list_for_each_entry_safe(input_timer, dummy_timer, &inst->input_timer_list, list) {
-		list_del_init(&input_timer->list);
-		kfree(input_timer);
-	}
-
-	return 0;
+	return iris_vote_interconnects(inst);
 }

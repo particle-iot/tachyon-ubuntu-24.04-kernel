@@ -3,80 +3,59 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include "hfi_defines.h"
+#include <linux/pm_runtime.h>
+
 #include "iris_core.h"
-#include "iris_helpers.h"
-#include "iris_hfi_packet.h"
 #include "iris_hfi_queue.h"
 
-static void __set_queue_hdr_defaults(struct hfi_queue_header *q_hdr)
-{
-	q_hdr->qhdr_status = 0x1;
-	q_hdr->qhdr_type = IFACEQ_DFLT_QHDR;
-	q_hdr->qhdr_q_size = IFACEQ_QUEUE_SIZE / 4;
-	q_hdr->qhdr_pkt_size = 0;
-	q_hdr->qhdr_rx_wm = 0x1;
-	q_hdr->qhdr_tx_wm = 0x1;
-	q_hdr->qhdr_rx_req = 0x1;
-	q_hdr->qhdr_tx_req = 0x0;
-	q_hdr->qhdr_rx_irq_status = 0x0;
-	q_hdr->qhdr_tx_irq_status = 0x0;
-	q_hdr->qhdr_read_idx = 0x0;
-	q_hdr->qhdr_write_idx = 0x0;
-}
+#include "iris_vpu_common.h"
 
-static int __write_queue(struct iface_q_info *qinfo, void *packet)
+static int iris_hfi_queue_write(struct iris_iface_q_info *qinfo, void *packet, u32 packet_size)
 {
-	u32 empty_space, read_idx, write_idx, new_write_idx;
-	struct hfi_queue_header *queue;
-	struct hfi_header *header;
-	u32 packet_size, residue;
+	struct iris_hfi_queue_header *queue = qinfo->qhdr;
+	u32 write_idx = queue->write_idx * sizeof(u32);
+	u32 read_idx = queue->read_idx * sizeof(u32);
+	u32 empty_space, new_write_idx, residue;
 	u32 *write_ptr;
 
-	queue = qinfo->qhdr;
-	if (!queue)
-		return -EINVAL;
-
-	header = packet;
-	packet_size = header->size;
-
-	if (!packet_size || packet_size > qinfo->q_array.size)
-		return -EINVAL;
-
-	read_idx = queue->qhdr_read_idx * sizeof(u32);
-	write_idx = queue->qhdr_write_idx * sizeof(u32);
-
-	empty_space = (write_idx >=  read_idx) ?
-		(qinfo->q_array.size - (write_idx -  read_idx)) :
-		(read_idx - write_idx);
-	if (empty_space <= packet_size) {
-		queue->qhdr_tx_req = 1;
+	if (write_idx < read_idx)
+		empty_space = read_idx - write_idx;
+	else
+		empty_space = IFACEQ_QUEUE_SIZE - (write_idx -  read_idx);
+	/*
+	 * Reject a packet that would exactly fill the ring. The write index
+	 * would then land on the read index, which iris_hfi_queue_read()
+	 * treats as "empty", and everything already queued would never be
+	 * consumed - the command is simply lost and surfaces later as a
+	 * firmware timeout. Keeping one sentinel word is what venus does,
+	 * both in this tree and in mainline.
+	 */
+	if (empty_space <= packet_size)
 		return -ENOSPC;
-	}
 
-	queue->qhdr_tx_req =  0;
+	queue->tx_req =  0;
 
 	new_write_idx = write_idx + packet_size;
-	write_ptr = (u32 *)((u8 *)qinfo->q_array.kernel_vaddr + write_idx);
+	write_ptr = (u32 *)((u8 *)qinfo->kernel_vaddr + write_idx);
 
-	if (write_ptr < (u32 *)qinfo->q_array.kernel_vaddr ||
-	    write_ptr > (u32 *)(qinfo->q_array.kernel_vaddr +
-	    qinfo->q_array.size))
+	if (write_ptr < (u32 *)qinfo->kernel_vaddr ||
+	    write_ptr > (u32 *)(qinfo->kernel_vaddr +
+	    IFACEQ_QUEUE_SIZE))
 		return -EINVAL;
 
-	if (new_write_idx < qinfo->q_array.size) {
+	if (new_write_idx < IFACEQ_QUEUE_SIZE) {
 		memcpy(write_ptr, packet, packet_size);
 	} else {
-		residue = new_write_idx - qinfo->q_array.size;
+		residue = new_write_idx - IFACEQ_QUEUE_SIZE;
 		memcpy(write_ptr, packet, (packet_size - residue));
-		memcpy(qinfo->q_array.kernel_vaddr,
+		memcpy(qinfo->kernel_vaddr,
 		       packet + (packet_size - residue), residue);
 		new_write_idx = residue;
 	}
 
 	/* Make sure packet is written before updating the write index */
 	mb();
-	queue->qhdr_write_idx = new_write_idx / sizeof(u32);
+	queue->write_idx = new_write_idx / sizeof(u32);
 
 	/* Make sure write index is updated before an interrupt is raised */
 	mb();
@@ -84,38 +63,30 @@ static int __write_queue(struct iface_q_info *qinfo, void *packet)
 	return 0;
 }
 
-static int __read_queue(struct iface_q_info *qinfo, void *packet)
+static int iris_hfi_queue_read(struct iris_iface_q_info *qinfo, void *packet)
 {
-	u32 read_idx, write_idx, new_read_idx;
-	struct hfi_queue_header *queue;
-	u32 receive_request = 0;
-	u32 packet_size, residue;
+	struct iris_hfi_queue_header *queue = qinfo->qhdr;
+	u32 write_idx = queue->write_idx * sizeof(u32);
+	u32 read_idx = queue->read_idx * sizeof(u32);
+	u32 packet_size, receive_request = 0;
+	u32 new_read_idx, residue;
 	u32 *read_ptr;
 	int ret = 0;
 
-	/* Make sure data is valid before reading it */
-	mb();
-	queue = qinfo->qhdr;
-	if (!queue)
-		return -EINVAL;
-
-	if (queue->qhdr_type & IFACEQ_MSGQ_ID)
+	if (queue->queue_type == IFACEQ_MSGQ_ID)
 		receive_request = 1;
 
-	read_idx = queue->qhdr_read_idx * sizeof(u32);
-	write_idx = queue->qhdr_write_idx * sizeof(u32);
-
 	if (read_idx == write_idx) {
-		queue->qhdr_rx_req = receive_request;
+		queue->rx_req = receive_request;
 		/* Ensure qhdr is updated in main memory */
 		mb();
 		return -ENODATA;
 	}
 
-	read_ptr = (u32 *)(qinfo->q_array.kernel_vaddr + read_idx);
-	if (read_ptr < (u32 *)qinfo->q_array.kernel_vaddr ||
-	    read_ptr > (u32 *)(qinfo->q_array.kernel_vaddr +
-	    qinfo->q_array.size - sizeof(*read_ptr)))
+	read_ptr = qinfo->kernel_vaddr + read_idx;
+	if (read_ptr < (u32 *)qinfo->kernel_vaddr ||
+	    read_ptr > (u32 *)(qinfo->kernel_vaddr +
+	    IFACEQ_QUEUE_SIZE - sizeof(*read_ptr)))
 		return -ENODATA;
 
 	packet_size = *read_ptr;
@@ -123,15 +94,14 @@ static int __read_queue(struct iface_q_info *qinfo, void *packet)
 		return -EINVAL;
 
 	new_read_idx = read_idx + packet_size;
-	if (packet_size <= IFACEQ_CORE_PKT_SIZE &&
-	    read_idx <= qinfo->q_array.size) {
-		if (new_read_idx < qinfo->q_array.size) {
+	if (packet_size <= IFACEQ_CORE_PKT_SIZE) {
+		if (new_read_idx < IFACEQ_QUEUE_SIZE) {
 			memcpy(packet, read_ptr, packet_size);
 		} else {
-			residue = new_read_idx - qinfo->q_array.size;
+			residue = new_read_idx - IFACEQ_QUEUE_SIZE;
 			memcpy(packet, read_ptr, (packet_size - residue));
 			memcpy((packet + (packet_size - residue)),
-			       qinfo->q_array.kernel_vaddr, residue);
+			       qinfo->kernel_vaddr, residue);
 			new_read_idx = residue;
 		}
 	} else {
@@ -139,217 +109,223 @@ static int __read_queue(struct iface_q_info *qinfo, void *packet)
 		ret = -EBADMSG;
 	}
 
-	queue->qhdr_rx_req = receive_request;
+	queue->rx_req = receive_request;
 
-	queue->qhdr_read_idx = new_read_idx / sizeof(u32);
+	queue->read_idx = new_read_idx / sizeof(u32);
 	/* Ensure qhdr is updated in main memory */
 	mb();
 
 	return ret;
 }
 
-int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt)
+int iris_hfi_queue_cmd_write_locked(struct iris_core *core, void *pkt, u32 pkt_size)
 {
-	struct iface_q_info *q_info;
-	int ret;
+	struct iris_iface_q_info *q_info = &core->command_queue;
 
-	ret = check_core_lock(core);
-	if (ret)
-		return ret;
-
-	if (!core_in_valid_state(core))
+	if (core->state == IRIS_CORE_ERROR || core->state == IRIS_CORE_DEINIT)
 		return -EINVAL;
 
-	q_info = &core->command_queue;
-	if (!q_info || !q_info->q_array.kernel_vaddr || !pkt) {
-		dev_err(core->dev, "cannot write to shared CMD Q's\n");
-		return -ENODATA;
-	}
-
-	if (!__write_queue(q_info, pkt)) {
-		call_vpu_op(core, raise_interrupt, core);
+	if (!iris_hfi_queue_write(q_info, pkt, pkt_size)) {
+		iris_vpu_raise_interrupt(core);
 	} else {
 		dev_err(core->dev, "queue full\n");
 		return -ENODATA;
 	}
+
+	return 0;
+}
+
+int iris_hfi_queue_cmd_write(struct iris_core *core, void *pkt, u32 pkt_size)
+{
+	int ret;
+
+	/*
+	 * pm_runtime_resume_and_get() already drops the usage count when it
+	 * fails, so jumping to the shared put path here would decrement it a
+	 * second time and corrupt the runtime-PM accounting for the device.
+	 */
+	ret = pm_runtime_resume_and_get(core->dev);
+	if (ret < 0)
+		return ret;
+
+	mutex_lock(&core->lock);
+	ret = iris_hfi_queue_cmd_write_locked(core, pkt, pkt_size);
+	if (ret) {
+		mutex_unlock(&core->lock);
+		goto exit;
+	}
+	mutex_unlock(&core->lock);
+
+	pm_runtime_put_autosuspend(core->dev);
+
+	return 0;
+
+exit:
+	pm_runtime_put_sync(core->dev);
 
 	return ret;
 }
 
 int iris_hfi_queue_msg_read(struct iris_core *core, void *pkt)
 {
-	struct iface_q_info *q_info;
+	struct iris_iface_q_info *q_info = &core->message_queue;
+	int ret = 0;
 
-	if (!core_in_valid_state(core))
-		return -EINVAL;
-
-	q_info = &core->message_queue;
-	if (!q_info || !q_info->q_array.kernel_vaddr || !pkt) {
-		dev_err(core->dev, "cannot read from shared MSG Q's\n");
-		return -ENODATA;
+	mutex_lock(&core->lock);
+	if (core->state != IRIS_CORE_INIT) {
+		ret = -EINVAL;
+		goto unlock;
 	}
 
-	if (__read_queue(q_info, pkt))
-		return -ENODATA;
+	if (iris_hfi_queue_read(q_info, pkt)) {
+		ret = -ENODATA;
+		goto unlock;
+	}
 
-	return 0;
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
 }
 
 int iris_hfi_queue_dbg_read(struct iris_core *core, void *pkt)
 {
-	struct iface_q_info *q_info;
+	struct iris_iface_q_info *q_info = &core->debug_queue;
+	int ret = 0;
 
-	q_info = &core->debug_queue;
-	if (!q_info || !q_info->q_array.kernel_vaddr || !pkt) {
-		dev_err(core->dev, "cannot read from shared DBG Q's\n");
-		return -ENODATA;
+	mutex_lock(&core->lock);
+	if (core->state != IRIS_CORE_INIT) {
+		ret = -EINVAL;
+		goto unlock;
 	}
 
-	if (__read_queue(q_info, pkt))
-		return -ENODATA;
+	if (iris_hfi_queue_read(q_info, pkt)) {
+		ret = -ENODATA;
+		goto unlock;
+	}
 
-	return 0;
+unlock:
+	mutex_unlock(&core->lock);
+
+	return ret;
 }
 
-static void iris_hfi_set_queue_header(struct iris_core *core, u32 queue_id,
-				      struct iface_q_info *iface_q)
+static void iris_hfi_queue_set_header(struct iris_core *core, u32 queue_id,
+				      struct iris_iface_q_info *iface_q)
 {
-	__set_queue_hdr_defaults(iface_q->qhdr);
-	iface_q->qhdr->qhdr_start_addr = iface_q->q_array.device_addr;
-	iface_q->qhdr->qhdr_type |= queue_id;
+	iface_q->qhdr->status = 0x1;
+	iface_q->qhdr->start_addr = iface_q->device_addr;
+	iface_q->qhdr->header_type = IFACEQ_DFLT_QHDR;
+	iface_q->qhdr->queue_type = queue_id;
+	iface_q->qhdr->q_size = IFACEQ_QUEUE_SIZE / sizeof(u32);
+	iface_q->qhdr->pkt_size = 0; /* variable packet size */
+	iface_q->qhdr->rx_wm = 0x1;
+	iface_q->qhdr->tx_wm = 0x1;
+	iface_q->qhdr->rx_req = 0x1;
+	iface_q->qhdr->tx_req = 0x0;
+	iface_q->qhdr->rx_irq_status = 0x0;
+	iface_q->qhdr->tx_irq_status = 0x0;
+	iface_q->qhdr->read_idx = 0x0;
+	iface_q->qhdr->write_idx = 0x0;
 
 	/*
 	 * Set receive request to zero on debug queue as there is no
 	 * need of interrupt from video hardware for debug messages
 	 */
 	if (queue_id == IFACEQ_DBGQ_ID)
-		iface_q->qhdr->qhdr_rx_req = 0;
+		iface_q->qhdr->rx_req = 0;
 }
 
-static void __queue_init(struct iris_core *core, u32 queue_id, struct iface_q_info *iface_q)
+static void
+iris_hfi_queue_init(struct iris_core *core, u32 queue_id, struct iris_iface_q_info *iface_q)
 {
-	unsigned int offset = 0;
+	struct iris_hfi_queue_table_header *q_tbl_hdr = core->iface_q_table_vaddr;
+	u32 offset = sizeof(*q_tbl_hdr) + (queue_id * IFACEQ_QUEUE_SIZE);
 
-	offset = core->iface_q_table.size + (queue_id * IFACEQ_QUEUE_SIZE);
-	iface_q->q_array.device_addr = core->iface_q_table.device_addr + offset;
-	iface_q->q_array.kernel_vaddr =
-			(void *)((char *)core->iface_q_table.kernel_vaddr + offset);
-	iface_q->q_array.size = IFACEQ_QUEUE_SIZE;
-	iface_q->qhdr =
-		IFACEQ_GET_QHDR_START_ADDR(core->iface_q_table.kernel_vaddr, queue_id);
+	iface_q->device_addr = core->iface_q_table_daddr + offset;
+	iface_q->kernel_vaddr =
+			(void *)((char *)core->iface_q_table_vaddr + offset);
+	iface_q->qhdr = &q_tbl_hdr->q_hdr[queue_id];
 
-	iris_hfi_set_queue_header(core, queue_id, iface_q);
+	iris_hfi_queue_set_header(core, queue_id, iface_q);
 }
 
-int iris_hfi_queue_init(struct iris_core *core)
+static void iris_hfi_queue_deinit(struct iris_iface_q_info *iface_q)
 {
-	struct hfi_queue_table_header *q_tbl_hdr;
+	iface_q->qhdr = NULL;
+	iface_q->kernel_vaddr = NULL;
+	iface_q->device_addr = 0;
+}
 
-	if (core->iface_q_table.kernel_vaddr) {
-		iris_hfi_set_queue_header(core, IFACEQ_CMDQ_ID, &core->command_queue);
-		iris_hfi_set_queue_header(core, IFACEQ_MSGQ_ID, &core->message_queue);
-		iris_hfi_set_queue_header(core, IFACEQ_DBGQ_ID, &core->debug_queue);
-		return 0;
-	}
+int iris_hfi_queues_init(struct iris_core *core)
+{
+	struct iris_hfi_queue_table_header *q_tbl_hdr;
+	u32 queue_size;
 
-	core->iface_q_table.kernel_vaddr = dma_alloc_attrs(core->dev, ALIGNED_QUEUE_SIZE,
-							   &core->iface_q_table.device_addr,
-							   GFP_KERNEL, DMA_ATTR_WRITE_COMBINE);
-	if (!core->iface_q_table.kernel_vaddr) {
-		dev_err(core->dev, "%s: queues alloc and map failed\n", __func__);
+	/* Iris hardware requires 4K queue alignment */
+	queue_size = ALIGN((sizeof(*q_tbl_hdr) + (IFACEQ_QUEUE_SIZE * IFACEQ_NUMQ)), SZ_4K);
+	core->iface_q_table_vaddr = dma_alloc_attrs(core->dev, queue_size,
+						    &core->iface_q_table_daddr,
+						    GFP_KERNEL, DMA_ATTR_WRITE_COMBINE);
+	if (!core->iface_q_table_vaddr) {
+		dev_err(core->dev, "queues alloc and map failed\n");
 		return -ENOMEM;
 	}
-	core->iface_q_table.size = IFACEQ_TABLE_SIZE;
 
-	__queue_init(core, IFACEQ_CMDQ_ID, &core->command_queue);
-	__queue_init(core, IFACEQ_MSGQ_ID, &core->message_queue);
-	__queue_init(core, IFACEQ_DBGQ_ID, &core->debug_queue);
+	core->sfr_vaddr = dma_alloc_attrs(core->dev, SFR_SIZE,
+					  &core->sfr_daddr,
+					  GFP_KERNEL, DMA_ATTR_WRITE_COMBINE);
+	if (!core->sfr_vaddr) {
+		dev_err(core->dev, "sfr alloc and map failed\n");
+		dma_free_attrs(core->dev, sizeof(*q_tbl_hdr), core->iface_q_table_vaddr,
+			       core->iface_q_table_daddr, DMA_ATTR_WRITE_COMBINE);
+		return -ENOMEM;
+	}
 
-	q_tbl_hdr = (struct hfi_queue_table_header *)
-			core->iface_q_table.kernel_vaddr;
-	q_tbl_hdr->qtbl_version = 0;
+	iris_hfi_queue_init(core, IFACEQ_CMDQ_ID, &core->command_queue);
+	iris_hfi_queue_init(core, IFACEQ_MSGQ_ID, &core->message_queue);
+	iris_hfi_queue_init(core, IFACEQ_DBGQ_ID, &core->debug_queue);
+
+	q_tbl_hdr = (struct iris_hfi_queue_table_header *)core->iface_q_table_vaddr;
+	q_tbl_hdr->version = 0;
 	q_tbl_hdr->device_addr = (void *)core;
 	strscpy(q_tbl_hdr->name, "iris-hfi-queues", sizeof(q_tbl_hdr->name));
-	q_tbl_hdr->qtbl_size = IFACEQ_TABLE_SIZE;
-	q_tbl_hdr->qtbl_qhdr0_offset = sizeof(*q_tbl_hdr);
-	q_tbl_hdr->qtbl_qhdr_size = sizeof(struct hfi_queue_header);
-	q_tbl_hdr->qtbl_num_q = IFACEQ_NUMQ;
-	q_tbl_hdr->qtbl_num_active_q = IFACEQ_NUMQ;
+	q_tbl_hdr->size = sizeof(*q_tbl_hdr);
+	q_tbl_hdr->qhdr0_offset = sizeof(*q_tbl_hdr) -
+		(IFACEQ_NUMQ * sizeof(struct iris_hfi_queue_header));
+	q_tbl_hdr->qhdr_size = sizeof(q_tbl_hdr->q_hdr[0]);
+	q_tbl_hdr->num_q = IFACEQ_NUMQ;
+	q_tbl_hdr->num_active_q = IFACEQ_NUMQ;
 
-	core->sfr.kernel_vaddr = dma_alloc_attrs(core->dev, ALIGNED_SFR_SIZE,
-						 &core->sfr.device_addr,
-						 GFP_KERNEL, DMA_ATTR_WRITE_COMBINE);
-	if (!core->sfr.kernel_vaddr) {
-		dev_err(core->dev, "%s: sfr alloc and map failed\n", __func__);
-		return -ENOMEM;
-	}
-	core->sfr.size = ALIGNED_SFR_SIZE;
 	 /* Write sfr size in first word to be used by firmware */
-	*((u32 *)core->sfr.kernel_vaddr) = core->sfr.size;
+	*((u32 *)core->sfr_vaddr) = SFR_SIZE;
 
 	return 0;
 }
 
-static void __queue_deinit(struct iface_q_info *iface_q)
+void iris_hfi_queues_deinit(struct iris_core *core)
 {
-	iface_q->qhdr = NULL;
-	iface_q->q_array.kernel_vaddr = NULL;
-	iface_q->q_array.device_addr = 0;
-}
+	u32 queue_size;
 
-void iris_hfi_queue_deinit(struct iris_core *core)
-{
-	if (!core->iface_q_table.kernel_vaddr)
+	if (!core->iface_q_table_vaddr)
 		return;
 
-	dma_free_attrs(core->dev, core->iface_q_table.size, core->iface_q_table.kernel_vaddr,
-		       core->iface_q_table.device_addr, core->iface_q_table.attrs);
+	iris_hfi_queue_deinit(&core->debug_queue);
+	iris_hfi_queue_deinit(&core->message_queue);
+	iris_hfi_queue_deinit(&core->command_queue);
 
-	dma_free_attrs(core->dev, core->sfr.size, core->sfr.kernel_vaddr,
-		       core->sfr.device_addr, core->sfr.attrs);
+	dma_free_attrs(core->dev, SFR_SIZE, core->sfr_vaddr,
+		       core->sfr_daddr, DMA_ATTR_WRITE_COMBINE);
 
-	__queue_deinit(&core->command_queue);
-	__queue_deinit(&core->message_queue);
-	__queue_deinit(&core->debug_queue);
+	core->sfr_vaddr = NULL;
+	core->sfr_daddr = 0;
 
-	core->iface_q_table.kernel_vaddr = NULL;
-	core->iface_q_table.device_addr = 0;
+	queue_size = ALIGN(sizeof(struct iris_hfi_queue_table_header) +
+		(IFACEQ_QUEUE_SIZE * IFACEQ_NUMQ), SZ_4K);
 
-	core->sfr.kernel_vaddr = NULL;
-	core->sfr.device_addr = 0;
-}
+	dma_free_attrs(core->dev, queue_size, core->iface_q_table_vaddr,
+		       core->iface_q_table_daddr, DMA_ATTR_WRITE_COMBINE);
 
-void iris_flush_debug_queue(struct iris_core *core,
-			    u8 *packet, u32 packet_size)
-{
-	struct hfi_debug_header *pkt;
-	bool local_packet = false;
-	u8 *log;
-
-	if (!packet || !packet_size) {
-		packet = kzalloc(IFACEQ_CORE_PKT_SIZE, GFP_KERNEL);
-		if (!packet)
-			return;
-
-		packet_size = IFACEQ_CORE_PKT_SIZE;
-
-		local_packet = true;
-	}
-
-	while (!iris_hfi_queue_dbg_read(core, packet)) {
-		pkt = (struct hfi_debug_header *)packet;
-
-		if (pkt->size < sizeof(*pkt))
-			continue;
-
-		if (pkt->size >= packet_size)
-			continue;
-
-		packet[pkt->size] = '\0';
-		log = (u8 *)packet + sizeof(*pkt) + 1;
-		dev_dbg(core->dev, "%s", log);
-	}
-
-	if (local_packet)
-		kfree(packet);
+	core->iface_q_table_vaddr = NULL;
+	core->iface_q_table_daddr = 0;
 }

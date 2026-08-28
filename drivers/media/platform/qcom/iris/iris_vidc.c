@@ -3,172 +3,168 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include <linux/videodev2.h>
+#include <linux/pm_runtime.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
+#include <media/v4l2-mem2mem.h>
+#include <media/videobuf2-dma-contig.h>
 
-#include "iris_buffer.h"
-#include "iris_common.h"
-#include "iris_ctrls.h"
-#include "iris_helpers.h"
-#include "iris_hfi.h"
+#include "iris_compat.h"
+#include "iris_vidc.h"
 #include "iris_instance.h"
-#include "iris_power.h"
 #include "iris_vdec.h"
 #include "iris_venc.h"
-#include "iris_vidc.h"
 #include "iris_vb2.h"
-#include "memory.h"
+#include "iris_vpu_buffer.h"
+#include "iris_platform_common.h"
 
-#define VIDC_DRV_NAME "iris_driver"
-#define VIDC_BUS_NAME "platform:iris_bus"
+#define IRIS_DRV_NAME "iris_driver"
+#define IRIS_BUS_NAME "platform:iris_icc"
+#define STEP_WIDTH 1
+#define STEP_HEIGHT 1
+#define STEP_WIDTH_ENC 2
+#define STEP_HEIGHT_ENC 2
 
-static int vidc_v4l2_fh_init(struct iris_inst *inst)
+static void iris_v4l2_fh_init(struct iris_inst *inst, struct file *filp)
 {
-	struct iris_core *core;
-
-	core = inst->core;
-
-	if (inst->fh.vdev)
-		return -EINVAL;
-
 	if (inst->domain == ENCODER)
-		v4l2_fh_init(&inst->fh, core->vdev_enc);
+		v4l2_fh_init(&inst->fh, inst->core->vdev_enc);
 	else if (inst->domain == DECODER)
-		v4l2_fh_init(&inst->fh, core->vdev_dec);
-
+		v4l2_fh_init(&inst->fh, inst->core->vdev_dec);
 	inst->fh.ctrl_handler = &inst->ctrl_handler;
-	v4l2_fh_add(&inst->fh);
-
-	return 0;
+	iris_v4l2_fh_add(&inst->fh, filp);
 }
 
-static int vidc_v4l2_fh_deinit(struct iris_inst *inst)
+/*
+ * Detach the handle from the file, but leave the v4l2_fh itself intact.
+ *
+ * v4l2_fh_exit() clears fh->vdev, and a response still in flight can queue an
+ * event on this handle - iris_vdec_src_change(), the EOS path and the LAST
+ * buffer path all call v4l2_event_queue_fh(), whose first act is to take
+ * fh->vdev->fh_lock. Tearing the fh down here would leave that a NULL
+ * dereference; it happens in the release instead, once nothing can reach the
+ * instance any more.
+ */
+static void iris_v4l2_fh_detach(struct iris_inst *inst, struct file *filp)
 {
-	if (!inst->fh.vdev)
-		return 0;
-
-	v4l2_fh_del(&inst->fh);
+	iris_v4l2_fh_del(&inst->fh, filp);
 	inst->fh.ctrl_handler = NULL;
-	v4l2_fh_exit(&inst->fh);
-
-	return 0;
 }
 
-static int vb2q_init(struct iris_inst *inst,
-		     struct vb2_queue *q, enum v4l2_buf_type type)
+/*
+ * Claim one of the core's session slots for this instance.
+ *
+ * Deliberately not called from open(): V4L2 forbids an artificial limit on
+ * opening a device node, and v4l2-compliance enforces it. The slot is taken
+ * where the session resource is actually consumed, just before the firmware
+ * session is created, and released again if that fails - so a handle refused
+ * now succeeds once another instance frees its slot.
+ *
+ * Idempotent: an instance already holding a slot simply keeps it.
+ */
+int iris_add_session(struct iris_inst *inst)
 {
-	struct iris_core *core;
-
-	core = inst->core;
-
-	q->lock = &inst->ctx_q_lock;
-	q->type = type;
-	q->io_modes = VB2_MMAP | VB2_DMABUF;
-	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
-	q->ops = core->vb2_ops;
-	q->mem_ops = core->vb2_mem_ops;
-	q->drv_priv = inst;
-	q->copy_timestamp = 1;
-	q->min_queued_buffers = 0;
-	return vb2_queue_init(q);
-}
-
-static int vidc_vb2_queue_init(struct iris_inst *inst)
-{
-	int ret;
-
-	ret = vb2q_init(inst, inst->vb2q_src, INPUT_MPLANE);
-	if (ret)
-		return ret;
-
-	ret = vb2q_init(inst, inst->vb2q_dst, OUTPUT_MPLANE);
-	if (ret)
-		goto fail_vb2q_src_deinit;
-
-	return ret;
-
-fail_vb2q_src_deinit:
-	vb2_queue_release(inst->vb2q_src);
-
-	return ret;
-}
-
-static int vidc_vb2_queue_deinit(struct iris_inst *inst)
-{
-	vb2_queue_release(inst->vb2q_src);
-	kfree(inst->vb2q_src);
-	inst->vb2q_src = NULL;
-
-	vb2_queue_release(inst->vb2q_dst);
-	kfree(inst->vb2q_dst);
-	inst->vb2q_dst = NULL;
-
-	return 0;
-}
-
-static int vidc_add_session(struct iris_inst *inst)
-{
-	struct iris_core *core;
-	struct iris_inst *i;
+	struct iris_core *core = inst->core;
+	struct iris_inst *iter;
 	u32 count = 0;
 	int ret = 0;
 
-	core = inst->core;
-
 	mutex_lock(&core->lock);
-	if (core->state != IRIS_CORE_INIT) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-	list_for_each_entry(i, &core->instances, list)
-		count++;
 
-	if (count < core->cap[MAX_SESSION_COUNT].value)
+	list_for_each_entry(iter, &core->instances, list) {
+		if (iter == inst)
+			goto unlock;
+		count++;
+	}
+
+	if (count < core->iris_platform_data->max_session_count)
 		list_add_tail(&inst->list, &core->instances);
 	else
-		ret = -EAGAIN;
+		ret = -EBUSY;
+
 unlock:
 	mutex_unlock(&core->lock);
 
 	return ret;
 }
 
-static int vidc_remove_session(struct iris_inst *inst)
+void iris_remove_session(struct iris_inst *inst)
 {
-	struct iris_inst *i, *temp;
-	struct iris_core *core;
-
-	core = inst->core;
+	struct iris_core *core = inst->core;
+	struct iris_inst *iter, *temp;
 
 	mutex_lock(&core->lock);
-	list_for_each_entry_safe(i, temp, &core->instances, list) {
-		if (i->session_id == inst->session_id) {
-			list_del_init(&i->list);
+	list_for_each_entry_safe(iter, temp, &core->instances, list) {
+		if (iter->session_id == inst->session_id) {
+			list_del_init(&iter->list);
 			break;
 		}
 	}
 	mutex_unlock(&core->lock);
-
-	return 0;
 }
 
-static struct iris_inst *get_vidc_inst(struct file *filp, void *fh)
+static inline struct iris_inst *iris_get_inst(struct file *filp)
 {
-	if (!filp || !filp->private_data)
-		return NULL;
-
-	return container_of(filp->private_data,
-					struct iris_inst, fh);
+	return container_of(file_to_v4l2_fh(filp), struct iris_inst, fh);
 }
 
-int vidc_open(struct file *filp)
+static void iris_m2m_device_run(void *priv)
+{
+}
+
+static void iris_m2m_job_abort(void *priv)
+{
+	struct iris_inst *inst = priv;
+	struct v4l2_m2m_ctx *m2m_ctx = inst->m2m_ctx;
+
+	v4l2_m2m_job_finish(inst->m2m_dev, m2m_ctx);
+}
+
+static const struct v4l2_m2m_ops iris_m2m_ops = {
+	.device_run = iris_m2m_device_run,
+	.job_abort = iris_m2m_job_abort,
+};
+
+static int
+iris_m2m_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
+{
+	struct iris_inst *inst = priv;
+	int ret;
+
+	src_vq->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	src_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	src_vq->ops = inst->core->iris_vb2_ops;
+	src_vq->mem_ops = &vb2_dma_contig_memops;
+	src_vq->drv_priv = inst;
+	src_vq->buf_struct_size = sizeof(struct iris_buffer);
+	/* compat: min_reqbufs_allocation (MIN_BUFFERS) has no equivalent here */
+	src_vq->dev = inst->core->dev;
+	src_vq->lock = &inst->ctx_q_lock;
+	ret = vb2_queue_init(src_vq);
+	if (ret)
+		return ret;
+
+	dst_vq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	dst_vq->io_modes = VB2_MMAP | VB2_DMABUF;
+	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	dst_vq->ops = inst->core->iris_vb2_ops;
+	dst_vq->mem_ops = &vb2_dma_contig_memops;
+	dst_vq->drv_priv = inst;
+	dst_vq->buf_struct_size = sizeof(struct iris_buffer);
+	/* compat: min_reqbufs_allocation (MIN_BUFFERS) has no equivalent here */
+	dst_vq->dev = inst->core->dev;
+	dst_vq->lock = &inst->ctx_q_lock;
+
+	return vb2_queue_init(dst_vq);
+}
+
+int iris_open(struct file *filp)
 {
 	struct iris_core *core = video_drvdata(filp);
-	struct iris_inst *inst = NULL;
 	struct video_device *vdev;
-	u32 session_type = 0;
-	int i = 0;
+	struct iris_inst *inst;
+	u32 session_type;
 	int ret;
 
 	vdev = video_devdata(filp);
@@ -176,854 +172,411 @@ int vidc_open(struct file *filp)
 		session_type = DECODER;
 	else if (strcmp(vdev->name, "qcom-iris-encoder") == 0)
 		session_type = ENCODER;
-
-	if (session_type != DECODER && session_type != ENCODER)
+	else
 		return -EINVAL;
 
-	ret = iris_pm_get(core);
-	if (ret)
+	ret = pm_runtime_resume_and_get(core->dev);
+	if (ret < 0)
 		return ret;
 
 	ret = iris_core_init(core);
-	if (ret)
-		goto fail_pm_put;
-
-	ret = iris_core_init_wait(core);
-	if (ret)
-		goto fail_pm_put;
-
-	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
-	if (!inst) {
-		ret = -ENOMEM;
-		goto fail_pm_put;
+	if (ret) {
+		dev_err(core->dev, "core init failed\n");
+		pm_runtime_put_sync(core->dev);
+		return ret;
 	}
+
+	pm_runtime_put_sync(core->dev);
+
+	inst = core->iris_platform_data->get_instance();
+	if (!inst)
+		return -ENOMEM;
 
 	inst->core = core;
 	inst->domain = session_type;
 	inst->session_id = hash32_ptr(inst);
-	inst->ipsc_properties_set = false;
-	inst->opsc_properties_set = false;
-	inst->has_bframe = false;
-	inst->iframe = false;
-	iris_inst_change_state(inst, IRIS_INST_OPEN);
+	inst->state = IRIS_INST_DEINIT;
+
 	mutex_init(&inst->lock);
 	mutex_init(&inst->ctx_q_lock);
+	/* Held by this file handle; the response path takes its own. */
+	kref_init(&inst->kref);
 
-	ret = vidc_add_session(inst);
-	if (ret)
-		goto fail_free_inst;
+	INIT_LIST_HEAD(&inst->buffers[BUF_BIN].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_ARP].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_COMV].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_NON_COMV].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_LINE].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_DPB].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_PERSIST].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_SCRATCH_1].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_SCRATCH_2].list);
+	INIT_LIST_HEAD(&inst->buffers[BUF_VPSS].list);
+	init_completion(&inst->completion);
+	init_completion(&inst->flush_completion);
 
-	ret = iris_mem_pool_init(inst);
-	if (ret)
-		goto fail_remove_session;
+	iris_v4l2_fh_init(inst, filp);
 
-	INIT_LIST_HEAD(&inst->buffers.input.list);
-	INIT_LIST_HEAD(&inst->buffers.output.list);
-	INIT_LIST_HEAD(&inst->buffers.read_only.list);
-	INIT_LIST_HEAD(&inst->buffers.bin.list);
-	INIT_LIST_HEAD(&inst->buffers.arp.list);
-	INIT_LIST_HEAD(&inst->buffers.comv.list);
-	INIT_LIST_HEAD(&inst->buffers.non_comv.list);
-	INIT_LIST_HEAD(&inst->buffers.line.list);
-	INIT_LIST_HEAD(&inst->buffers.dpb.list);
-	INIT_LIST_HEAD(&inst->buffers.persist.list);
-	INIT_LIST_HEAD(&inst->buffers.vpss.list);
-	INIT_LIST_HEAD(&inst->caps_list);
-	INIT_LIST_HEAD(&inst->input_timer_list);
-	for (i = 0; i < MAX_SIGNAL; i++)
-		init_completion(&inst->completions[i]);
-
-	ret = vidc_v4l2_fh_init(inst);
-	if (ret)
-		goto fail_mem_pool_deinit;
-
-	if (inst->domain == DECODER)
-		ret = vdec_inst_init(inst);
-	else if (inst->domain == ENCODER)
-		ret = venc_inst_init(inst);
-	if (ret)
-		goto fail_fh_deinit;
-
-	ret = vidc_vb2_queue_init(inst);
-	if (ret)
-		goto fail_inst_deinit;
-
-	iris_scale_power(inst);
-
-	ret = iris_hfi_session_open(inst);
-	if (ret) {
-		dev_err(core->dev, "%s: session open failed\n", __func__);
-		goto fail_core_deinit;
+	/*
+	 * Leave only NULL behind on failure: the release callback below owns
+	 * the teardown from here on, and it can only skip what it can
+	 * recognise as absent. An ERR_PTR would be freed as if it were real.
+	 */
+	inst->m2m_dev = v4l2_m2m_init(&iris_m2m_ops);
+	if (IS_ERR_OR_NULL(inst->m2m_dev)) {
+		inst->m2m_dev = NULL;
+		ret = -EINVAL;
+		goto fail_v4l2_fh_detach;
 	}
 
-	iris_pm_put(core, true);
+	inst->m2m_ctx = v4l2_m2m_ctx_init(inst->m2m_dev, inst, iris_m2m_queue_init);
+	if (IS_ERR_OR_NULL(inst->m2m_ctx)) {
+		inst->m2m_ctx = NULL;
+		ret = -EINVAL;
+		goto fail_v4l2_fh_detach;
+	}
 
-	filp->private_data = &inst->fh;
+	if (inst->domain == DECODER)
+		ret = iris_vdec_inst_init(inst);
+	else if (inst->domain == ENCODER)
+		ret = iris_venc_inst_init(inst);
+	if (ret)
+		goto fail_v4l2_fh_detach;
+
+	inst->fh.m2m_ctx = inst->m2m_ctx;
 
 	return 0;
 
-fail_core_deinit:
-	v4l2_ctrl_handler_free(&inst->ctrl_handler);
-	iris_core_deinit(core);
-	vidc_vb2_queue_deinit(inst);
-fail_inst_deinit:
-	if (inst->domain == DECODER)
-		vdec_inst_deinit(inst);
-	else if (inst->domain == ENCODER)
-		venc_inst_deinit(inst);
-fail_fh_deinit:
-	vidc_v4l2_fh_deinit(inst);
-fail_mem_pool_deinit:
-	iris_mem_pool_deinit(inst);
-fail_remove_session:
-	vidc_remove_session(inst);
-fail_free_inst:
-	mutex_destroy(&inst->ctx_q_lock);
-	mutex_destroy(&inst->lock);
-	kfree(inst);
-fail_pm_put:
-	iris_pm_put(core, false);
+fail_v4l2_fh_detach:
+	iris_v4l2_fh_detach(inst, filp);
+	iris_put_instance(inst);
 
 	return ret;
 }
 
-int vidc_close(struct file *filp)
+static void iris_session_close(struct iris_inst *inst)
 {
-	struct iris_inst *inst;
-	struct iris_core *core;
+	const struct iris_hfi_command_ops *hfi_ops = inst->core->hfi_ops;
+	bool wait_for_response = true;
+	int ret;
 
-	inst = get_vidc_inst(filp, NULL);
-	if (!inst)
-		return -EINVAL;
+	if (inst->state == IRIS_INST_DEINIT)
+		return;
 
-	core = inst->core;
+	reinit_completion(&inst->completion);
 
-	v4l2_ctrl_handler_free(&inst->ctrl_handler);
+	ret = hfi_ops->session_close(inst);
+	if (ret)
+		wait_for_response = false;
+
+	if (wait_for_response)
+		iris_wait_for_session_response(inst, false);
+}
+
+static void iris_check_num_queued_internal_buffers(struct iris_inst *inst, u32 plane)
+{
+	const struct iris_platform_data *platform_data = inst->core->iris_platform_data;
+	struct iris_buffer *buf, *next;
+	struct iris_buffers *buffers;
+	const u32 *internal_buf_type;
+	u32 internal_buffer_count, i;
+	u32 count = 0;
+
+	if (V4L2_TYPE_IS_OUTPUT(plane)) {
+		internal_buf_type = platform_data->dec_ip_int_buf_tbl;
+		internal_buffer_count = platform_data->dec_ip_int_buf_tbl_size;
+	} else {
+		internal_buf_type = platform_data->dec_op_int_buf_tbl;
+		internal_buffer_count = platform_data->dec_op_int_buf_tbl_size;
+	}
+
+	for (i = 0; i < internal_buffer_count; i++) {
+		buffers = &inst->buffers[internal_buf_type[i]];
+		count = 0;
+		list_for_each_entry_safe(buf, next, &buffers->list, list)
+			count++;
+		if (count)
+			dev_err(inst->core->dev, "%d buffer of type %d not released",
+				count, internal_buf_type[i]);
+	}
+
 	if (inst->domain == DECODER)
-		vdec_inst_deinit(inst);
-	else if (inst->domain == ENCODER)
-		venc_inst_deinit(inst);
+		buffers = &inst->buffers[BUF_PERSIST];
+	else
+		buffers = &inst->buffers[BUF_ARP];
 
-	mutex_lock(&inst->lock);
-	iris_pm_get(core);
-	close_session(inst);
-	iris_inst_change_state(inst, IRIS_INST_CLOSE);
-	vidc_vb2_queue_deinit(inst);
-	vidc_v4l2_fh_deinit(inst);
-	iris_destroy_buffers(inst);
-	vidc_remove_session(inst);
-	iris_pm_put(core, false);
-	mutex_unlock(&inst->lock);
+	count = 0;
+	list_for_each_entry_safe(buf, next, &buffers->list, list)
+		count++;
+	if (count)
+		dev_err(inst->core->dev, "%d buffer of type %d not released",
+			count, inst->domain == DECODER ? BUF_PERSIST : BUF_ARP);
+}
+
+/*
+ * Everything a response handler can still reach is freed here, not in
+ * close(). Keeping the instance itself alive is not enough: the handler
+ * also dereferences inst->m2m_ctx, the control handler, the formats and
+ * the buffer lists, and all of those are separate allocations. Freeing
+ * them while a response is in flight is a use-after-free even though the
+ * instance survives.
+ */
+static void iris_inst_release(struct kref *kref)
+{
+	struct iris_inst *inst = container_of(kref, struct iris_inst, kref);
+
+	/*
+	 * Also reached from a failed open(), so nothing here may assume the
+	 * instance was fully built. v4l2_ctrl_handler_free() tolerates being
+	 * called twice and on an uninitialised handler, but the m2m helpers
+	 * dereference their argument straight away.
+	 */
+	v4l2_ctrl_handler_free(&inst->ctrl_handler);
+	if (inst->m2m_ctx)
+		v4l2_m2m_ctx_release(inst->m2m_ctx);
+	if (inst->m2m_dev)
+		v4l2_m2m_release(inst->m2m_dev);
+	iris_destroy_all_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+	iris_destroy_all_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+	iris_check_num_queued_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+	iris_check_num_queued_internal_buffers(inst, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+	if (inst->domain == DECODER)
+		iris_vdec_inst_deinit(inst);
+	else if (inst->domain == ENCODER)
+		iris_venc_inst_deinit(inst);
+	v4l2_fh_exit(&inst->fh);
 	mutex_destroy(&inst->ctx_q_lock);
 	mutex_destroy(&inst->lock);
 	kfree(inst);
-	filp->private_data = NULL;
+}
+
+void iris_put_instance(struct iris_inst *inst)
+{
+	kref_put(&inst->kref, iris_inst_release);
+}
+
+int iris_close(struct file *filp)
+{
+	struct iris_inst *inst = iris_get_inst(filp);
+
+	mutex_lock(&inst->lock);
+	iris_session_close(inst);
+	iris_inst_change_state(inst, IRIS_INST_DEINIT);
+	iris_v4l2_fh_detach(inst, filp);
+	iris_remove_session(inst);
+	mutex_unlock(&inst->lock);
+
+	/*
+	 * Removing the session from the list is what stops new lookups. A
+	 * response already holding a reference keeps the instance and all of
+	 * its resources alive until it is done; the last put frees them.
+	 */
+	iris_put_instance(inst);
 
 	return 0;
 }
 
-static __poll_t get_poll_flags(struct iris_inst *inst, u32 plane)
+static int iris_enum_fmt(struct file *filp, void *fh, struct v4l2_fmtdesc *f)
 {
-	struct vb2_buffer *vb = NULL;
-	struct vb2_queue *q = NULL;
-	unsigned long flags = 0;
-	__poll_t poll = 0;
-
-	if (plane == INPUT_MPLANE)
-		q = inst->vb2q_src;
-	else if (plane == OUTPUT_MPLANE)
-		q = inst->vb2q_dst;
-
-	if (!q)
-		return EPOLLERR;
-
-	spin_lock_irqsave(&q->done_lock, flags);
-	if (!list_empty(&q->done_list))
-		vb = list_first_entry(&q->done_list, struct vb2_buffer,
-				      done_entry);
-	if (vb && (vb->state == VB2_BUF_STATE_DONE ||
-		   vb->state == VB2_BUF_STATE_ERROR)) {
-		if (plane == OUTPUT_MPLANE)
-			poll |= EPOLLIN | EPOLLRDNORM;
-		else if (plane == INPUT_MPLANE)
-			poll |= EPOLLOUT | EPOLLWRNORM;
-	}
-	spin_unlock_irqrestore(&q->done_lock, flags);
-
-	return poll;
-}
-
-static __poll_t vidc_poll(struct file *filp, struct poll_table_struct *pt)
-{
-	struct iris_inst *inst;
-	__poll_t poll = 0;
-
-	inst = get_vidc_inst(filp, NULL);
-	if (!inst)
-		return EPOLLERR;
-
-	if (IS_SESSION_ERROR(inst))
-		return EPOLLERR;
-
-	poll_wait(filp, &inst->fh.wait, pt);
-	poll_wait(filp, &inst->vb2q_src->done_wq, pt);
-	poll_wait(filp, &inst->vb2q_dst->done_wq, pt);
-
-	if (v4l2_event_pending(&inst->fh))
-		poll |= EPOLLPRI;
-
-	poll |= get_poll_flags(inst, INPUT_MPLANE);
-	poll |= get_poll_flags(inst, OUTPUT_MPLANE);
-
-	return poll;
-}
-
-static int vidc_enum_fmt(struct file *filp, void *fh, struct v4l2_fmtdesc *f)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	struct iris_inst *inst = iris_get_inst(filp);
 
 	if (inst->domain == DECODER)
-		ret = vdec_enum_fmt(inst, f);
+		return iris_vdec_enum_fmt(inst, f);
 	else if (inst->domain == ENCODER)
-		ret = venc_enum_fmt(inst, f);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
+		return iris_venc_enum_fmt(inst, f);
+	else
+		return -EINVAL;
 }
 
-static int vidc_try_fmt(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_try_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
 {
-	struct iris_inst *inst;
+	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
 	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (!allow_s_fmt(inst, f->type)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
 
 	if (inst->domain == DECODER)
-		ret = vdec_try_fmt(inst, f);
+		ret = iris_vdec_try_fmt(inst, f);
 	else if (inst->domain == ENCODER)
-		ret = venc_try_fmt(inst, f);
+		ret = iris_venc_try_fmt(inst, f);
 
-unlock:
 	mutex_unlock(&inst->lock);
 
 	return ret;
 }
 
-static int vidc_s_fmt(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_s_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
 {
-	struct iris_inst *inst;
+	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
 	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (!allow_s_fmt(inst, f->type)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
 
 	if (inst->domain == DECODER)
-		ret = vdec_s_fmt(inst, f);
+		ret = iris_vdec_s_fmt(inst, f);
 	else if (inst->domain == ENCODER)
-		ret = venc_s_fmt(inst, f);
+		ret = iris_venc_s_fmt(inst, f);
 
-unlock:
 	mutex_unlock(&inst->lock);
 
 	return ret;
 }
 
-static int vidc_g_fmt(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_g_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
 {
-	struct iris_inst *inst;
+	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
 	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	if (V4L2_TYPE_IS_OUTPUT(f->type))
+		*f = *inst->fmt_src;
+	else if (V4L2_TYPE_IS_CAPTURE(f->type))
+		*f = *inst->fmt_dst;
+	else
+		ret = -EINVAL;
 
-	if (f->type == INPUT_MPLANE)
-		memcpy(f, inst->fmt_src, sizeof(*f));
-	else if (f->type == OUTPUT_MPLANE)
-		memcpy(f, inst->fmt_dst, sizeof(*f));
-
-unlock:
 	mutex_unlock(&inst->lock);
 
 	return ret;
 }
 
-static int vidc_enum_framesizes(struct file *filp, void *fh,
+static int iris_enum_framesizes(struct file *filp, void *fh,
 				struct v4l2_frmsizeenum *fsize)
 {
-	enum colorformat_type colorfmt;
-	struct iris_inst *inst;
-	enum codec_type codec;
+	struct iris_inst *inst = iris_get_inst(filp);
+	struct platform_inst_caps *caps;
 	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !fsize)
-		return -EINVAL;
 
 	if (fsize->index)
 		return -EINVAL;
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	if (inst->domain == DECODER)
+		ret = iris_vdec_validate_format(inst, fsize->pixel_format);
+	else
+		ret = iris_venc_validate_format(inst, fsize->pixel_format);
 
-	codec = v4l2_codec_to_driver(inst, fsize->pixel_format);
-	if (!codec) {
-		colorfmt = v4l2_colorformat_to_driver(inst, fsize->pixel_format);
-		if (colorfmt == FMT_NONE) {
-			ret = -EINVAL;
-			goto unlock;
-		}
-	}
+	if (ret)
+		return ret;
+
+	caps = inst->core->iris_platform_data->inst_caps;
 
 	fsize->type = V4L2_FRMSIZE_TYPE_STEPWISE;
-	fsize->stepwise.min_width = inst->cap[FRAME_WIDTH].min;
-	fsize->stepwise.max_width = inst->cap[FRAME_WIDTH].max;
-	fsize->stepwise.step_width = inst->cap[FRAME_WIDTH].step_or_mask;
-	fsize->stepwise.min_height = inst->cap[FRAME_HEIGHT].min;
-	fsize->stepwise.max_height = inst->cap[FRAME_HEIGHT].max;
-	fsize->stepwise.step_height = inst->cap[FRAME_HEIGHT].step_or_mask;
+	fsize->stepwise.min_width = caps->min_frame_width;
+	fsize->stepwise.max_width = caps->max_frame_width;
+	fsize->stepwise.min_height = caps->min_frame_height;
+	fsize->stepwise.max_height = caps->max_frame_height;
 
-unlock:
-	mutex_unlock(&inst->lock);
+	/*
+	 * The encoder rounds the visible size down to even, because the H.264
+	 * and HEVC cropping syntax counts in chroma samples and an odd size
+	 * cannot be expressed there. Report that, instead of claiming every
+	 * size in the range is usable.
+	 *
+	 * The decoder keeps a step of one: it takes the real resolution from
+	 * the sequence header rather than from S_FMT, so a stream with odd
+	 * dimensions - VP9 allows them - still decodes.
+	 */
+	if (inst->domain == ENCODER) {
+		fsize->stepwise.step_width = STEP_WIDTH_ENC;
+		fsize->stepwise.step_height = STEP_HEIGHT_ENC;
+	} else {
+		fsize->stepwise.step_width = STEP_WIDTH;
+		fsize->stepwise.step_height = STEP_HEIGHT;
+	}
 
 	return ret;
 }
 
-static int vidc_enum_frameintervals(struct file *filp, void *fh,
+static int iris_enum_frameintervals(struct file *filp, void *fh,
 				    struct v4l2_frmivalenum *fival)
 
 {
-	enum colorformat_type colorfmt;
-	struct iris_inst *inst;
-	struct iris_core *core;
-	u32 fps, mbpf;
+	struct iris_inst *inst = iris_get_inst(filp);
+	struct iris_core *core = inst->core;
+	struct platform_inst_caps *caps;
+	u32 fps, mbpf, max_fps;
 	int ret = 0;
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !fival)
+	if (inst->domain == DECODER)
+		return -ENOTTY;
+
+	ret = iris_venc_validate_format(inst, fival->pixel_format);
+	if (ret)
+		return ret;
+
+	if (!fival->width || !fival->height)
 		return -EINVAL;
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (inst->domain == DECODER) {
-		ret = -ENOTTY;
-		goto unlock;
-	}
-
-	core = inst->core;
-
-	if (fival->index) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	colorfmt = v4l2_colorformat_to_driver(inst, fival->pixel_format);
-	if (colorfmt == FMT_NONE) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (fival->width > inst->cap[FRAME_WIDTH].max ||
-	    fival->width < inst->cap[FRAME_WIDTH].min ||
-	    fival->height > inst->cap[FRAME_HEIGHT].max ||
-	    fival->height < inst->cap[FRAME_HEIGHT].min) {
-		ret = -EINVAL;
-		goto unlock;
-	}
+	caps = inst->core->iris_platform_data->inst_caps;
+	if (fival->width > caps->max_frame_width ||
+	    fival->width < caps->min_frame_width ||
+	    fival->height > caps->max_frame_height ||
+	    fival->height < caps->min_frame_height)
+		return -EINVAL;
 
 	mbpf = NUM_MBS_PER_FRAME(fival->height, fival->width);
-	fps = core->cap[MAX_MBPS].value / mbpf;
 
-	fival->type = V4L2_FRMIVAL_TYPE_STEPWISE;
-	fival->stepwise.min.numerator = 1;
-	fival->stepwise.min.denominator = 1;
+	/*
+	 * Floor, not DIV_ROUND_UP. Rounding up advertises a rate the driver
+	 * itself refuses: at 3840x2160 it yields 65 fps, which needs 2106000
+	 * macroblocks/s against a 2088960 platform budget, so
+	 * iris_check_core_mbps() rejects the very rate just enumerated.
+	 */
+	fps = core->iris_platform_data->max_core_mbps / mbpf;
+	max_fps = min_t(u32, fps, caps->max_frame_rate);
+	max_fps = min_t(u32, max_fps, caps->max_operating_rate);
+	max_fps = min_t(u32, max_fps, MAXIMUM_FPS);
 
-	fival->stepwise.max.numerator = 1;
-	fival->stepwise.max.denominator =
-			min_t(u32, fps, inst->cap[FRAME_RATE].max);
-	fival->stepwise.step.numerator = 1;
-	fival->stepwise.step.denominator = inst->cap[FRAME_RATE].max;
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_reqbufs(struct file *filp, void *fh, struct v4l2_requestbuffers *b)
-{
-	struct vb2_queue *vb2q = NULL;
-	struct iris_inst *inst;
-	int ret;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !b)
+	/*
+	 * s_param() keeps the rate as an integer (denominator / numerator), so
+	 * the only intervals this driver can honour are 1/n for integer n.
+	 * Enumerate exactly those.
+	 *
+	 * Neither of the other two types can describe that set. CONTINUOUS
+	 * promises every rational interval in the range, which the integer
+	 * store cannot deliver. STEPWISE takes a rational addend, so a step of
+	 * 1/1 means "min + k seconds", not the 1/n series - and the upstream
+	 * 1/MAXIMUM_FPS step restricts clients to multiples of it, excluding
+	 * common rates such as 25 and 50 fps.
+	 *
+	 * Index 0 is the fastest rate the platform allows at this resolution;
+	 * the series then walks down to 1 fps.
+	 */
+	if (fival->index >= max_fps)
 		return -EINVAL;
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+	fival->discrete.numerator = 1;
+	fival->discrete.denominator = max_fps - fival->index;
 
-	if (!allow_reqbufs(inst, b->type)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	vb2q = get_vb2q(inst, b->type);
-	if (!vb2q) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	ret = vb2_reqbufs(vb2q, b);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
+	return 0;
 }
 
-static int vidc_querybuf(struct file *filp, void *fh, struct v4l2_buffer *b)
+static int iris_querycap(struct file *filp, void *fh, struct v4l2_capability *cap)
 {
-	struct vb2_queue *vb2q = NULL;
-	struct iris_inst *inst;
-	int ret;
+	struct iris_inst *inst = iris_get_inst(filp);
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !b)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	vb2q = get_vb2q(inst, b->type);
-	if (!vb2q) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	ret = vb2_querybuf(vb2q, b);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_create_bufs(struct file *filp, void *fh, struct v4l2_create_buffers *b)
-{
-	struct iris_inst *inst;
-	struct vb2_queue *vb2q;
-	struct v4l2_format *f;
-	int ret;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !b)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	f = &b->format;
-	vb2q = get_vb2q(inst, f->type);
-	if (!vb2q) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	ret = vb2_create_bufs(vb2q, b);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_prepare_buf(struct file *filp, void *fh, struct v4l2_buffer *b)
-{
-	struct video_device *vdev;
-	struct iris_inst *inst;
-	struct vb2_queue *vb2q;
-	int ret;
-
-	inst = get_vidc_inst(filp, fh);
-	vdev = video_devdata(filp);
-	if (!inst || !vdev || !vdev->v4l2_dev->mdev)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	vb2q = get_vb2q(inst, b->type);
-	if (!vb2q) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	ret = vb2_prepare_buf(vb2q, vdev->v4l2_dev->mdev, b);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_qbuf(struct file *filp, void *fh, struct v4l2_buffer *b)
-{
-	struct video_device *vdev;
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	vdev = video_devdata(filp);
-	if (!inst || !b)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (b->type == INPUT_MPLANE)
-		ret = vb2_qbuf(inst->vb2q_src, vdev->v4l2_dev->mdev, b);
-	else if (b->type == OUTPUT_MPLANE)
-		ret = vb2_qbuf(inst->vb2q_dst, vdev->v4l2_dev->mdev, b);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_dqbuf(struct file *filp, void *fh, struct v4l2_buffer *b)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !b)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (b->type == INPUT_MPLANE)
-		ret = vb2_dqbuf(inst->vb2q_src, b, true);
-	else if (b->type == OUTPUT_MPLANE)
-		ret = vb2_dqbuf(inst->vb2q_dst, b, true);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_streamon(struct file *filp, void *fh, enum v4l2_buf_type type)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (!allow_streamon(inst, type)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (type == INPUT_MPLANE)
-		ret = vb2_streamon(inst->vb2q_src, type);
-	else if (type == OUTPUT_MPLANE)
-		ret = vb2_streamon(inst->vb2q_dst, type);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_streamoff(struct file *filp, void *fh, enum v4l2_buf_type type)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (!allow_streamoff(inst, type)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (type == INPUT_MPLANE)
-		ret = vb2_streamoff(inst->vb2q_src, type);
-	else if (type == OUTPUT_MPLANE)
-		ret = vb2_streamoff(inst->vb2q_dst, type);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_querycap(struct file *filp, void *fh, struct v4l2_capability *cap)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	strscpy(cap->driver, VIDC_DRV_NAME, sizeof(cap->driver));
-	strscpy(cap->bus_info, VIDC_BUS_NAME, sizeof(cap->bus_info));
-	memset(cap->reserved, 0, sizeof(cap->reserved));
+	strscpy(cap->driver, IRIS_DRV_NAME, sizeof(cap->driver));
 
 	if (inst->domain == DECODER)
-		strscpy(cap->card, "iris_decoder", sizeof(cap->card));
-	else if (inst->domain == ENCODER)
-		strscpy(cap->card, "iris_encoder", sizeof(cap->card));
+		strscpy(cap->card, "Iris Decoder", sizeof(cap->card));
+	else
+		strscpy(cap->card, "Iris Encoder", sizeof(cap->card));
 
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
+	return 0;
 }
 
-static int vidc_queryctrl(struct file *filp, void *fh, struct v4l2_queryctrl *q_ctrl)
+static int iris_g_selection(struct file *filp, void *fh, struct v4l2_selection *s)
 {
-	struct v4l2_ctrl *ctrl;
-	struct iris_inst *inst;
-	int ret = 0;
+	struct iris_inst *inst = iris_get_inst(filp);
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !q_ctrl)
+	if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
+	    inst->domain == DECODER)
 		return -EINVAL;
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	ctrl = v4l2_ctrl_find(&inst->ctrl_handler, q_ctrl->id);
-	if (!ctrl) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	q_ctrl->minimum = ctrl->minimum;
-	q_ctrl->maximum = ctrl->maximum;
-	q_ctrl->default_value = ctrl->default_value;
-	q_ctrl->flags = 0;
-	q_ctrl->step = ctrl->step;
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_querymenu(struct file *filp, void *fh, struct v4l2_querymenu *qmenu)
-{
-	struct v4l2_ctrl *ctrl;
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !qmenu)
+	if (s->type != V4L2_BUF_TYPE_VIDEO_OUTPUT &&
+	    inst->domain == ENCODER)
 		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	ctrl = v4l2_ctrl_find(&inst->ctrl_handler, qmenu->id);
-	if (!ctrl) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (ctrl->type != V4L2_CTRL_TYPE_MENU) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (qmenu->index < ctrl->minimum || qmenu->index > ctrl->maximum) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (ctrl->menu_skip_mask & (1 << qmenu->index)) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscription *sub)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = container_of(fh, struct iris_inst, fh);
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (inst->domain == DECODER)
-		ret = vdec_subscribe_event(inst, sub);
-	else if (inst->domain == ENCODER)
-		ret = venc_subscribe_event(inst, sub);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_unsubscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscription *sub)
-{
-	struct iris_inst *inst;
-	int ret;
-
-	inst = container_of(fh, struct iris_inst, fh);
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	ret = v4l2_event_unsubscribe(&inst->fh, sub);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_g_selection(struct file *filp, void *fh, struct v4l2_selection *s)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !s)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (s->type != OUTPUT_MPLANE && s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
-	    inst->domain == DECODER) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (s->type != INPUT_MPLANE && s->type != V4L2_BUF_TYPE_VIDEO_OUTPUT &&
-	    inst->domain == ENCODER) {
-		ret = -EINVAL;
-		goto unlock;
-	}
 
 	if (inst->domain == DECODER) {
 		switch (s->target) {
@@ -1040,158 +593,108 @@ static int vidc_g_selection(struct file *filp, void *fh, struct v4l2_selection *
 			s->r.height = inst->crop.height;
 			break;
 		default:
-			ret = -EINVAL;
-			break;
+			return -EINVAL;
 		}
 	} else if (inst->domain == ENCODER) {
 		switch (s->target) {
 		case V4L2_SEL_TGT_CROP_BOUNDS:
 		case V4L2_SEL_TGT_CROP_DEFAULT:
+			s->r.width = inst->fmt_src->fmt.pix_mp.width;
+			s->r.height = inst->fmt_src->fmt.pix_mp.height;
+			break;
 		case V4L2_SEL_TGT_CROP:
-			s->r.left = inst->crop.left;
-			s->r.top = inst->crop.top;
 			s->r.width = inst->crop.width;
 			s->r.height = inst->crop.height;
 			break;
-		case V4L2_SEL_TGT_COMPOSE_BOUNDS:
-		case V4L2_SEL_TGT_COMPOSE_PADDED:
-		case V4L2_SEL_TGT_COMPOSE_DEFAULT:
-		case V4L2_SEL_TGT_COMPOSE:
-			s->r.left = inst->compose.left;
-			s->r.top = inst->compose.top;
-			s->r.width = inst->compose.width;
-			s->r.height = inst->compose.height;
-			break;
 		default:
-			ret = -EINVAL;
-			break;
+			return -EINVAL;
 		}
+		s->r.left = inst->crop.left;
+		s->r.top = inst->crop.top;
 	}
 
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
+	return 0;
 }
 
-static int vidc_s_selection(struct file *filp, void *fh, struct v4l2_selection *s)
+static int iris_s_selection(struct file *filp, void *fh, struct v4l2_selection *s)
 {
-	struct iris_inst *inst;
-	int ret = 0;
+	struct iris_inst *inst = iris_get_inst(filp);
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !s)
+	if (inst->domain == DECODER)
 		return -EINVAL;
+	else if (inst->domain == ENCODER)
+		return iris_venc_s_selection(inst, s);
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-	if (inst->domain == DECODER) {
-		ret = -EINVAL;
-		goto unlock;
-	} else if (inst->domain == ENCODER) {
-		ret = venc_s_selection(inst, s);
-	}
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
+	return -EINVAL;
 }
 
-static int vidc_s_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
+static int iris_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscription *sub)
 {
-	struct iris_inst *inst;
-	int ret = 0;
+	struct iris_inst *inst = container_of(fh, struct iris_inst, fh);
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !a)
-		return -EINVAL;
+	if (inst->domain == DECODER)
+		return iris_vdec_subscribe_event(inst, sub);
+	else if (inst->domain == ENCODER)
+		return iris_venc_subscribe_event(inst, sub);
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	return -EINVAL;
+}
+
+static int iris_s_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
+{
+	struct iris_inst *inst = iris_get_inst(filp);
 
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
-	    a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (inst->domain == ENCODER)
-		ret = venc_s_param(inst, a);
-	else
-		ret = -EINVAL;
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_g_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !a)
+	    a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 		return -EINVAL;
 
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
+	if (inst->domain == ENCODER)
+		return iris_venc_s_param(inst, a);
+	else
+		return -EINVAL;
+}
+
+static int iris_g_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
+{
+	struct iris_inst *inst = iris_get_inst(filp);
 
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
-	    a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (inst->domain == ENCODER)
-		ret = venc_g_param(inst, a);
-	else
-		ret = -EINVAL;
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_try_dec_cmd(struct file *filp, void *fh,
-			    struct v4l2_decoder_cmd *dec)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !dec)
+	    a->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
 		return -EINVAL;
 
+	if (inst->domain == ENCODER)
+		return iris_venc_g_param(inst, a);
+	else
+		return -EINVAL;
+}
+
+static int iris_dec_cmd(struct file *filp, void *fh,
+			struct v4l2_decoder_cmd *dec)
+{
+	struct iris_inst *inst = iris_get_inst(filp);
+	int ret = 0;
+
 	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
 
 	if (dec->cmd != V4L2_DEC_CMD_STOP && dec->cmd != V4L2_DEC_CMD_START) {
 		ret = -EINVAL;
 		goto unlock;
 	}
-	dec->flags = 0;
-	if (dec->cmd == V4L2_DEC_CMD_STOP) {
-		dec->stop.pts = 0;
-	} else if (dec->cmd == V4L2_DEC_CMD_START) {
-		dec->start.speed = 0;
-		dec->start.format = V4L2_DEC_START_FMT_NONE;
+
+	if (inst->state == IRIS_INST_DEINIT)
+		goto unlock;
+
+	if (!iris_allow_cmd(inst, dec->cmd)) {
+		ret = -EBUSY;
+		goto unlock;
 	}
+
+	if (dec->cmd == V4L2_DEC_CMD_START)
+		ret = iris_vdec_start_cmd(inst);
+	else if (dec->cmd == V4L2_DEC_CMD_STOP)
+		ret = iris_vdec_stop_cmd(inst);
+	else
+		ret = -EINVAL;
 
 unlock:
 	mutex_unlock(&inst->lock);
@@ -1199,133 +702,33 @@ unlock:
 	return ret;
 }
 
-static int vidc_try_enc_cmd(struct file *filp, void *fh,
-			    struct v4l2_encoder_cmd *enc)
+static int iris_enc_cmd(struct file *filp, void *fh,
+			struct v4l2_encoder_cmd *enc)
 {
-	struct iris_inst *inst;
+	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
 
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !enc)
-		return -EINVAL;
-
 	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (inst->domain != ENCODER) {
-		ret = -ENOTTY;
-		goto unlock;
-	}
 
 	if (enc->cmd != V4L2_ENC_CMD_STOP && enc->cmd != V4L2_ENC_CMD_START) {
 		ret = -EINVAL;
 		goto unlock;
 	}
-	enc->flags = 0;
 
-unlock:
-	mutex_unlock(&inst->lock);
+	if (inst->state == IRIS_INST_DEINIT)
+		goto unlock;
 
-	return ret;
-}
-
-static int vidc_dec_cmd(struct file *filp, void *fh,
-			struct v4l2_decoder_cmd *dec)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !dec)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
+	if (!iris_allow_cmd(inst, enc->cmd)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
-
-	if (dec->cmd != V4L2_DEC_CMD_START &&
-	    dec->cmd != V4L2_DEC_CMD_STOP) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (inst->state == IRIS_INST_OPEN)
-		goto unlock;
-
-	if (!allow_cmd(inst, dec->cmd)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	ret = iris_pm_get(inst->core);
-	if (ret)
-		goto unlock;
-
-	if (dec->cmd == V4L2_DEC_CMD_START)
-		ret = vdec_start_cmd(inst);
-	else if (dec->cmd == V4L2_DEC_CMD_STOP)
-		ret = vdec_stop_cmd(inst);
-
-	iris_pm_put(inst->core, true);
-
-unlock:
-	mutex_unlock(&inst->lock);
-
-	return ret;
-}
-
-static int vidc_enc_cmd(struct file *filp, void *fh,
-			struct v4l2_encoder_cmd *enc)
-{
-	struct iris_inst *inst;
-	int ret = 0;
-
-	inst = get_vidc_inst(filp, fh);
-	if (!inst || !enc)
-		return -EINVAL;
-
-	mutex_lock(&inst->lock);
-	if (IS_SESSION_ERROR(inst)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (inst->domain != ENCODER) {
-		ret = -ENOTTY;
-		goto unlock;
-	}
-
-	if (enc->cmd != V4L2_ENC_CMD_START &&
-	    enc->cmd != V4L2_ENC_CMD_STOP) {
-		ret = -EINVAL;
-		goto unlock;
-	}
-
-	if (enc->cmd == V4L2_ENC_CMD_STOP && inst->state == IRIS_INST_OPEN) {
-		ret = 0;
-		goto unlock;
-	}
-
-	if (!allow_cmd(inst, enc->cmd)) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	ret = iris_pm_get(inst->core);
-	if (ret)
-		goto unlock;
 
 	if (enc->cmd == V4L2_ENC_CMD_START)
-		ret = venc_start_cmd(inst);
+		ret = iris_venc_start_cmd(inst);
 	else if (enc->cmd == V4L2_ENC_CMD_STOP)
-		ret = venc_stop_cmd(inst);
-
-	iris_pm_put(inst->core, true);
+		ret = iris_venc_stop_cmd(inst);
+	else
+		ret = -EINVAL;
 
 unlock:
 	mutex_unlock(&inst->lock);
@@ -1333,97 +736,89 @@ unlock:
 	return ret;
 }
 
-static struct v4l2_file_operations v4l2_file_ops = {
+static const struct v4l2_file_operations iris_v4l2_file_ops = {
 	.owner                          = THIS_MODULE,
-	.open                           = vidc_open,
-	.release                        = vidc_close,
+	.open                           = iris_open,
+	.release                        = iris_close,
 	.unlocked_ioctl                 = video_ioctl2,
-	.poll                           = vidc_poll,
+	.poll                           = v4l2_m2m_fop_poll,
+	.mmap                           = v4l2_m2m_fop_mmap,
 };
 
 static const struct vb2_ops iris_vb2_ops = {
+	.buf_init                       = iris_vb2_buf_init,
 	.queue_setup                    = iris_vb2_queue_setup,
 	.start_streaming                = iris_vb2_start_streaming,
 	.stop_streaming                 = iris_vb2_stop_streaming,
+	.buf_prepare                    = iris_vb2_buf_prepare,
+	.buf_out_validate               = iris_vb2_buf_out_validate,
 	.buf_queue                      = iris_vb2_buf_queue,
 };
 
-static struct vb2_mem_ops iris_vb2_mem_ops = {
-	.alloc                          = iris_vb2_alloc,
-	.put                            = iris_vb2_put,
-	.mmap                           = iris_vb2_mmap,
-	.attach_dmabuf                  = iris_vb2_attach_dmabuf,
-	.detach_dmabuf                  = iris_vb2_detach_dmabuf,
-	.map_dmabuf                     = iris_vb2_map_dmabuf,
-	.unmap_dmabuf                   = iris_vb2_unmap_dmabuf,
+static const struct v4l2_ioctl_ops iris_v4l2_ioctl_ops_dec = {
+	.vidioc_enum_fmt_vid_cap        = iris_enum_fmt,
+	.vidioc_enum_fmt_vid_out        = iris_enum_fmt,
+	.vidioc_try_fmt_vid_cap_mplane  = iris_try_fmt_vid_mplane,
+	.vidioc_try_fmt_vid_out_mplane  = iris_try_fmt_vid_mplane,
+	.vidioc_s_fmt_vid_cap_mplane    = iris_s_fmt_vid_mplane,
+	.vidioc_s_fmt_vid_out_mplane    = iris_s_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_cap_mplane    = iris_g_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_out_mplane    = iris_g_fmt_vid_mplane,
+	.vidioc_enum_framesizes         = iris_enum_framesizes,
+	.vidioc_reqbufs                 = v4l2_m2m_ioctl_reqbufs,
+	.vidioc_querybuf                = v4l2_m2m_ioctl_querybuf,
+	.vidioc_create_bufs             = v4l2_m2m_ioctl_create_bufs,
+	.vidioc_prepare_buf             = v4l2_m2m_ioctl_prepare_buf,
+	.vidioc_expbuf                  = v4l2_m2m_ioctl_expbuf,
+	.vidioc_qbuf                    = v4l2_m2m_ioctl_qbuf,
+	.vidioc_dqbuf                   = v4l2_m2m_ioctl_dqbuf,
+	/* VIDIOC_REMOVE_BUFS arrived in v6.12; not available on this kernel. */
+	.vidioc_querycap                = iris_querycap,
+	.vidioc_g_selection             = iris_g_selection,
+	.vidioc_subscribe_event         = iris_subscribe_event,
+	.vidioc_unsubscribe_event       = v4l2_event_unsubscribe,
+	.vidioc_streamon                = v4l2_m2m_ioctl_streamon,
+	.vidioc_streamoff               = v4l2_m2m_ioctl_streamoff,
+	.vidioc_try_decoder_cmd         = v4l2_m2m_ioctl_try_decoder_cmd,
+	.vidioc_decoder_cmd             = iris_dec_cmd,
 };
 
-static const struct v4l2_ioctl_ops v4l2_ioctl_ops_dec = {
-	.vidioc_enum_fmt_vid_cap        = vidc_enum_fmt,
-	.vidioc_enum_fmt_vid_out        = vidc_enum_fmt,
-	.vidioc_try_fmt_vid_cap_mplane  = vidc_try_fmt,
-	.vidioc_try_fmt_vid_out_mplane  = vidc_try_fmt,
-	.vidioc_s_fmt_vid_cap_mplane    = vidc_s_fmt,
-	.vidioc_s_fmt_vid_out_mplane    = vidc_s_fmt,
-	.vidioc_g_fmt_vid_cap_mplane    = vidc_g_fmt,
-	.vidioc_g_fmt_vid_out_mplane    = vidc_g_fmt,
-	.vidioc_enum_framesizes         = vidc_enum_framesizes,
-	.vidioc_reqbufs                 = vidc_reqbufs,
-	.vidioc_querybuf                = vidc_querybuf,
-	.vidioc_create_bufs             = vidc_create_bufs,
-	.vidioc_prepare_buf             = vidc_prepare_buf,
-	.vidioc_qbuf                    = vidc_qbuf,
-	.vidioc_dqbuf                   = vidc_dqbuf,
-	.vidioc_streamon                = vidc_streamon,
-	.vidioc_streamoff               = vidc_streamoff,
-	.vidioc_querycap                = vidc_querycap,
-	.vidioc_queryctrl               = vidc_queryctrl,
-	.vidioc_querymenu               = vidc_querymenu,
-	.vidioc_subscribe_event         = vidc_subscribe_event,
-	.vidioc_unsubscribe_event       = vidc_unsubscribe_event,
-	.vidioc_g_selection             = vidc_g_selection,
-	.vidioc_try_decoder_cmd         = vidc_try_dec_cmd,
-	.vidioc_decoder_cmd             = vidc_dec_cmd,
+static const struct v4l2_ioctl_ops iris_v4l2_ioctl_ops_enc = {
+	.vidioc_enum_fmt_vid_cap        = iris_enum_fmt,
+	.vidioc_enum_fmt_vid_out        = iris_enum_fmt,
+	.vidioc_try_fmt_vid_cap_mplane  = iris_try_fmt_vid_mplane,
+	.vidioc_try_fmt_vid_out_mplane  = iris_try_fmt_vid_mplane,
+	.vidioc_s_fmt_vid_cap_mplane    = iris_s_fmt_vid_mplane,
+	.vidioc_s_fmt_vid_out_mplane    = iris_s_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_cap_mplane    = iris_g_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_out_mplane    = iris_g_fmt_vid_mplane,
+	.vidioc_enum_framesizes         = iris_enum_framesizes,
+	.vidioc_enum_frameintervals     = iris_enum_frameintervals,
+	.vidioc_querycap                = iris_querycap,
+	.vidioc_subscribe_event         = iris_subscribe_event,
+	.vidioc_unsubscribe_event       = v4l2_event_unsubscribe,
+	.vidioc_g_selection             = iris_g_selection,
+	.vidioc_s_selection             = iris_s_selection,
+	.vidioc_s_parm                  = iris_s_parm,
+	.vidioc_g_parm                  = iris_g_parm,
+	.vidioc_streamon                = v4l2_m2m_ioctl_streamon,
+	.vidioc_streamoff               = v4l2_m2m_ioctl_streamoff,
+	.vidioc_reqbufs                 = v4l2_m2m_ioctl_reqbufs,
+	.vidioc_querybuf                = v4l2_m2m_ioctl_querybuf,
+	.vidioc_create_bufs             = v4l2_m2m_ioctl_create_bufs,
+	.vidioc_prepare_buf             = v4l2_m2m_ioctl_prepare_buf,
+	.vidioc_expbuf                  = v4l2_m2m_ioctl_expbuf,
+	.vidioc_qbuf                    = v4l2_m2m_ioctl_qbuf,
+	.vidioc_dqbuf                   = v4l2_m2m_ioctl_dqbuf,
+	/* VIDIOC_REMOVE_BUFS arrived in v6.12; not available on this kernel. */
+	.vidioc_try_encoder_cmd         = v4l2_m2m_ioctl_try_encoder_cmd,
+	.vidioc_encoder_cmd             = iris_enc_cmd,
 };
 
-static const struct v4l2_ioctl_ops v4l2_ioctl_ops_enc = {
-	.vidioc_enum_fmt_vid_cap        = vidc_enum_fmt,
-	.vidioc_enum_fmt_vid_out        = vidc_enum_fmt,
-	.vidioc_try_fmt_vid_cap_mplane  = vidc_try_fmt,
-	.vidioc_try_fmt_vid_out_mplane  = vidc_try_fmt,
-	.vidioc_s_fmt_vid_cap_mplane    = vidc_s_fmt,
-	.vidioc_s_fmt_vid_out_mplane    = vidc_s_fmt,
-	.vidioc_g_fmt_vid_cap_mplane    = vidc_g_fmt,
-	.vidioc_g_fmt_vid_out_mplane    = vidc_g_fmt,
-	.vidioc_enum_framesizes         = vidc_enum_framesizes,
-	.vidioc_enum_frameintervals     = vidc_enum_frameintervals,
-	.vidioc_reqbufs                 = vidc_reqbufs,
-	.vidioc_querybuf                = vidc_querybuf,
-	.vidioc_create_bufs             = vidc_create_bufs,
-	.vidioc_prepare_buf             = vidc_prepare_buf,
-	.vidioc_qbuf                    = vidc_qbuf,
-	.vidioc_dqbuf                   = vidc_dqbuf,
-	.vidioc_streamon                = vidc_streamon,
-	.vidioc_streamoff               = vidc_streamoff,
-	.vidioc_querycap                = vidc_querycap,
-	.vidioc_queryctrl               = vidc_queryctrl,
-	.vidioc_querymenu               = vidc_querymenu,
-	.vidioc_subscribe_event         = vidc_subscribe_event,
-	.vidioc_unsubscribe_event       = vidc_unsubscribe_event,
-	.vidioc_g_selection             = vidc_g_selection,
-	.vidioc_s_selection             = vidc_s_selection,
-	.vidioc_s_parm                  = vidc_s_parm,
-	.vidioc_g_parm                  = vidc_g_parm,
-	.vidioc_try_encoder_cmd         = vidc_try_enc_cmd,
-	.vidioc_encoder_cmd             = vidc_enc_cmd,
-};
-
-int init_ops(struct iris_core *core)
+void iris_init_ops(struct iris_core *core)
 {
-	core->v4l2_file_ops = &v4l2_file_ops;
-	core->vb2_ops = &iris_vb2_ops;
-	core->vb2_mem_ops = &iris_vb2_mem_ops;
-	core->v4l2_ioctl_ops_dec = &v4l2_ioctl_ops_dec;
-	core->v4l2_ioctl_ops_enc = &v4l2_ioctl_ops_enc;
-	return 0;
+	core->iris_v4l2_file_ops = &iris_v4l2_file_ops;
+	core->iris_vb2_ops = &iris_vb2_ops;
+	core->iris_v4l2_ioctl_ops_dec = &iris_v4l2_ioctl_ops_dec;
+	core->iris_v4l2_ioctl_ops_enc = &iris_v4l2_ioctl_ops_enc;
 }

@@ -130,6 +130,8 @@ struct venus_hfi_device {
 };
 
 static bool venus_pkt_debug;
+module_param(venus_pkt_debug, bool, 0644);
+MODULE_PARM_DESC(venus_pkt_debug, "dump HFI packets written to the firmware");
 int venus_fw_debug = HFI_DEBUG_MSG_ERROR | HFI_DEBUG_MSG_FATAL;
 static bool venus_fw_low_power_mode = true;
 static int venus_hw_rsp_timeout = 1000;

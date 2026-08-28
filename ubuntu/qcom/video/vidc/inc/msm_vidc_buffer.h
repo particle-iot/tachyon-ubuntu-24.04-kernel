@@ -26,6 +26,15 @@ u32 msm_vidc_internal_buffer_count(struct msm_vidc_inst *inst,
 				   enum msm_vidc_buffer_type buffer_type);
 u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst);
 u32 msm_vidc_decoder_output_size(struct msm_vidc_inst *inst);
+/*
+ * Same sizes, but for a format the caller supplies instead of the one on the
+ * instance. TRY_FMT must not report the current format's size for a different
+ * request, and it must not touch instance state to find out.
+ */
+u32 msm_vidc_decoder_input_size_for(struct msm_vidc_inst *inst,
+				    u32 pixelformat, u32 width, u32 height);
+u32 msm_vidc_decoder_output_size_for(struct msm_vidc_inst *inst,
+				     u32 pixelformat, u32 width, u32 height);
 u32 msm_vidc_decoder_input_meta_size(struct msm_vidc_inst *inst);
 u32 msm_vidc_decoder_output_meta_size(struct msm_vidc_inst *inst);
 u32 msm_vidc_encoder_input_size(struct msm_vidc_inst *inst);

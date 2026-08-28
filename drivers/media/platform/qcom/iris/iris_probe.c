@@ -3,80 +3,185 @@
  * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/clk.h>
+#include <linux/interconnect.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
-#include <linux/platform_device.h>
+#include <linux/pm_domain.h>
+#include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
+#include <linux/reset.h>
 
+#include "iris_compat.h"
 #include "iris_core.h"
 #include "iris_ctrls.h"
-#include "iris_helpers.h"
-#include "iris_hfi.h"
-#include "iris_hfi_queue.h"
 #include "iris_vidc.h"
-#include "resources.h"
 
-static int init_iris_isr(struct iris_core *core)
+static int iris_init_icc(struct iris_core *core)
+{
+	const struct icc_info *icc_tbl;
+	u32 i = 0;
+
+	icc_tbl = core->iris_platform_data->icc_tbl;
+
+	core->icc_count = core->iris_platform_data->icc_tbl_size;
+	core->icc_tbl = devm_kzalloc(core->dev,
+				     sizeof(struct icc_bulk_data) * core->icc_count,
+				     GFP_KERNEL);
+	if (!core->icc_tbl)
+		return -ENOMEM;
+
+	for (i = 0; i < core->icc_count; i++) {
+		core->icc_tbl[i].name = icc_tbl[i].name;
+		core->icc_tbl[i].avg_bw = icc_tbl[i].bw_min_kbps;
+		core->icc_tbl[i].peak_bw = 0;
+	}
+
+	return devm_of_icc_bulk_get(core->dev, core->icc_count, core->icc_tbl);
+}
+
+static int iris_init_power_domains(struct iris_core *core)
+{
+	const struct platform_clk_data *clk_tbl;
+	u32 clk_cnt, i;
+	int ret;
+
+	struct dev_pm_domain_attach_data iris_pd_data = {
+		.pd_names = core->iris_platform_data->pmdomain_tbl,
+		.num_pd_names = core->iris_platform_data->pmdomain_tbl_size,
+		.pd_flags = PD_FLAG_NO_DEV_LINK,
+	};
+
+	struct dev_pm_domain_attach_data iris_opp_pd_data = {
+		.pd_names = core->iris_platform_data->opp_pd_tbl,
+		.num_pd_names = core->iris_platform_data->opp_pd_tbl_size,
+		.pd_flags = PD_FLAG_DEV_LINK_ON | PD_FLAG_REQUIRED_OPP,
+	};
+
+	ret = devm_pm_domain_attach_list(core->dev, &iris_pd_data, &core->pmdomain_tbl);
+	if (ret < 0)
+		return ret;
+
+	ret =  devm_pm_domain_attach_list(core->dev, &iris_opp_pd_data, &core->opp_pmdomain_tbl);
+	if (ret < 0)
+		return ret;
+
+	clk_tbl = core->iris_platform_data->clk_tbl;
+	clk_cnt = core->iris_platform_data->clk_tbl_size;
+
+	for (i = 0; i < clk_cnt; i++) {
+		if (clk_tbl[i].clk_type == IRIS_HW_CLK) {
+			ret = devm_pm_opp_set_clkname(core->dev, clk_tbl[i].clk_name);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return devm_pm_opp_of_add_table(core->dev);
+}
+
+static int iris_init_clocks(struct iris_core *core)
 {
 	int ret;
 
-	ret = devm_request_threaded_irq(core->dev, core->irq, iris_hfi_isr,
-					iris_hfi_isr_handler, IRQF_TRIGGER_HIGH, "iris", core);
-	if (ret) {
-		dev_err(core->dev, "%s: Failed to allocate iris IRQ\n", __func__);
+	ret = devm_clk_bulk_get_all(core->dev, &core->clock_tbl);
+	if (ret < 0)
 		return ret;
-	}
-	disable_irq_nosync(core->irq);
 
-	return ret;
+	core->clk_count = ret;
+
+	return 0;
 }
 
-static void iris_unregister_video_device(struct iris_core *core, enum domain_type type)
+static int iris_init_reset_table(struct iris_core *core,
+				 struct reset_control_bulk_data **resets,
+				 const char * const *rst_tbl, u32 rst_tbl_size)
 {
-	if (type == DECODER)
-		video_unregister_device(core->vdev_dec);
-	else if (type == ENCODER)
-		video_unregister_device(core->vdev_enc);
+	u32 i = 0;
+
+	*resets = devm_kzalloc(core->dev,
+			       sizeof(struct reset_control_bulk_data) * rst_tbl_size,
+			       GFP_KERNEL);
+	if (!*resets)
+		return -ENOMEM;
+
+	for (i = 0; i < rst_tbl_size; i++)
+		(*resets)[i].id = rst_tbl[i];
+
+	return devm_reset_control_bulk_get_exclusive(core->dev, rst_tbl_size, *resets);
+}
+
+static int iris_init_resets(struct iris_core *core)
+{
+	int ret;
+
+	ret = iris_init_reset_table(core, &core->resets,
+				    core->iris_platform_data->clk_rst_tbl,
+				    core->iris_platform_data->clk_rst_tbl_size);
+	if (ret)
+		return ret;
+
+	if (!core->iris_platform_data->controller_rst_tbl_size)
+		return 0;
+
+	return iris_init_reset_table(core, &core->controller_resets,
+				     core->iris_platform_data->controller_rst_tbl,
+				     core->iris_platform_data->controller_rst_tbl_size);
+}
+
+static int iris_init_resources(struct iris_core *core)
+{
+	int ret;
+
+	ret = iris_init_icc(core);
+	if (ret)
+		return ret;
+
+	ret = iris_init_power_domains(core);
+	if (ret)
+		return ret;
+
+	ret = iris_init_clocks(core);
+	if (ret)
+		return ret;
+
+	return iris_init_resets(core);
 }
 
 static int iris_register_video_device(struct iris_core *core, enum domain_type type)
 {
 	struct video_device *vdev;
-	int ret = 0;
+	int ret;
 
 	vdev = video_device_alloc();
 	if (!vdev)
 		return -ENOMEM;
 
 	vdev->release = video_device_release;
-	vdev->fops = core->v4l2_file_ops;
+	vdev->fops = core->iris_v4l2_file_ops;
 	vdev->vfl_dir = VFL_DIR_M2M;
 	vdev->v4l2_dev = &core->v4l2_dev;
 	vdev->device_caps = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING;
 
 	if (type == DECODER) {
 		strscpy(vdev->name, "qcom-iris-decoder", sizeof(vdev->name));
-		vdev->ioctl_ops = core->v4l2_ioctl_ops_dec;
-
-		ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
-		if (ret)
-			goto err_vdev_release;
-
+		vdev->ioctl_ops = core->iris_v4l2_ioctl_ops_dec;
 		core->vdev_dec = vdev;
 	} else if (type == ENCODER) {
 		strscpy(vdev->name, "qcom-iris-encoder", sizeof(vdev->name));
-		vdev->ioctl_ops = core->v4l2_ioctl_ops_enc;
-
-		ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
-		if (ret)
-			goto err_vdev_release;
-
+		vdev->ioctl_ops = core->iris_v4l2_ioctl_ops_enc;
 		core->vdev_enc = vdev;
+	} else {
+		ret = -EINVAL;
+		goto err_vdev_release;
 	}
+
+	ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
+	if (ret)
+		goto err_vdev_release;
 
 	video_set_drvdata(vdev, core);
 
-	return ret;
+	return 0;
 
 err_vdev_release:
 	video_device_release(vdev);
@@ -84,29 +189,50 @@ err_vdev_release:
 	return ret;
 }
 
-static void iris_remove(struct platform_device *pdev)
+/* v6.11 changed platform_driver::remove to return void; this kernel wants int. */
+static int iris_remove(struct platform_device *pdev)
 {
 	struct iris_core *core;
 
 	core = platform_get_drvdata(pdev);
 	if (!core)
-		return;
+		return 0;
 
-	iris_pm_get(core);
+	/*
+	 * Unregister first: that clears V4L2_FL_REGISTERED, so open() starts
+	 * failing at the door. Doing it after the core was torn down would leave
+	 * a window where a fresh open() still reaches a dead core.
+	 */
+	video_unregister_device(core->vdev_dec);
+	video_unregister_device(core->vdev_enc);
+
+	/*
+	 * The interrupt schedules sys_error_handler, which takes core->lock and
+	 * re-initialises the core. Nothing here stops it on its own: the irq is
+	 * devm-managed and so outlives this function, and iris_vpu_power_off()
+	 * only masks it when the watchdog has not fired and the device resumed.
+	 * Mask it unconditionally, then wait for work already queued - otherwise
+	 * it runs against a destroyed mutex and a core devres is about to free.
+	 */
+	disable_irq(core->irq);
+	cancel_delayed_work_sync(&core->sys_error_handler);
 
 	iris_core_deinit(core);
-	iris_hfi_queue_deinit(core);
-
-	iris_unregister_video_device(core, DECODER);
-
-	iris_unregister_video_device(core, ENCODER);
 
 	v4l2_device_unregister(&core->v4l2_dev);
 
-	iris_pm_put(core, false);
-
 	mutex_destroy(&core->lock);
-	core->state = IRIS_CORE_DEINIT;
+
+	return 0;
+}
+
+static void iris_sys_error_handler(struct work_struct *work)
+{
+	struct iris_core *core =
+			container_of(work, struct iris_core, sys_error_handler.work);
+
+	iris_core_deinit(core);
+	iris_core_init(core);
 }
 
 static int iris_probe(struct platform_device *pdev)
@@ -123,17 +249,14 @@ static int iris_probe(struct platform_device *pdev)
 
 	core->state = IRIS_CORE_DEINIT;
 	mutex_init(&core->lock);
+	init_completion(&core->core_init_done);
 
-	core->packet_size = IFACEQ_CORE_PKT_SIZE;
-	core->packet = devm_kzalloc(core->dev, core->packet_size, GFP_KERNEL);
-	if (!core->packet)
-		return -ENOMEM;
-
-	core->response_packet = devm_kzalloc(core->dev, core->packet_size, GFP_KERNEL);
+	core->response_packet = devm_kzalloc(core->dev, IFACEQ_CORE_PKT_SIZE, GFP_KERNEL);
 	if (!core->response_packet)
 		return -ENOMEM;
 
 	INIT_LIST_HEAD(&core->instances);
+	INIT_DELAYED_WORK(&core->sys_error_handler, iris_sys_error_handler);
 
 	core->reg_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(core->reg_base))
@@ -143,66 +266,51 @@ static int iris_probe(struct platform_device *pdev)
 	if (core->irq < 0)
 		return core->irq;
 
-	pm_runtime_set_autosuspend_delay(core->dev, AUTOSUSPEND_DELAY_VALUE);
-	pm_runtime_use_autosuspend(core->dev);
-	ret = devm_pm_runtime_enable(core->dev);
-	if (ret) {
-		dev_err(core->dev, "failed to enable runtime pm\n");
-		goto err_runtime_disable;
+	core->iris_platform_data = of_device_get_match_data(core->dev);
+	if (core->iris_platform_data == &sc7280_data && iris_sc7280_gen2) {
+		/*
+		 * The HFI generation is fixed here but iris_fw_load() still lets
+		 * a "firmware-name" property choose the blob, and nothing tells
+		 * us which generation that blob speaks. Leave such a device on
+		 * the Gen1 default rather than risk pairing Gen2 command packets
+		 * with a Gen1 firmware.
+		 */
+		if (of_property_present(core->dev->of_node, "firmware-name")) {
+			dev_info(core->dev,
+				 "firmware-name is set, keeping the Gen1 firmware and HFI\n");
+		} else {
+			const struct iris_platform_data *gen2;
+
+			gen2 = iris_sc7280_gen2_platform_data(core->dev);
+			if (!gen2)
+				return -ENOMEM;
+
+			core->iris_platform_data = gen2;
+			dev_info(core->dev, "using Gen2 firmware %s\n",
+				 core->iris_platform_data->fwname);
+		}
 	}
 
-	ret = init_iris_isr(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: Failed to init isr with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
+	ret = devm_request_threaded_irq(core->dev, core->irq, iris_hfi_isr,
+					iris_hfi_isr_handler, IRQF_TRIGGER_HIGH, "iris", core);
+	if (ret)
+		return ret;
 
-	ret = init_platform(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init platform failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
+	disable_irq_nosync(core->irq);
 
-	ret = init_vpu(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init vpu failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
+	iris_init_ops(core);
+	core->iris_platform_data->init_hfi_command_ops(core);
+	core->iris_platform_data->init_hfi_response_ops(core);
 
-	ret = init_ops(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init ops failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
+	ret = iris_init_resources(core);
+	if (ret)
+		return ret;
 
-	ret = init_resources(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init resource failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
-
-	ret = iris_init_core_caps(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init core caps failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
-
-	ret = iris_init_instance_caps(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: init inst caps failed with %d\n", __func__, ret);
-		goto err_runtime_disable;
-	}
+	iris_session_init_caps(core);
 
 	ret = v4l2_device_register(dev, &core->v4l2_dev);
 	if (ret)
-		goto err_runtime_disable;
+		return ret;
 
 	ret = iris_register_video_device(core, DECODER);
 	if (ret)
@@ -214,120 +322,68 @@ static int iris_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, core);
 
-	dma_mask = core->cap[DMA_MASK].value;
+	dma_mask = core->iris_platform_data->dma_mask;
 
 	ret = dma_set_mask_and_coherent(dev, dma_mask);
 	if (ret)
 		goto err_vdev_unreg_enc;
 
-	dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(32));
-	dma_set_seg_boundary(&pdev->dev, (unsigned long)DMA_BIT_MASK(64));
+	dma_set_max_seg_size(&pdev->dev, DMA_BIT_MASK(32));
+	dma_set_seg_boundary(&pdev->dev, DMA_BIT_MASK(32));
 
-	ret = iris_hfi_queue_init(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret,
-			      "%s: interface queues init failed\n", __func__);
+	pm_runtime_set_autosuspend_delay(core->dev, AUTOSUSPEND_DELAY_VALUE);
+	pm_runtime_use_autosuspend(core->dev);
+	ret = devm_pm_runtime_enable(core->dev);
+	if (ret)
 		goto err_vdev_unreg_enc;
-	}
 
-	ret = iris_pm_get(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret, "%s: failed to get runtime pm\n", __func__);
-		goto err_queue_deinit;
-	}
+	return 0;
 
-	ret = iris_core_init(core);
-	if (ret) {
-		dev_err_probe(core->dev, ret, "%s: core init failed\n", __func__);
-		goto err_queue_deinit;
-	}
-
-	ret = iris_pm_put(core, false);
-	if (ret) {
-		pm_runtime_get_noresume(core->dev);
-		dev_err_probe(core->dev, ret, "%s: failed to put runtime pm\n", __func__);
-		goto err_core_deinit;
-	}
-
-	return ret;
-
-err_core_deinit:
-	iris_core_deinit(core);
-err_queue_deinit:
-	iris_hfi_queue_deinit(core);
 err_vdev_unreg_enc:
-	iris_unregister_video_device(core, ENCODER);
+	video_unregister_device(core->vdev_enc);
 err_vdev_unreg_dec:
-	iris_unregister_video_device(core, DECODER);
+	video_unregister_device(core->vdev_dec);
 err_v4l2_unreg:
 	v4l2_device_unregister(&core->v4l2_dev);
-err_runtime_disable:
-	pm_runtime_put_noidle(core->dev);
-	pm_runtime_set_suspended(core->dev);
 
 	return ret;
 }
 
-static int iris_pm_suspend(struct device *dev)
+static int __maybe_unused iris_pm_suspend(struct device *dev)
 {
 	struct iris_core *core;
-	int ret;
-
-	if (!dev || !dev->driver)
-		return 0;
+	int ret = 0;
 
 	core = dev_get_drvdata(dev);
 
 	mutex_lock(&core->lock);
-
-	if (core->num_pending_requests > 0) {
-		ret = -EBUSY;
-		goto unlock;
-	}
-
-	if (!core_in_valid_state(core)) {
-		ret = 0;
-		goto unlock;
-	}
-
-	if (!core->power_enabled) {
-		ret = 0;
-		goto unlock;
-	}
+	if (core->state != IRIS_CORE_INIT)
+		goto exit;
 
 	ret = iris_hfi_pm_suspend(core);
 
-unlock:
+exit:
 	mutex_unlock(&core->lock);
 
 	return ret;
 }
 
-static int iris_pm_resume(struct device *dev)
+static int __maybe_unused iris_pm_resume(struct device *dev)
 {
 	struct iris_core *core;
-	int ret;
-
-	if (!dev || !dev->driver)
-		return 0;
+	int ret = 0;
 
 	core = dev_get_drvdata(dev);
 
-	if (!core_in_valid_state(core)) {
-		ret = 0;
+	mutex_lock(&core->lock);
+	if (core->state != IRIS_CORE_INIT)
 		goto exit;
-	}
-
-	if (core->power_enabled) {
-		ret = 0;
-		goto exit;
-	}
 
 	ret = iris_hfi_pm_resume(core);
-
-	iris_pm_touch_unlocked(core);
+	pm_runtime_mark_last_busy(core->dev);
 
 exit:
+	mutex_unlock(&core->lock);
 
 	return ret;
 }
@@ -340,12 +396,30 @@ static const struct dev_pm_ops iris_pm_ops = {
 
 static const struct of_device_id iris_dt_match[] = {
 	{
+		.compatible = "qcom,qcs8300-iris",
+		.data = &qcs8300_data,
+	},
+#if (!IS_ENABLED(CONFIG_VIDEO_QCOM_VENUS))
+	{
+		.compatible = "qcom,sc7280-venus",
+		.data = &sc7280_data,
+	},
+	{
+		.compatible = "qcom,sm8250-venus",
+		.data = &sm8250_data,
+	},
+#endif
+	{
 		.compatible = "qcom,sm8550-iris",
 		.data = &sm8550_data,
 	},
 	{
-		.compatible = "qcom,qcm6490-iris",
-		.data = &qcm6490_data,
+		.compatible = "qcom,sm8650-iris",
+		.data = &sm8650_data,
+	},
+	{
+		.compatible = "qcom,sm8750-iris",
+		.data = &sm8750_data,
 	},
 	{ },
 };
@@ -353,15 +427,21 @@ MODULE_DEVICE_TABLE(of, iris_dt_match);
 
 static struct platform_driver qcom_iris_driver = {
 	.probe = iris_probe,
-	.remove_new = iris_remove,
+	.remove = iris_remove,
 	.driver = {
 		.name = "qcom-iris",
 		.of_match_table = iris_dt_match,
 		.pm = &iris_pm_ops,
+		/*
+		 * An instance keeps a plain pointer to the devres-allocated core
+		 * and still uses it from close(), so a remove() with file handles
+		 * open would leave those pointing at freed memory. This does not
+		 * fix that lifetime; it removes the operation that would reach it.
+		 */
+		.suppress_bind_attrs = true,
 	},
 };
 
 module_platform_driver(qcom_iris_driver);
-MODULE_IMPORT_NS(DMA_BUF);
-MODULE_DESCRIPTION("Qualcomm Iris video driver");
+MODULE_DESCRIPTION("Qualcomm iris video driver");
 MODULE_LICENSE("GPL");

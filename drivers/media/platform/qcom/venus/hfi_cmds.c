@@ -637,8 +637,14 @@ static int pkt_session_set_property_1x(struct hfi_session_set_property_pkt *pkt,
 		struct hfi_h264_entropy_control *in = pdata, *hfi = prop_data;
 
 		hfi->entropy_mode = in->entropy_mode;
-		if (hfi->entropy_mode == HFI_H264_ENTROPY_CABAC)
-			hfi->cabac_model = in->cabac_model;
+		/*
+		 * cabac_model is part of the packet regardless of the entropy
+		 * mode, so it has to be initialised even for CAVLC: the packet
+		 * is built in a long-lived buffer that is reused for every
+		 * command, and leaving the field untouched hands stale data
+		 * from a previous packet to the firmware.
+		 */
+		hfi->cabac_model = in->cabac_model;
 		pkt->shdr.hdr.size += sizeof(u32) + sizeof(*hfi);
 		break;
 	}

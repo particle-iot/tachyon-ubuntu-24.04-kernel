@@ -197,18 +197,25 @@ u32 msm_vidc_internal_buffer_count(struct msm_vidc_inst *inst,
 	return count;
 }
 
-u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
+/*
+ * Shared body for the decoder input size.
+ *
+ * TRY_FMT has to size a buffer for the codec and resolution the client is
+ * asking about, which are not necessarily the ones currently programmed on
+ * the instance. The two inputs that follow the requested format are therefore
+ * passed in rather than read back from inst->fmts[].
+ */
+static u32 decoder_input_size(struct msm_vidc_inst *inst,
+			      enum msm_vidc_codec_type codec, u32 num_mbs)
 {
 	struct msm_vidc_core *core;
 	struct msm_vidc_inst *i;
 	u32 count = 0;
 
-	u32 frame_size, num_mbs;
+	u32 frame_size;
 	u32 div_factor = 1;
 	u32 base_res_mbs = NUM_MBS_4k;
-	struct v4l2_format *f;
 	u32 bitstream_size_overwrite = 0;
-	enum msm_vidc_codec_type codec;
 
 	bitstream_size_overwrite =
 		inst->capabilities[BITSTREAM_SIZE_OVERWRITE].value;
@@ -226,9 +233,6 @@ u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
 	 * In all other cases, buffer size is calculated as
 	 * 4k mbs for VP8/VP9 and 4k / 2 for remaining codecs.
 	 */
-	f = &inst->fmts[INPUT_PORT];
-	codec = v4l2_codec_to_driver(inst, f->fmt.pix_mp.pixelformat, __func__);
-	num_mbs = msm_vidc_get_mbs_per_frame(inst);
 	if (num_mbs > NUM_MBS_4k) {
 		div_factor = 4;
 		base_res_mbs = inst->capabilities[MBPF].value;
@@ -266,19 +270,42 @@ u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
 	return ALIGN(frame_size, SZ_4K);
 }
 
+u32 msm_vidc_decoder_input_size(struct msm_vidc_inst *inst)
+{
+	struct v4l2_format *f = &inst->fmts[INPUT_PORT];
+
+	return decoder_input_size(inst,
+		v4l2_codec_to_driver(inst, f->fmt.pix_mp.pixelformat, __func__),
+		msm_vidc_get_mbs_per_frame(inst));
+}
+
+u32 msm_vidc_decoder_input_size_for(struct msm_vidc_inst *inst,
+				    u32 pixelformat, u32 width, u32 height)
+{
+	return decoder_input_size(inst,
+		v4l2_codec_to_driver(inst, pixelformat, __func__),
+		NUM_MBS_PER_FRAME(height, width));
+}
+
 u32 msm_vidc_decoder_output_size(struct msm_vidc_inst *inst)
 {
-	u32 size;
-	struct v4l2_format *f;
+	struct v4l2_format *f = &inst->fmts[OUTPUT_PORT];
+
+	return msm_vidc_decoder_output_size_for(inst, f->fmt.pix_mp.pixelformat,
+						f->fmt.pix_mp.width,
+						f->fmt.pix_mp.height);
+}
+
+/* See decoder_input_size() for why TRY_FMT cannot go through the op above. */
+u32 msm_vidc_decoder_output_size_for(struct msm_vidc_inst *inst,
+				     u32 pixelformat, u32 width, u32 height)
+{
 	enum msm_vidc_colorformat_type colorformat;
 
-	f = &inst->fmts[OUTPUT_PORT];
-	colorformat = v4l2_colorformat_to_driver(inst, f->fmt.pix_mp.pixelformat,
-		__func__);
-	size = video_buffer_size(
-			colorformat, f->fmt.pix_mp.width, f->fmt.pix_mp.height,
+	colorformat = v4l2_colorformat_to_driver(inst, pixelformat, __func__);
+
+	return video_buffer_size(colorformat, width, height,
 			inst->capabilities[CODED_FRAMES].value == CODED_FRAMES_INTERLACE);
-	return size;
 }
 
 u32 msm_vidc_decoder_input_meta_size(struct msm_vidc_inst *inst)
