@@ -302,10 +302,17 @@ int iris_vdec_s_fmt(struct iris_inst *inst, struct v4l2_format *f)
 		inst->buffers[BUF_OUTPUT].min_count = iris_vpu_buf_count(inst, BUF_OUTPUT);
 		inst->buffers[BUF_OUTPUT].size = fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 
-		inst->crop.top = 0;
-		inst->crop.left = 0;
-		inst->crop.width = f->fmt.pix_mp.width;
-		inst->crop.height = f->fmt.pix_mp.height;
+		/*
+		 * Leave inst->crop alone here. It backs V4L2_SEL_TGT_COMPOSE on
+		 * CAPTURE, which the API defines as the visible rectangle of the
+		 * stream - the source-change handler derives it from the sequence
+		 * header. Setting it from a CAPTURE format request overwrote that
+		 * with whatever the client happened to pass, and the documented
+		 * order (G_FMT, then S_FMT to pick a pixel format, then
+		 * G_SELECTION) runs straight into it. The OUTPUT branch above
+		 * still seeds it, so a client that asks before the first
+		 * source change gets the resolution it declared.
+		 */
 		break;
 	default:
 		return -EINVAL;
