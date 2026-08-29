@@ -1,3 +1,10 @@
+linux-particle (6.8.0-1058.59+particle6) noble; urgency=medium
+
+  * media: iris: switch sc7280 to the v6.19 driver with Gen2 firmware
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/42)
+
+ -- Nick <nick@particle.io>  Sat, 29 Aug 2026 06:52:54 +0000
+
 linux-particle (6.8.0-1058.59+particle5) noble; urgency=medium
 
   * arm64: dts: qcom: sc7280: drop secure video SID from the base dtsi
