@@ -1,3 +1,26 @@
+linux-particle (6.8.0-1058.59+particle7) noble; urgency=medium
+
+  * SECURITY: backport fixes for the CVE-2026 IPsec/skb vulnerability family
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/41)
+  * crypto: algif_aead - fix CopyFail LPE (CVE-2026-31431)
+    - based on upstream commit a664bf3d603d
+  * crypto: af_alg - fix page reassignment overflow in af_alg_pull_tsgl
+    - upstream commit 31d00156e50e
+  * xfrm: esp: avoid in-place decrypt on shared skb frags (CVE-2026-43284,
+    "Dirty Frag")
+    - upstream commit f4c50a4034e6
+  * rxrpc: also unshare DATA/RESPONSE packets when paged frags are present
+    (CVE-2026-43500, "Dirty Frag")
+    - upstream commit aa54b1d27fe0
+  * net: skbuff: propagate shared-frag marker through frag-transfer helpers
+    (CVE-2026-43503, "DirtyClone")
+    - upstream commit 48f6a5356a33
+  * net: skbuff: preserve shared-frag marker during coalescing
+    (CVE-2026-46300, "Fragnesia")
+    - upstream commit f84eca581739
+
+ -- Nick <nick@particle.io>  Tue, 01 Sep 2026 01:57:04 +0000
+
 linux-particle (6.8.0-1058.59+particle6) noble; urgency=medium
 
   * media: iris: switch sc7280 to the v6.19 driver with Gen2 firmware
