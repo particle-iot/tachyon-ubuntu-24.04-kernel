@@ -6,6 +6,8 @@
 #ifndef _DP_CATALOG_H_
 #define _DP_CATALOG_H_
 
+#include <linux/bits.h>
+
 #include <drm/drm_modes.h>
 
 #include "dp_utils.h"
@@ -67,7 +69,17 @@ struct msm_dp_catalog {
 };
 
 /* Debug module */
-void msm_dp_catalog_snapshot(struct msm_dp_catalog *msm_dp_catalog, struct msm_disp_state *disp_state);
+/*
+ * Register-domain clock state passed to msm_dp_catalog_snapshot(). A domain
+ * must not be read unless its clock is on, or the access raises an external
+ * abort. CORE covers the ahb/aux domains, LINK the link/mst_link domains, and
+ * STREAM(n) the per-stream pixel domain pn.
+ */
+#define MSM_DP_SNAPSHOT_CORE_CLK	BIT(0)
+#define MSM_DP_SNAPSHOT_LINK_CLK	BIT(1)
+#define MSM_DP_SNAPSHOT_STREAM_CLK(s)	BIT(2 + (s))
+void msm_dp_catalog_snapshot(struct msm_dp_catalog *msm_dp_catalog,
+			     struct msm_disp_state *disp_state, u32 clk_state);
 
 /* AUX APIs */
 u32 msm_dp_catalog_aux_read_data(struct msm_dp_catalog *msm_dp_catalog);

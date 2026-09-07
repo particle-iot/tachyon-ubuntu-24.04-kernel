@@ -1261,12 +1261,36 @@ void msm_dp_snapshot(struct msm_disp_state *disp_state, struct msm_dp *dp)
 	 */
 	mutex_lock(&msm_dp_display->event_mutex);
 
-	if (!msm_dp_display->active_stream_cnt) {
+	/*
+	 * Reading a DP register domain whose clock is off raises an external
+	 * abort that panics the machine. Every teardown path of this driver
+	 * moves hpd_state out of ST_CONNECTED under this same mutex before it
+	 * disables the core/link clocks (some of them, e.g.
+	 * msm_dp_ctrl_off_link(), run without the mutex, so their clock flags
+	 * cannot be trusted on their own), so ST_CONNECTED means no teardown
+	 * has started. ST_DISPLAY_OFF with streams still active is the MST
+	 * case where one stream was disabled and the others keep the link up:
+	 * msm_dp_display_unprepare() skips the clock teardown while
+	 * active_stream_cnt is non-zero, and the count only reaches zero under
+	 * this mutex.
+	 *
+	 * This covers the driver's own teardown ordering only. A failed enable
+	 * still sets ST_CONNECTED, and a clock lost underneath the driver (a
+	 * PHY reset from another path, the cable pulled) is not visible here.
+	 * msm_dp_catalog_snapshot() therefore still gates each domain on its
+	 * clock flag; that is also what skips the never-clocked pixel domains
+	 * of a single-stream SoC. The DPU blocks are still captured by the
+	 * caller.
+	 */
+	if (msm_dp_display->hpd_state != ST_CONNECTED &&
+	    !(msm_dp_display->hpd_state == ST_DISPLAY_OFF &&
+	      msm_dp_display->active_stream_cnt)) {
 		mutex_unlock(&msm_dp_display->event_mutex);
 		return;
 	}
 
-	msm_dp_catalog_snapshot(msm_dp_display->catalog, disp_state);
+	msm_dp_catalog_snapshot(msm_dp_display->catalog, disp_state,
+				msm_dp_ctrl_clock_state(msm_dp_display->ctrl));
 
 	mutex_unlock(&msm_dp_display->event_mutex);
 }
