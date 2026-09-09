@@ -1,3 +1,24 @@
+linux-particle (6.8.0-1058.59+particle8) noble; urgency=medium
+
+  * phy: qcom-qmp-combo: restore USB3 after 4-lane DP without a full power cycle
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/44)
+    - unplugging or replugging USB-C with a 4-lane sink could reset the board:
+      the USB3 restore power-cycled the whole combo PHY common block, which
+      killed the DP link clocks under the display path and raised a fatal SError
+    - restore now only re-routes the lanes and re-runs the USB3 PCS bring-up,
+      so it can run while DP still holds an init reference
+    - a bring-up that timed out is retried from phy_set_mode() on the next role
+      switch, instead of leaving USB3 SuperSpeed and the adb gadget down until
+      reboot
+  * drm/msm/dp: skip snapshot of DP register domains whose clock is off
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/45)
+    - msm_dp_catalog_snapshot() dumped every domain unconditionally; reading one
+      whose clock is off raises an external abort and panics the machine
+    - gated twice: no snapshot once teardown has started, and each domain is
+      read only when its clock flag is set; DPU blocks are still captured
+
+ -- Nick <nick@particle.io>  Wed, 09 Sep 2026 02:38:33 +0000
+
 linux-particle (6.8.0-1058.59+particle7) noble; urgency=medium
 
   * SECURITY: backport fixes for the CVE-2026 IPsec/skb vulnerability family
