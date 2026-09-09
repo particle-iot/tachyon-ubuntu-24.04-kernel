@@ -1644,7 +1644,16 @@ struct qmp_combo {
 	unsigned int dp_aux_cfg;
 	struct phy_configure_opts_dp dp_opts;
 	unsigned int dp_init_count;
-	bool dp_only_mode;
+	/*
+	 * Four-lane DP-only routing. dp_only_routed: PHY_MODE_CTRL is DP-only and
+	 * the USB3 lanes belong to DP. dp_powered: between dp_power_on() and
+	 * dp_power_off(), so the DP link may be live and the DP PHY must not be
+	 * reset. usb3_stale: a routing change reset the USB3 PCS, which has to
+	 * run its bring-up again before USB3 can work.
+	 */
+	bool dp_only_routed;
+	bool dp_powered;
+	bool usb3_stale;
 
 	struct clk_fixed_rate pipe_clk_fixed;
 	struct clk_hw dp_link_hw;
@@ -2723,6 +2732,7 @@ static int qmp_combo_com_init(struct qmp_combo *qmp, bool force)
 		val |= SW_PORTSELECT_VAL;
 	writel(val, com + QPHY_V3_DP_COM_TYPEC_CTRL);
 	writel(USB3_MODE | DP_MODE, com + QPHY_V3_DP_COM_PHY_MODE_CTRL);
+	qmp->dp_only_routed = false;
 
 	/* bring both QMP USB and QMP DP PHYs PCS block out of reset */
 	qphy_clrbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
@@ -2742,7 +2752,12 @@ err_assert_reset:
 err_disable_regulators:
 	regulator_bulk_disable(cfg->num_vregs, qmp->vregs);
 err_decrement_count:
-	qmp->init_count--;
+	/*
+	 * Only the refcounted path incremented init_count above; a forced init
+	 * never did, so decrementing here would corrupt the shared count.
+	 */
+	if (!force)
+		qmp->init_count--;
 
 	return ret;
 }
@@ -2787,81 +2802,96 @@ out_unlock:
 static int qmp_combo_usb_power_on(struct phy *phy);
 static int qmp_combo_usb_power_off(struct phy *phy);
 
-/* Rewrite the combo mode register to USB3+DP, undoing the 4-lane DP-only
- * routing forced in qmp_combo_dp_power_on(). Caller must hold qmp->phy_mutex.
+
+/*
+ * Program combo routing. Both PHY blocks are held in reset around the write,
+ * so the USB3 PCS loses its configuration every time and has to be brought up
+ * again before USB3 can work. Caller holds phy_mutex.
  */
-static void qmp_combo_undo_dp_only_routing(struct qmp_combo *qmp)
+static void qmp_combo_set_phy_mode(struct qmp_combo *qmp, u32 mode)
 {
 	void __iomem *com = qmp->com;
 
 	qphy_setbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
 			SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
 			SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET);
-	writel(USB3_MODE | DP_MODE, com + QPHY_V3_DP_COM_PHY_MODE_CTRL);
+	writel(mode, com + QPHY_V3_DP_COM_PHY_MODE_CTRL);
 	qphy_clrbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
 			SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
 			SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET);
+
+	qmp->dp_only_routed = (mode == DP_MODE);
+	qmp->usb3_stale = true;
 }
 
 /*
- * Undo the DP-only routing forced in qmp_combo_dp_power_on() for 4-lane sinks
- * and bring the shared USB3 PHY back to a working USB3+DP combo state.
- *
- * com_init() only programs combo mode on the first (refcounted) init, and dwc3
- * keeps the USB3 PHY marked initialized across the entire DP session - it never
- * re-runs phy_init() on the role switch back to USB. So when the 4-lane sink
- * leaves we have to restore the routing ourselves, and because the USB3 PHY
- * block was held in reset for DP-only and lost its serdes/lane configuration,
- * just rewriting the mode register is not enough: we must re-run the full USB3
- * power-on sequence. Otherwise the USB3 PHY status never asserts and USB/adb
- * stays dead until a reboot.
- *
- * Caller must hold qmp->phy_mutex.
+ * Bring the USB3 PCS back up after a routing change reset it: reset and
+ * restart the PCS through the usual usb_power_off()/usb_power_on() sequence.
+ * The common block (its clocks, regulators and resets) is not power-cycled,
+ * so this is safe while DP still holds an init reference and keeps using AUX.
+ * A second pipe_clk reference is held across the sequence so the error path
+ * of qmp_combo_usb_power_on() cannot drop the one usb_init() took and
+ * usb_exit() will release. On failure the PHY is left started with usb3_stale
+ * set for a later retry. Caller holds phy_mutex.
  */
-static void qmp_combo_restore_usb3_after_dp_only(struct qmp_combo *qmp)
+static int qmp_combo_usb3_restart(struct qmp_combo *qmp)
+{
+	const struct qmp_phy_cfg *cfg = qmp->cfg;
+	int ret;
+
+	ret = clk_prepare_enable(qmp->pipe_clk);
+	if (ret)
+		return ret;
+
+	qmp_combo_usb_power_off(qmp->usb_phy);
+
+	/*
+	 * qmp_combo_com_init() normally sets this before the first power-on;
+	 * the reset pulse of the routing change returned it to power-down.
+	 */
+	qphy_setbits(qmp->pcs, cfg->regs[QPHY_PCS_POWER_DOWN_CONTROL], SW_PWRDN);
+
+	ret = qmp_combo_usb_power_on(qmp->usb_phy);
+	if (ret) {
+		/* Our reference now stands in for the one usb_power_on() dropped. */
+		return ret;
+	}
+
+	clk_disable_unprepare(qmp->pipe_clk);
+	qmp->usb3_stale = false;
+	return 0;
+}
+
+/*
+ * Hand the lanes back to USB3 after a four-lane DP-only session: put the
+ * routing back to USB3+DP and re-run the USB3 bring-up. Caller holds
+ * phy_mutex and guarantees the DP link is down (dp_powered is false), since
+ * the routing write resets the DP PHY as well.
+ */
+static void qmp_combo_restore_usb3(struct qmp_combo *qmp, const char *via)
 {
 	int ret;
 
-	if (!qmp->dp_only_mode)
-		return;
+	if (qmp->dp_only_routed)
+		qmp_combo_set_phy_mode(qmp, USB3_MODE | DP_MODE);
 
-	qmp->dp_only_mode = false;
-
-	if (!qmp->usb_init_count) {
-		/*
-		 * USB3 PHY is not initialized at the moment; the next
-		 * qmp_combo_usb_init() -> com_init() will reprogram combo mode,
-		 * so only the in-flight DP-only routing needs undoing here.
-		 */
-		qmp_combo_undo_dp_only_routing(qmp);
-		dev_info(qmp->dev,
-			 "DP teardown -> restored combo routing (USB3 idle)\n");
+	if (!qmp->usb3_stale)
 		return;
-	}
 
 	/*
-	 * dwc3 keeps the USB3 PHY marked initialized for the whole DP session,
-	 * so the refcounted com_init()/com_exit() never touch the hardware again
-	 * and the USB3 PHY stays stuck in the DP-only serdes/reset state - just
-	 * rewriting the mode register is not enough and usb_power_on() then times
-	 * out waiting for PHYSTATUS. Force a full common-block power cycle
-	 * (equivalent to phy_exit()+phy_init(); com_init() reprograms USB3+DP
-	 * combo mode), then re-run the USB3 power-on sequence. force=true does the
-	 * hardware work without disturbing the init_count refcount.
+	 * dwc3 does not hold the PHY right now; the next qmp_combo_usb_init()
+	 * runs the full bring-up itself and clears usb3_stale on success.
 	 */
-	qmp_combo_usb_power_off(qmp->usb_phy);
-	qmp_combo_com_exit(qmp, true);
-	ret = qmp_combo_com_init(qmp, true);
-	if (!ret)
-		ret = qmp_combo_usb_power_on(qmp->usb_phy);
+	if (!qmp->usb_init_count)
+		return;
 
+	ret = qmp_combo_usb3_restart(qmp);
 	if (ret)
-		dev_err(qmp->dev,
-			"USB3 PHY restore after DP teardown failed (%d)\n",
-			ret);
+		dev_warn(qmp->dev,
+			 "USB3 PHY bring-up after DP-only via %s failed (%d), retry on next role switch\n",
+			 via, ret);
 	else
-		dev_info(qmp->dev,
-			 "DP teardown -> USB3 PHY re-initialized (combo mode)\n");
+		dev_info(qmp->dev, "USB3 PHY restored after DP-only via %s\n", via);
 }
 
 static int qmp_combo_dp_exit(struct phy *phy)
@@ -2870,12 +2900,9 @@ static int qmp_combo_dp_exit(struct phy *phy)
 
 	mutex_lock(&qmp->phy_mutex);
 
-	/*
-	 * Fallback for topologies that tear DP down without a USB role switch;
-	 * the role-switch path restores via qmp_combo_usb_set_mode() first and
-	 * this becomes a no-op (dp_only_mode already cleared).
-	 */
-	qmp_combo_restore_usb3_after_dp_only(qmp);
+	/* Fallback for a DP driver that exits without dp_power_off(). */
+	qmp->dp_powered = false;
+	qmp_combo_restore_usb3(qmp, "dp_exit");
 
 	qmp_combo_com_exit(qmp, false);
 
@@ -2904,18 +2931,10 @@ static int qmp_combo_dp_power_on(struct phy *phy)
 	 * is attached (USB2 is on a separate PHY and is unaffected).
 	 */
 	if (qmp->dp_opts.lanes == 4) {
-		void __iomem *com = qmp->com;
-
-		qphy_setbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
-				SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
-				SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET);
-		writel(DP_MODE, com + QPHY_V3_DP_COM_PHY_MODE_CTRL);
-		qphy_clrbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
-				SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
-				SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET);
-		qmp->dp_only_mode = true;
+		qmp_combo_set_phy_mode(qmp, DP_MODE);
 		dev_info(qmp->dev, "4-lane DP -> forced DP-only PHY mode\n");
 	}
+	qmp->dp_powered = true;
 
 	qmp_combo_dp_serdes_init(qmp);
 
@@ -2942,8 +2961,14 @@ static int qmp_combo_dp_power_off(struct phy *phy)
 	/* Assert DP PHY power down */
 	writel(DP_PHY_PD_CTL_PSR_PWRDN, qmp->dp_dp_phy + QSERDES_DP_PHY_PD_CTL);
 
-	/* Fallback (see qmp_combo_dp_exit); no-op once the role-switch path ran. */
-	qmp_combo_restore_usb3_after_dp_only(qmp);
+	/*
+	 * The DP driver has disabled its link clocks and the DP PHY is being
+	 * powered down right here, so the lanes can go back to USB3 now. If dwc3
+	 * happens to be inside its role-switch core reset, the USB3 bring-up may
+	 * time out on PHYSTATUS; qmp_combo_usb_set_mode() retries it afterwards.
+	 */
+	qmp->dp_powered = false;
+	qmp_combo_restore_usb3(qmp, "dp_power_off");
 
 	mutex_unlock(&qmp->phy_mutex);
 
@@ -3042,6 +3067,15 @@ static int qmp_combo_usb_init(struct phy *phy)
 	if (ret)
 		goto out_unlock;
 
+	/*
+	 * A refcounted com_init() leaves the routing alone. If a four-lane
+	 * session ended without dwc3 holding the PHY, undo it here so the
+	 * power-on below can succeed. With DP still live there is nothing to
+	 * do: the lanes are DP's and the power-on will time out.
+	 */
+	if (qmp->dp_only_routed && !qmp->dp_powered)
+		qmp_combo_set_phy_mode(qmp, USB3_MODE | DP_MODE);
+
 	ret = qmp_combo_usb_power_on(phy);
 	if (ret) {
 		qmp_combo_com_exit(qmp, false);
@@ -3049,6 +3083,7 @@ static int qmp_combo_usb_init(struct phy *phy)
 	}
 
 	qmp->usb_init_count++;
+	qmp->usb3_stale = false;
 
 out_unlock:
 	mutex_unlock(&qmp->phy_mutex);
@@ -3083,19 +3118,20 @@ static int qmp_combo_usb_set_mode(struct phy *phy, enum phy_mode mode, int submo
 	qmp->mode = mode;
 
 	/*
-	 * dwc3 calls phy_set_mode() on every role switch, right before it
-	 * (re)starts the controller/gadget, but it never re-runs phy_init().
-	 * If we are coming back to USB after a 4-lane DP-only session, restore
-	 * and re-initialize the shared USB3 PHY here so it is ready before the
-	 * gadget/host starts - otherwise USB never recovers. Doing it on this
-	 * synchronous path (rather than on the asynchronous DP teardown) avoids
-	 * racing the gadget restart.
+	 * dwc3 calls this on every role switch after GCTL.CORESOFTRESET, but it
+	 * never re-runs phy_init(). If the bring-up run from
+	 * qmp_combo_dp_power_off() timed out on PHYSTATUS because the DWC3 core
+	 * was mid-reset, redo it here. For the device role this runs before
+	 * dwc3_gadget_init(); for the host role dwc3 has already probed xHCI, so
+	 * a host bring-up that failed for lack of the PHY is only redone once
+	 * dwc3 leaves the host role and enters it again (a repeated request for
+	 * the same role is a no-op in dwc3). The routing is never touched while
+	 * DP still drives the link.
 	 */
-	if (qmp->dp_only_mode) {
-		mutex_lock(&qmp->phy_mutex);
-		qmp_combo_restore_usb3_after_dp_only(qmp);
-		mutex_unlock(&qmp->phy_mutex);
-	}
+	mutex_lock(&qmp->phy_mutex);
+	if (!qmp->dp_powered)
+		qmp_combo_restore_usb3(qmp, "usb_set_mode");
+	mutex_unlock(&qmp->phy_mutex);
 
 	return 0;
 }
@@ -3572,8 +3608,8 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 		qmp_combo_com_exit(qmp, true);
 
 		qmp_combo_com_init(qmp, true);
-		if (qmp->usb_init_count)
-			qmp_combo_usb_power_on(qmp->usb_phy);
+		if (qmp->usb_init_count && !qmp_combo_usb_power_on(qmp->usb_phy))
+			qmp->usb3_stale = false;
 		if (qmp->dp_init_count)
 			cfg->dp_aux_init(qmp);
 	}
