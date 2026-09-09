@@ -1450,6 +1450,30 @@ void msm_dp_ctrl_core_clk_disable(struct msm_dp_ctrl *msm_dp_ctrl)
 		   ctrl->core_clks_on ? "on" : "off");
 }
 
+/*
+ * Snapshot of which register-domain clocks are currently enabled, for
+ * msm_dp_catalog_snapshot(). Reading a domain whose clock is off aborts, so
+ * the debug dump consults this first. Caller must serialise against the
+ * enable/disable paths (dp_display holds event_mutex around both).
+ */
+u32 msm_dp_ctrl_clock_state(struct msm_dp_ctrl *msm_dp_ctrl)
+{
+	struct msm_dp_ctrl_private *ctrl = container_of(msm_dp_ctrl,
+			struct msm_dp_ctrl_private, msm_dp_ctrl);
+	u32 state = 0;
+	int i;
+
+	if (ctrl->core_clks_on)
+		state |= MSM_DP_SNAPSHOT_CORE_CLK;
+	if (ctrl->link_clks_on)
+		state |= MSM_DP_SNAPSHOT_LINK_CLK;
+	for (i = 0; i < DP_STREAM_MAX; i++)
+		if (ctrl->stream_clks_on[i])
+			state |= MSM_DP_SNAPSHOT_STREAM_CLK(i);
+
+	return state;
+}
+
 static int msm_dp_ctrl_link_clk_enable(struct msm_dp_ctrl *msm_dp_ctrl)
 {
 	struct msm_dp_ctrl_private *ctrl;

@@ -93,23 +93,43 @@ struct msm_dp_catalog_private {
 	struct msm_dp_catalog msm_dp_catalog;
 };
 
-void msm_dp_catalog_snapshot(struct msm_dp_catalog *msm_dp_catalog, struct msm_disp_state *disp_state)
+void msm_dp_catalog_snapshot(struct msm_dp_catalog *msm_dp_catalog,
+			     struct msm_disp_state *disp_state, u32 clk_state)
 {
 	struct msm_dp_catalog_private *catalog = container_of(msm_dp_catalog,
 			struct msm_dp_catalog_private, msm_dp_catalog);
 	struct dss_io_data *dss = &catalog->io;
+	bool core = clk_state & MSM_DP_SNAPSHOT_CORE_CLK;
+	bool link = clk_state & MSM_DP_SNAPSHOT_LINK_CLK;
+	bool p0 = clk_state & MSM_DP_SNAPSHOT_STREAM_CLK(DP_STREAM_0);
+	bool p1 = clk_state & MSM_DP_SNAPSHOT_STREAM_CLK(DP_STREAM_1);
+	bool p2 = clk_state & MSM_DP_SNAPSHOT_STREAM_CLK(DP_STREAM_2);
+	bool p3 = clk_state & MSM_DP_SNAPSHOT_STREAM_CLK(DP_STREAM_3);
 
-	msm_disp_snapshot_add_block(disp_state, dss->ahb.len, dss->ahb.base, "dp_ahb");
-	msm_disp_snapshot_add_block(disp_state, dss->aux.len, dss->aux.base, "dp_aux");
-	msm_disp_snapshot_add_block(disp_state, dss->link.len, dss->link.base, "dp_link");
-	msm_disp_snapshot_add_block(disp_state, dss->mst2_link.len, dss->mst2_link.base,
-				    "dp_mst2_link");
-	msm_disp_snapshot_add_block(disp_state, dss->mst3_link.len, dss->mst3_link.base,
-				    "dp_mst3_link");
-	msm_disp_snapshot_add_block(disp_state, dss->p0.len, dss->p0.base, "dp_p0");
-	msm_disp_snapshot_add_block(disp_state, dss->p1.len, dss->p1.base, "dp_p1");
-	msm_disp_snapshot_add_block(disp_state, dss->p2.len, dss->p2.base, "dp_p2");
-	msm_disp_snapshot_add_block(disp_state, dss->p3.len, dss->p3.base, "dp_p3");
+	/*
+	 * A zero length makes msm_disp_snapshot_add_block() record the block but
+	 * read nothing, so gate every domain on its clock: reading an unclocked
+	 * one raises an external abort. The per-stream pixel domains p1..p3 have
+	 * no clock on a single-stream SoC and were the original crash.
+	 */
+	msm_disp_snapshot_add_block(disp_state, core ? dss->ahb.len : 0,
+				    dss->ahb.base, "dp_ahb");
+	msm_disp_snapshot_add_block(disp_state, core ? dss->aux.len : 0,
+				    dss->aux.base, "dp_aux");
+	msm_disp_snapshot_add_block(disp_state, link ? dss->link.len : 0,
+				    dss->link.base, "dp_link");
+	msm_disp_snapshot_add_block(disp_state, link ? dss->mst2_link.len : 0,
+				    dss->mst2_link.base, "dp_mst2_link");
+	msm_disp_snapshot_add_block(disp_state, link ? dss->mst3_link.len : 0,
+				    dss->mst3_link.base, "dp_mst3_link");
+	msm_disp_snapshot_add_block(disp_state, p0 ? dss->p0.len : 0,
+				    dss->p0.base, "dp_p0");
+	msm_disp_snapshot_add_block(disp_state, p1 ? dss->p1.len : 0,
+				    dss->p1.base, "dp_p1");
+	msm_disp_snapshot_add_block(disp_state, p2 ? dss->p2.len : 0,
+				    dss->p2.base, "dp_p2");
+	msm_disp_snapshot_add_block(disp_state, p3 ? dss->p3.len : 0,
+				    dss->p3.base, "dp_p3");
 }
 
 static inline u32 msm_dp_read_aux(struct msm_dp_catalog_private *catalog, u32 offset)
