@@ -2698,8 +2698,15 @@ static int qmp_combo_com_init(struct qmp_combo *qmp, bool force)
 	int ret;
 	u32 val;
 
-	if (!force && qmp->init_count++)
+	if (!force && qmp->init_count++) {
+		dev_dbg(qmp->dev,
+			 "dpdbg: com_init SKIPPED (refcounted) init=%d dp_only=%d dp_powered=%d\n",
+			 qmp->init_count, qmp->dp_only_routed, qmp->dp_powered);
 		return 0;
+	}
+
+	dev_dbg(qmp->dev, "dpdbg: com_init FULL force=%d init=%d\n",
+		 force, qmp->init_count);
 
 	ret = regulator_bulk_enable(cfg->num_vregs, qmp->vregs);
 	if (ret) {
@@ -2770,8 +2777,15 @@ static int qmp_combo_com_exit(struct qmp_combo *qmp, bool force)
 {
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 
-	if (!force && --qmp->init_count)
+	if (!force && --qmp->init_count) {
+		dev_dbg(qmp->dev,
+			 "dpdbg: com_exit SKIPPED (refcounted) init=%d dp_only=%d dp_powered=%d\n",
+			 qmp->init_count, qmp->dp_only_routed, qmp->dp_powered);
 		return 0;
+	}
+
+	dev_dbg(qmp->dev, "dpdbg: com_exit FULL force=%d init=%d\n",
+		 force, qmp->init_count);
 
 	reset_control_bulk_assert(cfg->num_resets, qmp->resets);
 
@@ -2797,6 +2811,14 @@ static int qmp_combo_dp_init(struct phy *phy)
 	cfg->dp_aux_init(qmp);
 
 	qmp->dp_init_count++;
+
+	dev_dbg(qmp->dev,
+		 "dpdbg: dp_init done (aux re-inited) init=%d dp_init=%d dp_only=%d dp_powered=%d orient=%d TYPEC_CTRL=0x%x MODE_CTRL=0x%x PD_CTL=0x%x\n",
+		 qmp->init_count, qmp->dp_init_count, qmp->dp_only_routed,
+		 qmp->dp_powered, qmp->orientation,
+		 readl(qmp->com + QPHY_V3_DP_COM_TYPEC_CTRL),
+		 readl(qmp->com + QPHY_V3_DP_COM_PHY_MODE_CTRL),
+		 readl(qmp->dp_dp_phy + QSERDES_DP_PHY_PD_CTL));
 
 out_unlock:
 	mutex_unlock(&qmp->phy_mutex);
@@ -2840,6 +2862,11 @@ static void qmp_combo_usb3_mark_stale(struct qmp_combo *qmp)
 static void qmp_combo_set_phy_mode(struct qmp_combo *qmp, u32 mode)
 {
 	void __iomem *com = qmp->com;
+
+	dev_dbg(qmp->dev,
+		 "dpdbg: set_phy_mode mode=0x%x (was dp_only=%d) dp_powered=%d init=%d dp_init=%d usb_init=%d\n",
+		 mode, qmp->dp_only_routed, qmp->dp_powered,
+		 qmp->init_count, qmp->dp_init_count, qmp->usb_init_count);
 
 	qphy_setbits(com, QPHY_V3_DP_COM_RESET_OVRD_CTRL,
 			SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
@@ -2954,6 +2981,11 @@ static int qmp_combo_dp_exit(struct phy *phy)
 
 	mutex_lock(&qmp->phy_mutex);
 
+	dev_dbg(qmp->dev,
+		 "dpdbg: dp_exit enter dp_only=%d dp_powered=%d init=%d dp_init=%d\n",
+		 qmp->dp_only_routed, qmp->dp_powered, qmp->init_count,
+		 qmp->dp_init_count);
+
 	/* Fallback for a DP driver that exits without dp_power_off(). */
 	qmp->dp_powered = false;
 	qmp_combo_restore_usb3(qmp, "dp_exit");
@@ -2975,6 +3007,11 @@ static int qmp_combo_dp_power_on(struct phy *phy)
 	void __iomem *tx2 = qmp->dp_tx2;
 
 	mutex_lock(&qmp->phy_mutex);
+
+	dev_dbg(qmp->dev,
+		 "dpdbg: dp_power_on enter lanes=%d link_rate=%d dp_only=%d init=%d dp_init=%d usb_init=%d\n",
+		 qmp->dp_opts.lanes, qmp->dp_opts.link_rate, qmp->dp_only_routed,
+		 qmp->init_count, qmp->dp_init_count, qmp->usb_init_count);
 
 	/*
 	 * 4-lane DP needs all four shared physical lanes routed to DP. com_init()
@@ -3011,6 +3048,11 @@ static int qmp_combo_dp_power_off(struct phy *phy)
 	struct qmp_combo *qmp = phy_get_drvdata(phy);
 
 	mutex_lock(&qmp->phy_mutex);
+
+	dev_dbg(qmp->dev,
+		 "dpdbg: dp_power_off enter lanes=%d dp_only=%d init=%d dp_init=%d usb_init=%d\n",
+		 qmp->dp_opts.lanes, qmp->dp_only_routed, qmp->init_count,
+		 qmp->dp_init_count, qmp->usb_init_count);
 
 	/* Assert DP PHY power down */
 	writel(DP_PHY_PD_CTL_PSR_PWRDN, qmp->dp_dp_phy + QSERDES_DP_PHY_PD_CTL);
@@ -3695,6 +3737,9 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	struct qmp_combo *qmp = typec_switch_get_drvdata(sw);
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 	int ret;
+
+	dev_dbg(qmp->dev, "dpdbg: typec_switch_set new=%d cur=%d init=%d (0=none 1=normal 2=reverse)\n",
+		 orientation, qmp->orientation, qmp->init_count);
 
 	if (orientation == qmp->orientation || orientation == TYPEC_ORIENTATION_NONE)
 		return 0;
