@@ -17,6 +17,8 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
+#include <linux/notifier.h>
+#include <linux/phy/qcom-qmp-combo.h>
 #include <linux/usb/of.h>
 #include <linux/reset.h>
 #include <linux/iopoll.h>
@@ -85,6 +87,9 @@ struct dwc3_qcom {
 	enum usb_device_speed	usb2_speed;
 
 	struct extcon_dev	*edev;
+	struct notifier_block	dp_only_nb;
+	/* Serialises the UTMI/PIPE clock switch against suspend and each other. */
+	struct mutex		utmi_lock;
 	struct extcon_dev	*host_edev;
 	struct notifier_block	vbus_nb;
 	struct notifier_block	host_nb;
@@ -474,6 +479,8 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 	if (qcom->is_suspended)
 		return 0;
 
+	mutex_lock(&qcom->utmi_lock);
+
 	val = readl(qcom->qscratch_base + PWR_EVNT_IRQ_STAT_REG);
 	if (!(val & PWR_EVNT_LPM_IN_L2_MASK))
 		dev_err(qcom->dev, "HS-PHY not in L2\n");
@@ -495,10 +502,14 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 	}
 
 	qcom->is_suspended = true;
+	mutex_unlock(&qcom->utmi_lock);
 	pm_relax(qcom->dev);
 
 	return 0;
 }
+
+static void dwc3_qcom_sync_utmi_clk(struct dwc3_qcom *qcom);
+static void dwc3_qcom_sync_utmi_clk_locked(struct dwc3_qcom *qcom);
 
 static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 {
@@ -537,7 +548,15 @@ static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 	dwc3_qcom_setbits(qcom->qscratch_base, PWR_EVNT_IRQ_STAT_REG,
 			  PWR_EVNT_LPM_IN_L2_MASK | PWR_EVNT_LPM_OUT_L2_MASK);
 
+	/*
+	 * Re-apply the PHY's current clock requirement and declare the resume
+	 * complete under one lock: a notification arriving in between would
+	 * otherwise be skipped (is_suspended still set) and never re-applied.
+	 */
+	mutex_lock(&qcom->utmi_lock);
+	dwc3_qcom_sync_utmi_clk_locked(qcom);
 	qcom->is_suspended = false;
+	mutex_unlock(&qcom->utmi_lock);
 
 	return 0;
 }
@@ -567,6 +586,82 @@ static irqreturn_t qcom_dwc3_resume_irq(int irq, void *data)
 		pm_runtime_resume(&dwc->xhci->dev);
 
 	return IRQ_HANDLED;
+}
+
+static void dwc3_qcom_set_utmi_as_pipe(struct dwc3_qcom *qcom, bool on)
+{
+	u32 val = readl(qcom->qscratch_base + QSCRATCH_GENERAL_CFG);
+
+	/*
+	 * Only act on a real change. The enable sequence below pulses
+	 * PIPE_UTMI_CLK_DIS, i.e. briefly gates the controller clock; repeating
+	 * it while already on UTMI would glitch a live bus for nothing. The
+	 * callers (notifier and the per-(re)init sync) legitimately overlap.
+	 */
+	if (!!(val & PIPE_UTMI_CLK_SEL) == on)
+		return;
+
+	if (on) {
+		dwc3_qcom_setbits(qcom->qscratch_base, QSCRATCH_GENERAL_CFG,
+				  PIPE_UTMI_CLK_DIS);
+		usleep_range(100, 1000);
+		dwc3_qcom_setbits(qcom->qscratch_base, QSCRATCH_GENERAL_CFG,
+				  PIPE_UTMI_CLK_SEL | PIPE3_PHYSTATUS_SW);
+		usleep_range(100, 1000);
+		dwc3_qcom_clrbits(qcom->qscratch_base, QSCRATCH_GENERAL_CFG,
+				  PIPE_UTMI_CLK_DIS);
+	} else {
+		dwc3_qcom_clrbits(qcom->qscratch_base, QSCRATCH_GENERAL_CFG,
+				  PIPE_UTMI_CLK_SEL | PIPE3_PHYSTATUS_SW);
+	}
+}
+
+/*
+ * The USB3 lanes of the Type-C combo PHY are handed to DisplayPort for a
+ * four-lane (4K) sink. While that lasts, and until the USB3 PCS has been
+ * brought back up afterwards, there is no pipe clock and the dwc3 controller
+ * stalls on PHYSTATUS during any (re)init - which also kills USB2 on the same
+ * controller. Route the controller onto the always-present UTMI clock for as
+ * long as the PHY says it must, and back to the pipe clock once USB3 is up.
+ * Called at every controller (re)init point, before the core/host reset runs.
+ * Caller holds utmi_lock.
+ */
+static void dwc3_qcom_sync_utmi_clk_locked(struct dwc3_qcom *qcom)
+{
+	struct phy *ssphy = qcom->dwc.usb3_generic_phy;
+
+	lockdep_assert_held(&qcom->utmi_lock);
+
+	if (!qcom->qscratch_base || !ssphy)
+		return;
+
+	dwc3_qcom_set_utmi_as_pipe(qcom, qcom_qmp_combo_usb3_needs_utmi_clk(ssphy));
+}
+
+static void dwc3_qcom_sync_utmi_clk(struct dwc3_qcom *qcom)
+{
+	mutex_lock(&qcom->utmi_lock);
+	dwc3_qcom_sync_utmi_clk_locked(qcom);
+	mutex_unlock(&qcom->utmi_lock);
+}
+
+/* Combo PHY entered/left four-lane DP-only: retune the controller clock now. */
+static int dwc3_qcom_dp_only_notify(struct notifier_block *nb,
+				    unsigned long needs_utmi, void *unused)
+{
+	struct dwc3_qcom *qcom = container_of(nb, struct dwc3_qcom, dp_only_nb);
+
+	mutex_lock(&qcom->utmi_lock);
+	/*
+	 * The wrapper clocks are gated while suspended, so the register cannot
+	 * be touched here; dwc3_qcom_resume() re-reads the PHY state under this
+	 * same lock before clearing is_suspended, so nothing is lost.
+	 */
+	if (qcom->qscratch_base && !qcom->is_suspended)
+		dwc3_qcom_set_utmi_as_pipe(qcom, needs_utmi);
+	mutex_unlock(&qcom->utmi_lock);
+
+	return NOTIFY_OK;
 }
 
 static void dwc3_qcom_select_utmi_clk(struct dwc3_qcom *qcom)
@@ -812,6 +907,12 @@ static void dwc3_qcom_handle_set_mode(void *data, u32 desired_dr_role)
 	struct dwc3_qcom *qcom = (struct dwc3_qcom *)data;
 
 	/*
+	 * Runs before the core/host reset for this role switch: make sure the
+	 * controller is on a live clock if the combo PHY is DP-only right now.
+	 */
+	dwc3_qcom_sync_utmi_clk(qcom);
+
+	/*
 	 * If we are in device mode and get a cable disconnect,
 	 * handle it by clearing OTG_VBUS_VALID bit in wrapper.
 	 * The next set_mode to default role can be ignored and
@@ -1031,6 +1132,8 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	if (!qcom)
 		return -ENOMEM;
 
+	mutex_init(&qcom->utmi_lock);
+
 	legacy_binding = dwc3_qcom_has_separate_dwc3_of_node(dev);
 
 	if (!legacy_binding)
@@ -1151,6 +1254,25 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	if (ret)
 		goto depopulate;
 
+	/*
+	 * The shared combo PHY hands its USB3 lanes to DisplayPort for a 4-lane
+	 * sink; while that lasts the USB3 pipe clock is gone and the controller
+	 * must run off the UTMI clock instead. Subscribe so we are told exactly
+	 * when that routing changes, in either direction.
+	 */
+	qcom->dp_only_nb.notifier_call = dwc3_qcom_dp_only_notify;
+	if (qcom->dwc.usb3_generic_phy) {
+		qcom_qmp_combo_usb3_register_dp_only_notifier(qcom->dwc.usb3_generic_phy,
+							      &qcom->dp_only_nb);
+		/*
+		 * A DP-only routing change between now and the first role
+		 * switch would be missed by the notifier if it happened just
+		 * before we registered; read the current state once so we
+		 * start from whatever the PHY already is.
+		 */
+		dwc3_qcom_sync_utmi_clk(qcom);
+	}
+
 	if (legacy_binding) {
 		qcom->mode = usb_get_dr_mode(&qcom->dwc_dev->dev);
 
@@ -1210,6 +1332,10 @@ static void dwc3_qcom_remove(struct platform_device *pdev)
 
 	legacy_binding = dwc3_qcom_has_separate_dwc3_of_node(dev);
 	qcom = get_dwc3_qcom(dev);
+
+	if (qcom->dwc.usb3_generic_phy)
+		qcom_qmp_combo_usb3_unregister_dp_only_notifier(qcom->dwc.usb3_generic_phy,
+								&qcom->dp_only_nb);
 
 	if (!legacy_binding)
 		dwc3_remove(&qcom->dwc);
