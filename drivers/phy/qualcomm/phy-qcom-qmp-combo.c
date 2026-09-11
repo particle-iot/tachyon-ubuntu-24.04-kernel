@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
+#include <linux/notifier.h>
+#include <linux/phy/qcom-qmp-combo.h>
 
 #include <drm/bridge/aux-bridge.h>
 
@@ -1654,6 +1656,8 @@ struct qmp_combo {
 	bool dp_only_routed;
 	bool dp_powered;
 	bool usb3_stale;
+	/* Fired on every DP-only routing change so dwc3-qcom can retune its clock. */
+	struct blocking_notifier_head dp_only_nh;
 
 	struct clk_fixed_rate pipe_clk_fixed;
 	struct clk_hw dp_link_hw;
@@ -2804,6 +2808,31 @@ static int qmp_combo_usb_power_off(struct phy *phy);
 
 
 /*
+ * True while the dwc3 controller must not rely on the USB3 pipe clock: the
+ * lanes are routed DP-only, or a routing change reset the USB3 PCS and it has
+ * not been brought back up yet (usb3_stale). Both the exported query and the
+ * notifier action are derived from this one predicate so a consumer polling
+ * at its own (re)init points can never disagree with the events it received.
+ */
+static bool qmp_combo_usb3_needs_utmi(struct qmp_combo *qmp)
+{
+	return READ_ONCE(qmp->dp_only_routed) || READ_ONCE(qmp->usb3_stale);
+}
+
+/*
+ * The USB3 PCS is about to be, or has just been, reset and can no longer be
+ * relied on until qmp_combo_usb3_mark_ready() runs. Publish that to the USB
+ * controller before the PHY is touched, so a lockless reader of the
+ * needs-UTMI state never sees a healthy answer for a PHY under reset.
+ */
+static void qmp_combo_usb3_mark_stale(struct qmp_combo *qmp)
+{
+	qmp->usb3_stale = true;
+	blocking_notifier_call_chain(&qmp->dp_only_nh,
+				     qmp_combo_usb3_needs_utmi(qmp), NULL);
+}
+
+/*
  * Program combo routing. Both PHY blocks are held in reset around the write,
  * so the USB3 PCS loses its configuration every time and has to be brought up
  * again before USB3 can work. Caller holds phy_mutex.
@@ -2821,7 +2850,32 @@ static void qmp_combo_set_phy_mode(struct qmp_combo *qmp, u32 mode)
 			SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET);
 
 	qmp->dp_only_routed = (mode == DP_MODE);
-	qmp->usb3_stale = true;
+
+	/*
+	 * Publish "USB3 is stale" only AFTER the PCS reset above. Switching the
+	 * controller to the UTMI clock (qmp_combo_usb3_mark_stale ->
+	 * dwc3_qcom_set_utmi_as_pipe) briefly gates its clock; doing that before
+	 * the reset - while the controller is still running on the pipe clock -
+	 * wedges it (MFINDEX freezes even with UTMI selected). The reset must
+	 * quiesce the USB3 side first. The small reset->publish window is
+	 * harmless: on DP-only entry the controller is idle (no device yet), and
+	 * this order is the one verified to bring USB2 up in DP-only. The reverse
+	 * notification is only sent once USB3 is back up, see
+	 * qmp_combo_usb3_mark_ready().
+	 */
+	qmp_combo_usb3_mark_stale(qmp);
+}
+
+/*
+ * The USB3 PCS is configured and running again, so the pipe clock is back.
+ * Clear the stale flag and let the USB controller return to the pipe clock.
+ * This is the only place the "not DP-only" notification is sent.
+ */
+static void qmp_combo_usb3_mark_ready(struct qmp_combo *qmp)
+{
+	qmp->usb3_stale = false;
+	blocking_notifier_call_chain(&qmp->dp_only_nh,
+				     qmp_combo_usb3_needs_utmi(qmp), NULL);
 }
 
 /*
@@ -2858,7 +2912,7 @@ static int qmp_combo_usb3_restart(struct qmp_combo *qmp)
 	}
 
 	clk_disable_unprepare(qmp->pipe_clk);
-	qmp->usb3_stale = false;
+	qmp_combo_usb3_mark_ready(qmp);
 	return 0;
 }
 
@@ -3083,7 +3137,7 @@ static int qmp_combo_usb_init(struct phy *phy)
 	}
 
 	qmp->usb_init_count++;
-	qmp->usb3_stale = false;
+	qmp_combo_usb3_mark_ready(qmp);
 
 out_unlock:
 	mutex_unlock(&qmp->phy_mutex);
@@ -3152,6 +3206,51 @@ static const struct phy_ops qmp_combo_dp_phy_ops = {
 	.exit		= qmp_combo_dp_exit,
 	.owner		= THIS_MODULE,
 };
+
+/*
+ * Consumer-side hooks (see include/linux/phy/qcom-qmp-combo.h). All three take
+ * the combo USB3 phy and refuse anything else: dwc3-qcom is also used with
+ * other USB3 PHYs whose drvdata is not a struct qmp_combo.
+ */
+static struct qmp_combo *qmp_combo_from_usb3_phy(struct phy *phy)
+{
+	if (!phy || phy->ops != &qmp_combo_usb_phy_ops)
+		return NULL;
+
+	return phy_get_drvdata(phy);
+}
+
+bool qcom_qmp_combo_usb3_needs_utmi_clk(struct phy *phy)
+{
+	struct qmp_combo *qmp = qmp_combo_from_usb3_phy(phy);
+
+	return qmp ? qmp_combo_usb3_needs_utmi(qmp) : false;
+}
+EXPORT_SYMBOL_GPL(qcom_qmp_combo_usb3_needs_utmi_clk);
+
+int qcom_qmp_combo_usb3_register_dp_only_notifier(struct phy *phy,
+						  struct notifier_block *nb)
+{
+	struct qmp_combo *qmp = qmp_combo_from_usb3_phy(phy);
+
+	if (!qmp)
+		return -EINVAL;
+
+	return blocking_notifier_chain_register(&qmp->dp_only_nh, nb);
+}
+EXPORT_SYMBOL_GPL(qcom_qmp_combo_usb3_register_dp_only_notifier);
+
+int qcom_qmp_combo_usb3_unregister_dp_only_notifier(struct phy *phy,
+						    struct notifier_block *nb)
+{
+	struct qmp_combo *qmp = qmp_combo_from_usb3_phy(phy);
+
+	if (!qmp)
+		return -EINVAL;
+
+	return blocking_notifier_chain_unregister(&qmp->dp_only_nh, nb);
+}
+EXPORT_SYMBOL_GPL(qcom_qmp_combo_usb3_unregister_dp_only_notifier);
 
 static void qmp_combo_enable_autonomous_mode(struct qmp_combo *qmp)
 {
@@ -3595,6 +3694,7 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 {
 	struct qmp_combo *qmp = typec_switch_get_drvdata(sw);
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
+	int ret;
 
 	if (orientation == qmp->orientation || orientation == TYPEC_ORIENTATION_NONE)
 		return 0;
@@ -3603,18 +3703,37 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	qmp->orientation = orientation;
 
 	if (qmp->init_count) {
-		if (qmp->usb_init_count)
+		if (qmp->usb_init_count) {
+			/* Reset ahead: tell the USB controller before touching the PHY. */
+			qmp_combo_usb3_mark_stale(qmp);
 			qmp_combo_usb_power_off(qmp->usb_phy);
+		}
 		qmp_combo_com_exit(qmp, true);
 
 		qmp_combo_com_init(qmp, true);
-		if (qmp->usb_init_count && !qmp_combo_usb_power_on(qmp->usb_phy))
-			qmp->usb3_stale = false;
+		if (qmp->usb_init_count) {
+			ret = qmp_combo_usb_power_on(qmp->usb_phy);
+			if (ret)
+				/*
+				 * usb3_stale stays set: the controller keeps its UTMI
+				 * fallback and qmp_combo_usb_set_mode() retries the
+				 * bring-up on the next role switch.
+				 */
+				dev_warn(qmp->dev,
+					 "USB3 PHY bring-up after orientation change failed (%d), retry on next role switch\n",
+					 ret);
+			else
+				qmp_combo_usb3_mark_ready(qmp);
+		}
 		if (qmp->dp_init_count)
 			cfg->dp_aux_init(qmp);
 	}
 	mutex_unlock(&qmp->phy_mutex);
 
+	/*
+	 * The orientation itself was applied; a failed USB3 bring-up is reported
+	 * above and retried, it is not an orientation failure.
+	 */
 	return 0;
 }
 
@@ -3846,6 +3965,7 @@ static int qmp_combo_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	mutex_init(&qmp->phy_mutex);
+	BLOCKING_INIT_NOTIFIER_HEAD(&qmp->dp_only_nh);
 
 	ret = qmp_combo_reset_init(qmp);
 	if (ret)
