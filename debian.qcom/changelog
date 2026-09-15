@@ -1,3 +1,24 @@
+linux-particle (6.8.0-1058.59+particle9) noble; urgency=medium
+
+  * keep USB working while a 4-lane DP display owns the lanes
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/47)
+    - a 4K sink needs all four lanes, so the USB3 side is reset to free them --
+      but the dwc3 core clock is produced by the block that was just reset. The
+      controller did not notice the clock vanish, kept its registers looking
+      healthy, and the whole USB bus went dead: even USB2 devices such as the
+      keyboard and mouse in the display's own hub stopped working
+    - recovery only came from a subsystem timeout, which took ~20s and pinned a
+      CPU core; a quick unplug/replug while the display was lit froze the system
+      for that long and then recognised no USB device at all
+    - phy-qcom-qmp-combo now tracks whether USB3 is usable and publishes that
+      state; dwc3-qcom reacts by retuning the core to the USB2 clock source,
+      which the display does not touch, and switches back when the lanes return
+    - measured: the 20s freeze drops to 2.7s; 2K attached at boot 7/7; 4K
+      sourcing and sinking power 1/1 each; USB3 re-enumerates at 5000M after
+      the display is unplugged
+
+ -- Nick <nick@particle.io>  Tue, 15 Sep 2026 08:49:48 +0000
+
 linux-particle (6.8.0-1058.59+particle8) noble; urgency=medium
 
   * phy: qcom-qmp-combo: restore USB3 after 4-lane DP without a full power cycle
