@@ -1,3 +1,23 @@
+linux-particle (6.8.0-1058.59+particle10) noble; urgency=medium
+
+  * drm/msm/dpu1: don't choke on disabling the writeback connector
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/49)
+    - every suspend/resume logged "[dpu error]connector not connected 3" and
+      "[drm:drm_mode_config_helper_resume] *ERROR* Failed to resume (-22)",
+      and the kernel gave up restoring the pre-suspend display state
+    - drm_atomic_helper_resume() replays saved state for every connector
+      including the DPU writeback connector; userspace never probes that one,
+      so its status stays unknown (3) and dpu_wb_conn_atomic_check() rejected
+      the whole commit
+    - the screen still came back because mutter re-applied its own
+      configuration afterwards, which is why this looked cosmetic
+    - carries upstream commit d9f55e2abfb9 (Fixes: 71174f362d67) into
+      drivers/gpu/drm/msm_default/, the copy of the driver this board loads
+    - measured with rtcwake -m mem -s 40: 1 resume failure per cycle before,
+      0 after
+
+ -- Nick <nick@particle.io>  Fri, 18 Sep 2026 19:04:57 +0000
+
 linux-particle (6.8.0-1058.59+particle9) noble; urgency=medium
 
   * keep USB working while a 4-lane DP display owns the lanes
