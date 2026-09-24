@@ -2796,6 +2796,15 @@ static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
 	dwc->softconnect = is_on;
 
 	/*
+	 * The glue reports when the USB3 lanes are borrowed by DisplayPort. A
+	 * controller started on those lanes stays dead until the next soft
+	 * connect, so keep the request (softconnect) and let
+	 * dwc3_gadget_ss_lanes_work() connect once the lanes are back.
+	 */
+	if (is_on && READ_ONCE(dwc->ss_lanes_blocked))
+		return 0;
+
+	/*
 	 * Avoid issuing a runtime resume if the device is already in the
 	 * suspended state during gadget disconnect.  DWC3 gadget was already
 	 * halted/stopped during runtime suspend.
@@ -4778,7 +4787,69 @@ void dwc3_gadget_exit(struct dwc3 *dwc)
 	kfree(dwc->setup_buf);
 	dma_free_coherent(dwc->sysdev, sizeof(*dwc->ep0_trb) * 2,
 			  dwc->ep0_trb, dwc->ep0_trb_addr);
+	dwc->gadget = NULL;
 }
+
+/*
+ * Runs after the glue changed ss_lanes_blocked, under dwc->mutex so it cannot
+ * race with a role switch tearing the gadget down. The lanes can go away with
+ * the gadget connected (the combo PHY re-initialises itself on a Type-C
+ * orientation change, and DisplayPort borrows the lanes in host role only
+ * after the gadget is gone): a controller left running across a PHY
+ * re-initialisation keeps a dead link, so drop it and reconnect once the
+ * lanes are back. Both edges may have collapsed into one run of this work,
+ * hence the reconnect flag recorded by dwc3_gadget_set_ss_lanes_blocked().
+ * usb_gadget_disconnect() also tells the gadget driver, which (for FunctionFS
+ * based daemons) tears down and re-registers the gadget itself, so the final
+ * usb_gadget_connect() may find nothing bound and simply records the request.
+ */
+void dwc3_gadget_ss_lanes_work(struct work_struct *work)
+{
+	struct dwc3 *dwc = container_of(work, struct dwc3, ss_lanes_work);
+
+	mutex_lock(&dwc->mutex);
+	if (!dwc->gadget || dwc->current_dr_role != DWC3_GCTL_PRTCAP_DEVICE)
+		goto out;
+
+	if (READ_ONCE(dwc->ss_lanes_blocked)) {
+		if (dwc->pullups_connected)
+			usb_gadget_disconnect(dwc->gadget);
+		goto out;
+	}
+
+	if (dwc->ss_lanes_reconnect) {
+		dwc->ss_lanes_reconnect = false;
+		if (dwc->pullups_connected)
+			usb_gadget_disconnect(dwc->gadget);
+		usb_gadget_connect(dwc->gadget);
+	} else if (dwc->softconnect && !dwc->pullups_connected) {
+		usb_gadget_connect(dwc->gadget);
+	}
+out:
+	mutex_unlock(&dwc->mutex);
+}
+
+/**
+ * dwc3_gadget_set_ss_lanes_blocked - glue reports USB3 lane availability
+ * @dwc: pointer to our context structure
+ * @blocked: true while the lanes are routed away from USB3 or the PHY is
+ *	being re-initialised
+ *
+ * Safe from any process context, including the PHY's set_mode callback that
+ * dwc3 itself invokes with dwc->mutex held: this only records the state and
+ * schedules the (dis)connect for later.
+ */
+void dwc3_gadget_set_ss_lanes_blocked(struct dwc3 *dwc, bool blocked)
+{
+	if (READ_ONCE(dwc->ss_lanes_blocked) == blocked)
+		return;
+
+	if (blocked && dwc->pullups_connected)
+		dwc->ss_lanes_reconnect = true;
+	WRITE_ONCE(dwc->ss_lanes_blocked, blocked);
+	schedule_work(&dwc->ss_lanes_work);
+}
+EXPORT_SYMBOL_GPL(dwc3_gadget_set_ss_lanes_blocked);
 
 int dwc3_gadget_suspend(struct dwc3 *dwc)
 {

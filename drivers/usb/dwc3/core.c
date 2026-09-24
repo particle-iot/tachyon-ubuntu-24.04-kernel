@@ -2082,6 +2082,7 @@ int dwc3_probe(struct dwc3 *dwc,
 
 	spin_lock_init(&dwc->lock);
 	mutex_init(&dwc->mutex);
+	INIT_WORK(&dwc->ss_lanes_work, dwc3_gadget_ss_lanes_work);
 
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_active(dev);
@@ -2169,6 +2170,7 @@ static int dwc3_plat_probe(struct platform_device *pdev)
 
 void dwc3_remove(struct dwc3 *dwc)
 {
+	cancel_work_sync(&dwc->ss_lanes_work);
 	dwc->glue_data = NULL;
 	dwc->glue_ops = NULL;
 
