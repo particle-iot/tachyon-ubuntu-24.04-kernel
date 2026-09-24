@@ -1013,6 +1013,16 @@ struct dwc3_glue_data {
 /**
  * struct dwc3 - representation of our controller
  * @drd_work: workqueue used for role swapping
+ * @ss_lanes_work: re-issues the gadget's connect request when the glue reports
+ *	a change in USB3 lane availability
+ * @ss_lanes_blocked: glue reports the USB3 lanes are borrowed by DisplayPort
+ *	(four-lane DP on a shared Type-C PHY) or the PHY is re-initialising them;
+ *	the controller is not started until they return. Protected by @lock.
+ * @ss_lanes_gen: bumped each time the lanes become unavailable. Protected by
+ *	@lock.
+ * @ss_lanes_start_gen: @ss_lanes_gen when the controller was last started; a
+ *	difference means it kept running across a lane loss and its link is
+ *	dead. Protected by @lock.
  * @ep0_trb: trb which is used for the ctrl_req
  * @bounce: address of bounce buffer
  * @setup_buf: used while precessing STD USB requests
@@ -1183,6 +1193,10 @@ struct dwc3_glue_data {
  */
 struct dwc3 {
 	struct work_struct	drd_work;
+	struct work_struct	ss_lanes_work;
+	bool			ss_lanes_blocked;
+	unsigned int		ss_lanes_gen;
+	unsigned int		ss_lanes_start_gen;
 	struct dwc3_trb		*ep0_trb;
 	void			*bounce;
 	u8			*setup_buf;
@@ -1684,6 +1698,8 @@ static inline void dwc3_host_exit(struct dwc3 *dwc)
 #if IS_ENABLED(CONFIG_USB_DWC3_GADGET) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
 int dwc3_gadget_init(struct dwc3 *dwc);
 void dwc3_gadget_exit(struct dwc3 *dwc);
+void dwc3_gadget_ss_lanes_work(struct work_struct *work);
+void dwc3_gadget_set_ss_lanes_blocked(struct dwc3 *dwc, bool blocked);
 int dwc3_gadget_set_test_mode(struct dwc3 *dwc, int mode);
 int dwc3_gadget_get_link_state(struct dwc3 *dwc);
 int dwc3_gadget_set_link_state(struct dwc3 *dwc, enum dwc3_link_state state);
@@ -1697,6 +1713,10 @@ void dwc3_remove_requests(struct dwc3 *dwc, struct dwc3_ep *dep, int status);
 static inline int dwc3_gadget_init(struct dwc3 *dwc)
 { return 0; }
 static inline void dwc3_gadget_exit(struct dwc3 *dwc)
+{ }
+static inline void dwc3_gadget_ss_lanes_work(struct work_struct *work)
+{ }
+static inline void dwc3_gadget_set_ss_lanes_blocked(struct dwc3 *dwc, bool blocked)
 { }
 static inline int dwc3_gadget_set_test_mode(struct dwc3 *dwc, int mode)
 { return 0; }
