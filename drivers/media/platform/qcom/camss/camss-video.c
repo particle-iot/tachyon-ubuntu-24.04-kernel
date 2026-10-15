@@ -229,6 +229,7 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct camss_video *video = vb2_get_drv_priv(q);
 	struct video_device *vdev = &video->vdev;
+	struct media_entity *failed = NULL;
 	struct media_entity *entity;
 	struct media_pad *pad;
 	struct v4l2_subdev *subdev;
@@ -258,13 +259,41 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 		subdev = media_entity_to_v4l2_subdev(entity);
 
 		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
+		if (ret < 0 && ret != -ENOIOCTLCMD) {
+			failed = entity;
 			goto error;
+		}
 	}
 
 	return 0;
 
 error:
+	/*
+	 * Stop the subdevs that did start (same walk order as
+	 * video_stop_streaming). Leaving them streaming while their
+	 * buffers are handed back to vb2 lets residual VFE done IRQs
+	 * and DMA operate on buffers the driver no longer owns.
+	 */
+	if (failed) {
+		entity = &vdev->entity;
+		while (1) {
+			pad = &entity->pads[0];
+			if (!(pad->flags & MEDIA_PAD_FL_SINK))
+				break;
+
+			pad = media_pad_remote_pad_first(pad);
+			if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
+				break;
+
+			entity = pad->entity;
+			if (entity == failed)
+				break;
+
+			subdev = media_entity_to_v4l2_subdev(entity);
+			v4l2_subdev_call(subdev, video, s_stream, 0);
+		}
+	}
+
 	video_device_pipeline_stop(vdev);
 
 flush_buffers:
@@ -297,10 +326,17 @@ static void video_stop_streaming(struct vb2_queue *q)
 
 		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
 
-		if (ret) {
-			dev_err(video->camss->dev, "Video pipeline stop failed: %d\n", ret);
-			return;
-		}
+		/*
+		 * Keep walking on error: bailing out here would skip the
+		 * remaining subdevs, the pipeline bookkeeping and the buffer
+		 * flush, leaving the hardware half-stopped. -ENOIOCTLCMD just
+		 * means the subdev has no s_stream op, same as on the start
+		 * path, so it is not an error worth logging.
+		 */
+		if (ret && ret != -ENOIOCTLCMD)
+			dev_err(video->camss->dev,
+				"Failed to stop %s: %d, continuing\n",
+				subdev->name, ret);
 	}
 
 	video_device_pipeline_stop(vdev);
