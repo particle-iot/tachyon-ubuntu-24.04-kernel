@@ -701,6 +701,21 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp, u32 data)
 		return 0;
 	}
 
+	/*
+	 * post_disable reports ST_DISCONNECTED before msm_dp_display_unprepare()
+	 * powers the PHY off and exits it, and unprepare does that without
+	 * event_mutex. Bringing the link up in between would find phy_initialized
+	 * still set, skip phy_init() and then talk AUX to a PHY that is being shut
+	 * down underneath (every transfer times out). Wait for unprepare to finish.
+	 */
+	if (state == ST_DISCONNECTED &&
+	    smp_load_acquire(&dp->msm_dp_display.prepared)) {
+		dev_info_ratelimited(&pdev->dev, "plug deferred: previous link still being torn down\n");
+		msm_dp_add_event(dp, EV_HPD_PLUG_INT, 0, 1); /* delay = 1 */
+		mutex_unlock(&dp->event_mutex);
+		return 0;
+	}
+
 	ret = pm_runtime_resume_and_get(&pdev->dev);
 	if (ret) {
 		DRM_ERROR("failed to pm_runtime_resume\n");
@@ -1920,7 +1935,8 @@ void msm_dp_display_unprepare(struct msm_dp *msm_dp)
 
 	pm_runtime_put_sync(&msm_dp->pdev->dev);
 
-	msm_dp->prepared = false;
+	/* Last: msm_dp_hpd_plug_handle() waits for this before using the PHY. */
+	smp_store_release(&msm_dp->prepared, false);
 }
 
 void msm_dp_display_atomic_post_disable_helper(struct msm_dp *dp, struct msm_dp_panel *msm_dp_panel)
