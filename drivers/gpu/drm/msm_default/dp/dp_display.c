@@ -724,7 +724,22 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp, u32 data)
 	}
 
 	ret = msm_dp_display_usbpd_configure_cb(&pdev->dev);
-	if (ret) {	/* link train failed */
+	if (ret) {	/* plug failed */
+		/*
+		 * With HPD coming through the Type-C bridge nothing else returns
+		 * the PHY to a clean state after a failed attempt (e.g. the cable
+		 * pulled while the DPCD or EDID was being read): link_ready stays
+		 * clear, so the bridge never queues an unplug, and every later
+		 * plug finds phy_initialized set, skips phy_init() and times out
+		 * on AUX until reboot. Exit the PHY so the next plug starts from
+		 * scratch. -ENOTCONN is a branch device without a sink: it stays
+		 * attached and an IRQ_HPD brings the link up once a sink appears.
+		 */
+		if (!dp->msm_dp_display.is_edp && ret != -ENOTCONN) {
+			msm_dp_aux_enable_xfers(dp->aux, false);
+			msm_dp_display_host_phy_exit(dp);
+			dev_info(&pdev->dev, "plug failed (%d), PHY exited for the next attempt\n", ret);
+		}
 		dp->hpd_state = ST_DISCONNECTED;
 		pm_runtime_put_sync(&pdev->dev);
 	} else {
