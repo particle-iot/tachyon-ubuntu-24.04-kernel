@@ -349,7 +349,7 @@ static int qcom_pcie_stop_link(struct dw_pcie *pci)
 	ret_l23 = readl_poll_timeout(pcie->parf + PARF_PM_STTS, val,
 				     val & PM_ENTER_L23, 10000, 100000);
 	if (ret_l23) {
-		dev_err(pci->dev, "Failed to enter L2/L3\n");
+		dev_warn(pci->dev, "Failed to enter L2/L3\n");
 		return -ETIMEDOUT;
 	}
 
@@ -1832,9 +1832,14 @@ static int qcom_pcie_suspend_noirq(struct device *dev)
 		return ret;
 	}
 
-	ret = qcom_pcie_stop_link(pcie->pci);
-	if (ret)
-		return ret;
+	/*
+	 * An endpoint whose driver has already powered it down cannot
+	 * acknowledge PME_Turn_Off. As PCIe r7.0 sec 5.3.3.2.1 recommends,
+	 * finish the shutdown anyway and let resume retrain the link.
+	 * Failing here would abort system suspend with PME_Turn_Off already
+	 * sent and the RC left half shut down.
+	 */
+	qcom_pcie_stop_link(pcie->pci);
 
 suspend:
 	qcom_pcie_host_deinit(&pcie->pci->pp);
