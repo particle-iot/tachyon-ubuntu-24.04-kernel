@@ -1557,7 +1557,7 @@ static const struct thermal_cooling_device_ops battery_tcd_ops = {
 static int qcom_battmgr_register_thermal_cooling_device(struct qcom_battmgr *battmgr)
 {
 	struct thermal_cooling_device *tcd;
-	u32 prev, val;
+	u32 prev;
 	int rc, i;
 
 	/* Skip registering thermal cooling device if thermal levels are not defined */
@@ -1579,12 +1579,13 @@ static int qcom_battmgr_register_thermal_cooling_device(struct qcom_battmgr *bat
 
 	prev = battmgr->status.max_charge_ctl_limit;
 
-	for (i = 1; i < battmgr->num_thermal_levels; i++) {
+	/* thermal_levels[1..num_thermal_levels] come from DT and must not increase */
+	for (i = 1; i <= battmgr->num_thermal_levels; i++) {
 		if (battmgr->thermal_levels[i] > prev) {
 			dev_err(battmgr->dev, "Thermal values not defined as expected\n");
 			return -EINVAL;
 		}
-		prev = val;
+		prev = battmgr->thermal_levels[i];
 	}
 
 	battmgr->thermal_levels[0] = battmgr->status.max_charge_ctl_limit;
