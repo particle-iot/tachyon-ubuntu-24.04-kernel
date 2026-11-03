@@ -279,6 +279,13 @@
 
         orientation-gpios = <&tlmm 140 GPIO_ACTIVE_HIGH>;
 
+        /*
+         * Battery charge current (uA) for charge_control_limit 1..4.
+         * Level 0 is the maximum the ADSP reports for the detected battery
+         * profile (3.6A for the Tachyon battery).
+         */
+        qcom,thermal-mitigation = <3000000 2500000 1000000 500000>;
+
         connector@0 {
             compatible = "usb-c-connector";
             reg = <0>;
