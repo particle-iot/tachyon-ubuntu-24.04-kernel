@@ -640,8 +640,10 @@ static int __battery_psy_set_charge_current(struct qcom_battmgr *battmgr,
 {
 	int rc;
 
+	mutex_lock(&battmgr->lock);
 	rc = qcom_battmgr_request_property(battmgr, BATTMGR_BAT_PROPERTY_SET,
 					   BATT_CHG_CTRL_LIM, fcc_ua);
+	mutex_unlock(&battmgr->lock);
 	if (rc < 0) {
 		dev_err(battmgr->dev, "Failed to set FCC %u, rc=%d\n", fcc_ua, rc);
 	} else {
