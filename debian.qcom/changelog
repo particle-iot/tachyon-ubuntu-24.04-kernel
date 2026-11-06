@@ -1,3 +1,21 @@
+linux-particle (6.8.0-1058.59+particle11) noble; urgency=medium
+
+  * usb: dwc3: hold the gadget connect while the USB3 lanes are unavailable
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/51)
+    - fixes the PC no longer enumerating the board after a 4-lane DP monitor
+      session or a Type-C cable flip
+  * Camera: IMX519/IMX219 overlays and __symbols__ in the base dtb
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/52)
+    - the UEFI can now apply the CamX overlays; builds v4l2loopback for arm64
+  * DP: fix a reset, an 8 s stall and a dead display on monitor re-plug
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/53)
+  * Add battery charge current levels for the 2.5A charge cap
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/55)
+    - charge_control_limit now takes effect; tachyon-overlays#51 sets 2.5A
+      at boot
+
+ -- Eugene <eugene@particle.io>  Fri, 06 Nov 2026 04:33:38 +0000
+
 linux-particle (6.8.0-1058.59+particle10) noble; urgency=medium
 
   * drm/msm/dpu1: don't choke on disabling the writeback connector
