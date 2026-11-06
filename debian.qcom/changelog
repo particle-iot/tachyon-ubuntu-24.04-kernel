@@ -1,3 +1,53 @@
+linux-particle (6.8.0-1058.59+particle11) noble; urgency=medium
+
+  * usb: dwc3: hold the gadget connect while the USB3 lanes are unavailable
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/51)
+    - after a 4-lane DP monitor session, or after flipping the Type-C cable,
+      the PC never enumerated the board again (no adb) until the UDC was
+      rebound by hand
+    - the gadget was pulled up on lanes still owned by DP, and the PHY then
+      restarted its PCS under the running controller, so the link was never
+      re-trained
+    - dwc3 now holds the gadget connect while the USB3 lanes are unavailable
+      and restarts the controller once they are back; dwc3-qcom reports the
+      lane state from the places that already track needs_utmi (PR #47)
+    - measured: monitor -> PC 7/7 and cable flip 5/5, the host enumerates
+      within 1 s (before: never, and ~160 s)
+  * Camera: IMX519/IMX219 overlays and __symbols__ in the base dtb
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/52)
+    - the UEFI applies the overlays listed in dtb_a:/overlays.txt; the CamX
+      overlays reference labels from the base tree, so without __symbols__
+      they were skipped without an error. The base dtb is now built with -@
+    - adds IMX519 and IMX219 CSI1 overlays; fixes sc7280 camss clocks and
+      power-domain-names and the camss error-path buffer handling; works
+      around CCI NACKs during imx519 register writes
+    - builds v4l2loopback for arm64 as well (needed by the CamX V4L2 bridge)
+  * DP: fix a reset, an 8 s stall and a dead display on monitor re-plug
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/53)
+    - re-plugging a 4-lane monitor flipped within a few seconds reset the
+      board: the orientation change re-initialised the combo PHY under the
+      live DP link. The re-init now waits until DP has powered off
+    - a re-plug during the old link's teardown skipped phy_init() and hit
+      ~8 s of AUX timeouts; the plug handler now waits until unprepare has
+      torn the old link down
+    - pulling the cable while the DPCD/EDID was being read left no working
+      monitor until reboot; a failed plug now exits the PHY
+    - measured: flipped re-plug reset the board 3/3 before, 0 in 17 after;
+      no AUX timeouts on the first link-up after a teardown
+  * Add battery charge current levels for the 2.5A charge cap
+    (PR: https://github.com/particle-iot/tachyon-ubuntu-24.04-kernel/pull/55)
+    - the battery charged at up to 3.6A and charge_control_limit could not
+      be set (charge_control_limit_max read 0)
+    - qcm6490-tachyon.dts gets the 20.04 qcom,thermal-mitigation table:
+      levels 1..4 are 3.0A, 2.5A, 1.0A and 0.5A, level 0 stays at the ADSP
+      maximum. tachyon-overlays#51 sets level 2 at boot
+    - qcom_battmgr: fix the level check, which read an uninitialised
+      variable, and take battmgr->lock for the charge current request
+    - measured: level 2 gives FCC 2500 mA (before: 3600 mA with a battery,
+      10000 mA without)
+
+ -- Eugene <eugene@particle.io>  Fri, 06 Nov 2026 04:33:38 +0000
+
 linux-particle (6.8.0-1058.59+particle10) noble; urgency=medium
 
   * drm/msm/dpu1: don't choke on disabling the writeback connector
