@@ -612,6 +612,13 @@ void dwc3_drd_exit(struct dwc3 *dwc)
 					   &dwc->edev_nb);
 
 	cancel_work_sync(&dwc->drd_work);
+	/*
+	 * Nothing can request a role change any more and the glue has stopped
+	 * reporting USB3 lane changes (it unregisters its PHY notifier before
+	 * tearing dwc3 down), so this cancel is final: the gadget teardown
+	 * below cannot race dwc3_gadget_ss_lanes_work().
+	 */
+	cancel_work_sync(&dwc->ss_lanes_work);
 
 	/* debug user might have changed role, clean based on current role */
 	switch (dwc->current_dr_role) {

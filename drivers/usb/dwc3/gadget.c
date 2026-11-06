@@ -2767,9 +2767,43 @@ static int dwc3_gadget_soft_disconnect(struct dwc3 *dwc)
 	return ret;
 }
 
+/*
+ * True when the USB3 lanes were taken away since the controller was last
+ * started: it has been running with a dead link ever since.
+ */
+static bool dwc3_gadget_ss_lanes_lost(struct dwc3 *dwc)
+{
+	unsigned long flags;
+	bool lost;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	lost = dwc->ss_lanes_gen != dwc->ss_lanes_start_gen;
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
+	return lost;
+}
+
 static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 {
+	unsigned long flags;
+	unsigned int gen;
+	bool blocked, lost;
 	int ret;
+
+	/*
+	 * The glue reports when the USB3 lanes are borrowed by DisplayPort or
+	 * the PHY is re-initialising them. A controller started on those lanes
+	 * keeps a dead link, so do not start: the request stays recorded in
+	 * dwc->softconnect and dwc3_gadget_ss_lanes_work() re-issues it once
+	 * the lanes are back. Otherwise remember which lane generation this
+	 * start belongs to.
+	 */
+	spin_lock_irqsave(&dwc->lock, flags);
+	blocked = dwc->ss_lanes_blocked;
+	gen = dwc->ss_lanes_gen;
+	spin_unlock_irqrestore(&dwc->lock, flags);
+	if (blocked)
+		return 0;
 
 	/*
 	 * In the Synopsys DWC_usb31 1.90a programming guide section
@@ -2783,7 +2817,20 @@ static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 
 	dwc3_event_buffers_setup(dwc);
 	__dwc3_gadget_start(dwc);
-	return dwc3_gadget_run_stop(dwc, true);
+	ret = dwc3_gadget_run_stop(dwc, true);
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	dwc->ss_lanes_start_gen = gen;
+	lost = dwc->ss_lanes_gen != gen;
+	spin_unlock_irqrestore(&dwc->lock, flags);
+	if (!lost)
+		return ret;
+
+	/*
+	 * The lanes went away while the controller was starting, so its link
+	 * is already dead: stop it again and leave the connect to the work.
+	 */
+	return dwc3_gadget_soft_disconnect(dwc);
 }
 
 static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
@@ -2819,17 +2866,27 @@ static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
 		return ret;
 	}
 
-	if (dwc->pullups_connected == is_on) {
+	/*
+	 * A controller that kept running while its USB3 lanes were taken away
+	 * has a dead link (see dwc3_gadget_soft_connect()); a repeated connect
+	 * request is what restarts it.
+	 */
+	if (dwc->pullups_connected == is_on &&
+	    (!is_on || !dwc3_gadget_ss_lanes_lost(dwc))) {
 		pm_runtime_put(dwc->dev);
 		return 0;
 	}
 
 	synchronize_irq(dwc->irq_gadget);
 
-	if (!is_on)
+	if (!is_on) {
 		ret = dwc3_gadget_soft_disconnect(dwc);
-	else
-		ret = dwc3_gadget_soft_connect(dwc);
+	} else {
+		/* Restart: stop the dead controller before starting it again. */
+		ret = dwc->pullups_connected ? dwc3_gadget_soft_disconnect(dwc) : 0;
+		if (!ret)
+			ret = dwc3_gadget_soft_connect(dwc);
+	}
 
 	pm_runtime_put(dwc->dev);
 
@@ -4778,7 +4835,52 @@ void dwc3_gadget_exit(struct dwc3 *dwc)
 	kfree(dwc->setup_buf);
 	dma_free_coherent(dwc->sysdev, sizeof(*dwc->ep0_trb) * 2,
 			  dwc->ep0_trb, dwc->ep0_trb_addr);
+	dwc->gadget = NULL;
 }
+
+/*
+ * Runs after the glue changed ss_lanes_blocked. It only re-issues the
+ * gadget's connect request: dwc3_gadget_pullup() decides under the UDC core's
+ * connect lock whether the controller has to be started, restarted (it kept
+ * running across a lane loss) or left alone. dwc->mutex keeps a role switch
+ * from tearing the gadget down underneath; after a switch to host there is no
+ * gadget and nothing to do.
+ */
+void dwc3_gadget_ss_lanes_work(struct work_struct *work)
+{
+	struct dwc3 *dwc = container_of(work, struct dwc3, ss_lanes_work);
+
+	mutex_lock(&dwc->mutex);
+	if (dwc->gadget && dwc->current_dr_role == DWC3_GCTL_PRTCAP_DEVICE &&
+	    dwc->softconnect)
+		usb_gadget_connect(dwc->gadget);
+	mutex_unlock(&dwc->mutex);
+}
+
+/**
+ * dwc3_gadget_set_ss_lanes_blocked - glue reports USB3 lane availability
+ * @dwc: pointer to our context structure
+ * @blocked: true while the lanes are routed away from USB3 or the PHY is
+ *	re-initialising them
+ *
+ * Safe from any process context, including the PHY's set_mode callback that
+ * dwc3 itself invokes with dwc->mutex held: this only records the state and
+ * schedules the (re)connect for later.
+ */
+void dwc3_gadget_set_ss_lanes_blocked(struct dwc3 *dwc, bool blocked)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	if (dwc->ss_lanes_blocked != blocked) {
+		dwc->ss_lanes_blocked = blocked;
+		if (blocked)
+			dwc->ss_lanes_gen++;
+		schedule_work(&dwc->ss_lanes_work);
+	}
+	spin_unlock_irqrestore(&dwc->lock, flags);
+}
+EXPORT_SYMBOL_GPL(dwc3_gadget_set_ss_lanes_blocked);
 
 int dwc3_gadget_suspend(struct dwc3 *dwc)
 {

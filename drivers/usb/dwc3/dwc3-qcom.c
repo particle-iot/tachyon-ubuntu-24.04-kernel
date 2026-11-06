@@ -629,13 +629,22 @@ static void dwc3_qcom_set_utmi_as_pipe(struct dwc3_qcom *qcom, bool on)
 static void dwc3_qcom_sync_utmi_clk_locked(struct dwc3_qcom *qcom)
 {
 	struct phy *ssphy = qcom->dwc.usb3_generic_phy;
+	bool needs_utmi;
 
 	lockdep_assert_held(&qcom->utmi_lock);
 
 	if (!qcom->qscratch_base || !ssphy)
 		return;
 
-	dwc3_qcom_set_utmi_as_pipe(qcom, qcom_qmp_combo_usb3_needs_utmi_clk(ssphy));
+	needs_utmi = qcom_qmp_combo_usb3_needs_utmi_clk(ssphy);
+	dwc3_qcom_set_utmi_as_pipe(qcom, needs_utmi);
+	/*
+	 * The same condition means the device controller must not be started
+	 * yet: a gadget pulled up on lanes still owned by DP (or on a PCS not
+	 * brought back up) stays dead until the next soft connect. dwc3 holds
+	 * the connect until the PHY reports USB3 back.
+	 */
+	dwc3_gadget_set_ss_lanes_blocked(&qcom->dwc, needs_utmi);
 }
 
 static void dwc3_qcom_sync_utmi_clk(struct dwc3_qcom *qcom)
@@ -657,8 +666,10 @@ static int dwc3_qcom_dp_only_notify(struct notifier_block *nb,
 	 * be touched here; dwc3_qcom_resume() re-reads the PHY state under this
 	 * same lock before clearing is_suspended, so nothing is lost.
 	 */
-	if (qcom->qscratch_base && !qcom->is_suspended)
+	if (qcom->qscratch_base && !qcom->is_suspended) {
 		dwc3_qcom_set_utmi_as_pipe(qcom, needs_utmi);
+		dwc3_gadget_set_ss_lanes_blocked(&qcom->dwc, needs_utmi);
+	}
 	mutex_unlock(&qcom->utmi_lock);
 
 	return NOTIFY_OK;
@@ -1371,6 +1382,11 @@ static void dwc3_qcom_shutdown(struct platform_device *pdev)
 
 	legacy_binding = dwc3_qcom_has_separate_dwc3_of_node(dev);
 	qcom = get_dwc3_qcom(dev);
+
+	/* As in dwc3_qcom_remove(): no lane reports once dwc3 tears down. */
+	if (qcom->dwc.usb3_generic_phy)
+		qcom_qmp_combo_usb3_unregister_dp_only_notifier(qcom->dwc.usb3_generic_phy,
+								&qcom->dp_only_nb);
 
 	if (legacy_binding)
 		return;

@@ -1551,9 +1551,12 @@ void dwc3_core_exit_mode(struct dwc3 *dwc)
 {
 	switch (dwc->dr_mode) {
 	case USB_DR_MODE_PERIPHERAL:
+		cancel_work_sync(&dwc->ss_lanes_work);
 		dwc3_gadget_exit(dwc);
 		break;
 	case USB_DR_MODE_HOST:
+		/* The glue reports lane changes regardless of role. */
+		cancel_work_sync(&dwc->ss_lanes_work);
 		dwc3_host_exit(dwc);
 		break;
 	case USB_DR_MODE_OTG:
@@ -2082,6 +2085,7 @@ int dwc3_probe(struct dwc3 *dwc,
 
 	spin_lock_init(&dwc->lock);
 	mutex_init(&dwc->mutex);
+	INIT_WORK(&dwc->ss_lanes_work, dwc3_gadget_ss_lanes_work);
 
 	pm_runtime_get_noresume(dev);
 	pm_runtime_set_active(dev);
