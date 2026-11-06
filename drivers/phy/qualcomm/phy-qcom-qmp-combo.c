@@ -1651,11 +1651,14 @@ struct qmp_combo {
 	 * the USB3 lanes belong to DP. dp_powered: between dp_power_on() and
 	 * dp_power_off(), so the DP link may be live and the DP PHY must not be
 	 * reset. usb3_stale: a routing change reset the USB3 PCS, which has to
-	 * run its bring-up again before USB3 can work.
+	 * run its bring-up again before USB3 can work. orientation_pending: the
+	 * Type-C orientation changed while dp_powered, so the PHY still runs the
+	 * old one until the DP link is down.
 	 */
 	bool dp_only_routed;
 	bool dp_powered;
 	bool usb3_stale;
+	bool orientation_pending;
 	/* Fired on every DP-only routing change so dwc3-qcom can retune its clock. */
 	struct blocking_notifier_head dp_only_nh;
 
@@ -2975,6 +2978,73 @@ static void qmp_combo_restore_usb3(struct qmp_combo *qmp, const char *via)
 		dev_info(qmp->dev, "USB3 PHY restored after DP-only via %s\n", via);
 }
 
+/*
+ * Re-initialise the whole PHY for qmp->orientation. The port select is only
+ * written by com_init(), which the refcount keeps from running again while USB
+ * or DP holds the PHY, so this forces a full exit/init. That resets the DP PLL
+ * too: caller holds phy_mutex and guarantees the DP link is down.
+ */
+static void qmp_combo_reorient(struct qmp_combo *qmp)
+{
+	const struct qmp_phy_cfg *cfg = qmp->cfg;
+	bool pipe_ref = false;
+	int ret;
+
+	if (!qmp->init_count)
+		return;
+
+	if (qmp->usb_init_count) {
+		/* Reset ahead: tell the USB controller before touching the PHY. */
+		qmp_combo_usb3_mark_stale(qmp);
+		/*
+		 * As in qmp_combo_usb3_restart(): hold a second pipe_clk reference
+		 * so a failed power-on below cannot drop the one usb_init() took.
+		 */
+		pipe_ref = !clk_prepare_enable(qmp->pipe_clk);
+		qmp_combo_usb_power_off(qmp->usb_phy);
+	}
+	qmp_combo_com_exit(qmp, true);
+
+	qmp_combo_com_init(qmp, true);
+	if (qmp->usb_init_count) {
+		ret = qmp_combo_usb_power_on(qmp->usb_phy);
+		if (ret) {
+			/*
+			 * usb3_stale stays set: the controller keeps its UTMI
+			 * fallback and qmp_combo_usb_set_mode() retries the
+			 * bring-up on the next role switch. Our pipe_clk
+			 * reference now stands in for the one power-on dropped.
+			 */
+			dev_warn(qmp->dev,
+				 "USB3 PHY bring-up after orientation change failed (%d), retry on next role switch\n",
+				 ret);
+		} else {
+			if (pipe_ref)
+				clk_disable_unprepare(qmp->pipe_clk);
+			qmp_combo_usb3_mark_ready(qmp);
+		}
+	}
+	if (qmp->dp_init_count)
+		cfg->dp_aux_init(qmp);
+}
+
+/*
+ * The DP link is down and its clocks are off: apply an orientation change that
+ * had to wait for it, then hand the lanes back to USB3. Caller holds phy_mutex.
+ */
+static void qmp_combo_dp_link_down(struct qmp_combo *qmp, const char *via)
+{
+	qmp->dp_powered = false;
+
+	if (qmp->orientation_pending) {
+		qmp->orientation_pending = false;
+		qmp_combo_reorient(qmp);
+		dev_info(qmp->dev, "Type-C orientation change applied via %s\n", via);
+	}
+
+	qmp_combo_restore_usb3(qmp, via);
+}
+
 static int qmp_combo_dp_exit(struct phy *phy)
 {
 	struct qmp_combo *qmp = phy_get_drvdata(phy);
@@ -2987,8 +3057,7 @@ static int qmp_combo_dp_exit(struct phy *phy)
 		 qmp->dp_init_count);
 
 	/* Fallback for a DP driver that exits without dp_power_off(). */
-	qmp->dp_powered = false;
-	qmp_combo_restore_usb3(qmp, "dp_exit");
+	qmp_combo_dp_link_down(qmp, "dp_exit");
 
 	qmp_combo_com_exit(qmp, false);
 
@@ -3063,8 +3132,7 @@ static int qmp_combo_dp_power_off(struct phy *phy)
 	 * happens to be inside its role-switch core reset, the USB3 bring-up may
 	 * time out on PHYSTATUS; qmp_combo_usb_set_mode() retries it afterwards.
 	 */
-	qmp->dp_powered = false;
-	qmp_combo_restore_usb3(qmp, "dp_power_off");
+	qmp_combo_dp_link_down(qmp, "dp_power_off");
 
 	mutex_unlock(&qmp->phy_mutex);
 
@@ -3735,11 +3803,9 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 				      enum typec_orientation orientation)
 {
 	struct qmp_combo *qmp = typec_switch_get_drvdata(sw);
-	const struct qmp_phy_cfg *cfg = qmp->cfg;
-	int ret;
 
-	dev_dbg(qmp->dev, "dpdbg: typec_switch_set new=%d cur=%d init=%d (0=none 1=normal 2=reverse)\n",
-		 orientation, qmp->orientation, qmp->init_count);
+	dev_dbg(qmp->dev, "dpdbg: typec_switch_set new=%d cur=%d init=%d dp_powered=%d (0=none 1=normal 2=reverse)\n",
+		 orientation, qmp->orientation, qmp->init_count, qmp->dp_powered);
 
 	if (orientation == qmp->orientation || orientation == TYPEC_ORIENTATION_NONE)
 		return 0;
@@ -3747,37 +3813,27 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	mutex_lock(&qmp->phy_mutex);
 	qmp->orientation = orientation;
 
-	if (qmp->init_count) {
-		if (qmp->usb_init_count) {
-			/* Reset ahead: tell the USB controller before touching the PHY. */
-			qmp_combo_usb3_mark_stale(qmp);
-			qmp_combo_usb_power_off(qmp->usb_phy);
-		}
-		qmp_combo_com_exit(qmp, true);
-
-		qmp_combo_com_init(qmp, true);
-		if (qmp->usb_init_count) {
-			ret = qmp_combo_usb_power_on(qmp->usb_phy);
-			if (ret)
-				/*
-				 * usb3_stale stays set: the controller keeps its UTMI
-				 * fallback and qmp_combo_usb_set_mode() retries the
-				 * bring-up on the next role switch.
-				 */
-				dev_warn(qmp->dev,
-					 "USB3 PHY bring-up after orientation change failed (%d), retry on next role switch\n",
-					 ret);
-			else
-				qmp_combo_usb3_mark_ready(qmp);
-		}
-		if (qmp->dp_init_count)
-			cfg->dp_aux_init(qmp);
+	/*
+	 * A cable flipped right after unplugging a DP sink can land here before
+	 * DRM has torn the old stream down (that waits for a commit from
+	 * userspace). The DP controller then still runs on the link and pixel
+	 * clocks of the DP PLL, and resetting the PHY under it makes the teardown
+	 * fault on its first link register write (asynchronous SError). Leave the
+	 * PHY alone until dp_power_off(): the DP driver holds the new HPD until
+	 * the old stream is gone, and USB3 is either routed away (four-lane DP)
+	 * or trains once the PHY is re-initialised.
+	 */
+	if (qmp->dp_powered) {
+		qmp->orientation_pending = true;
+		dev_info(qmp->dev, "Type-C orientation changed while the DP link is up, PHY re-init deferred\n");
+	} else {
+		qmp_combo_reorient(qmp);
 	}
 	mutex_unlock(&qmp->phy_mutex);
 
 	/*
-	 * The orientation itself was applied; a failed USB3 bring-up is reported
-	 * above and retried, it is not an orientation failure.
+	 * The orientation itself was recorded; a failed USB3 bring-up is reported
+	 * by qmp_combo_reorient() and retried, it is not an orientation failure.
 	 */
 	return 0;
 }

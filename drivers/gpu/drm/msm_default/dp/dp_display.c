@@ -701,6 +701,21 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp, u32 data)
 		return 0;
 	}
 
+	/*
+	 * post_disable reports ST_DISCONNECTED before msm_dp_display_unprepare()
+	 * powers the PHY off and exits it, and unprepare does that without
+	 * event_mutex. Bringing the link up in between would find phy_initialized
+	 * still set, skip phy_init() and then talk AUX to a PHY that is being shut
+	 * down underneath (every transfer times out). Wait for unprepare to finish.
+	 */
+	if (state == ST_DISCONNECTED &&
+	    smp_load_acquire(&dp->msm_dp_display.prepared)) {
+		dev_info_ratelimited(&pdev->dev, "plug deferred: previous link still being torn down\n");
+		msm_dp_add_event(dp, EV_HPD_PLUG_INT, 0, 1); /* delay = 1 */
+		mutex_unlock(&dp->event_mutex);
+		return 0;
+	}
+
 	ret = pm_runtime_resume_and_get(&pdev->dev);
 	if (ret) {
 		DRM_ERROR("failed to pm_runtime_resume\n");
@@ -709,7 +724,22 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp, u32 data)
 	}
 
 	ret = msm_dp_display_usbpd_configure_cb(&pdev->dev);
-	if (ret) {	/* link train failed */
+	if (ret) {	/* plug failed */
+		/*
+		 * With HPD coming through the Type-C bridge nothing else returns
+		 * the PHY to a clean state after a failed attempt (e.g. the cable
+		 * pulled while the DPCD or EDID was being read): link_ready stays
+		 * clear, so the bridge never queues an unplug, and every later
+		 * plug finds phy_initialized set, skips phy_init() and times out
+		 * on AUX until reboot. Exit the PHY so the next plug starts from
+		 * scratch. -ENOTCONN is a branch device without a sink: it stays
+		 * attached and an IRQ_HPD brings the link up once a sink appears.
+		 */
+		if (!dp->msm_dp_display.is_edp && ret != -ENOTCONN) {
+			msm_dp_aux_enable_xfers(dp->aux, false);
+			msm_dp_display_host_phy_exit(dp);
+			dev_info(&pdev->dev, "plug failed (%d), PHY exited for the next attempt\n", ret);
+		}
 		dp->hpd_state = ST_DISCONNECTED;
 		pm_runtime_put_sync(&pdev->dev);
 	} else {
@@ -1920,7 +1950,8 @@ void msm_dp_display_unprepare(struct msm_dp *msm_dp)
 
 	pm_runtime_put_sync(&msm_dp->pdev->dev);
 
-	msm_dp->prepared = false;
+	/* Last: msm_dp_hpd_plug_handle() waits for this before using the PHY. */
+	smp_store_release(&msm_dp->prepared, false);
 }
 
 void msm_dp_display_atomic_post_disable_helper(struct msm_dp *dp, struct msm_dp_panel *msm_dp_panel)
