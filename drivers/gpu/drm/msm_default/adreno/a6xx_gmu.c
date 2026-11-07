@@ -329,7 +329,7 @@ int a6xx_gmu_set_oob(struct a6xx_gmu *gmu, enum a6xx_gmu_oob_state state)
 
 	/* Wait for the acknowledge interrupt */
 	ret = gmu_poll_timeout(gmu, REG_A6XX_GMU_GMU2HOST_INTR_INFO, val,
-		val & (1 << ack), 100, 10000);
+		val & (1 << ack), 100, 100000);
 
 	if (ret)
 		DRM_DEV_ERROR(gmu->dev,
@@ -487,14 +487,14 @@ static int a6xx_rpmh_start(struct a6xx_gmu *gmu)
 	wmb();
 
 	ret = gmu_poll_timeout(gmu, REG_A6XX_GMU_RSCC_CONTROL_ACK, val,
-		val & (1 << 1), 100, 10000);
+		val & (1 << 1), 100, 100000);
 	if (ret) {
 		DRM_DEV_ERROR(gmu->dev, "Unable to power on the GPU RSC\n");
 		return ret;
 	}
 
 	ret = gmu_poll_timeout_rscc(gmu, REG_A6XX_RSCC_SEQ_BUSY_DRV0, val,
-		!val, 100, 10000);
+		!val, 100, 100000);
 
 	if (ret) {
 		DRM_DEV_ERROR(gmu->dev, "GPU RSC sequence stuck while waking up the GPU\n");
