@@ -447,7 +447,6 @@ static int rpm_callback(int (*cb)(struct device *), struct device *dev)
 		retval = __rpm_callback(cb, dev);
 	}
 
-	dev->power.runtime_error = retval;
 	return retval != -EACCES ? retval : -EIO;
 }
 
@@ -723,6 +722,8 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 	__update_runtime_status(dev, RPM_ACTIVE);
 	dev->power.deferred_resume = false;
 	wake_up_all(&dev->power.wait_queue);
+
+	dev->power.runtime_error = retval;
 
 	if (retval == -EAGAIN || retval == -EBUSY) {
 		dev->power.runtime_error = 0;
