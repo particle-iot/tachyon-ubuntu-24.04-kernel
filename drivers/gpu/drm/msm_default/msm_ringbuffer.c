@@ -17,9 +17,7 @@ static struct dma_fence *msm_job_run(struct drm_sched_job *job)
 	struct msm_fence_context *fctx = submit->ring->fctx;
 	struct msm_gpu *gpu = submit->gpu;
 	struct msm_drm_private *priv = gpu->dev->dev_private;
-	int i;
-
-	msm_fence_init(submit->hw_fence, fctx);
+	int i, ret;
 
 	mutex_lock(&priv->lru.lock);
 
@@ -36,7 +34,28 @@ static struct dma_fence *msm_job_run(struct drm_sched_job *job)
 	/* TODO move submit path over to using a per-ring lock.. */
 	mutex_lock(&gpu->lock);
 
+	/*
+	 * Power up the GPU before the job gets a seqno, and fail the job if
+	 * that doesn't work: touching the hardware of a GPU that failed to
+	 * resume (e.g. the GMU OOB request at the start of a6xx hw_init) can
+	 * leave it broken until the next reboot. The next job retries the
+	 * power up.
+	 *
+	 * Do it under gpu->lock: recovery holds the lock while it powers the
+	 * GPU off and waits for the GDSC to collapse, and a job resuming the
+	 * GPU in the middle of that would keep it from collapsing.
+	 */
+	ret = pm_runtime_resume_and_get(&gpu->pdev->dev);
+	if (ret) {
+		mutex_unlock(&gpu->lock);
+		return ERR_PTR(ret);
+	}
+
+	msm_fence_init(submit->hw_fence, fctx);
+
 	msm_gpu_submit(gpu, submit);
+
+	pm_runtime_put(&gpu->pdev->dev);
 
 	mutex_unlock(&gpu->lock);
 
