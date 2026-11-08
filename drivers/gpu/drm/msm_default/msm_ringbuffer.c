@@ -51,6 +51,21 @@ static struct dma_fence *msm_job_run(struct drm_sched_job *job)
 		return ERR_PTR(ret);
 	}
 
+	/*
+	 * Same for hw_init: if it fails (e.g. the GMU doesn't acknowledge the
+	 * OOB request at its start), the CP isn't set up, and a job written
+	 * to the ring would only fault and go through hang recovery. Fail the
+	 * job instead, and power the GPU off if nothing else holds it, so the
+	 * next job starts over with a freshly booted GMU rather than retrying
+	 * hw_init on one that just failed to answer.
+	 */
+	ret = msm_gpu_hw_init(gpu);
+	if (ret) {
+		pm_runtime_put_sync_suspend(&gpu->pdev->dev);
+		mutex_unlock(&gpu->lock);
+		return ERR_PTR(ret);
+	}
+
 	msm_fence_init(submit->hw_fence, fctx);
 
 	msm_gpu_submit(gpu, submit);
