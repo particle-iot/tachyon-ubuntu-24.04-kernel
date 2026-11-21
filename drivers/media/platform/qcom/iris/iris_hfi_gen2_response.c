@@ -624,6 +624,7 @@ static void iris_hfi_gen2_read_input_subcr_params(struct iris_inst *inst)
 static int iris_hfi_gen2_handle_src_change(struct iris_inst *inst,
 					   struct iris_hfi_packet *pkt)
 {
+	struct iris_inst_hfi_gen2 *inst_hfi_gen2 = to_iris_inst_hfi_gen2(inst);
 	int ret;
 
 	if (pkt->port != HFI_PORT_BITSTREAM)
@@ -634,6 +635,15 @@ static int iris_hfi_gen2_handle_src_change(struct iris_inst *inst,
 		return ret;
 
 	iris_hfi_gen2_read_input_subcr_params(inst);
+
+	/*
+	 * The firmware compares the stream against the parameters the output
+	 * port was last given. Have the next start of that port send the new
+	 * ones, or a stream that starts after both ports were stopped is
+	 * reported as one more change, which nothing is waiting for.
+	 */
+	inst_hfi_gen2->opsc_properties_set = false;
+
 	iris_vdec_src_change(inst);
 
 	return 0;
